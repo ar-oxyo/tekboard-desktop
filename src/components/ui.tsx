@@ -34,7 +34,7 @@ export function Button({ variant = "secondary", size = "md", icon, busy, childre
       type="button"
       disabled={disabled || busy}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg whitespace-nowrap transition-colors duration-100",
+        "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-(--btn-radius) whitespace-nowrap transition-colors duration-100",
         "disabled:cursor-not-allowed disabled:opacity-50",
         size === "sm" ? "h-7 px-2.5 text-xs" : "h-8 px-3 text-[13px]",
         variants[variant],
@@ -117,7 +117,7 @@ export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputEleme
       autoComplete="off"
       className={cn(
         sized(className),
-        "rounded-lg border border-white/8 bg-black/30 px-2.5 text-[13px] text-fg placeholder:text-faint shadow-[inset_0_1px_2px_rgb(0_0_0/0.5)]",
+        "field border border-white/8 px-2.5 text-[13px] text-fg placeholder:text-faint",
         "transition-colors duration-100 hover:border-line-strong focus:border-accent focus:outline-none",
         className,
       )}
@@ -131,7 +131,7 @@ export function Select({ className, children, ...rest }: React.SelectHTMLAttribu
     <select
       className={cn(
         sized(className),
-        "rounded-lg border border-white/8 bg-[#141624] px-2 text-[13px] text-fg hover:border-line-strong focus:border-accent focus:outline-none",
+        "select border border-white/8 px-2 text-[13px] text-fg hover:border-line-strong focus:border-accent focus:outline-none",
         className,
       )}
       {...rest}

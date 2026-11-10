@@ -21,6 +21,7 @@ export interface Settings {
   terminalCmd: string;
   defaultTemplate: string | null;
   glassEffects: boolean;
+  theme: string;
   foxSignals: boolean;
   onboarded: boolean;
 }
@@ -356,5 +357,5 @@ export const api = {
   cozySend: (command: string) => invoke<void>("cozy_send", { command }),
   cozyRestore: (name: string) => invoke<CozyStatus>("cozy_restore", { name }),
 
-  startup: () => invoke<{ page: string | null; sheet: string | null }>("startup"),
+  startup: () => invoke<{ page: string | null; sheet: string | null; theme: string | null }>("startup"),
 };

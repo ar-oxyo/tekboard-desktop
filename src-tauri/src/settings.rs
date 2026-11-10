@@ -22,6 +22,8 @@ pub struct Settings {
     pub default_template: Option<String>,
     /// Blur/transparency on overlays. Off = opaque surfaces.
     pub glass_effects: bool,
+    /// Visual design, one of `THEMES`.
+    pub theme: String,
     /// Tell the Cozy Fox companion about builds and pushes made from TekBoard.
     pub fox_signals: bool,
     pub onboarded: bool,
@@ -29,11 +31,14 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { roots: vec![], clone_dir: None, ide_cmd: String::new(), terminal_cmd: String::new(), default_template: None, glass_effects: true, fox_signals: true, onboarded: false }
+        Settings { roots: vec![], clone_dir: None, ide_cmd: String::new(), terminal_cmd: String::new(), default_template: None, glass_effects: true, theme: THEMES[0].to_string(), fox_signals: true, onboarded: false }
     }
 }
 
 const KEY: &str = "app";
+
+/// Designs the UI knows how to render. The first one is the default.
+pub const THEMES: &[&str] = &["aurora", "flat", "neon", "cozy", "terminal"];
 
 pub fn load(conn: &Connection) -> Result<Settings> {
     match db::get_setting(conn, KEY)? {
@@ -69,6 +74,9 @@ pub fn save(conn: &Connection, settings: &Settings) -> Result<Settings> {
         s.clone_dir = Some(canon.to_string_lossy().into_owned());
     } else {
         s.clone_dir = None;
+    }
+    if !THEMES.contains(&s.theme.as_str()) {
+        return Err(AppError::new("invalid_theme", format!("Unknown design “{}”", s.theme)));
     }
     s.ide_cmd = s.ide_cmd.trim().to_string();
     s.terminal_cmd = s.terminal_cmd.trim().to_string();
@@ -227,5 +235,13 @@ mod tests {
         assert_eq!(save(&conn, &s).unwrap_err().code(), "invalid_root");
         s.roots = vec![root.join("missing").to_string_lossy().into_owned()];
         assert_eq!(save(&conn, &s).unwrap_err().code(), "invalid_root");
+        s.roots = vec![root_s];
+        s.theme = "neon".into();
+        assert_eq!(save(&conn, &s).unwrap().theme, "neon");
+        s.theme = "<script>".into();
+        assert_eq!(save(&conn, &s).unwrap_err().code(), "invalid_theme");
+        // Settings written by an older version have no theme: the default applies.
+        db::set_setting(&conn, "app", r#"{"roots":[],"ideCmd":"code"}"#).unwrap();
+        assert_eq!(load(&conn).unwrap().theme, "aurora");
     }
 }

@@ -64,7 +64,7 @@ export function Sidebar() {
             aria-current={page === item.page ? "page" : undefined}
             onClick={() => setPage(item.page)}
             title={`Ctrl+${item.key}`}
-            className={cn("nav-item flex h-[34px] items-center gap-2.5 rounded-lg px-2.5 text-[13px]", page === item.page ? "font-medium" : "text-muted hover:bg-white/5 hover:text-fg")}
+            className={cn("nav-item flex h-[34px] items-center gap-2.5 px-2.5 text-[13px]", page === item.page ? "font-medium" : "text-muted hover:bg-white/5 hover:text-fg")}
           >
             <span className={page === item.page ? "text-accent" : ""}>{item.icon}</span>
             {item.label}

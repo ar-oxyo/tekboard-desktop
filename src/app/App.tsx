@@ -27,6 +27,11 @@ export function App() {
   const settings = useSettings();
 
   // Glass only when the user keeps it on and the system does not ask for less transparency.
+  const themeOverride = useUi((s) => s.themeOverride);
+  useEffect(() => {
+    document.documentElement.dataset.theme = themeOverride ?? settings.data?.theme ?? "aurora";
+  }, [themeOverride, settings.data?.theme]);
+
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-transparency: reduce)").matches;
     const on = (settings.data?.glassEffects ?? false) && !reduce;
@@ -39,6 +44,7 @@ export function App() {
       (s) => {
         if (s.page && (PAGES as string[]).includes(s.page)) setPage(s.page as Page);
         if (s.sheet) useUi.getState().openSheet(s.sheet);
+        if (s.theme) useUi.setState({ themeOverride: s.theme });
       },
       () => undefined,
     );

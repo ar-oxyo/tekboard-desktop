@@ -40,7 +40,7 @@ export function CommandPalette() {
         <Dialog.Overlay className="scrim anim-fade fixed inset-0 z-40" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="glass anim-pop fixed top-[42%] left-1/2 z-50 w-[600px] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-white/10 focus:outline-none"
+          className="glass anim-pop fixed top-[42%] left-1/2 z-50 w-[600px] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-hidden border border-white/10 focus:outline-none"
         >
           <Dialog.Title className="sr-only">Command palette</Dialog.Title>
           <Command loop label="Command palette">

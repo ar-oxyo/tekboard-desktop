@@ -22,7 +22,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
         <Dialog.Content
           className={cn(
             "glass anim-pop fixed top-1/2 left-1/2 z-50 flex max-h-[86vh] max-w-[94vw] -translate-x-1/2 -translate-y-1/2 flex-col",
-            "rounded-2xl border border-white/10 focus:outline-none",
+            "border border-white/10 focus:outline-none",
             width,
           )}
         >

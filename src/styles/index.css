@@ -65,7 +65,7 @@ code,
 }
 
 ::selection {
-  background: #9486ff55;
+  background: var(--color-accent-soft);
 }
 
 *:focus-visible {
@@ -90,58 +90,310 @@ code,
   background-clip: content-box;
 }
 
-/* ── Backdrop: two soft colour halos and a faint dot grid. Static, so it costs nothing to keep. ── */
+/* ───────────────────────── Look & feel ─────────────────────────
+   Everything decorative reads from the variables below, so a design is just a
+   set of values. Defaults = "Aurora". Other designs override them further down. */
+:root {
+  --backdrop:
+    radial-gradient(900px 520px at 12% -8%, rgb(124 110 242 / 0.22), transparent 62%), radial-gradient(760px 520px at 104% 108%, rgb(63 190 214 / 0.13), transparent 60%),
+    radial-gradient(520px 360px at 78% -6%, rgb(196 110 242 / 0.09), transparent 65%);
+  --texture: radial-gradient(rgb(255 255 255 / 0.055) 1px, transparent 1px);
+  --texture-size: 22px 22px;
+  --texture-mask: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 78%);
+
+  --card-bg: linear-gradient(180deg, rgb(255 255 255 / 0.05) 0%, rgb(255 255 255 / 0.018) 42%, rgb(255 255 255 / 0.012) 100%), #0f111a;
+  --card-border: rgb(255 255 255 / 0.07);
+  --card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 1px 2px rgb(0 0 0 / 0.5), 0 14px 32px -18px rgb(0 0 0 / 0.75);
+  --hero-bg:
+    radial-gradient(420px 220px at 100% 0%, rgb(124 110 242 / 0.26), transparent 70%), radial-gradient(300px 200px at 0% 100%, rgb(63 190 214 / 0.1), transparent 70%),
+    linear-gradient(180deg, #151829, #0f111b) padding-box,
+    linear-gradient(135deg, rgb(148 134 255 / 0.85), rgb(95 212 232 / 0.35) 45%, rgb(255 255 255 / 0.06) 75%) border-box;
+  --hero-shadow: inset 0 1px 0 rgb(255 255 255 / 0.09), 0 20px 50px -24px rgb(124 110 242 / 0.55), 0 14px 32px -18px rgb(0 0 0 / 0.8);
+  --focus-ring: rgb(148 134 255 / 0.65);
+
+  --btn-bg: linear-gradient(135deg, #b9aeff 0%, #8b7bff 48%, #6f8dff 100%);
+  --btn-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45), inset 0 -1px 0 rgb(0 0 0 / 0.18), 0 8px 22px -8px rgb(124 110 242 / 0.85);
+  --btn2-bg: linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.03));
+  --btn2-border: rgb(255 255 255 / 0.09);
+  --btn-radius: 8px;
+
+  --title-fill: linear-gradient(92deg, #ffffff 0%, #d9d3ff 46%, #9fe3f0 100%);
+  --number-fill: linear-gradient(180deg, #ffffff 10%, #b9aeff 100%);
+  --title-transform: none;
+
+  --sidebar-bg: linear-gradient(180deg, rgb(20 21 36 / 0.92), rgb(10 11 19 / 0.92));
+  --nav-active-bg: linear-gradient(90deg, rgb(148 134 255 / 0.2), rgb(148 134 255 / 0.04) 70%, transparent);
+  --nav-active-ring: rgb(148 134 255 / 0.16);
+  --nav-bar: linear-gradient(180deg, #b9aeff, #5fd4e8);
+  --nav-bar-glow: 0 0 12px 1px rgb(148 134 255 / 0.9);
+  --logo-glow: drop-shadow(0 4px 14px rgb(124 110 242 / 0.6));
+  --row-hover: linear-gradient(90deg, rgb(148 134 255 / 0.09), rgb(255 255 255 / 0.02) 60%, transparent);
+
+  --overlay-bg: linear-gradient(180deg, #1c1f30, #141624);
+  --overlay-bg-glass: linear-gradient(180deg, rgb(30 33 52 / 0.84), rgb(18 20 33 / 0.86));
+  --overlay-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 0 0 1px rgb(148 134 255 / 0.08), 0 30px 80px -20px rgb(0 0 0 / 0.85), 0 0 90px -30px rgb(124 110 242 / 0.5);
+  --field-bg: rgb(0 0 0 / 0.3);
+  --select-bg: #141624;
+}
+
+/* Flat — the original look: solid surfaces, no glow, nothing decorative. */
+:root[data-theme="flat"] {
+  --color-bg: #0c0d11;
+  --color-panel: #111318;
+  --color-surface: #15181e;
+  --color-raised: #1b1f27;
+  --color-hover: #222733;
+  --color-line: #252a34;
+  --color-line-strong: #343b49;
+  --color-accent: #8f83f7;
+  --color-accent-strong: #a69cfb;
+  --color-accent-soft: #8f83f71f;
+  --radius-card: 10px;
+  --font-display: "Inter Variable", system-ui, sans-serif;
+
+  --backdrop: none;
+  --texture: none;
+  --card-bg: var(--color-surface);
+  --card-border: var(--color-line);
+  --card-shadow: none;
+  --hero-bg: var(--color-surface) padding-box, linear-gradient(var(--color-accent), var(--color-accent)) border-box;
+  --hero-shadow: none;
+  --btn-bg: var(--color-accent);
+  --btn-shadow: none;
+  --btn2-bg: var(--color-raised);
+  --btn2-border: var(--color-line);
+  --btn-radius: 6px;
+  --title-fill: linear-gradient(var(--color-fg), var(--color-fg));
+  --number-fill: linear-gradient(var(--color-fg), var(--color-fg));
+  --sidebar-bg: var(--color-panel);
+  --nav-active-bg: var(--color-raised);
+  --nav-active-ring: transparent;
+  --nav-bar: transparent;
+  --nav-bar-glow: none;
+  --logo-glow: none;
+  --row-hover: rgb(255 255 255 / 0.035);
+  --overlay-bg: var(--color-raised);
+  --overlay-bg-glass: rgb(24 27 35 / 0.82);
+  --overlay-shadow: var(--shadow-pop);
+  --field-bg: var(--color-bg);
+  --select-bg: var(--color-bg);
+}
+
+/* Neon — magenta and cyan on near-black, perspective grid, strong glows. */
+:root[data-theme="neon"] {
+  --color-bg: #07050f;
+  --color-panel: #0b0818;
+  --color-surface: #110c22;
+  --color-raised: #1a1330;
+  --color-hover: #261b45;
+  --color-line: #2a1e4a;
+  --color-line-strong: #46307a;
+  --color-fg: #f4eeff;
+  --color-muted: #a99cc9;
+  --color-faint: #76699a;
+  --color-accent: #ff6ad5;
+  --color-accent-strong: #ff9be4;
+  --color-accent-soft: #ff6ad526;
+  --color-accent-2: #3ae8ff;
+  --color-on-accent: #1a0318;
+  --radius-card: 12px;
+
+  --backdrop:
+    radial-gradient(820px 480px at 8% -10%, rgb(255 80 210 / 0.26), transparent 62%), radial-gradient(820px 520px at 100% 110%, rgb(40 220 255 / 0.2), transparent 60%),
+    linear-gradient(180deg, transparent 55%, rgb(120 60 255 / 0.1));
+  --texture: linear-gradient(rgb(160 110 255 / 0.11) 1px, transparent 1px), linear-gradient(90deg, rgb(160 110 255 / 0.11) 1px, transparent 1px);
+  --texture-size: 44px 44px;
+  --texture-mask: linear-gradient(180deg, transparent 30%, #000 100%);
+
+  --card-bg: linear-gradient(180deg, rgb(255 120 230 / 0.07), rgb(60 220 255 / 0.025) 60%, rgb(255 255 255 / 0.01)), #0e0a1c;
+  --card-border: rgb(255 106 213 / 0.22);
+  --card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 0 0 1px rgb(58 232 255 / 0.04), 0 0 34px -14px rgb(255 80 210 / 0.55), 0 16px 34px -18px rgb(0 0 0 / 0.85);
+  --hero-bg:
+    radial-gradient(440px 240px at 100% 0%, rgb(255 80 210 / 0.3), transparent 70%), radial-gradient(340px 220px at 0% 100%, rgb(40 220 255 / 0.2), transparent 70%),
+    linear-gradient(180deg, #1a1030, #0f0a1f) padding-box, linear-gradient(120deg, #ff6ad5, #8a5cff 50%, #3ae8ff) border-box;
+  --hero-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 0 46px -10px rgb(255 80 210 / 0.6), 0 0 80px -24px rgb(40 220 255 / 0.5);
+  --focus-ring: rgb(255 106 213 / 0.75);
+
+  --btn-bg: linear-gradient(120deg, #ff7ad9 0%, #b46bff 55%, #46dcff 100%);
+  --btn-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 0 24px -4px rgb(255 80 210 / 0.9), 0 8px 26px -8px rgb(70 220 255 / 0.7);
+  --btn2-bg: linear-gradient(180deg, rgb(255 120 230 / 0.12), rgb(255 255 255 / 0.03));
+  --btn2-border: rgb(255 106 213 / 0.28);
+
+  --title-fill: linear-gradient(92deg, #ff8be0 0%, #c59bff 45%, #5ce9ff 100%);
+  --number-fill: linear-gradient(180deg, #ffffff 0%, #ff8be0 100%);
+
+  --sidebar-bg: linear-gradient(180deg, rgb(22 12 44 / 0.94), rgb(9 6 20 / 0.94));
+  --nav-active-bg: linear-gradient(90deg, rgb(255 106 213 / 0.24), rgb(58 232 255 / 0.06) 75%, transparent);
+  --nav-active-ring: rgb(255 106 213 / 0.3);
+  --nav-bar: linear-gradient(180deg, #ff6ad5, #3ae8ff);
+  --nav-bar-glow: 0 0 14px 2px rgb(255 106 213 / 0.95);
+  --logo-glow: drop-shadow(0 0 14px rgb(255 106 213 / 0.8));
+  --row-hover: linear-gradient(90deg, rgb(255 106 213 / 0.12), rgb(58 232 255 / 0.03) 60%, transparent);
+
+  --overlay-bg: linear-gradient(180deg, #1f1438, #130c25);
+  --overlay-bg-glass: linear-gradient(180deg, rgb(34 20 62 / 0.84), rgb(18 11 36 / 0.88));
+  --overlay-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 0 0 1px rgb(255 106 213 / 0.25), 0 30px 80px -20px rgb(0 0 0 / 0.9), 0 0 100px -24px rgb(255 80 210 / 0.6);
+  --select-bg: #170f2c;
+}
+
+/* Cozy — warm pastel palette (Catppuccin Mocha), soft and round. */
+:root[data-theme="cozy"] {
+  --color-bg: #14141f;
+  --color-panel: #181825;
+  --color-surface: #1e1e2e;
+  --color-raised: #2a2a3c;
+  --color-hover: #353548;
+  --color-line: #313244;
+  --color-line-strong: #45475a;
+  --color-fg: #cdd6f4;
+  --color-muted: #a6adc8;
+  --color-faint: #7f849c;
+  --color-accent: #cba6f7;
+  --color-accent-strong: #dcc3fb;
+  --color-accent-soft: #cba6f726;
+  --color-accent-2: #fab387;
+  --color-on-accent: #1e1e2e;
+  --color-ok: #a6e3a1;
+  --color-warn: #f9e2af;
+  --color-danger: #f38ba8;
+  --color-info: #89b4fa;
+  --radius-card: 18px;
+
+  --backdrop:
+    radial-gradient(860px 520px at 10% -10%, rgb(203 166 247 / 0.16), transparent 62%), radial-gradient(760px 520px at 102% 106%, rgb(250 179 135 / 0.12), transparent 60%),
+    radial-gradient(520px 380px at 70% 0%, rgb(245 194 231 / 0.07), transparent 65%);
+  --texture: none;
+
+  --card-bg: linear-gradient(180deg, rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.01)), #1e1e2e;
+  --card-border: rgb(205 214 244 / 0.08);
+  --card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 18px 40px -22px rgb(0 0 0 / 0.7);
+  --hero-bg:
+    radial-gradient(420px 240px at 100% 0%, rgb(203 166 247 / 0.2), transparent 70%), radial-gradient(320px 200px at 0% 100%, rgb(250 179 135 / 0.12), transparent 70%),
+    linear-gradient(180deg, #25253a, #1e1e2e) padding-box, linear-gradient(135deg, #cba6f7, #f5c2e7 45%, #fab387) border-box;
+  --hero-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 22px 50px -26px rgb(203 166 247 / 0.5);
+  --focus-ring: rgb(203 166 247 / 0.7);
+
+  --btn-bg: linear-gradient(135deg, #dcc3fb 0%, #cba6f7 50%, #f5c2e7 100%);
+  --btn-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 8px 22px -10px rgb(203 166 247 / 0.8);
+  --btn2-bg: linear-gradient(180deg, rgb(205 214 244 / 0.09), rgb(205 214 244 / 0.04));
+  --btn2-border: rgb(205 214 244 / 0.1);
+  --btn-radius: 12px;
+
+  --title-fill: linear-gradient(92deg, #f5e0dc 0%, #cba6f7 55%, #fab387 100%);
+  --number-fill: linear-gradient(180deg, #f5e0dc 0%, #cba6f7 100%);
+
+  --sidebar-bg: linear-gradient(180deg, rgb(30 30 46 / 0.94), rgb(24 24 37 / 0.94));
+  --nav-active-bg: linear-gradient(90deg, rgb(203 166 247 / 0.2), rgb(203 166 247 / 0.05) 75%, transparent);
+  --nav-active-ring: rgb(203 166 247 / 0.16);
+  --nav-bar: linear-gradient(180deg, #cba6f7, #fab387);
+  --nav-bar-glow: 0 0 10px 1px rgb(203 166 247 / 0.7);
+  --logo-glow: drop-shadow(0 4px 12px rgb(203 166 247 / 0.45));
+  --row-hover: linear-gradient(90deg, rgb(203 166 247 / 0.09), rgb(255 255 255 / 0.02) 60%, transparent);
+
+  --overlay-bg: linear-gradient(180deg, #2a2a3c, #1e1e2e);
+  --overlay-bg-glass: linear-gradient(180deg, rgb(42 42 60 / 0.86), rgb(30 30 46 / 0.9));
+  --overlay-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 30px 80px -24px rgb(0 0 0 / 0.8), 0 0 80px -30px rgb(203 166 247 / 0.4);
+  --field-bg: rgb(17 17 27 / 0.6);
+  --select-bg: #1e1e2e;
+}
+
+/* Terminal — phosphor green on black, square corners, monospace titles, scanlines. */
+:root[data-theme="terminal"] {
+  --color-bg: #040704;
+  --color-panel: #060a06;
+  --color-surface: #0a100a;
+  --color-raised: #101810;
+  --color-hover: #172417;
+  --color-line: #1b2b1b;
+  --color-line-strong: #2c482c;
+  --color-fg: #cdf7c8;
+  --color-muted: #86b683;
+  --color-faint: #567a55;
+  --color-accent: #5cff8f;
+  --color-accent-strong: #9dffb9;
+  --color-accent-soft: #5cff8f1f;
+  --color-accent-2: #c8ff5c;
+  --color-on-accent: #021006;
+  --color-ok: #5cff8f;
+  --color-warn: #ffd45c;
+  --color-danger: #ff6b5c;
+  --color-info: #5cd9ff;
+  --radius-card: 3px;
+  --font-display: "JetBrains Mono Variable", ui-monospace, monospace;
+  --font-sans: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  --backdrop: radial-gradient(900px 600px at 50% -20%, rgb(92 255 143 / 0.09), transparent 65%);
+  --texture: linear-gradient(180deg, rgb(92 255 143 / 0.035) 50%, transparent 50%);
+  --texture-size: 100% 4px;
+  --texture-mask: none;
+
+  --card-bg: #080d08;
+  --card-border: rgb(92 255 143 / 0.22);
+  --card-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 0 24px -12px rgb(92 255 143 / 0.5);
+  --hero-bg: linear-gradient(180deg, #0d1a10, #080d08 60%) padding-box, linear-gradient(#5cff8f, #5cff8f) border-box;
+  --hero-shadow: 0 0 30px -8px rgb(92 255 143 / 0.55);
+  --focus-ring: rgb(92 255 143 / 0.8);
+
+  --btn-bg: #5cff8f;
+  --btn-shadow: 0 0 18px -4px rgb(92 255 143 / 0.9);
+  --btn2-bg: transparent;
+  --btn2-border: rgb(92 255 143 / 0.35);
+  --btn-radius: 2px;
+
+  --title-fill: linear-gradient(#5cff8f, #5cff8f);
+  --number-fill: linear-gradient(#9dffb9, #9dffb9);
+  --title-transform: lowercase;
+
+  --sidebar-bg: #050905;
+  --nav-active-bg: rgb(92 255 143 / 0.12);
+  --nav-active-ring: rgb(92 255 143 / 0.35);
+  --nav-bar: #5cff8f;
+  --nav-bar-glow: 0 0 10px 1px rgb(92 255 143 / 0.9);
+  --logo-glow: drop-shadow(0 0 8px rgb(92 255 143 / 0.5)) hue-rotate(240deg) saturate(1.4);
+  --row-hover: rgb(92 255 143 / 0.07);
+
+  --overlay-bg: #0a120a;
+  --overlay-bg-glass: rgb(8 14 8 / 0.92);
+  --overlay-shadow: 0 0 0 1px rgb(92 255 143 / 0.45), 0 0 60px -12px rgb(92 255 143 / 0.45), 0 30px 80px -20px rgb(0 0 0 / 0.9);
+  --field-bg: #050805;
+  --select-bg: #080d08;
+}
+
 .app-bg {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background:
-    radial-gradient(900px 520px at 12% -8%, rgb(124 110 242 / 0.22), transparent 62%),
-    radial-gradient(760px 520px at 104% 108%, rgb(63 190 214 / 0.13), transparent 60%),
-    radial-gradient(520px 360px at 78% -6%, rgb(196 110 242 / 0.09), transparent 65%);
+  background: var(--backdrop);
 }
 .app-bg::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgb(255 255 255 / 0.055) 1px, transparent 1px);
-  background-size: 22px 22px;
-  mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 78%);
-  -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 78%);
+  background-image: var(--texture);
+  background-size: var(--texture-size);
+  mask-image: var(--texture-mask);
+  -webkit-mask-image: var(--texture-mask);
 }
 
-/* ── Surfaces: lit from above. A top highlight, a soft drop shadow, a hairline border. ── */
 .card {
   position: relative;
   border-radius: var(--radius-card);
-  border: 1px solid rgb(255 255 255 / 0.07);
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.05) 0%, rgb(255 255 255 / 0.018) 42%, rgb(255 255 255 / 0.012) 100%), #0f111a;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.07),
-    0 1px 2px rgb(0 0 0 / 0.5),
-    0 14px 32px -18px rgb(0 0 0 / 0.75);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
   animation: rise-in 0.3s ease-out both;
 }
 .card > header:first-child {
   border-top-left-radius: var(--radius-card);
   border-top-right-radius: var(--radius-card);
 }
-
-/* The one card that matters most on a screen: gradient edge and a glow in the corner. */
+/* The one card that matters most on a screen. */
 .card-hero {
   border-color: transparent;
-  background:
-    radial-gradient(420px 220px at 100% 0%, rgb(124 110 242 / 0.26), transparent 70%),
-    radial-gradient(300px 200px at 0% 100%, rgb(63 190 214 / 0.1), transparent 70%),
-    linear-gradient(180deg, #151829, #0f111b) padding-box,
-    linear-gradient(135deg, rgb(148 134 255 / 0.85), rgb(95 212 232 / 0.35) 45%, rgb(255 255 255 / 0.06) 75%) border-box;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.09),
-    0 20px 50px -24px rgb(124 110 242 / 0.55),
-    0 14px 32px -18px rgb(0 0 0 / 0.8);
+  background: var(--hero-bg);
+  box-shadow: var(--hero-shadow);
 }
-
 .card-interactive {
   transition:
     transform 0.16s ease,
@@ -150,96 +402,84 @@ code,
 }
 .card-interactive:hover {
   transform: translateY(-1px);
-  border-color: rgb(148 134 255 / 0.4);
+  border-color: var(--focus-ring);
 }
 .card-interactive[aria-pressed="true"] {
-  border-color: rgb(148 134 255 / 0.65);
+  border-color: var(--focus-ring);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.09),
-    0 0 0 3px rgb(148 134 255 / 0.12),
-    0 14px 32px -18px rgb(0 0 0 / 0.75);
+    0 0 0 3px var(--color-accent-soft),
+    var(--card-shadow);
 }
 
-/* ── Buttons ── */
 .btn-primary {
   color: var(--color-on-accent);
   font-weight: 600;
-  background: linear-gradient(135deg, #b9aeff 0%, #8b7bff 48%, #6f8dff 100%);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.45),
-    inset 0 -1px 0 rgb(0 0 0 / 0.18),
-    0 8px 22px -8px rgb(124 110 242 / 0.85);
+  border-radius: var(--btn-radius);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
   transition:
     filter 0.12s ease,
-    transform 0.12s ease,
-    box-shadow 0.12s ease;
+    transform 0.12s ease;
 }
 .btn-primary:hover:not(:disabled) {
-  filter: brightness(1.08) saturate(1.05);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.5),
-    inset 0 -1px 0 rgb(0 0 0 / 0.18),
-    0 10px 28px -8px rgb(124 110 242 / 1);
+  filter: brightness(1.1) saturate(1.05);
 }
 .btn-primary:active:not(:disabled) {
   transform: translateY(1px);
-  filter: brightness(0.96);
+  filter: brightness(0.95);
 }
 .btn-primary:disabled {
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25);
+  box-shadow: none;
 }
 .btn-secondary {
   color: var(--color-fg);
-  border: 1px solid rgb(255 255 255 / 0.09);
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.03));
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.07),
-    0 1px 2px rgb(0 0 0 / 0.4);
+  border-radius: var(--btn-radius);
+  border: 1px solid var(--btn2-border);
+  background: var(--btn2-bg);
   transition:
     border-color 0.12s ease,
-    background 0.12s ease;
+    filter 0.12s ease;
 }
 .btn-secondary:hover:not(:disabled) {
-  border-color: rgb(255 255 255 / 0.18);
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.05));
+  border-color: var(--focus-ring);
+  filter: brightness(1.2);
 }
 
-/* ── Type ── */
 .display {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
 }
 .title-gradient {
-  background: linear-gradient(92deg, #ffffff 0%, #d9d3ff 46%, #9fe3f0 100%);
+  background: var(--title-fill);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  text-transform: var(--title-transform);
 }
 .number-gradient {
-  background: linear-gradient(180deg, #ffffff 10%, #b9aeff 100%);
+  background: var(--number-fill);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-/* ── Sidebar ── */
 .sidebar {
   position: relative;
   z-index: 1;
-  background: linear-gradient(180deg, rgb(20 21 36 / 0.92), rgb(10 11 19 / 0.92));
-  border-right: 1px solid rgb(255 255 255 / 0.06);
-  box-shadow: inset -1px 0 0 rgb(0 0 0 / 0.4);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--card-border);
 }
 .nav-item {
   position: relative;
+  border-radius: var(--btn-radius);
   transition:
     background 0.12s ease,
     color 0.12s ease;
 }
 .nav-item[aria-current="page"] {
   color: var(--color-fg);
-  background: linear-gradient(90deg, rgb(148 134 255 / 0.2), rgb(148 134 255 / 0.04) 70%, transparent);
-  box-shadow: inset 0 0 0 1px rgb(148 134 255 / 0.16);
+  background: var(--nav-active-bg);
+  box-shadow: inset 0 0 0 1px var(--nav-active-ring);
 }
 .nav-item[aria-current="page"]::before {
   content: "";
@@ -249,32 +489,45 @@ code,
   bottom: 7px;
   width: 3px;
   border-radius: 3px;
-  background: linear-gradient(180deg, #b9aeff, #5fd4e8);
-  box-shadow: 0 0 12px 1px rgb(148 134 255 / 0.9);
+  background: var(--nav-bar);
+  box-shadow: var(--nav-bar-glow);
 }
 .logo-glow {
-  filter: drop-shadow(0 4px 14px rgb(124 110 242 / 0.6));
+  filter: var(--logo-glow);
 }
-
-/* Row hover used in lists inside cards. */
 .row-hover {
   transition: background 0.1s ease;
 }
 .row-hover:hover {
-  background: linear-gradient(90deg, rgb(148 134 255 / 0.09), rgb(255 255 255 / 0.02) 60%, transparent);
+  background: var(--row-hover);
+}
+.field {
+  background: var(--field-bg);
+  border-radius: var(--btn-radius);
+}
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  color: var(--color-fg);
+  border-radius: var(--btn-radius);
+  padding-right: 28px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa0b6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 9px center,
+    var(--select-bg);
+}
+.select option {
+  background: var(--color-raised);
+  color: var(--color-fg);
 }
 
 /* Glass is reserved for overlays, and has an opaque fallback. */
 .glass {
-  background: linear-gradient(180deg, #1c1f30, #141624);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.1),
-    0 0 0 1px rgb(148 134 255 / 0.08),
-    0 30px 80px -20px rgb(0 0 0 / 0.85),
-    0 0 90px -30px rgb(124 110 242 / 0.5);
+  background: var(--overlay-bg);
+  box-shadow: var(--overlay-shadow);
+  border-radius: calc(var(--radius-card) + 2px);
 }
 :root[data-glass="on"] .glass {
-  background: linear-gradient(180deg, rgb(30 33 52 / 0.84), rgb(18 20 33 / 0.86));
+  background: var(--overlay-bg-glass);
   backdrop-filter: blur(18px) saturate(1.3);
   -webkit-backdrop-filter: blur(18px) saturate(1.3);
 }

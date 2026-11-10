@@ -23,7 +23,7 @@ Local-first: no account, no server, no telemetry.
 | **Cozy Fox** | Settings and commands of the Cozy Glass desktop companion, when it is installed; `widgets.json` is backed up before each change |
 | **Templates** | Library of skeletons with `{{VARIABLES}}`, file preview, import any folder, partial application, conflict detection |
 | **Command palette** | `Ctrl+K` — navigate, open any workspace, start a project |
-| **Settings** | Projects folders, IDE/terminal commands, environment check |
+| **Settings** | Projects folders, IDE/terminal commands, environment check, five designs (Aurora, Flat, Neon, Cozy, Terminal) |
 
 Not there yet: integrated terminal, Epitech intranet/calendar import, automations,
 command library, AppImage. See `docs/ARCHITECTURE.md`.

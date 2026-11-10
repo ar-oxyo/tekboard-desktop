@@ -31,6 +31,8 @@ interface UiState {
   launch: LaunchRequest | null;
   openLauncher: (req: LaunchRequest) => void;
   closeLauncher: () => void;
+  /** Design forced for this run by `--theme` (preview). */
+  themeOverride: string | null;
   toasts: Toast[];
   toast: (t: Omit<Toast, "id">) => void;
   dismissToast: (id: number) => void;
@@ -51,6 +53,7 @@ export const useUi = create<UiState>((set, get) => ({
   launch: null,
   openLauncher: (launch) => set({ launch, paletteOpen: false, sheetPath: null }),
   closeLauncher: () => set({ launch: null }),
+  themeOverride: null,
   toasts: [],
   toast: (t) => {
     const id = nextToast++;

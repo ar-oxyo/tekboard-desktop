@@ -658,6 +658,8 @@ pub fn cozy_restore(state: State<'_, AppState>, name: String) -> Result<cozy::St
 pub struct Startup {
     pub page: Option<String>,
     pub sheet: Option<String>,
+    /// Design to show for this run only (preview); the saved setting is not changed.
+    pub theme: Option<String>,
 }
 
 /// `tekboard --page analytics` or `tekboard --sheet <repository path>` opens the app there.
@@ -665,5 +667,5 @@ pub struct Startup {
 pub fn startup() -> Startup {
     let args: Vec<String> = std::env::args().collect();
     let value = |flag: &str| args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1)).cloned();
-    Startup { page: value("--page"), sheet: value("--sheet") }
+    Startup { page: value("--page"), sheet: value("--sheet"), theme: value("--theme").filter(|t| settings::THEMES.contains(&t.as_str())) }
 }

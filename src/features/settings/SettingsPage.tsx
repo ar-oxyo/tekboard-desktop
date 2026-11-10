@@ -145,6 +145,18 @@ export function SettingsPage() {
           </Card>
 
           <Card>
+            <CardTitle>Design</CardTitle>
+            <ThemePicker
+              current={settings.data.theme}
+              onPick={(theme) => {
+                useUi.setState({ themeOverride: null });
+                save.mutate({ ...settings.data!, theme });
+                setDraft((d) => (d ? { ...d, theme } : d));
+              }}
+            />
+          </Card>
+
+          <Card>
             <CardTitle>Appearance</CardTitle>
             <label className="flex items-center gap-3 px-4 py-4">
               <input type="checkbox" className="accent-(--color-accent)" checked={draft.glassEffects} onChange={(e) => set({ glassEffects: e.target.checked })} />
@@ -159,6 +171,44 @@ export function SettingsPage() {
         <EnvironmentCard />
       </div>
     </>
+  );
+}
+
+// Swatches are fixed colours on purpose: each tile previews its own design, whatever the active one is.
+const THEMES: Array<{ id: string; name: string; tagline: string; bg: string; card: string; accent: string; text: string; radius: number }> = [
+  { id: "aurora", name: "Aurora", tagline: "Colour halos, lit surfaces", bg: "radial-gradient(120px 70px at 10% 0%, #7c6ef266, transparent 70%), radial-gradient(110px 70px at 100% 100%, #3fbed644, transparent 70%), #080910", card: "#151829", accent: "linear-gradient(135deg,#b9aeff,#6f8dff)", text: "#eceef6", radius: 8 },
+  { id: "flat", name: "Flat", tagline: "Solid and quiet", bg: "#0c0d11", card: "#15181e", accent: "#8f83f7", text: "#e8eaf0", radius: 5 },
+  { id: "neon", name: "Neon", tagline: "Magenta, cyan and a grid", bg: "radial-gradient(120px 70px at 5% 0%, #ff50d277, transparent 70%), radial-gradient(120px 80px at 100% 100%, #28dcff66, transparent 70%), #07050f", card: "#1a1030", accent: "linear-gradient(120deg,#ff7ad9,#b46bff,#46dcff)", text: "#f4eeff", radius: 7 },
+  { id: "cozy", name: "Cozy", tagline: "Warm pastels, round corners", bg: "radial-gradient(120px 70px at 10% 0%, #cba6f755, transparent 70%), radial-gradient(110px 70px at 100% 100%, #fab38744, transparent 70%), #14141f", card: "#25253a", accent: "linear-gradient(135deg,#cba6f7,#f5c2e7)", text: "#cdd6f4", radius: 11 },
+  { id: "terminal", name: "Terminal", tagline: "Phosphor green, monospace", bg: "repeating-linear-gradient(180deg,#5cff8f14 0 1px,transparent 1px 3px), #040704", card: "#080d08", accent: "#5cff8f", text: "#cdf7c8", radius: 2 },
+];
+
+function ThemePicker({ current, onPick }: { current: string; onPick: (id: string) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3" role="radiogroup" aria-label="Design">
+      {THEMES.map((t) => {
+        const active = t.id === current;
+        return (
+          <button key={t.id} type="button" role="radio" aria-checked={active} onClick={() => !active && onPick(t.id)} className="group text-left">
+            <span
+              className={`block h-[84px] overflow-hidden border p-2.5 transition-transform group-hover:-translate-y-0.5 ${active ? "border-accent ring-2 ring-accent/30" : "border-white/10"}`}
+              style={{ background: t.bg, borderRadius: t.radius + 4 }}
+            >
+              <span className="block h-full p-2" style={{ background: t.card, borderRadius: t.radius, border: "1px solid rgb(255 255 255 / 0.08)" }}>
+                <span className="block h-1.5 w-12 rounded-full" style={{ background: t.text, opacity: 0.85 }} />
+                <span className="mt-1.5 block h-1 w-20 rounded-full" style={{ background: t.text, opacity: 0.3 }} />
+                <span className="mt-2.5 block h-3.5 w-14" style={{ background: t.accent, borderRadius: Math.max(2, t.radius - 3) }} />
+              </span>
+            </span>
+            <span className="mt-1.5 flex items-center gap-1.5 text-[13px] font-medium">
+              {t.name}
+              {active && <Check className="size-3.5 text-accent" />}
+            </span>
+            <span className="block text-xs text-faint">{t.tagline}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
