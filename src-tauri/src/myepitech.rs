@@ -19,21 +19,45 @@ pub const API: &str = "https://my.epitech.eu/api";
 pub const WINDOW: &str = "my-epitech";
 pub const TITLE_PREFIX: &str = "TEKBOARD_TOKEN:";
 
-/// Routes read at each sync, found in the site's public front-end code. All are GET and
-/// concern the signed-in user only. The calendar token route is left out on purpose: its
-/// answer is a credential.
+/// Routes read at each sync, found in the site's public front-end code and limited to the
+/// ones a student account may read (staff dashboards answer 403). All are GET and concern
+/// the signed-in user only. `{from}` / `{to}` are replaced by a date window around today.
+/// The calendar token route is left out on purpose: its answer is a credential.
 pub const ROUTES: &[(&str, &str)] = &[
     ("/auth/verify", "Account"),
-    ("/dashboard/overview", "Dashboard overview"),
-    ("/dashboard/activities/upcoming", "Upcoming activities"),
-    ("/dashboard/absences", "Absences"),
-    ("/dashboard/planning-metrics", "Planning metrics"),
-    ("/units", "Units"),
-    ("/events", "Events"),
-    ("/planning", "Planning"),
+    ("/units/instances/projects?page=1&limit=50&status=ongoing&registeredOnly=true", "Ongoing projects"),
+    ("/units/instances/projects?page=1&limit=50&registeredOnly=true", "All my projects"),
+    ("/units/projects/registrations/invitations/me", "Project invitations"),
+    ("/events?startDate={from}&endDate={to}", "Events (2 weeks back, 8 weeks ahead)"),
+    ("/evaluations/validations/me", "Validations"),
+    ("/evaluations/validations/credits/me", "Credits"),
+    ("/evaluations/validations/graph/me", "Validation graph"),
+    ("/students/exams", "Exams"),
+    ("/students/logtime", "Log time"),
+    ("/students/github-stats", "GitHub stats"),
+    ("/peer-evaluations/assignments/me", "Peer evaluations to do"),
+    ("/peer-evaluations/results/me", "Peer evaluation results"),
+    ("/cursus/me/attendance-plan", "Attendance plan"),
     ("/notifications/feed", "Notifications"),
-    ("/applications/user", "Applications"),
 ];
+
+/// Per-project details read after the list of ongoing projects, for at most this many projects.
+pub const MAX_PROJECT_DETAILS: usize = 12;
+
+fn expand(route: &str, today: chrono::NaiveDate) -> String {
+    let iso = |d: chrono::NaiveDate| format!("{}T00:00:00.000Z", d.format("%Y-%m-%d"));
+    route.replace("{from}", &iso(today - chrono::Duration::days(14))).replace("{to}", &iso(today + chrono::Duration::days(56)))
+}
+
+/// Ids of the projects listed in an answer, whether it is a bare array or `{ data | items: [...] }`.
+pub fn project_ids(body: &str) -> Vec<i64> {
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(body) else { return vec![] };
+    let list = v.as_array().or_else(|| ["data", "items", "results", "projects"].iter().find_map(|k| v[k].as_array()));
+    let mut ids: Vec<i64> = list.map(|l| l.iter().filter_map(|x| x["id"].as_i64().or_else(|| x["projectInstanceId"].as_i64())).collect()).unwrap_or_default();
+    ids.dedup();
+    ids.truncate(MAX_PROJECT_DETAILS);
+    ids
+}
 
 /// Runs in the MY Epitech window only. Looks for the site's access token in its own
 /// localStorage and passes it through the document title, which TekBoard listens to.
@@ -141,7 +165,7 @@ pub fn entries(conn: &Connection) -> Result<Vec<Entry>> {
     let mut all = Vec::new();
     for row in rows {
         let (route, fetched_at, status, body) = row?;
-        let label = ROUTES.iter().find(|(r, _)| *r == route).map(|(_, l)| l.to_string()).unwrap_or_else(|| route.clone());
+        let label = ROUTES.iter().find(|(r, _)| *r == route).map(|(_, l)| l.to_string()).unwrap_or_else(|| if route.ends_with("/my-activities") { "Project activities".into() } else if route.ends_with("/test-results") { "Project test results".into() } else { "No longer synced".into() });
         all.push(Entry { size: body.len(), body: serde_json::from_str(&body).unwrap_or(serde_json::Value::String(body)), route, label, fetched_at, status });
     }
     all.sort_by_key(|e| ROUTES.iter().position(|(r, _)| *r == e.route).unwrap_or(usize::MAX));
@@ -160,7 +184,7 @@ pub fn clear_cache(conn: &Connection) -> Result<()> {
 }
 
 pub struct Fetched {
-    pub route: &'static str,
+    pub route: String,
     pub status: i64,
     pub body: String,
 }
@@ -179,19 +203,34 @@ fn get(agent: &ureq::Agent, token: &str, route: &str) -> (i64, String) {
     }
 }
 
-/// Reads every route once, half a second apart. Stops early when the session is refused.
+/// Reads every route once, half a second apart, then the details of each ongoing project.
+/// Stops at once when the session is refused.
 pub fn fetch_all(token: &str) -> Vec<Fetched> {
     let config = ureq::Agent::config_builder().http_status_as_error(false).timeout_global(Some(Duration::from_secs(20))).user_agent("TekBoard (personal desktop client, read-only)").max_redirects(0).build();
     let agent: ureq::Agent = config.into();
+    let today = chrono::Local::now().date_naive();
+    let pause = || std::thread::sleep(Duration::from_millis(500));
     let mut out = Vec::new();
+    let mut ids = Vec::new();
     for (i, (route, _)) in ROUTES.iter().enumerate() {
         if i > 0 {
-            std::thread::sleep(Duration::from_millis(500));
+            pause();
         }
-        let (status, body) = get(&agent, token, route);
-        out.push(Fetched { route, status, body });
+        let (status, body) = get(&agent, token, &expand(route, today));
+        if i == 1 && status == 200 {
+            ids = project_ids(&body);
+        }
+        out.push(Fetched { route: route.to_string(), status, body });
         if status == 401 && i == 0 {
-            break;
+            return out;
+        }
+    }
+    for id in ids {
+        for tail in ["my-activities", "test-results"] {
+            pause();
+            let route = format!("/units/instances/projects/{id}/{tail}");
+            let (status, body) = get(&agent, token, &route);
+            out.push(Fetched { route, status, body });
         }
     }
     out
@@ -214,6 +253,10 @@ pub fn store(conn: &Connection, fetched: &[Fetched], now: i64) -> Result<SyncRep
     for f in fetched {
         if (200..300).contains(&f.status) {
             ok += 1;
+            if f.route == ROUTES[1].0 {
+                // Details of projects that are no longer ongoing leave the cache.
+                conn.execute("DELETE FROM my_cache WHERE route LIKE '/units/instances/projects/%/%'", [])?;
+            }
             conn.execute("INSERT INTO my_cache (route, fetched_at, status, body) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(route) DO UPDATE SET fetched_at = excluded.fetched_at, status = excluded.status, body = excluded.body", params![f.route, now, f.status, f.body])?;
         } else {
             problems.push(format!("{} → {}", f.route, if f.status == 0 { "no answer".to_string() } else { f.status.to_string() }));
@@ -222,7 +265,12 @@ pub fn store(conn: &Connection, fetched: &[Fetched], now: i64) -> Result<SyncRep
         }
     }
     let unauthorized = fetched.first().is_some_and(|f| f.status == 401);
-    let skipped = ROUTES.len() - fetched.len();
+    if !unauthorized {
+        // Answers of routes this version no longer reads are dropped.
+        let known: Vec<String> = ROUTES.iter().map(|(r, _)| format!("'{}'", r.replace('\'', "''"))).collect();
+        conn.execute(&format!("DELETE FROM my_cache WHERE route NOT IN ({}) AND route NOT LIKE '/units/instances/projects/%/%'", known.join(",")), [])?;
+    }
+    let skipped = ROUTES.len().saturating_sub(fetched.len());
     let mut detail = problems.join("; ");
     if skipped > 0 {
         detail = format!("session refused, {skipped} route(s) not tried. {detail}");
@@ -258,32 +306,37 @@ mod tests {
 
     #[test]
     fn the_calendar_credential_route_is_never_synced_and_all_routes_are_plain_paths() {
-        assert!(ROUTES.iter().all(|(r, _)| r.starts_with('/') && !r.contains("token") && !r.contains('?') && !r.contains("..")));
+        assert!(ROUTES.iter().all(|(r, _)| r.starts_with('/') && !r.contains("token") && !r.contains("..") && !r.contains("students/{")));
+        let day = chrono::NaiveDate::from_ymd_opt(2026, 11, 10).unwrap();
+        assert_eq!(expand("/events?startDate={from}&endDate={to}", day), "/events?startDate=2026-10-27T00:00:00.000Z&endDate=2027-01-05T00:00:00.000Z");
+        assert_eq!(project_ids("[{\"id\":4138},{\"id\":7},{\"name\":\"x\"}]"), vec![4138, 7]);
+        assert_eq!(project_ids("{\"data\":[{\"id\":3}],\"total\":1}"), vec![3]);
+        assert!(project_ids("{\"message\":\"no\"}").is_empty());
     }
 
     #[test]
     fn good_answers_are_cached_and_errors_do_not_erase_them() {
         let conn = db::open_in_memory().unwrap();
-        let first = [Fetched { route: "/auth/verify", status: 200, body: "{\"login\":\"x\"}".into() }, Fetched { route: "/units", status: 200, body: "[1,2]".into() }];
+        let first = [Fetched { route: "/auth/verify".into(), status: 200, body: "{\"login\":\"x\"}".into() }, Fetched { route: "/students/exams".into(), status: 200, body: "[1,2]".into() }];
         let r = store(&conn, &first, 100).unwrap();
         assert_eq!((r.ok, r.failed, r.unauthorized), (2, 0, false));
-        let second = [Fetched { route: "/auth/verify", status: 200, body: "{\"login\":\"y\"}".into() }, Fetched { route: "/units", status: 500, body: "{}".into() }, Fetched { route: "/events", status: 404, body: "{\"message\":\"Cannot GET\"}".into() }];
+        let second = [Fetched { route: "/auth/verify".into(), status: 200, body: "{\"login\":\"y\"}".into() }, Fetched { route: "/students/exams".into(), status: 500, body: "{}".into() }, Fetched { route: "/students/logtime".into(), status: 404, body: "{\"message\":\"Cannot GET\"}".into() }];
         let r = store(&conn, &second, 200).unwrap();
         assert_eq!((r.ok, r.failed), (1, 2));
         let all = entries(&conn).unwrap();
         let get = |route: &str| all.iter().find(|e| e.route == route).unwrap();
         assert_eq!(get("/auth/verify").body["login"], "y");
-        assert_eq!((get("/units").status, get("/units").fetched_at), (200, 100));
-        assert_eq!(get("/events").status, 404);
+        assert_eq!((get("/students/exams").status, get("/students/exams").fetched_at), (200, 100));
+        assert_eq!(get("/students/logtime").status, 404);
         let h = history(&conn, 10).unwrap();
         assert_eq!(h.len(), 2);
-        assert!(h[0].detail.contains("/units → 500"));
+        assert!(h[0].detail.contains("/students/exams → 500"));
     }
 
     #[test]
     fn a_refused_session_is_reported() {
         let conn = db::open_in_memory().unwrap();
-        let r = store(&conn, &[Fetched { route: "/auth/verify", status: 401, body: "{}".into() }], 1).unwrap();
+        let r = store(&conn, &[Fetched { route: "/auth/verify".into(), status: 401, body: "{}".into() }], 1).unwrap();
         assert!(r.unauthorized && r.detail.contains("not tried"));
     }
 }

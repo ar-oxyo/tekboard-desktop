@@ -541,7 +541,7 @@ export interface MyStatus {
   expiresAt: number | null;
   account: string | null;
   sessionStored: boolean;
-  routes: string[];
+  routes: number;
 }
 export interface MyEntry {
   route: string;

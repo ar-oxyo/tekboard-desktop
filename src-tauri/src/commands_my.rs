@@ -21,7 +21,7 @@ pub struct MyStatus {
     pub account: Option<String>,
     /// A browser session is kept on disk for the sign-in window.
     pub session_stored: bool,
-    pub routes: Vec<&'static str>,
+    pub routes: usize,
 }
 
 #[tauri::command(async)]
@@ -35,7 +35,7 @@ pub fn my_status(app: AppHandle, state: State<'_, AppState>) -> MyStatus {
         expires_at,
         account: info.and_then(|i| i.account),
         session_stored: session_dir(&state).is_dir(),
-        routes: myepitech::ROUTES.iter().map(|(r, _)| *r).collect(),
+        routes: myepitech::ROUTES.len(),
     }
 }
 

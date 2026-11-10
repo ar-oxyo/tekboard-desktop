@@ -67,7 +67,7 @@ export function MyEpitechPage() {
                 <li>A separate window opens <span className="font-mono">my.epitech.eu</span>. Microsoft sign-in and MFA happen there, as in a browser.</li>
                 <li>That window keeps its browser session in a folder of its own on this computer, so you stay signed in. “Erase session” deletes it.</li>
                 <li>TekBoard receives the site's access token from that window and keeps it in memory only. It is not written to its database or logs.</li>
-                <li>Syncing happens only when you click: {s?.routes.length ?? 10} read-only requests, half a second apart, on your own account.</li>
+                <li>Syncing happens only when you click: about {s?.routes ?? 15} read-only requests (plus two per ongoing project), half a second apart, on your own account.</li>
                 <li>The answers are stored on this computer so you can read them offline. Check that this use fits your school's rules.</li>
               </ul>
               <label className="flex items-center gap-2">
