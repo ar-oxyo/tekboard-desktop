@@ -419,6 +419,121 @@ export interface LibImportReport {
   header: string | null;
 }
 
+// ── Jobs, tests, checks
+export type StepStatus = "pending" | "running" | "success" | "warning" | "failed" | "skipped" | "cancelled";
+export type JobStatus = "running" | "success" | "warning" | "failed" | "cancelled";
+export interface JobStep {
+  id: string;
+  label: string;
+  status: StepStatus;
+  detail: string | null;
+  durationMs: number | null;
+}
+export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "gen_tests" | "readme" | "build";
+/** Kind-specific facts; see the Rust module that produces each kind. */
+export type RunSummary = Record<string, unknown> & { steps?: JobStep[] };
+export interface JobView {
+  id: number;
+  kind: RunKind;
+  repo: string | null;
+  title: string;
+  status: JobStatus;
+  steps: JobStep[];
+  log: string;
+  startedAt: number;
+  durationMs: number;
+  summary: RunSummary;
+  runId: number | null;
+}
+export interface Run {
+  id: number;
+  kind: RunKind;
+  repoPath: string | null;
+  startedAt: number;
+  durationMs: number;
+  status: JobStatus;
+  title: string;
+  summary: RunSummary;
+  log: string | null;
+}
+export interface TestSuite {
+  id: string;
+  kind: "make" | "ctest" | "script";
+  label: string;
+  command: string;
+  note: string | null;
+  trusted: boolean;
+}
+export interface ProjectConfig {
+  testCmd: string | null;
+  runCmd: string | null;
+  image: string | null;
+}
+export interface TestingInfo {
+  detection: { suites: TestSuite[]; frameworks: string[]; testFiles: number; notes: string[] };
+  config: ProjectConfig;
+  defaultBuild: string;
+  claude: { path: string | null; version: string | null };
+  banana: { repoChecker: string | null; version: string | null; epiclang: string | null; plugin: boolean };
+  docker: boolean;
+  valgrind: boolean;
+  defaultImage: string;
+  subject: string | null;
+  hasRemote: boolean;
+}
+export interface TestRepoParams {
+  mode: "snapshot" | "remote";
+  rev: string | null;
+  build: string;
+  tests: string | null;
+  isolation: "none" | "docker";
+  image: string | null;
+}
+export interface MoulinetteParams {
+  build: string;
+  tests: string | null;
+  memoryRun: string | null;
+  subjectAi: boolean;
+}
+export interface TestEnv {
+  name: string;
+  path: string;
+  createdAt: number;
+  size: number;
+}
+export interface ClaudeBrief {
+  plan: { available: boolean; version: string | null; argv: string[]; canRead: string; canWrite: string; cannot: string; account: string };
+  prompt: string;
+}
+export interface PackOptions {
+  mode: "source" | "full" | "context";
+  exclude: string[];
+  include: string[];
+}
+export interface PackEntry {
+  path: string;
+  size: number;
+  included: boolean;
+  reason: string;
+  sensitive: boolean;
+}
+export interface PackPreview {
+  mode: string;
+  entries: PackEntry[];
+  included: number;
+  includedSize: number;
+  sensitive: number;
+  skippedDirs: string[];
+  truncated: boolean;
+}
+export interface ReadmeDraft {
+  proposed: string;
+  current: string | null;
+  currentHash: string | null;
+  diff: string;
+  missing: string[];
+}
+
 export const api = {
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),
@@ -501,5 +616,29 @@ export const api = {
   libraryImport: (id: number, items: Array<{ source: string; dir: string; overwrite: boolean }>, header: string | null) => invoke<LibImportReport>("library_import", { id, items, header }),
   libraryReveal: (id: number) => invoke<void>("library_reveal", { id }),
 
-  startup: () => invoke<{ page: string | null; sheet: string | null; theme: string | null; repo: string | null }>("startup"),
+  projectConfigGet: (repo: string) => invoke<ProjectConfig>("project_config_get", { repo }),
+  projectConfigSet: (repo: string, config: ProjectConfig) => invoke<ProjectConfig>("project_config_set", { repo, config }),
+  jobGet: (id: number) => invoke<JobView>("job_get", { id }),
+  jobCancel: (id: number) => invoke<void>("job_cancel", { id }),
+  runsList: (repo: string | null, kind: RunKind | null, limit: number) => invoke<Run[]>("runs_list", { repo, kind, limit }),
+  runGet: (id: number) => invoke<Run>("run_get", { id }),
+  testingInfo: (repo: string) => invoke<TestingInfo>("testing_info", { repo }),
+  testsRun: (repo: string, command: string, acknowledged: boolean) => invoke<number>("tests_run", { repo, command, acknowledged }),
+  bananaRun: (repo: string) => invoke<number>("banana_run", { repo }),
+  testrepoStart: (repo: string, params: TestRepoParams) => invoke<number>("testrepo_start", { repo, params }),
+  testrepoEnvs: () => invoke<TestEnv[]>("testrepo_envs"),
+  testrepoEnvDelete: (name: string) => invoke<void>("testrepo_env_delete", { name }),
+  testrepoEnvOpen: (name: string, terminal: boolean) => invoke<void>("testrepo_env_open", { name, terminal }),
+  moulinetteStart: (repo: string, params: MoulinetteParams) => invoke<number>("moulinette_start", { repo, params }),
+  claudeBrief: (repo: string, task: "tests" | "readme" | "subject", disclosure: boolean) => invoke<ClaudeBrief>("claude_brief", { repo, task, disclosure }),
+  genTestsStart: (repo: string) => invoke<number>("gen_tests_start", { repo }),
+  packagePreview: (repo: string, options: PackOptions) => invoke<PackPreview>("package_preview", { repo, options }),
+  packageCreate: (repo: string, options: PackOptions) => invoke<{ path: string; dir: string; files: number; size: number }>("package_create", { repo, options }),
+  packageReveal: () => invoke<void>("package_reveal"),
+  readmeDraft: (repo: string, disclosure: boolean) => invoke<ReadmeDraft>("readme_draft", { repo, disclosure }),
+  readmeDiff: (repo: string, text: string) => invoke<string>("readme_diff", { repo, text }),
+  readmeWrite: (repo: string, content: string, expectedHash: string | null) => invoke<string | null>("readme_write", { repo, content, expectedHash }),
+  readmeAiStart: (repo: string, disclosure: boolean) => invoke<number>("readme_ai_start", { repo, disclosure }),
+
+  startup: () => invoke<{ page: string | null; sheet: string | null; theme: string | null; repo: string | null; pick: string | null; tool: string | null; run: string | null; report: number | null }>("startup"),
 };

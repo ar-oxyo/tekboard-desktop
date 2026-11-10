@@ -226,7 +226,7 @@ pub fn run(job: &Job, repo: &Path, params: &Params, subject_pdf: Option<PathBuf>
                 if o.cancelled {
                     return Ok("cancelled");
                 }
-                found.extend(checker::parse_findings(&o.output));
+                found.extend(checker::drop_ignored(repo, checker::parse_findings(&o.output)).0);
             }
             let major = found.iter().filter(|f| f.severity == "Major").count();
             let items: Vec<Item> = found.iter().take(40).map(|f| Item { label: format!("{} {}", f.rule, f.message), status: if f.severity == "Major" { "fail".into() } else { "warning".into() }, detail: f.file.clone() }).collect();
@@ -235,7 +235,7 @@ pub fn run(job: &Job, repo: &Path, params: &Params, subject_pdf: Option<PathBuf>
                 label: "Coding style (Banana)",
                 result: if major > 0 { "fail" } else if !found.is_empty() { "warning" } else { "pass" },
                 evidence: "auto",
-                detail: if found.is_empty() { "Delivery files: no infraction (C-O1, C-O4). Run Banana from the Testing screen for the line-by-line rules.".into() } else { format!("Delivery files: {} infraction(s), {major} major. Checked after the build: build products count (run make fclean before a hand-in).", found.len()) },
+                detail: if found.is_empty() { "Delivery files: no infraction (C-O1, C-O4). Run Banana from the Testing screen for the line-by-line rules.".into() } else { format!("Delivery files: {} infraction(s), {major} major (build products ignored by Git are not counted).", found.len()) },
                 items,
             });
         }

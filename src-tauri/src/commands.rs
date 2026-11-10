@@ -671,6 +671,14 @@ pub struct Startup {
     pub theme: Option<String>,
     /// Project to preselect on the Library, Testing and Git screens.
     pub repo: Option<String>,
+    /// Library files to tick at startup, comma separated (with `--page library --repo …`).
+    pub pick: Option<String>,
+    /// `package` or `readme`: opens that tool on `--repo`.
+    pub tool: Option<String>,
+    /// Starts a check on `--repo`: `tests`, `banana`, `testrepo`, `testrepo-remote`, `moulinette`.
+    pub run: Option<String>,
+    /// Opens a finished report of the history on the Testing screen.
+    pub report: Option<i64>,
 }
 
 /// `tekboard --page analytics` or `tekboard --sheet <repository path>` opens the app there.
@@ -678,5 +686,5 @@ pub struct Startup {
 pub fn startup() -> Startup {
     let args: Vec<String> = std::env::args().collect();
     let value = |flag: &str| args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1)).cloned();
-    Startup { page: value("--page"), sheet: value("--sheet"), repo: value("--repo"), theme: value("--theme").filter(|t| settings::THEMES.contains(&t.as_str())) }
+    Startup { page: value("--page"), sheet: value("--sheet"), repo: value("--repo"), pick: value("--pick"), tool: value("--tool"), run: value("--run"), report: value("--report").and_then(|v| v.parse().ok()), theme: value("--theme").filter(|t| settings::THEMES.contains(&t.as_str())) }
 }

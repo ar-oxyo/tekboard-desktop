@@ -9,14 +9,35 @@ import { SettingsPage } from "../features/settings/SettingsPage";
 import { SubjectsPage } from "../features/subjects/SubjectsPage";
 import { TemplatesPage } from "../features/templates/TemplatesPage";
 import { useSettings } from "../lib/hooks";
-import { api } from "../lib/api";
+import { api, asAppError } from "../lib/api";
 import { PAGES, useUi, type Page } from "../lib/store";
 import { AnalyticsPage } from "../features/analytics/AnalyticsPage";
 import { CozyPage } from "../features/cozy/CozyPage";
 import { GitPage } from "../features/git/GitPage";
 import { LibraryPage } from "../features/library/LibraryPage";
+import { TestingPage } from "../features/testing/TestingPage";
+import { PackageDialog } from "../features/tools/PackageDialog";
+import { ReadmeDialog } from "../features/tools/ReadmeDialog";
 import { Sidebar } from "./Sidebar";
 
+
+/** `tekboard --repo <path> --run banana` starts that check and shows it. */
+async function startFromCli(repo: string, what: string) {
+  const ui = useUi.getState();
+  try {
+    const info = await api.testingInfo(repo);
+    const tests = info.detection.suites.find((x) => x.trusted)?.command ?? info.config.testCmd;
+    let id: number | null = null;
+    if (what === "banana") id = await api.bananaRun(repo);
+    else if (what === "tests" && tests) id = await api.testsRun(repo, tests, false);
+    else if (what === "testrepo" || what === "testrepo-remote") id = await api.testrepoStart(repo, { mode: what === "testrepo" ? "snapshot" : "remote", rev: null, build: info.defaultBuild, tests: tests ?? null, isolation: "none", image: null });
+    else if (what === "moulinette") id = await api.moulinetteStart(repo, { build: info.defaultBuild, tests: tests ?? null, memoryRun: info.config.runCmd, subjectAi: false });
+    if (id !== null) ui.showJob(id, repo);
+    else ui.toast({ kind: "error", title: `Nothing to run for “${what}”` });
+  } catch (e) {
+    ui.toast({ kind: "error", title: "Could not start", detail: asAppError(e).message });
+  }
+}
 
 export function App() {
   const page = useUi((s) => s.page);
@@ -25,6 +46,7 @@ export function App() {
   const openLauncher = useUi((s) => s.openLauncher);
   const launch = useUi((s) => s.launch);
   const sheetPath = useUi((s) => s.sheetPath);
+  const tool = useUi((s) => s.tool);
   const settings = useSettings();
 
   // Glass only when the user keeps it on and the system does not ask for less transparency.
@@ -47,6 +69,10 @@ export function App() {
         if (s.sheet) useUi.getState().openSheet(s.sheet);
         if (s.theme) useUi.setState({ themeOverride: s.theme });
         if (s.repo) useUi.setState({ libraryRepo: s.repo, testingRepo: s.repo, gitRepo: s.repo });
+        if (s.pick) useUi.setState({ libraryPick: s.pick.split(",").filter(Boolean) });
+        if (s.repo && (s.tool === "package" || s.tool === "readme")) useUi.getState().openTool(s.tool, s.repo);
+        if (s.report !== null) useUi.setState({ runId: s.report, page: "testing" });
+        if (s.repo && s.run) void startFromCli(s.repo, s.run);
       },
       () => undefined,
     );
@@ -81,6 +107,7 @@ export function App() {
           {page === "projects" && <ProjectsPage />}
           {page === "git" && <GitPage />}
           {page === "library" && <LibraryPage />}
+          {page === "testing" && <TestingPage />}
           {page === "subjects" && <SubjectsPage />}
           {page === "analytics" && <AnalyticsPage />}
           {page === "cozy" && <CozyPage />}
@@ -91,6 +118,8 @@ export function App() {
       <CommandPalette />
       {sheetPath && <ProjectSheetDialog key={sheetPath} path={sheetPath} />}
       {launch && <LauncherDialog key={JSON.stringify(launch)} request={launch} />}
+      {tool?.kind === "package" && <PackageDialog key={tool.repo} repo={tool.repo} />}
+      {tool?.kind === "readme" && <ReadmeDialog key={tool.repo} repo={tool.repo} />}
       <Toaster />
     </div>
   );

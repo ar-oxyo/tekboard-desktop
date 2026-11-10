@@ -10,6 +10,10 @@ import { keys, useHome, useProjectActions, useRepos, useSubjects } from "../../l
 import { daysLeft, deadlineLabel, displayName } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { BranchLabel, RepoActions, StatusChips } from "./RepoBits";
+import { DocsTab, LibraryTab, TestingTab } from "./SheetTabs";
+
+type Tab = "overview" | "library" | "testing" | "docs";
+const TABS: Array<[Tab, string]> = [["overview", "Overview"], ["library", "Library"], ["testing", "Testing"], ["docs", "Documentation"]];
 
 export function ProjectSheetDialog({ path }: { path: string }) {
   const close = useUi((s) => s.closeSheet);
@@ -49,6 +53,9 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
   const [saved, setSaved] = useState<Sheet>(initial);
   const [draft, setDraft] = useState<Sheet>(initial);
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  const [tab, setTab] = useState<Tab>("overview");
+  const openTesting = useUi((s) => s.openTesting);
+  const openTool = useUi((s) => s.openTool);
 
   const save = useMutation({
     mutationFn: (s: Sheet) => api.projectSave(repo.path, s),
@@ -116,6 +123,12 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
           <Button size="sm" onClick={() => openGit(repo.path)}>
             Git
           </Button>
+          <Button size="sm" title="Clone it into a fresh folder and build it there" onClick={() => openTesting(repo.path)}>
+            TestRepo
+          </Button>
+          <Button size="sm" onClick={() => openTool("package", repo.path)}>
+            Package for AI
+          </Button>
           <Button size="sm" variant="primary" icon={<Play className="size-3.5" />} onClick={() => act.workspace.mutate(repo)}>
             Open workspace
           </Button>
@@ -123,6 +136,18 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
       </div>
       <p className="selectable -mt-2 truncate font-mono text-xs text-faint">{tildify(repo.path, home)}</p>
 
+      <div className="flex gap-1 border-b border-white/6">
+        {TABS.map(([id, label]) => (
+          <button key={id} type="button" onClick={() => setTab(id)} className={cn("-mb-px h-8 border-b-2 px-3 text-[13px] transition-colors", tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === "library" && <LibraryTab repo={repo} />}
+      {tab === "testing" && <TestingTab repo={repo} />}
+      {tab === "docs" && <DocsTab repo={repo} subjects={linked} onOpenSubject={(id) => openSubject.mutate(id)} />}
+      {tab === "overview" && (
+        <>
       <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-3">
         <Field label="Deadline" hint={days !== null ? <span className={cn(days < 0 ? "text-danger" : days <= 2 ? "text-warn" : "")}>{deadlineLabel(days)}</span> : "Not set"}>
           <Input type="date" value={draft.deadline ?? ""} onChange={(e) => setDraft({ ...draft, deadline: e.target.value || null })} />
@@ -183,6 +208,8 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
       {build.error && <ErrorNote title="The build could not start">{asAppError(build.error).message}</ErrorNote>}
       {build.data && build.data.output.trim() !== "" && (
         <pre className="selectable max-h-56 overflow-auto rounded-md border border-line bg-bg p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted">{build.data.output}</pre>
+      )}
+        </>
       )}
     </div>
   );

@@ -65,6 +65,37 @@ School organisations are learnt from the local clones, never hard-coded.
 3. Rendered paths must stay inside the project (no `..`, no absolute path, no
    `.git`, no symlinked parent leading outside).
 
+## Developer workspace modules
+
+| Module | Role |
+| --- | --- |
+| `cparse.rs` | tree-sitter C parsing: functions, prototypes, references, types. Syntax only: macros are not expanded. |
+| `library.rs` | Source libraries, catalog, dependency closure and cycles, install/update/remove plan and apply, header filtering, minimal Makefile edits, drop-zone import. Install records live in SQLite (`lib_installs`), never in the project. |
+| `jobs.rs` | Long tasks on their own thread: steps, streamed log, cancel (whole process group), time limits, one job per (kind, repository). Finished jobs are stored in `runs`. |
+| `testing.rs` | Test detection (Makefile rules, CTest, scripts) and Criterion/CTest/gcovr output parsing. |
+| `testrepo.rs` | Clean-clone test: snapshot or remote, local-only file detection, optional `docker run --network none`. Environments live in the app cache folder. |
+| `checker.rs` | Banana: `banana-check-repo` and epiclang's plugin. |
+| `claude.rs` | Headless Claude Code with an explicit tool list (never `Bash`), deny rules for secrets, write access scoped to given folders. |
+| `moulinette.rs` | Pre-check report (measured / AI opinion / not checked) and test generation. |
+| `packager.rs` | Zip export with default exclusions and secret detection by name and content. |
+| `readme.rs` | Factual README draft; writing requires the hash of the README that was shown. |
+
+Commands are split in `commands.rs` (core), `commands_lib.rs` (library) and `commands_dev.rs` (jobs, checks, packaging, README). Configured commands are split on whitespace and run without a shell; shell syntax is refused (`jobs::argv_of`).
+
+SQLite migration v3 adds `libraries`, `lib_meta`, `lib_presets`, `lib_installs` and `runs`.
+
+## MY Epitech (investigated, not implemented)
+
+Read from the public front-end code and unauthenticated probes only:
+
+- `my.epitech.eu` is a single-page app; its API is `https://my.epitech.eu/api` (NestJS-style JSON errors, `401 You are not authenticated`).
+- Sign-in uses MSAL in the browser (Azure AD tenant of Epitech), then `POST /api/auth/token` exchanges the Microsoft token for an access/refresh pair kept in `localStorage`; requests carry `Authorization: Bearer …`, renewed through `POST /api/auth/refresh`.
+- Personal API tokens exist (`/api/auth/api_token`) but the site's own text says creating one is reserved to administrators. A per-user calendar token exists (`/api/calendar_token`).
+- Student data sits behind routes such as `/dashboard/overview`, `/dashboard/activities/upcoming`, `/units/…`, `/events/…`, `/students/:login`, `/test-results/:id`. Their response shapes are unknown without a signed-in session.
+- The legacy intranet still answers `?format=json` with a 403 that points at Office 365 sign-in.
+
+A connector needs the owner's sign-in, so nothing was built blind. See the roadmap.
+
 ## Roadmap
 
 1. ~~Foundations, Project Launcher, Templates~~

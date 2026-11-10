@@ -183,6 +183,9 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
             <Button size="sm" icon={<ArrowDown className="size-3.5" />} disabled={!st.upstream || st.behind === 0 || busy} busy={sync.isPending && sync.variables === "pull"} title="Fast-forward only: never creates a merge" onClick={() => sync.mutate("pull")}>
               Pull{st.behind > 0 ? ` ${st.behind}` : ""}
             </Button>
+            <Button size="sm" title="Clone this repository into a fresh folder and build it there" disabled={busy} onClick={() => useUi.getState().openTesting(repo.path)}>
+              TestRepo
+            </Button>
             <Button size="sm" variant={canPush ? "primary" : "secondary"} icon={<ArrowUp className="size-3.5" />} disabled={!canPush || busy} onClick={() => setConfirmPush(true)}>
               Push{st.ahead > 0 ? ` ${st.ahead}` : ""}
             </Button>

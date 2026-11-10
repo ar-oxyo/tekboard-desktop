@@ -79,6 +79,16 @@ fn interrupted(output: &str) -> Vec<String> {
     out
 }
 
+/// Drops findings about files Git ignores (build products left by `make`): they are not
+/// part of what gets delivered. Returns how many were dropped.
+pub fn drop_ignored(repo: &Path, findings: Vec<Finding>) -> (Vec<Finding>, usize) {
+    let ignored: BTreeSet<String> = git::run(Some(repo), &["ls-files", "--others", "--ignored", "--exclude-standard", "-z"]).map(|t| t.split('\0').filter(|p| !p.is_empty()).map(str::to_string).collect()).unwrap_or_default();
+    let before = findings.len();
+    let kept: Vec<Finding> = findings.into_iter().filter(|f| !ignored.contains(&f.file)).collect();
+    let dropped = before - kept.len();
+    (kept, dropped)
+}
+
 fn tracked_c_files(repo: &Path) -> Vec<String> {
     git::run(Some(repo), &["ls-files", "-z", "--", "*.c", "*.h"])
         .map(|t| t.split('\0').filter(|p| !p.is_empty()).map(str::to_string).collect::<Vec<_>>())
@@ -108,12 +118,15 @@ pub fn run(job: &Job, repo: &Path) -> Result<&'static str> {
             if o.cancelled {
                 return Ok("cancelled");
             }
-            let found = parse_findings(&o.output);
+            let (found, ignored) = drop_ignored(repo, parse_findings(&o.output));
             let n = found.len();
             findings.extend(found);
+            job.set("ignoredByGit", ignored);
+            let extra = if ignored > 0 { format!(" ({ignored} build product(s) ignored by Git are not counted: they are not delivered)") } else { String::new() };
             match o.code {
                 Some(0) => job.end("files", "success", Some("no infraction".to_string())),
-                Some(1) => job.end("files", "warning", Some(format!("{n} infraction(s). The whole folder is checked, including files Git ignores (run make fclean first)."))),
+                Some(1) if n == 0 => job.end("files", "success", Some(format!("no infraction in delivered files{extra}"))),
+                Some(1) => job.end("files", "warning", Some(format!("{n} infraction(s){extra}"))),
                 _ => {
                     partial = true;
                     job.end("files", "failed", Some("the checker did not finish".to_string()));

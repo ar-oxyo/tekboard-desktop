@@ -28,6 +28,17 @@ interface UiState {
   /** Project selected on the Testing screen. */
   testingRepo: string | null;
   openTesting: (path: string | null) => void;
+  /** Task whose progress the Testing screen shows. */
+  jobId: number | null;
+  /** Finished report opened from the history. */
+  runId: number | null;
+  showJob: (id: number, repo: string | null) => void;
+  /** Project tool open as a dialog over any screen. */
+  tool: { kind: "package" | "readme"; repo: string } | null;
+  openTool: (kind: "package" | "readme", repo: string) => void;
+  closeTool: () => void;
+  /** Files to tick on the Library screen at startup (`--pick`). */
+  libraryPick: string[];
   paletteOpen: boolean;
   setPaletteOpen: (open: boolean) => void;
   /** Repository whose sheet (notes, deadline, build) is open. */
@@ -55,6 +66,13 @@ export const useUi = create<UiState>((set, get) => ({
   openLibrary: (libraryRepo) => set({ libraryRepo, page: "library", sheetPath: null, paletteOpen: false }),
   testingRepo: null,
   openTesting: (testingRepo) => set({ testingRepo, page: "testing", sheetPath: null, paletteOpen: false }),
+  jobId: null,
+  runId: null,
+  showJob: (jobId, repo) => set((s) => ({ jobId, runId: null, page: "testing", testingRepo: repo ?? s.testingRepo, sheetPath: null, paletteOpen: false, tool: null })),
+  tool: null,
+  openTool: (kind, repo) => set({ tool: { kind, repo }, paletteOpen: false, sheetPath: null }),
+  closeTool: () => set({ tool: null }),
+  libraryPick: [],
   paletteOpen: false,
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   sheetPath: null,

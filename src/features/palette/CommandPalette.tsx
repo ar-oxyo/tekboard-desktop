@@ -2,7 +2,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { ChartNoAxesColumn, FileText, FolderGit2, GitBranch, LayoutDashboard, LayoutTemplate, NotebookPen, PawPrint, Plus, RefreshCw, Settings } from "lucide-react";
+import { ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, LayoutDashboard, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, PawPrint, Plus, RefreshCw, ScrollText, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge } from "../../components/ui";
 import { api } from "../../lib/api";
@@ -13,6 +13,27 @@ import { useUi, type Page } from "../../lib/store";
 const itemClass =
   "flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-[13px] text-muted data-[selected=true]:bg-accent-soft data-[selected=true]:text-fg";
 const groupClass = "[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:tracking-[0.08em] [&_[cmdk-group-heading]]:text-faint [&_[cmdk-group-heading]]:uppercase";
+
+const ic = "size-4";
+const GO: Array<[Page, string, ReactNode]> = [
+  ["overview", "Overview", <LayoutDashboard className={ic} />],
+  ["projects", "Projects", <FolderGit2 className={ic} />],
+  ["git", "Git", <GitBranch className={ic} />],
+  ["library", "Library", <LibraryBig className={ic} />],
+  ["testing", "Testing", <FlaskConical className={ic} />],
+  ["subjects", "Subjects", <FileText className={ic} />],
+  ["analytics", "Analytics", <ChartNoAxesColumn className={ic} />],
+  ["templates", "Templates", <LayoutTemplate className={ic} />],
+  ["cozy", "Cozy Fox", <PawPrint className={ic} />],
+  ["settings", "Settings", <Settings className={ic} />],
+];
+type ToolId = "testing" | "library" | "package" | "readme";
+const TOOLS: Array<[ToolId, string, ReactNode]> = [
+  ["testing", "Test, TestRepo, Banana", <FlaskConical className={ic} />],
+  ["library", "Library functions", <LibraryBig className={ic} />],
+  ["package", "Package for AI", <PackageOpen className={ic} />],
+  ["readme", "Generate README", <ScrollText className={ic} />],
+];
 
 export function CommandPalette() {
   const open = useUi((s) => s.paletteOpen);
@@ -33,6 +54,12 @@ export function CommandPalette() {
     fn();
   };
   const go = (page: Page) => run(() => setPage(page));
+  const tool = (id: ToolId, path: string) => {
+    const ui = useUi.getState();
+    if (id === "testing") ui.openTesting(path);
+    else if (id === "library") ui.openLibrary(path);
+    else ui.openTool(id, path);
+  };
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -65,31 +92,26 @@ export function CommandPalette() {
               </Command.Group>
 
               <Command.Group heading="Go to" className={groupClass}>
-                <Item icon={<LayoutDashboard className="size-4" />} onSelect={go("overview")} hint="Ctrl 1">
-                  Overview
-                </Item>
-                <Item icon={<FolderGit2 className="size-4" />} onSelect={go("projects")} hint="Ctrl 2">
-                  Projects
-                </Item>
-                <Item icon={<GitBranch className="size-4" />} onSelect={go("git")} hint="Ctrl 3">
-                  Git
-                </Item>
-                <Item icon={<FileText className="size-4" />} onSelect={go("subjects")} hint="Ctrl 4">
-                  Subjects
-                </Item>
-                <Item icon={<LayoutTemplate className="size-4" />} onSelect={go("templates")} hint="Ctrl 5">
-                  Templates
-                </Item>
-                <Item icon={<ChartNoAxesColumn className="size-4" />} onSelect={go("analytics")} hint="Ctrl 6">
-                  Analytics
-                </Item>
-                <Item icon={<PawPrint className="size-4" />} onSelect={go("cozy")} hint="Ctrl 7">
-                  Cozy Fox
-                </Item>
-                <Item icon={<Settings className="size-4" />} onSelect={go("settings")} hint="Ctrl 8">
-                  Settings
-                </Item>
+                {GO.map(([page, label, icon], n) => (
+                  <Item key={page} icon={icon} onSelect={go(page)} hint={n < 9 ? `Ctrl ${n + 1}` : undefined}>
+                    {label}
+                  </Item>
+                ))}
               </Command.Group>
+              {(repos.data ?? []).length > 0 && (
+                <Command.Group heading="Project tools" className={groupClass}>
+                  {(repos.data ?? []).filter((r) => !r.meta.archived).slice(0, 40).flatMap((repo) =>
+                    TOOLS.map(([id, label, icon]) => (
+                      <Command.Item key={`${id}-${repo.path}`} value={`${label} ${repo.name} ${repo.path}`} onSelect={run(() => tool(id, repo.path))} className={itemClass}>
+                        <span className="text-faint">{icon}</span>
+                        <span className="min-w-0 flex-1 truncate">
+                          {label} <span className="text-muted">— {repo.name}</span>
+                        </span>
+                      </Command.Item>
+                    )),
+                  )}
+                </Command.Group>
+              )}
 
               {(repos.data?.length ?? 0) > 0 && (
                 <Command.Group heading="Open workspace" className={groupClass}>

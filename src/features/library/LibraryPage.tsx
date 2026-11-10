@@ -84,7 +84,10 @@ export function LibraryPage() {
   // The boxes start as the project is: ticked = in the project.
   const resetKey = `${libId}|${repoPath}|${status.dataUpdatedAt}`;
   useEffect(() => {
-    setDesired(new Set(present));
+    // `--pick` ticks files once, when the project's state first arrives.
+    const pick = status.data ? useUi.getState().libraryPick : [];
+    if (pick.length > 0) useUi.setState({ libraryPick: [] });
+    setDesired(new Set([...present, ...pick]));
     setReplace(new Set());
     setExclude(new Set());
     setInit(false);

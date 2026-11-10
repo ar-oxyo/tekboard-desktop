@@ -38,6 +38,20 @@ command library, AppImage. See `docs/ARCHITECTURE.md`.
 - The UI cannot run arbitrary commands: it can only call the backend commands listed in `src-tauri/src/commands.rs`.
 - No token or password is stored. GitHub access is delegated to `gh`, SSH to your agent.
 
+## Developer workspace (v0.2)
+
+- **Library** — register any folder of `.c`/`.h` files as a source library (several are allowed). TekBoard parses it with tree-sitter, lists every function with its signature, folder, tags and dependencies (`detected`, `assumed` when a function is defined in several files, `declared` by hand), and installs into a project only the files you tick, plus what they need. Headers are generated with the prototypes of installed functions only; an existing Makefile gets the smallest possible edit, shown as a diff. Files you edited in a project are never replaced or deleted without an explicit confirmation, and every replaced file is saved and can be restored. Drop `.c`/`.h` files, folders or archives on the Library screen to add them to a library.
+- **Testing** — one screen, one live report, one history:
+  - **Unit tests**: runs what the repository declares (`make tests_run`, CTest, a saved command) and reads Criterion/CTest/gcovr output. Repository scripts need an explicit acknowledgement.
+  - **TestRepo**: clones the repository into a fresh folder and builds it there. *Remote clone* tests what is published; *Local Git snapshot* tests a local commit. A failed remote clone is never replaced by a local copy. Files your build mentions that exist only on your machine are called out. Optional container run (Docker, no network) with an image you already have.
+  - **Banana**: the installed `banana-check-repo` plus epiclang's Banana plugin on every tracked `.c`/`.h`.
+  - **Claude Moulinette**: build, structure, Banana, tests, Valgrind, and optionally Claude's reading of the subject. Each line says whether it was measured, is an AI opinion, or was not checked. It is not Epitech's Moulinette and gives no grade.
+  - **Generate tests with Claude**: Claude Code runs headless with no shell, read access to the project minus secret-looking files, and write access to `tests/` only. The command and instructions are shown before anything starts.
+- **Package for AI** — a zip (source only, full project, or a context pack with `PROJECT_CONTEXT.md`, `FILE_TREE.txt`, `manifest.json`). Secret-looking files, by name or by content, never go in. Nothing is sent anywhere.
+- **Generate README** — a draft built from facts in the repository (TODO comments where a fact is missing), optionally enriched by Claude Code, editable, diffed against the current file, written only on validation.
+
+Command line: `tekboard --page testing --repo <path> --run banana|tests|testrepo|testrepo-remote|moulinette`, `--tool package|readme`, `--pick <files>` (Library), `--report <id>`.
+
 ## Requirements
 
 Ubuntu 24.04+ (or any distribution with WebKitGTK 4.1), `git`. Optional: `gh` (GitHub CLI) to list remote repositories.

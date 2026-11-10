@@ -220,7 +220,7 @@ pub fn run(job: &Job, repo: &Path, params: &Params, env_root: &Path) -> Result<&
         notes.push(format!("{} commit(s) are not pushed", status.ahead));
     }
     warn |= !notes.is_empty();
-    job.end("inspect", if notes.is_empty() { "success" } else { "warning" }, Some(if notes.is_empty() { "clean: everything is committed".to_string() } else { notes.join("; ") }));
+    job.end("inspect", if notes.is_empty() { "success" } else { "warning" }, Some(if notes.is_empty() { "every tracked file is committed".to_string() } else { notes.join("; ") }));
 
     // ── 2. clone
     job.start("clone");
