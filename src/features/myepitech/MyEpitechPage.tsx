@@ -7,6 +7,7 @@ import { Badge, Button, Card, CardTitle, EmptyState, ErrorNote, PageHeader, Spin
 import { api, asAppError, type MyEntry } from "../../lib/api";
 import { formatBytes, timeAgo } from "../../lib/format";
 import { useUi } from "../../lib/store";
+import { MyProgress, MyProjects } from "./MyOverview";
 
 const CONSENT_KEY = "tekboard.my.consent";
 
@@ -23,6 +24,7 @@ export function MyEpitechPage() {
     }
   });
   const [confirmForget, setConfirmForget] = useState(false);
+  const [tab, setTab] = useState<"projects" | "progress" | "raw">("projects");
   const fail = (title: string) => (e: unknown) => toast({ kind: "error", title, detail: asAppError(e).message });
   const connect = useMutation({ mutationFn: api.myConnect, onSuccess: () => void qc.invalidateQueries({ queryKey: ["my-status"] }), onError: fail("The sign-in window did not open") });
   const sync = useMutation({
@@ -30,6 +32,7 @@ export function MyEpitechPage() {
     onSuccess: (r) => {
       toast({ kind: r.unauthorized ? "error" : r.failed > 0 ? "info" : "ok", title: r.unauthorized ? "MY Epitech refused the session" : `Synced: ${r.ok} route(s) read${r.failed ? `, ${r.failed} not available` : ""}`, detail: r.unauthorized ? "Open the sign-in window and sign in again." : r.detail || undefined });
       void qc.invalidateQueries({ queryKey: ["my-data"] });
+      void qc.invalidateQueries({ queryKey: ["my-overview"] });
       void qc.invalidateQueries({ queryKey: ["my-status"] });
     },
     onError: fail("Not synced"),
@@ -87,7 +90,7 @@ export function MyEpitechPage() {
                   <Button size="sm" variant="ghost" onClick={() => setConfirmForget(false)}>Keep</Button>
                 </div>
               )}
-              {s?.connected && <p className="selectable text-xs text-muted">{s.account ? `Signed in as ${s.account}. ` : ""}{s.expiresAt ? `This token expires ${timeAgo(s.expiresAt * 1000)}; keep the sign-in window open and the site renews it.` : ""}</p>}
+              {s?.connected && <p className="selectable text-xs text-muted">{s.account ? `Signed in as ${s.account}. ` : ""}{s.expiresAt ? `This token is valid until ${new Date(s.expiresAt * 1000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}; keep the sign-in window open and the site renews it.` : ""}</p>}
               {s && !s.connected && s.windowOpen && <p className="text-xs text-muted">Sign in in the MY Epitech window. This turns to “Connected” a moment after the dashboard loads.</p>}
             </div>
           </Card>
@@ -99,7 +102,7 @@ export function MyEpitechPage() {
               <ul className="max-h-64 overflow-y-auto py-1">
                 {data.data!.history.map((h) => (
                   <li key={h.at} className="selectable px-4 py-1.5 text-xs">
-                    <span className="text-fg">{timeAgo(h.at * 1000)}</span> · <span className="text-ok">{h.ok} read</span>{h.failed > 0 && <span className="text-warn"> · {h.failed} not available</span>}
+                    <span className="text-fg">{timeAgo(h.at)}</span> · <span className="text-ok">{h.ok} read</span>{h.failed > 0 && <span className="text-warn"> · {h.failed} not available</span>}
                     {h.detail && <p className="font-mono text-[11px] text-faint">{h.detail}</p>}
                   </li>
                 ))}
@@ -109,17 +112,20 @@ export function MyEpitechPage() {
         </div>
 
         <Card className="min-w-0">
-          <CardTitle>Synced data</CardTitle>
-          {data.error ? (
+          <div className="flex h-11 items-center gap-1 border-b border-white/6 px-3">
+            {([["projects", "Projects & deadlines"], ["progress", "Credits & validations"], ["raw", "Raw answers"]] as const).map(([id, label]) => (
+              <button key={id} type="button" onClick={() => setTab(id)} className={`h-7 rounded-md px-3 text-[13px] transition-colors ${tab === id ? "bg-accent-soft text-accent-strong" : "text-muted hover:text-fg"}`}>{label}</button>
+            ))}
+          </div>
+          {tab === "projects" && <MyProjects />}
+          {tab === "progress" && <MyProgress />}
+          {tab === "raw" && (data.error ? (
             <div className="p-4"><ErrorNote>{asAppError(data.error).message}</ErrorNote></div>
           ) : entries.length === 0 ? (
             <EmptyState icon={<GraduationCap className="size-5" />} title="Nothing synced yet">Connect, then click “Sync now”. What MY Epitech answers is shown here as it is.</EmptyState>
           ) : (
-            <>
-              <ul className="py-1">{entries.map((e) => <EntryRow key={e.route} entry={e} />)}</ul>
-              <p className="border-t border-white/6 px-4 py-2.5 text-xs text-faint">These are the site's raw answers. Deadlines and projects are not yet turned into TekBoard items: that mapping is written from real answers, not guessed.</p>
-            </>
-          )}
+            <ul className="py-1">{entries.map((e) => <EntryRow key={e.route} entry={e} />)}</ul>
+          ))}
         </Card>
       </div>
     </>
@@ -148,7 +154,7 @@ function EntryRow({ entry }: { entry: MyEntry }) {
           <span className="block truncate text-xs text-muted">{ok ? summary(entry.body) : entry.status === 0 ? "no answer" : `not available (HTTP ${entry.status})`}</span>
         </span>
         <Badge tone={ok ? "ok" : "warn"} mono>{entry.status || "—"}</Badge>
-        <span className="w-24 shrink-0 text-right text-xs text-faint">{formatBytes(entry.size)} · {timeAgo(entry.fetchedAt * 1000)}</span>
+        <span className="w-24 shrink-0 text-right text-xs text-faint">{formatBytes(entry.size)} · {timeAgo(entry.fetchedAt)}</span>
       </button>
       {open && <CodeView text={text.length > 60000 ? `${text.slice(0, 60000)}\n… (${formatBytes(text.length - 60000)} more)` : text} className="mx-4 mb-2 max-h-96 rounded-md" />}
     </li>

@@ -119,3 +119,33 @@ pub async fn my_forget(app: AppHandle, state: State<'_, AppState>, erase_cache: 
     }
     Ok(())
 }
+
+/// Projects, deadlines, test results and credits, read from the cache and matched with local repositories.
+#[tauri::command(async)]
+pub fn my_overview(state: State<'_, AppState>) -> Result<crate::myview::Overview> {
+    let (roots, meta) = {
+        let conn = state.conn();
+        (crate::settings::load(&conn)?.roots, crate::db::all_meta(&conn)?)
+    };
+    let repos = crate::scanner::scan(&roots, &meta);
+    Ok(crate::myview::overview(&state.conn(), &repos))
+}
+
+/// Saves the hand-in day of the given MY Epitech projects as the deadline of their matched
+/// repository. Only TekBoard's own project sheet changes; repositories are not touched.
+#[tauri::command(async)]
+pub fn my_apply_deadlines(state: State<'_, AppState>, project_ids: Vec<i64>) -> Result<usize> {
+    let overview = my_overview(state.clone())?;
+    let conn = state.conn();
+    let mut changed = 0;
+    for p in overview.projects.iter().filter(|p| project_ids.contains(&p.id)) {
+        let (Some(path), Some(day)) = (&p.repo_path, &p.deadline) else { continue };
+        let mut sheet = crate::db::get_sheet(&conn, path)?;
+        if sheet.deadline.as_deref() != Some(day.as_str()) {
+            sheet.deadline = Some(day.clone());
+            crate::db::save_sheet(&conn, path, &sheet)?;
+            changed += 1;
+        }
+    }
+    Ok(changed)
+}

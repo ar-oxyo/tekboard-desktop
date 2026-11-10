@@ -64,7 +64,7 @@ export function TestingTab({ repo }: { repo: RepoInfo }) {
               <button type="button" className="row-hover flex h-9 w-full items-center gap-2.5 px-3 text-left text-[13px]" onClick={() => { openTesting(repo.path); useUi.setState({ runId: r.id }); }}>
                 <span className="w-36 shrink-0">{KIND_LABEL[r.kind] ?? r.kind}</span>
                 <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
-                <span className="ml-auto text-xs text-faint">{timeAgo(r.startedAt * 1000)}</span>
+                <span className="ml-auto text-xs text-faint">{timeAgo(r.startedAt)}</span>
               </button>
             </li>
           ))}

@@ -28,7 +28,7 @@ pub const ROUTES: &[(&str, &str)] = &[
     ("/units/instances/projects?page=1&limit=50&status=ongoing&registeredOnly=true", "Ongoing projects"),
     ("/units/instances/projects?page=1&limit=50&registeredOnly=true", "All my projects"),
     ("/units/projects/registrations/invitations/me", "Project invitations"),
-    ("/events?startDate={from}&endDate={to}", "Events (2 weeks back, 8 weeks ahead)"),
+    ("/events?startDate={from}&endDate={to}", "Events (1 week back, 5 weeks ahead)"),
     ("/evaluations/validations/me", "Validations"),
     ("/evaluations/validations/credits/me", "Credits"),
     ("/evaluations/validations/graph/me", "Validation graph"),
@@ -46,7 +46,8 @@ pub const MAX_PROJECT_DETAILS: usize = 12;
 
 fn expand(route: &str, today: chrono::NaiveDate) -> String {
     let iso = |d: chrono::NaiveDate| format!("{}T00:00:00.000Z", d.format("%Y-%m-%d"));
-    route.replace("{from}", &iso(today - chrono::Duration::days(14))).replace("{to}", &iso(today + chrono::Duration::days(56)))
+    // The site refuses windows longer than 45 days.
+    route.replace("{from}", &iso(today - chrono::Duration::days(7))).replace("{to}", &iso(today + chrono::Duration::days(37)))
 }
 
 /// Ids of the projects listed in an answer, whether it is a bare array or `{ data | items: [...] }`.
@@ -308,7 +309,7 @@ mod tests {
     fn the_calendar_credential_route_is_never_synced_and_all_routes_are_plain_paths() {
         assert!(ROUTES.iter().all(|(r, _)| r.starts_with('/') && !r.contains("token") && !r.contains("..") && !r.contains("students/{")));
         let day = chrono::NaiveDate::from_ymd_opt(2026, 11, 10).unwrap();
-        assert_eq!(expand("/events?startDate={from}&endDate={to}", day), "/events?startDate=2026-10-27T00:00:00.000Z&endDate=2027-01-05T00:00:00.000Z");
+        assert_eq!(expand("/events?startDate={from}&endDate={to}", day), "/events?startDate=2026-11-03T00:00:00.000Z&endDate=2026-12-17T00:00:00.000Z");
         assert_eq!(project_ids("[{\"id\":4138},{\"id\":7},{\"name\":\"x\"}]"), vec![4138, 7]);
         assert_eq!(project_ids("{\"data\":[{\"id\":3}],\"total\":1}"), vec![3]);
         assert!(project_ids("{\"message\":\"no\"}").is_empty());

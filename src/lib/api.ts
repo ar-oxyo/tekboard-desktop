@@ -551,6 +551,45 @@ export interface MyEntry {
   size: number;
   body: unknown;
 }
+export interface MyProject {
+  id: number;
+  name: string;
+  unitCode: string;
+  unitName: string | null;
+  start: string | null;
+  end: string | null;
+  deadline: string | null;
+  ongoing: boolean;
+  groupMax: number | null;
+  url: string | null;
+  repoPath: string | null;
+  matchedBy: string | null;
+  repoDeadline: string | null;
+  activities: Array<{ name: string; start: string | null; end: string | null; mandatory: boolean; status: string | null }>;
+  lastTest: {
+    date: string | null;
+    commit: string | null;
+    passed: number | null;
+    total: number | null;
+    flags: string[];
+    styleFatal: number;
+    styleMajor: number;
+    styleMinor: number;
+    styleInfo: number;
+    failingSkills: Array<[string, number, number]>;
+    repoLink: string | null;
+    runs: number;
+  } | null;
+}
+export interface MyOverview {
+  syncedAt: number | null;
+  account: string | null;
+  projects: MyProject[];
+  creditsAcquired: number | null;
+  creditsTotal: number | null;
+  blocks: Array<{ title: string; grade: string | null; credits: number | null; validated: number; total: number }>;
+  exams: Array<{ label: string; best: number | null; required: number | null; max: number | null }>;
+}
 export interface MySyncReport {
   ok: number;
   failed: number;
@@ -669,6 +708,9 @@ export const api = {
   mySync: () => invoke<MySyncReport>("my_sync"),
   myData: () => invoke<{ entries: MyEntry[]; history: Array<{ at: number; ok: number; failed: number; detail: string }> }>("my_data"),
   myForget: (eraseCache: boolean) => invoke<void>("my_forget", { eraseCache }),
+
+  myOverview: () => invoke<MyOverview>("my_overview"),
+  myApplyDeadlines: (projectIds: number[]) => invoke<number>("my_apply_deadlines", { projectIds }),
 
   startup: () => invoke<{ page: string | null; sheet: string | null; theme: string | null; repo: string | null; pick: string | null; tool: string | null; run: string | null; report: number | null }>("startup"),
 };

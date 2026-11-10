@@ -98,7 +98,7 @@ export function TestingPage() {
                         <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
                         <span className="w-28 shrink-0 text-[13px]">{KIND_LABEL[r.kind] ?? r.kind}</span>
                         <span className="min-w-0 flex-1 truncate text-xs text-muted">{headline(r.kind, r.summary) ?? r.title.split(" — ").pop()}</span>
-                        <span className="shrink-0 text-xs text-faint">{duration(r.durationMs)} · {timeAgo(r.startedAt * 1000)}</span>
+                        <span className="shrink-0 text-xs text-faint">{duration(r.durationMs)} · {timeAgo(r.startedAt)}</span>
                       </button>
                     </li>
                   ))}

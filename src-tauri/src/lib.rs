@@ -18,6 +18,7 @@ pub mod launcher;
 pub mod library;
 pub mod moulinette;
 pub mod myepitech;
+pub mod myview;
 pub mod packager;
 pub mod readme;
 pub mod scanner;
@@ -120,6 +121,8 @@ pub fn run() {
             commands_my::my_sync,
             commands_my::my_data,
             commands_my::my_forget,
+            commands_my::my_overview,
+            commands_my::my_apply_deadlines,
             commands_dev::project_config_get,
             commands_dev::project_config_set,
             commands_dev::job_get,
