@@ -1,8 +1,8 @@
 import { create } from "zustand";
 
-export type Page = "overview" | "projects" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "cozy" | "settings";
+export type Page = "overview" | "projects" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "myepitech" | "cozy" | "settings";
 
-export const PAGES: Page[] = ["overview", "projects", "git", "library", "testing", "subjects", "analytics", "templates", "cozy", "settings"];
+export const PAGES: Page[] = ["overview", "projects", "git", "library", "testing", "subjects", "analytics", "templates", "myepitech", "cozy", "settings"];
 
 export interface Toast {
   id: number;

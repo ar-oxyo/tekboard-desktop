@@ -2,7 +2,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, LayoutDashboard, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, PawPrint, Plus, RefreshCw, ScrollText, Settings } from "lucide-react";
+import { ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, PawPrint, Plus, RefreshCw, ScrollText, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge } from "../../components/ui";
 import { api } from "../../lib/api";
@@ -24,6 +24,7 @@ const GO: Array<[Page, string, ReactNode]> = [
   ["subjects", "Subjects", <FileText className={ic} />],
   ["analytics", "Analytics", <ChartNoAxesColumn className={ic} />],
   ["templates", "Templates", <LayoutTemplate className={ic} />],
+  ["myepitech", "MY Epitech", <GraduationCap className={ic} />],
   ["cozy", "Cozy Fox", <PawPrint className={ic} />],
   ["settings", "Settings", <Settings className={ic} />],
 ];

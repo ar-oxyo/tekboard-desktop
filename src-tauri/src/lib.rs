@@ -4,6 +4,7 @@ pub mod claude;
 pub mod commands;
 pub mod commands_dev;
 pub mod commands_lib;
+pub mod commands_my;
 pub mod cozy;
 pub mod cparse;
 pub mod db;
@@ -16,6 +17,7 @@ pub mod jobs;
 pub mod launcher;
 pub mod library;
 pub mod moulinette;
+pub mod myepitech;
 pub mod packager;
 pub mod readme;
 pub mod scanner;
@@ -40,7 +42,7 @@ pub fn run() {
             templates::ensure_builtins(&data_dir.join("templates"))?;
             let cache_dir = app.path().app_cache_dir()?;
             std::fs::create_dir_all(&cache_dir)?;
-            app.manage(AppState { db: std::sync::Arc::new(Mutex::new(conn)), data_dir, cache_dir, jobs: jobs::Jobs::default() });
+            app.manage(AppState { db: std::sync::Arc::new(Mutex::new(conn)), data_dir, cache_dir, jobs: jobs::Jobs::default(), my: Mutex::new(myepitech::Session::default()), my_syncing: Mutex::new(false) });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -113,6 +115,11 @@ pub fn run() {
             commands_lib::library_import_analyze,
             commands_lib::library_import,
             commands_lib::library_reveal,
+            commands_my::my_status,
+            commands_my::my_connect,
+            commands_my::my_sync,
+            commands_my::my_data,
+            commands_my::my_forget,
             commands_dev::project_config_get,
             commands_dev::project_config_set,
             commands_dev::job_get,

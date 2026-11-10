@@ -47,10 +47,25 @@ command library, AppImage. See `docs/ARCHITECTURE.md`.
   - **Banana**: the installed `banana-check-repo` plus epiclang's Banana plugin on every tracked `.c`/`.h`.
   - **Claude Moulinette**: build, structure, Banana, tests, Valgrind, and optionally Claude's reading of the subject. Each line says whether it was measured, is an AI opinion, or was not checked. It is not Epitech's Moulinette and gives no grade.
   - **Generate tests with Claude**: Claude Code runs headless with no shell, read access to the project minus secret-looking files, and write access to `tests/` only. The command and instructions are shown before anything starts.
+- **MY Epitech** — you sign in on the real site in a window of its own (Microsoft sign-in and MFA untouched). TekBoard keeps the site's access token in memory only, and on demand reads a fixed list of read-only routes of your own account, half a second apart, into a local cache with a sync history. The raw answers are shown as they are; mapping them to deadlines and projects is not done yet. “Erase session” deletes the stored browser session.
 - **Package for AI** — a zip (source only, full project, or a context pack with `PROJECT_CONTEXT.md`, `FILE_TREE.txt`, `manifest.json`). Secret-looking files, by name or by content, never go in. Nothing is sent anywhere.
 - **Generate README** — a draft built from facts in the repository (TODO comments where a fact is missing), optionally enriched by Claude Code, editable, diffed against the current file, written only on validation.
 
 Command line: `tekboard --page testing --repo <path> --run banana|tests|testrepo|testrepo-remote|moulinette`, `--tool package|readme`, `--pick <files>` (Library), `--report <id>`.
+
+## Install
+
+On Ubuntu or Debian, from a clone of this repository:
+
+```sh
+git clone git@github.com:ar-oxyo/tekboard-desktop.git
+cd tekboard-desktop
+./scripts/install.sh
+```
+
+The script checks what is missing, asks before each `sudo` step, builds the app and installs the `.deb`. A ready-made `.deb` is also attached to each [release](https://github.com/ar-oxyo/tekboard-desktop/releases): `sudo apt install ./TekBoard_<version>_amd64.deb`.
+
+On first start, TekBoard asks which folders hold your repositories. Nothing personal is stored in this repository: every path and preference lives in your own data folder.
 
 ## Requirements
 

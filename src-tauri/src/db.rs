@@ -81,6 +81,20 @@ const MIGRATIONS: &[&str] = &[
      );
      CREATE INDEX runs_repo ON runs(repo_path, started_at DESC);
      CREATE INDEX runs_kind ON runs(kind, started_at DESC);",
+    // v4: MY Epitech cache (raw answers of the user's own account) and sync history. No token is stored.
+    "CREATE TABLE my_cache (
+        route TEXT PRIMARY KEY,
+        fetched_at INTEGER NOT NULL,
+        status INTEGER NOT NULL,
+        body TEXT NOT NULL
+     );
+     CREATE TABLE my_sync_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        at INTEGER NOT NULL,
+        ok INTEGER NOT NULL,
+        failed INTEGER NOT NULL,
+        detail TEXT NOT NULL
+     );",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

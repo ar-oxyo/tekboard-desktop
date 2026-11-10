@@ -1,4 +1,4 @@
-import { ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, LayoutDashboard, LayoutTemplate, LibraryBig, PawPrint, Search, Settings } from "lucide-react";
+import { ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, PawPrint, Search, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn, Kbd } from "../components/ui";
 import { useEnv } from "../lib/hooks";
@@ -27,6 +27,7 @@ const GROUPS: Array<{ title: string | null; items: NavItem[] }> = [
     title: "Workspace",
     items: [
       { page: "templates", label: "Templates", icon: <LayoutTemplate className="size-4" /> },
+      { page: "myepitech", label: "MY Epitech", icon: <GraduationCap className="size-4" /> },
       { page: "cozy", label: "Cozy Fox", icon: <PawPrint className="size-4" /> },
     ],
   },

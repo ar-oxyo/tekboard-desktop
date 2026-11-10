@@ -84,7 +84,7 @@ Commands are split in `commands.rs` (core), `commands_lib.rs` (library) and `com
 
 SQLite migration v3 adds `libraries`, `lib_meta`, `lib_presets`, `lib_installs` and `runs`.
 
-## MY Epitech (investigated, not implemented)
+## MY Epitech
 
 Read from the public front-end code and unauthenticated probes only:
 
@@ -94,7 +94,7 @@ Read from the public front-end code and unauthenticated probes only:
 - Student data sits behind routes such as `/dashboard/overview`, `/dashboard/activities/upcoming`, `/units/…`, `/events/…`, `/students/:login`, `/test-results/:id`. Their response shapes are unknown without a signed-in session.
 - The legacy intranet still answers `?format=json` with a 403 that points at Office 365 sign-in.
 
-A connector needs the owner's sign-in, so nothing was built blind. See the roadmap.
+`myepitech.rs` / `commands_my.rs`: a second window (`my-epitech`) loads the real site with its own `data_directory` (`<data>/my-session`). It gets **no** Tauri capability, so the remote page cannot call any command. An initialization script finds the site's access token in its `localStorage` and hands it over through `document.title` (`on_document_title_changed`); the token stays in memory. `my_sync` then does GET requests from Rust (`ureq`) on the routes listed in `myepitech::ROUTES`, 500 ms apart, and stores raw bodies in `my_cache` plus a line in `my_sync_log`. The calendar-token route is excluded because its answer is a credential. Response shapes are not interpreted yet.
 
 ## Roadmap
 

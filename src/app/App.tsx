@@ -15,6 +15,7 @@ import { AnalyticsPage } from "../features/analytics/AnalyticsPage";
 import { CozyPage } from "../features/cozy/CozyPage";
 import { GitPage } from "../features/git/GitPage";
 import { LibraryPage } from "../features/library/LibraryPage";
+import { MyEpitechPage } from "../features/myepitech/MyEpitechPage";
 import { TestingPage } from "../features/testing/TestingPage";
 import { PackageDialog } from "../features/tools/PackageDialog";
 import { ReadmeDialog } from "../features/tools/ReadmeDialog";
@@ -72,7 +73,10 @@ export function App() {
         if (s.pick) useUi.setState({ libraryPick: s.pick.split(",").filter(Boolean) });
         if (s.repo && (s.tool === "package" || s.tool === "readme")) useUi.getState().openTool(s.tool, s.repo);
         if (s.report !== null) useUi.setState({ runId: s.report, page: "testing" });
-        if (s.repo && s.run) void startFromCli(s.repo, s.run);
+        if (s.run === "my-connect") {
+          setPage("myepitech");
+          void api.myConnect().catch(() => undefined);
+        } else if (s.repo && s.run) void startFromCli(s.repo, s.run);
       },
       () => undefined,
     );
@@ -110,6 +114,7 @@ export function App() {
           {page === "testing" && <TestingPage />}
           {page === "subjects" && <SubjectsPage />}
           {page === "analytics" && <AnalyticsPage />}
+          {page === "myepitech" && <MyEpitechPage />}
           {page === "cozy" && <CozyPage />}
           {page === "templates" && <TemplatesPage />}
           {page === "settings" && <SettingsPage />}

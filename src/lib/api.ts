@@ -534,6 +534,30 @@ export interface ReadmeDraft {
   missing: string[];
 }
 
+// ── MY Epitech
+export interface MyStatus {
+  windowOpen: boolean;
+  connected: boolean;
+  expiresAt: number | null;
+  account: string | null;
+  sessionStored: boolean;
+  routes: string[];
+}
+export interface MyEntry {
+  route: string;
+  label: string;
+  fetchedAt: number;
+  status: number;
+  size: number;
+  body: unknown;
+}
+export interface MySyncReport {
+  ok: number;
+  failed: number;
+  unauthorized: boolean;
+  detail: string;
+}
+
 export const api = {
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),
@@ -639,6 +663,12 @@ export const api = {
   readmeDiff: (repo: string, text: string) => invoke<string>("readme_diff", { repo, text }),
   readmeWrite: (repo: string, content: string, expectedHash: string | null) => invoke<string | null>("readme_write", { repo, content, expectedHash }),
   readmeAiStart: (repo: string, disclosure: boolean) => invoke<number>("readme_ai_start", { repo, disclosure }),
+
+  myStatus: () => invoke<MyStatus>("my_status"),
+  myConnect: () => invoke<void>("my_connect"),
+  mySync: () => invoke<MySyncReport>("my_sync"),
+  myData: () => invoke<{ entries: MyEntry[]; history: Array<{ at: number; ok: number; failed: number; detail: string }> }>("my_data"),
+  myForget: (eraseCache: boolean) => invoke<void>("my_forget", { eraseCache }),
 
   startup: () => invoke<{ page: string | null; sheet: string | null; theme: string | null; repo: string | null; pick: string | null; tool: string | null; run: string | null; report: number | null }>("startup"),
 };

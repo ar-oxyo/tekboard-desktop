@@ -27,6 +27,9 @@ pub struct AppState {
     /// Disposable files: clean-clone test folders, generated archives.
     pub cache_dir: PathBuf,
     pub jobs: crate::jobs::Jobs,
+    /// MY Epitech access token, in memory only.
+    pub my: Mutex<crate::myepitech::Session>,
+    pub my_syncing: Mutex<bool>,
 }
 
 impl AppState {
