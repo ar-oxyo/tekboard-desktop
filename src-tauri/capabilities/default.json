@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The webview may call TekBoard's own commands and open a native folder picker. No shell, no filesystem, no HTTP access.",
+  "windows": ["main"],
+  "permissions": ["core:default", "dialog:allow-open"]
+}

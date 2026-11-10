@@ -1,0 +1,156 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+
+/* Design tokens. Dark-first; one accent. */
+@theme {
+  --font-sans: "Inter Variable", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  --color-bg: #0c0d11;
+  --color-panel: #111318;
+  --color-surface: #15181e;
+  --color-raised: #1b1f27;
+  --color-hover: #222733;
+  --color-line: #252a34;
+  --color-line-strong: #343b49;
+
+  --color-fg: #e8eaf0;
+  --color-muted: #969cad;
+  --color-faint: #6a7183;
+
+  --color-accent: #8f83f7;
+  --color-accent-strong: #a69cfb;
+  --color-accent-soft: #8f83f71f;
+  --color-on-accent: #0f0e1c;
+
+  --color-ok: #58cf96;
+  --color-warn: #e6b45a;
+  --color-danger: #f17872;
+  --color-info: #6eb2f5;
+
+  --radius-card: 10px;
+  --shadow-pop: 0 18px 50px -12px rgb(0 0 0 / 0.65), 0 0 0 1px rgb(255 255 255 / 0.04);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+  user-select: none;
+  cursor: default;
+  overflow: hidden;
+}
+
+input,
+textarea,
+pre,
+code,
+.selectable {
+  user-select: text;
+}
+
+::selection {
+  background: #8f83f755;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-line-strong);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* Glass is reserved for overlays, and has an opaque fallback. */
+.glass {
+  background: var(--color-raised);
+}
+:root[data-glass="on"] .glass {
+  background: rgb(24 27 35 / 0.82);
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+}
+.scrim {
+  background: rgb(5 6 9 / 0.62);
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.anim-pop {
+  animation: pop-in 0.14s ease-out;
+}
+.anim-fade {
+  animation: fade-in 0.14s ease-out;
+}
+.anim-rise {
+  animation: rise-in 0.18s ease-out;
+}
+.anim-spin {
+  animation: spin 0.7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
