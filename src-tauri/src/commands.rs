@@ -22,34 +22,37 @@ use std::sync::{Mutex, MutexGuard};
 use tauri::{Manager, State};
 
 pub struct AppState {
-    pub db: Mutex<Connection>,
+    pub db: std::sync::Arc<Mutex<Connection>>,
     pub data_dir: PathBuf,
+    /// Disposable files: clean-clone test folders, generated archives.
+    pub cache_dir: PathBuf,
+    pub jobs: crate::jobs::Jobs,
 }
 
 impl AppState {
-    fn conn(&self) -> MutexGuard<'_, Connection> {
+    pub(crate) fn conn(&self) -> MutexGuard<'_, Connection> {
         self.db.lock().unwrap_or_else(|e| e.into_inner())
     }
-    fn templates(&self) -> PathBuf {
+    pub(crate) fn templates(&self) -> PathBuf {
         self.data_dir.join("templates")
     }
-    fn backups(&self) -> PathBuf {
+    pub(crate) fn backups(&self) -> PathBuf {
         self.data_dir.join("backups")
     }
-    fn subjects(&self) -> PathBuf {
+    pub(crate) fn subjects(&self) -> PathBuf {
         self.data_dir.join("subjects")
     }
-    fn settings(&self) -> Result<Settings> {
+    pub(crate) fn settings(&self) -> Result<Settings> {
         settings::load(&self.conn())
     }
 }
 
-fn now() -> i64 {
+pub(crate) fn now() -> i64 {
     chrono::Utc::now().timestamp()
 }
 
 /// Resolves `path` and checks it lives inside one of the configured roots.
-fn project_dir(state: &AppState, path: &str) -> Result<PathBuf> {
+pub(crate) fn project_dir(state: &AppState, path: &str) -> Result<PathBuf> {
     let canon = std::fs::canonicalize(path).map_err(|_| AppError::new("invalid_target", format!("{path} no longer exists")))?;
     let s = state.settings()?;
     if !canon.is_dir() || !settings::is_inside_any(&canon, &s.roots) {
@@ -58,7 +61,7 @@ fn project_dir(state: &AppState, path: &str) -> Result<PathBuf> {
     Ok(canon)
 }
 
-fn repo_dir(state: &AppState, path: &str) -> Result<PathBuf> {
+pub(crate) fn repo_dir(state: &AppState, path: &str) -> Result<PathBuf> {
     let dir = project_dir(state, path)?;
     if !git::is_repo(&dir) {
         return Err(AppError::new("not_a_repo", "This folder is not a git repository"));
@@ -357,6 +360,12 @@ pub fn project_build(state: State<'_, AppState>, path: String) -> Result<RunRepo
     fox_signal(&state, if report.code == Some(0) { "build-ok" } else { "build-fail" });
     let detail = if report.timed_out { "timed out".to_string() } else { format!("exit {}", report.code.map(|c| c.to_string()).unwrap_or_else(|| "?".into())) };
     db::log_activity(&state.conn(), now(), "build", Some(&dir.to_string_lossy()), Some(&detail))?;
+    // Build history: same table as tests and checks.
+    let status = if report.code == Some(0) { if crate::testrepo::count_warnings(&report.output) > 0 { "warning" } else { "success" } } else { "failed" };
+    let head = git::run(Some(&dir), &["rev-parse", "--short", "HEAD"]).map(|t| t.trim().to_string()).unwrap_or_default();
+    let summary = serde_json::json!({ "command": cmd, "exitCode": report.code, "warnings": crate::testrepo::count_warnings(&report.output), "commit": head, "timedOut": report.timed_out });
+    let title = format!("{} — {cmd}", dir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default());
+    db::insert_run(&state.conn(), "build", Some(&dir.to_string_lossy()), now() - (report.duration_ms / 1000) as i64, report.duration_ms as i64, status, &title, &summary.to_string(), &report.output)?;
     Ok(report)
 }
 
@@ -624,7 +633,7 @@ fn cozy_paths(state: &AppState) -> Result<cozy::Paths> {
 }
 
 /// Best effort: the fox reacting to a build or a push must never make that action fail.
-fn fox_signal(state: &AppState, command: &str) {
+pub(crate) fn fox_signal(state: &AppState, command: &str) {
     let enabled = state.settings().map(|s| s.fox_signals).unwrap_or(false);
     if let (true, Ok(paths)) = (enabled, cozy_paths(state)) {
         let _ = cozy::send(&paths, command);
@@ -660,6 +669,8 @@ pub struct Startup {
     pub sheet: Option<String>,
     /// Design to show for this run only (preview); the saved setting is not changed.
     pub theme: Option<String>,
+    /// Project to preselect on the Library, Testing and Git screens.
+    pub repo: Option<String>,
 }
 
 /// `tekboard --page analytics` or `tekboard --sheet <repository path>` opens the app there.
@@ -667,5 +678,5 @@ pub struct Startup {
 pub fn startup() -> Startup {
     let args: Vec<String> = std::env::args().collect();
     let value = |flag: &str| args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1)).cloned();
-    Startup { page: value("--page"), sheet: value("--sheet"), theme: value("--theme").filter(|t| settings::THEMES.contains(&t.as_str())) }
+    Startup { page: value("--page"), sheet: value("--sheet"), repo: value("--repo"), theme: value("--theme").filter(|t| settings::THEMES.contains(&t.as_str())) }
 }

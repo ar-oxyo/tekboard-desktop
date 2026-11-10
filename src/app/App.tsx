@@ -14,6 +14,7 @@ import { PAGES, useUi, type Page } from "../lib/store";
 import { AnalyticsPage } from "../features/analytics/AnalyticsPage";
 import { CozyPage } from "../features/cozy/CozyPage";
 import { GitPage } from "../features/git/GitPage";
+import { LibraryPage } from "../features/library/LibraryPage";
 import { Sidebar } from "./Sidebar";
 
 
@@ -45,6 +46,7 @@ export function App() {
         if (s.page && (PAGES as string[]).includes(s.page)) setPage(s.page as Page);
         if (s.sheet) useUi.getState().openSheet(s.sheet);
         if (s.theme) useUi.setState({ themeOverride: s.theme });
+        if (s.repo) useUi.setState({ libraryRepo: s.repo, testingRepo: s.repo, gitRepo: s.repo });
       },
       () => undefined,
     );
@@ -60,7 +62,7 @@ export function App() {
       } else if (key === "n" && !e.shiftKey) {
         e.preventDefault();
         openLauncher({ mode: "new" });
-      } else if (/^[1-8]$/.test(key)) {
+      } else if (/^[1-9]$/.test(key)) {
         e.preventDefault();
         setPage(PAGES[Number(key) - 1]);
       }
@@ -74,10 +76,11 @@ export function App() {
       <div className="app-bg" aria-hidden />
       <Sidebar />
       <main className="relative z-[1] min-w-0 flex-1 overflow-y-auto">
-        <div key={page} className="anim-rise mx-auto max-w-[1180px] px-7 py-6">
+        <div key={page} className={`anim-rise mx-auto px-7 py-6 ${page === "library" || page === "testing" ? "max-w-[1480px]" : "max-w-[1180px]"}`}>
           {page === "overview" && <OverviewPage />}
           {page === "projects" && <ProjectsPage />}
           {page === "git" && <GitPage />}
+          {page === "library" && <LibraryPage />}
           {page === "subjects" && <SubjectsPage />}
           {page === "analytics" && <AnalyticsPage />}
           {page === "cozy" && <CozyPage />}

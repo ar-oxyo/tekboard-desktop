@@ -1,17 +1,29 @@
 pub mod analytics;
+pub mod checker;
+pub mod claude;
 pub mod commands;
+pub mod commands_dev;
+pub mod commands_lib;
 pub mod cozy;
+pub mod cparse;
 pub mod db;
 pub mod doctor;
 pub mod epitech;
 pub mod error;
 pub mod git;
 pub mod github;
+pub mod jobs;
 pub mod launcher;
+pub mod library;
+pub mod moulinette;
+pub mod packager;
+pub mod readme;
 pub mod scanner;
 pub mod settings;
 pub mod subjects;
 pub mod templates;
+pub mod testing;
+pub mod testrepo;
 pub mod workspace;
 
 use commands::AppState;
@@ -26,7 +38,9 @@ pub fn run() {
             std::fs::create_dir_all(&data_dir)?;
             let conn = db::open(&data_dir.join("tekboard.db"))?;
             templates::ensure_builtins(&data_dir.join("templates"))?;
-            app.manage(AppState { db: Mutex::new(conn), data_dir });
+            let cache_dir = app.path().app_cache_dir()?;
+            std::fs::create_dir_all(&cache_dir)?;
+            app.manage(AppState { db: std::sync::Arc::new(Mutex::new(conn)), data_dir, cache_dir, jobs: jobs::Jobs::default() });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -79,6 +93,49 @@ pub fn run() {
             commands::cozy_send,
             commands::cozy_restore,
             commands::startup,
+            commands_lib::library_list,
+            commands_lib::library_suggestions,
+            commands_lib::library_add,
+            commands_lib::library_unregister,
+            commands_lib::library_catalog,
+            commands_lib::library_read,
+            commands_lib::library_set_meta,
+            commands_lib::library_presets,
+            commands_lib::library_preset_save,
+            commands_lib::library_preset_delete,
+            commands_lib::library_project,
+            commands_lib::library_plan,
+            commands_lib::library_apply,
+            commands_lib::library_diff,
+            commands_lib::library_backups,
+            commands_lib::library_restore,
+            commands_lib::library_build,
+            commands_lib::library_import_analyze,
+            commands_lib::library_import,
+            commands_lib::library_reveal,
+            commands_dev::project_config_get,
+            commands_dev::project_config_set,
+            commands_dev::job_get,
+            commands_dev::job_cancel,
+            commands_dev::runs_list,
+            commands_dev::run_get,
+            commands_dev::testing_info,
+            commands_dev::tests_run,
+            commands_dev::banana_run,
+            commands_dev::testrepo_start,
+            commands_dev::testrepo_envs,
+            commands_dev::testrepo_env_delete,
+            commands_dev::testrepo_env_open,
+            commands_dev::moulinette_start,
+            commands_dev::claude_brief,
+            commands_dev::gen_tests_start,
+            commands_dev::package_preview,
+            commands_dev::package_create,
+            commands_dev::package_reveal,
+            commands_dev::readme_draft,
+            commands_dev::readme_diff,
+            commands_dev::readme_write,
+            commands_dev::readme_ai_start,
         ])
         .run(tauri::generate_context!())
         .expect("error while running TekBoard");

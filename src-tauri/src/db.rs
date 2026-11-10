@@ -38,6 +38,49 @@ const MIGRATIONS: &[&str] = &[
         repo_path TEXT,
         added_at INTEGER NOT NULL
      );",
+    // v3: library manager and run history
+    "CREATE TABLE libraries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        path TEXT NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL
+     );
+     CREATE TABLE lib_meta (
+        library_id INTEGER NOT NULL,
+        rel TEXT NOT NULL,
+        data TEXT NOT NULL,
+        PRIMARY KEY (library_id, rel)
+     );
+     CREATE TABLE lib_presets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        library_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        files TEXT NOT NULL,
+        UNIQUE (library_id, name)
+     );
+     CREATE TABLE lib_installs (
+        repo_path TEXT NOT NULL,
+        dest_rel TEXT NOT NULL,
+        library_id INTEGER NOT NULL,
+        src_rel TEXT NOT NULL,
+        installed_hash TEXT NOT NULL,
+        source_hash TEXT NOT NULL,
+        installed_at INTEGER NOT NULL,
+        PRIMARY KEY (repo_path, dest_rel)
+     );
+     CREATE TABLE runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        kind TEXT NOT NULL,
+        repo_path TEXT,
+        started_at INTEGER NOT NULL,
+        duration_ms INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        log TEXT NOT NULL
+     );
+     CREATE INDEX runs_repo ON runs(repo_path, started_at DESC);
+     CREATE INDEX runs_kind ON runs(kind, started_at DESC);",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {
@@ -286,4 +329,67 @@ mod tests {
         let acts = recent_activity(&conn, 2).unwrap();
         assert_eq!(acts.iter().map(|a| a.ts).collect::<Vec<_>>(), vec![3, 2]);
     }
+}
+
+// ───────────────────────────── run history ─────────────────────────────
+
+/// One finished build, test run, clean-clone test or check.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Run {
+    pub id: i64,
+    pub kind: String,
+    pub repo_path: Option<String>,
+    pub started_at: i64,
+    pub duration_ms: i64,
+    pub status: String,
+    pub title: String,
+    pub summary: serde_json::Value,
+    /// Only filled by `get_run`.
+    pub log: Option<String>,
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn insert_run(conn: &Connection, kind: &str, repo_path: Option<&str>, started_at: i64, duration_ms: i64, status: &str, title: &str, summary: &str, log: &str) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO runs (kind, repo_path, started_at, duration_ms, status, title, summary, log) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![kind, repo_path, started_at, duration_ms, status, title, summary, log],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+fn run_row(r: &rusqlite::Row, with_log: bool) -> rusqlite::Result<Run> {
+    let summary: String = r.get(7)?;
+    Ok(Run {
+        id: r.get(0)?,
+        kind: r.get(1)?,
+        repo_path: r.get(2)?,
+        started_at: r.get(3)?,
+        duration_ms: r.get(4)?,
+        status: r.get(5)?,
+        title: r.get(6)?,
+        summary: serde_json::from_str(&summary).unwrap_or(serde_json::Value::Null),
+        log: if with_log { Some(r.get(8)?) } else { None },
+    })
+}
+
+/// Most recent first. `repo` and `kind` narrow the list when given.
+pub fn list_runs(conn: &Connection, repo: Option<&str>, kind: Option<&str>, limit: u32) -> Result<Vec<Run>> {
+    let mut st = conn.prepare(
+        "SELECT id, kind, repo_path, started_at, duration_ms, status, title, summary FROM runs
+         WHERE (?1 IS NULL OR repo_path = ?1) AND (?2 IS NULL OR kind = ?2) ORDER BY started_at DESC, id DESC LIMIT ?3",
+    )?;
+    let rows = st.query_map(params![repo, kind, limit], |r| run_row(r, false))?;
+    Ok(rows.collect::<std::result::Result<_, _>>()?)
+}
+
+pub fn get_run(conn: &Connection, id: i64) -> Result<Option<Run>> {
+    Ok(conn
+        .query_row("SELECT id, kind, repo_path, started_at, duration_ms, status, title, summary, log FROM runs WHERE id = ?1", [id], |r| run_row(r, true))
+        .optional()?)
+}
+
+pub fn delete_run(conn: &Connection, id: i64) -> Result<()> {
+    conn.execute("DELETE FROM runs WHERE id = ?1", [id])?;
+    Ok(())
 }

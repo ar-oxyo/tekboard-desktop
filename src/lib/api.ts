@@ -296,6 +296,129 @@ export interface SubjectImportResult {
   error: string | null;
 }
 
+// ── Library manager
+export interface Library {
+  id: number;
+  name: string;
+  path: string;
+  createdAt: number;
+}
+export type DepKind = "detected" | "ambiguous" | "declared";
+export interface LibDep {
+  rel: string;
+  via: string[];
+  kind: DepKind;
+}
+export interface CatalogFunction {
+  name: string;
+  signature: string;
+  line: number;
+  doc: string | null;
+  header: string | null;
+}
+export interface CatalogFile {
+  rel: string;
+  category: string;
+  isHeader: boolean;
+  functions: CatalogFunction[];
+  staticFunctions: string[];
+  headers: string[];
+  deps: LibDep[];
+  description: string | null;
+  tags: string[];
+  autoTags: string[];
+  declaredDeps: string[];
+  lines: number;
+  hash: string;
+  parseErrors: boolean;
+}
+export interface Catalog {
+  library: Library;
+  files: CatalogFile[];
+  hasMakefile: boolean;
+  duplicates: Array<{ name: string; files: string[] }>;
+  cycles: string[][];
+}
+export interface LibMeta {
+  description: string | null;
+  tags: string[];
+  deps: string[];
+}
+export interface LibPreset {
+  id: number;
+  name: string;
+  files: string[];
+}
+export type LibFileState = "absent" | "installed" | "update" | "modified" | "modified_update" | "differs" | "managed" | "custom";
+export interface LibProjectStatus {
+  libDir: string;
+  exists: boolean;
+  hasMakefile: boolean;
+  files: Array<{ rel: string; state: LibFileState }>;
+  extra: string[];
+}
+export interface LibPlanRequest {
+  libDir: string;
+  add: string[];
+  remove: string[];
+  replace: string[];
+  exclude: string[];
+  init: boolean;
+}
+export interface LibPlanAction {
+  path: string;
+  rel: string;
+  op: "create" | "overwrite" | "edit" | "delete" | "keep";
+  what: "source" | "header" | "makefile";
+  reason: string;
+  diff: string | null;
+  risky: boolean;
+}
+export interface LibRequired {
+  rel: string;
+  neededBy: string;
+  via: string[];
+  kind: DepKind;
+}
+export interface LibPlan {
+  libDir: string;
+  actions: LibPlanAction[];
+  required: LibRequired[];
+  warnings: string[];
+}
+export interface LibApplyReport {
+  written: string[];
+  deleted: string[];
+  skipped: string[];
+  backupDir: string | null;
+}
+export interface ImportCandidate {
+  source: string;
+  name: string;
+  isHeader: boolean;
+  functions: string[];
+  staticFunctions: string[];
+  suggestedDir: string;
+  suggestionReason: string;
+  alreadyDefined: Array<{ name: string; files: string[] }>;
+  undeclared: string[];
+  parseErrors: boolean;
+}
+export interface ImportAnalysis {
+  candidates: ImportCandidate[];
+  dirs: string[];
+  headers: string[];
+  existing: string[];
+  ignored: string[];
+}
+export interface LibImportReport {
+  imported: string[];
+  unchanged: string[];
+  conflicts: string[];
+  prototypesAdded: string[];
+  header: string | null;
+}
+
 export const api = {
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),
@@ -357,5 +480,26 @@ export const api = {
   cozySend: (command: string) => invoke<void>("cozy_send", { command }),
   cozyRestore: (name: string) => invoke<CozyStatus>("cozy_restore", { name }),
 
-  startup: () => invoke<{ page: string | null; sheet: string | null; theme: string | null }>("startup"),
+  libraryList: () => invoke<Library[]>("library_list"),
+  librarySuggestions: () => invoke<string[]>("library_suggestions"),
+  libraryAdd: (name: string, path: string, copy: boolean) => invoke<Library>("library_add", { name, path, copy }),
+  libraryUnregister: (id: number) => invoke<void>("library_unregister", { id }),
+  libraryCatalog: (id: number) => invoke<Catalog>("library_catalog", { id }),
+  libraryRead: (id: number, rel: string) => invoke<string>("library_read", { id, rel }),
+  librarySetMeta: (id: number, rel: string, meta: LibMeta) => invoke<void>("library_set_meta", { id, rel, meta }),
+  libraryPresets: (id: number) => invoke<LibPreset[]>("library_presets", { id }),
+  libraryPresetSave: (id: number, name: string, files: string[]) => invoke<void>("library_preset_save", { id, name, files }),
+  libraryPresetDelete: (presetId: number) => invoke<void>("library_preset_delete", { presetId }),
+  libraryProject: (repo: string, id: number, libDir?: string) => invoke<LibProjectStatus>("library_project", { repo, id, libDir: libDir ?? null }),
+  libraryPlan: (repo: string, id: number, request: LibPlanRequest) => invoke<LibPlan>("library_plan", { repo, id, request }),
+  libraryApply: (repo: string, id: number, request: LibPlanRequest, confirmed: string[]) => invoke<LibApplyReport>("library_apply", { repo, id, request, confirmed }),
+  libraryDiff: (repo: string, id: number, libDir: string, rel: string) => invoke<string>("library_diff", { repo, id, libDir, rel }),
+  libraryBackups: (repo: string, path: string) => invoke<Array<{ stamp: string; size: number }>>("library_backups", { repo, path }),
+  libraryRestore: (repo: string, path: string, stamp: string) => invoke<void>("library_restore", { repo, path, stamp }),
+  libraryBuild: (repo: string, libDir: string) => invoke<RunReport>("library_build", { repo, libDir }),
+  libraryImportAnalyze: (id: number, paths: string[]) => invoke<ImportAnalysis>("library_import_analyze", { id, paths }),
+  libraryImport: (id: number, items: Array<{ source: string; dir: string; overwrite: boolean }>, header: string | null) => invoke<LibImportReport>("library_import", { id, items, header }),
+  libraryReveal: (id: number) => invoke<void>("library_reveal", { id }),
+
+  startup: () => invoke<{ page: string | null; sheet: string | null; theme: string | null; repo: string | null }>("startup"),
 };

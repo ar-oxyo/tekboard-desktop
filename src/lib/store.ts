@@ -1,8 +1,8 @@
 import { create } from "zustand";
 
-export type Page = "overview" | "projects" | "git" | "subjects" | "templates" | "analytics" | "cozy" | "settings";
+export type Page = "overview" | "projects" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "cozy" | "settings";
 
-export const PAGES: Page[] = ["overview", "projects", "git", "subjects", "templates", "analytics", "cozy", "settings"];
+export const PAGES: Page[] = ["overview", "projects", "git", "library", "testing", "subjects", "analytics", "templates", "cozy", "settings"];
 
 export interface Toast {
   id: number;
@@ -22,6 +22,12 @@ interface UiState {
   /** Repository selected on the Git screen. */
   gitRepo: string | null;
   openGit: (path: string) => void;
+  /** Project the Library screen installs into. */
+  libraryRepo: string | null;
+  openLibrary: (path: string | null) => void;
+  /** Project selected on the Testing screen. */
+  testingRepo: string | null;
+  openTesting: (path: string | null) => void;
   paletteOpen: boolean;
   setPaletteOpen: (open: boolean) => void;
   /** Repository whose sheet (notes, deadline, build) is open. */
@@ -45,6 +51,10 @@ export const useUi = create<UiState>((set, get) => ({
   setPage: (page) => set({ page }),
   gitRepo: null,
   openGit: (gitRepo) => set({ gitRepo, page: "git", sheetPath: null, paletteOpen: false }),
+  libraryRepo: null,
+  openLibrary: (libraryRepo) => set({ libraryRepo, page: "library", sheetPath: null, paletteOpen: false }),
+  testingRepo: null,
+  openTesting: (testingRepo) => set({ testingRepo, page: "testing", sheetPath: null, paletteOpen: false }),
   paletteOpen: false,
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   sheetPath: null,

@@ -1,18 +1,36 @@
-import { ChartNoAxesColumn, FileText, FolderGit2, GitBranch, LayoutDashboard, LayoutTemplate, PawPrint, Search, Settings } from "lucide-react";
+import { ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, LayoutDashboard, LayoutTemplate, LibraryBig, PawPrint, Search, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn, Kbd } from "../components/ui";
 import { useEnv } from "../lib/hooks";
-import { useUi, type Page } from "../lib/store";
+import { PAGES, useUi, type Page } from "../lib/store";
 
-const NAV: Array<{ page: Page; label: string; icon: ReactNode; key: string }> = [
-  { page: "overview", label: "Overview", icon: <LayoutDashboard className="size-4" />, key: "1" },
-  { page: "projects", label: "Projects", icon: <FolderGit2 className="size-4" />, key: "2" },
-  { page: "git", label: "Git", icon: <GitBranch className="size-4" />, key: "3" },
-  { page: "subjects", label: "Subjects", icon: <FileText className="size-4" />, key: "4" },
-  { page: "templates", label: "Templates", icon: <LayoutTemplate className="size-4" />, key: "5" },
-  { page: "analytics", label: "Analytics", icon: <ChartNoAxesColumn className="size-4" />, key: "6" },
-  { page: "cozy", label: "Cozy Fox", icon: <PawPrint className="size-4" />, key: "7" },
-  { page: "settings", label: "Settings", icon: <Settings className="size-4" />, key: "8" },
+interface NavItem {
+  page: Page;
+  label: string;
+  icon: ReactNode;
+}
+
+const GROUPS: Array<{ title: string | null; items: NavItem[] }> = [
+  {
+    title: null,
+    items: [
+      { page: "overview", label: "Overview", icon: <LayoutDashboard className="size-4" /> },
+      { page: "projects", label: "Projects", icon: <FolderGit2 className="size-4" /> },
+      { page: "git", label: "Git", icon: <GitBranch className="size-4" /> },
+      { page: "library", label: "Library", icon: <LibraryBig className="size-4" /> },
+      { page: "testing", label: "Testing", icon: <FlaskConical className="size-4" /> },
+      { page: "subjects", label: "Subjects", icon: <FileText className="size-4" /> },
+      { page: "analytics", label: "Analytics", icon: <ChartNoAxesColumn className="size-4" /> },
+    ],
+  },
+  {
+    title: "Workspace",
+    items: [
+      { page: "templates", label: "Templates", icon: <LayoutTemplate className="size-4" /> },
+      { page: "cozy", label: "Cozy Fox", icon: <PawPrint className="size-4" /> },
+    ],
+  },
+  { title: "System", items: [{ page: "settings", label: "Settings", icon: <Settings className="size-4" /> }] },
 ];
 
 export function Logo({ className }: { className?: string }) {
@@ -56,23 +74,31 @@ export function Sidebar() {
         <Kbd>Ctrl K</Kbd>
       </button>
 
-      <nav className="flex flex-col gap-1 px-2.5" aria-label="Main">
-        {NAV.map((item) => (
-          <button
-            key={item.page}
-            type="button"
-            aria-current={page === item.page ? "page" : undefined}
-            onClick={() => setPage(item.page)}
-            title={`Ctrl+${item.key}`}
-            className={cn("nav-item flex h-[34px] items-center gap-2.5 px-2.5 text-[13px]", page === item.page ? "font-medium" : "text-muted hover:bg-white/5 hover:text-fg")}
-          >
-            <span className={page === item.page ? "text-accent" : ""}>{item.icon}</span>
-            {item.label}
-          </button>
+      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2.5 pb-2" aria-label="Main">
+        {GROUPS.map((group) => (
+          <div key={group.title ?? "main"} className="flex flex-col gap-1">
+            {group.title && <p className="px-2.5 pt-3 pb-0.5 text-[10px] font-semibold tracking-[0.14em] text-faint uppercase">{group.title}</p>}
+            {group.items.map((item) => {
+              const n = PAGES.indexOf(item.page) + 1;
+              return (
+                <button
+                  key={item.page}
+                  type="button"
+                  aria-current={page === item.page ? "page" : undefined}
+                  onClick={() => setPage(item.page)}
+                  title={n <= 9 ? `Ctrl+${n}` : undefined}
+                  className={cn("nav-item flex h-[34px] shrink-0 items-center gap-2.5 px-2.5 text-[13px]", page === item.page ? "font-medium" : "text-muted hover:bg-white/5 hover:text-fg")}
+                >
+                  <span className={page === item.page ? "text-accent" : ""}>{item.icon}</span>
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
         ))}
       </nav>
 
-      <div className="mt-auto border-t border-white/6 px-4 py-3">
+      <div className="border-t border-white/6 px-4 py-3">
         <button type="button" onClick={() => setPage("settings")} className="flex w-full flex-col gap-1.5 text-left text-xs text-faint hover:text-muted">
           <Status ok={env.data ? missing === 0 : null} label={env.data ? (missing === 0 ? "Tools ready" : `${missing} tool${missing > 1 ? "s" : ""} missing`) : "Checking tools…"} />
           <Status
