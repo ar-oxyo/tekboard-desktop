@@ -91,7 +91,7 @@ function TemplateCard({ template, active, onSelect }: { template: TemplateSummar
       type="button"
       onClick={onSelect}
       aria-pressed={active}
-      className={cn("w-full rounded-(--radius-card) border px-3.5 py-3 text-left transition-colors", active ? "border-accent/50 bg-raised" : "border-line bg-surface hover:border-line-strong")}
+      className="card card-interactive w-full px-3.5 py-3 text-left"
     >
       <span className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{template.name}</span>
@@ -151,7 +151,7 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
 
   return (
     <Card className="min-w-0">
-      <div className="border-b border-line px-4 py-3.5">
+      <div className="border-b border-white/6 px-4 py-3.5">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-[15px] font-semibold">{template.name}</h2>
           {template.variables.map((v) => (
@@ -202,7 +202,7 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
       </div>
 
       <div className="grid h-[440px] grid-cols-[220px_minmax(0,1fr)]">
-        <ul className="overflow-y-auto border-r border-line py-1">
+        <ul className="overflow-y-auto border-r border-white/6 py-1">
           {files.isLoading && (
             <li className="flex items-center gap-2 px-3 py-2 text-xs text-muted">
               <Spinner /> Loading…

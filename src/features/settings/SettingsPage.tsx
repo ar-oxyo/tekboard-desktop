@@ -101,7 +101,7 @@ export function SettingsPage() {
                 ))}
               </ul>
             )}
-            <div className="border-t border-line px-4 py-3">
+            <div className="border-t border-white/6 px-4 py-3">
               <Field label="Clone new projects into" hint="Automatic: next to the repositories of the same kind (Epitech with Epitech).">
                 <Select value={draft.cloneDir ?? ""} onChange={(e) => set({ cloneDir: e.target.value || null })}>
                   <option value="">Automatic</option>
@@ -195,7 +195,7 @@ function EnvironmentCard() {
               </li>
             ))}
           </ul>
-          <div className="space-y-2.5 border-t border-line px-4 py-3 text-[13px]">
+          <div className="space-y-2.5 border-t border-white/6 px-4 py-3 text-[13px]">
             <Row label="Git identity">
               {env.data.identity.name && env.data.identity.email ? (
                 <span className="selectable text-muted">

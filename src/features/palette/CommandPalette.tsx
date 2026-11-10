@@ -11,7 +11,7 @@ import { displayName } from "../../lib/repos";
 import { useUi, type Page } from "../../lib/store";
 
 const itemClass =
-  "flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-[13px] text-muted data-[selected=true]:bg-hover data-[selected=true]:text-fg";
+  "flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-[13px] text-muted data-[selected=true]:bg-accent-soft data-[selected=true]:text-fg";
 const groupClass = "[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:tracking-[0.08em] [&_[cmdk-group-heading]]:text-faint [&_[cmdk-group-heading]]:uppercase";
 
 export function CommandPalette() {
@@ -40,11 +40,11 @@ export function CommandPalette() {
         <Dialog.Overlay className="scrim anim-fade fixed inset-0 z-40" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="glass anim-pop fixed top-[42%] left-1/2 z-50 w-[600px] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-line-strong shadow-(--shadow-pop) focus:outline-none"
+          className="glass anim-pop fixed top-[42%] left-1/2 z-50 w-[600px] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-white/10 focus:outline-none"
         >
           <Dialog.Title className="sr-only">Command palette</Dialog.Title>
           <Command loop label="Command palette">
-            <Command.Input autoFocus placeholder="Search projects, templates, actions…" className="h-12 w-full border-b border-line bg-transparent px-4 text-sm text-fg placeholder:text-faint focus:outline-none" />
+            <Command.Input autoFocus placeholder="Search projects, templates, actions…" className="h-12 w-full border-b border-white/6 bg-transparent px-4 text-sm text-fg placeholder:text-faint focus:outline-none" />
             <Command.List className="max-h-[380px] overflow-y-auto p-1.5">
               <Command.Empty className="px-3 py-6 text-center text-[13px] text-muted">Nothing matches.</Command.Empty>
 

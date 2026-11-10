@@ -115,7 +115,7 @@ function RepoRow({ repo }: { repo: RepoInfo }) {
   const openSheet = useUi((s) => s.openSheet);
   const days = repo.meta.deadline && !repo.meta.archived ? daysLeft(repo.meta.deadline) : null;
   return (
-    <li className="group flex h-12 items-center gap-2 border-b border-line pr-2 pl-1.5 last:border-b-0 hover:bg-raised/60">
+    <li className="group flex h-12 items-center gap-2 border-b border-white/6 pr-2 pl-1.5 last:border-b-0 row-hover">
       <FavoriteButton repo={repo} />
       <button type="button" onClick={() => openSheet(repo.path)} className="flex min-w-0 flex-[2] items-center gap-2 text-left" title={`${repo.path}\nNotes, deadline, build`}>
         <span className="truncate text-[13px] font-medium">{displayName(repo)}</span>

@@ -40,23 +40,23 @@ export function Sidebar() {
   const gh = env.data?.github.state;
 
   return (
-    <aside className="flex w-[208px] shrink-0 flex-col border-r border-line bg-panel">
+    <aside className="sidebar flex w-[212px] shrink-0 flex-col">
       <div className="flex items-center gap-2.5 px-4 pt-5 pb-4">
-        <Logo className="size-7" />
-        <span className="text-[15px] font-semibold tracking-tight">TekBoard</span>
+        <Logo className="logo-glow size-8" />
+        <span className="display text-[17px] font-semibold">TekBoard</span>
       </div>
 
       <button
         type="button"
         onClick={() => setPaletteOpen(true)}
-        className="mx-3 mb-3 flex h-8 items-center gap-2 rounded-md border border-line bg-bg px-2.5 text-faint transition-colors hover:border-line-strong hover:text-muted"
+        className="mx-3 mb-4 flex h-9 items-center gap-2 rounded-lg border border-white/8 bg-black/30 px-2.5 text-faint shadow-[inset_0_1px_2px_rgb(0_0_0/0.5)] transition-colors hover:border-white/16 hover:text-muted"
       >
         <Search className="size-3.5" />
         <span className="flex-1 text-left text-[13px]">Search</span>
         <Kbd>Ctrl K</Kbd>
       </button>
 
-      <nav className="flex flex-col gap-0.5 px-2" aria-label="Main">
+      <nav className="flex flex-col gap-1 px-2.5" aria-label="Main">
         {NAV.map((item) => (
           <button
             key={item.page}
@@ -64,10 +64,7 @@ export function Sidebar() {
             aria-current={page === item.page ? "page" : undefined}
             onClick={() => setPage(item.page)}
             title={`Ctrl+${item.key}`}
-            className={cn(
-              "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors duration-100",
-              page === item.page ? "bg-raised font-medium text-fg" : "text-muted hover:bg-hover hover:text-fg",
-            )}
+            className={cn("nav-item flex h-[34px] items-center gap-2.5 rounded-lg px-2.5 text-[13px]", page === item.page ? "font-medium" : "text-muted hover:bg-white/5 hover:text-fg")}
           >
             <span className={page === item.page ? "text-accent" : ""}>{item.icon}</span>
             {item.label}
@@ -75,7 +72,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="mt-auto border-t border-line px-4 py-3">
+      <div className="mt-auto border-t border-white/6 px-4 py-3">
         <button type="button" onClick={() => setPage("settings")} className="flex w-full flex-col gap-1.5 text-left text-xs text-faint hover:text-muted">
           <Status ok={env.data ? missing === 0 : null} label={env.data ? (missing === 0 ? "Tools ready" : `${missing} tool${missing > 1 ? "s" : ""} missing`) : "Checking tools…"} />
           <Status

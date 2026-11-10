@@ -99,7 +99,7 @@ export function CozyPage() {
               <NumberRow label="Water reminder" unit="min" hint="0 turns it off" value={c.water} fallback="default" min={0} max={240} step={5} onCommit={(v) => update.mutate({ water: v })} />
               <NumberRow label="Bird visits" unit="min" hint="Average interval" value={c.birdEvery} fallback="default" min={1} max={120} step={1} onCommit={(v) => update.mutate({ birdEvery: v })} />
             </div>
-            <p className="selectable border-t border-line px-4 py-2.5 text-xs text-faint">
+            <p className="selectable border-t border-white/6 px-4 py-2.5 text-xs text-faint">
               Written to the <Code>companion</Code> block of <Code>{tildify(s.widgetsPath, home)}</Code>. “default” means the key is absent and the fox uses its own value.
             </p>
           </Card>
@@ -126,7 +126,7 @@ export function CozyPage() {
                 </Button>
               ))}
             </div>
-            <div className="border-t border-line px-4 py-3">
+            <div className="border-t border-white/6 px-4 py-3">
               <p className="mb-2 text-xs text-muted">Outfit previews — until the next reload</p>
               <div className="flex flex-wrap gap-1.5">
                 {PREVIEW.map((p) => (
@@ -136,7 +136,7 @@ export function CozyPage() {
                 ))}
               </div>
             </div>
-            <div className="flex items-center justify-between border-t border-line px-4 py-3">
+            <div className="flex items-center justify-between border-t border-white/6 px-4 py-3">
               <span className="text-xs text-muted">Rocket previews and code reload</span>
               <span className="flex gap-1.5">
                 <Button size="sm" variant="ghost" onClick={() => send.mutate("push")}>

@@ -52,11 +52,11 @@ export function Onboarding() {
   };
 
   return (
-    <Card className="mx-auto max-w-[640px]">
+    <Card hero className="mx-auto max-w-[640px]">
       <div className="px-6 pt-6 pb-5">
         <div className="mb-1 flex items-center gap-2 text-accent">
           <FolderSearch className="size-5" />
-          <h2 className="text-[15px] font-semibold text-fg">Where do your projects live?</h2>
+          <h2 className="display text-lg font-semibold text-fg">Where do your projects live?</h2>
         </div>
         <p className="text-[13px] text-muted">TekBoard only reads these folders to list your repositories. Nothing is moved or modified.</p>
 

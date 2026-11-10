@@ -130,7 +130,7 @@ function SubjectRow({ subject, repos }: { subject: Subject; repos: RepoInfo[] })
   const missing = subject.repoPath !== null && !repos.some((r) => r.path === subject.repoPath);
 
   return (
-    <li className="group flex h-12 items-center gap-3 border-b border-line pr-2 pl-4 last:border-b-0 hover:bg-raised/60">
+    <li className="group flex h-12 items-center gap-3 border-b border-white/6 pr-2 pl-4 last:border-b-0 row-hover">
       <FileText className="size-4 shrink-0 text-faint" />
       <button type="button" onClick={() => openDoc.mutate()} className="selectable min-w-0 flex-[2] truncate text-left text-[13px] font-medium hover:text-accent-strong" title="Open">
         {subject.name}
@@ -218,13 +218,13 @@ function ScanPanel({ repos, onClose, onImported }: { repos: RepoInfo[]; onClose:
         <p className="px-4 py-5 text-[13px] text-muted">{already > 0 ? "Every PDF in this folder is already in the library." : "No PDF in this folder."}</p>
       ) : (
         <>
-          <p className="border-b border-line px-4 py-2 text-xs text-faint">
+          <p className="border-b border-white/6 px-4 py-2 text-xs text-faint">
             Files are copied, never moved. Ticked ones matched a project by name — check the suggestion before importing.
             {already > 0 && ` ${already} already in the library ${already === 1 ? "is" : "are"} hidden.`}
           </p>
           <ul className="max-h-[340px] overflow-y-auto py-1">
             {files.map((f) => (
-              <li key={f.path} className="flex h-10 items-center gap-3 px-4 hover:bg-raised/60">
+              <li key={f.path} className="flex h-10 items-center gap-3 px-4 row-hover">
                 <input type="checkbox" className="accent-(--color-accent)" aria-label={`Import ${f.name}`} checked={picked.has(f.path)} onChange={() => toggle(f.path)} />
                 <span className="selectable min-w-0 flex-[2] truncate text-[13px]">{f.name}</span>
                 {f.suggestedRepo && links[f.path] === f.suggestedRepo && <Badge tone="accent">suggested</Badge>}

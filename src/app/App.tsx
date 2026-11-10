@@ -65,8 +65,9 @@ export function App() {
 
   return (
     <div className="flex h-full">
+      <div className="app-bg" aria-hidden />
       <Sidebar />
-      <main className="min-w-0 flex-1 overflow-y-auto">
+      <main className="relative z-[1] min-w-0 flex-1 overflow-y-auto">
         <div key={page} className="anim-rise mx-auto max-w-[1180px] px-7 py-6">
           {page === "overview" && <OverviewPage />}
           {page === "projects" && <ProjectsPage />}

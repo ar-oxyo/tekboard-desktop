@@ -94,13 +94,13 @@ function FocusCard({ repo }: { repo: RepoInfo | null }) {
     );
   }
   return (
-    <Card>
+    <Card hero>
       <CardTitle right={repo.meta.lastOpenedAt ? <span className="text-xs text-faint">opened {timeAgo(repo.meta.lastOpenedAt)}</span> : <span className="text-xs text-faint">most recent commit</span>}>
         Current focus
       </CardTitle>
-      <div className="px-4 pt-4 pb-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="selectable truncate text-lg font-semibold tracking-tight">{displayName(repo)}</h3>
+      <div className="px-5 pt-5 pb-5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h3 className="display selectable truncate text-[26px] leading-tight font-semibold">{displayName(repo)}</h3>
           {repo.epitech && (
             <Badge tone="accent" mono>
               {repo.epitech.module}
@@ -164,7 +164,7 @@ function AttentionCard({ repos }: { repos: RepoInfo[] }) {
       ) : (
         <ul>
           {shown.map((repo) => (
-            <li key={repo.path} className="group flex h-11 items-center gap-3 border-b border-line px-4 last:border-b-0 hover:bg-raised/60">
+            <li key={repo.path} className="group flex h-11 items-center gap-3 border-b border-white/6 px-4 last:border-b-0 row-hover">
               <button type="button" onClick={() => openSheet(repo.path)} className="min-w-0 flex-1 truncate text-left text-[13px] font-medium hover:text-accent-strong">
                 {displayName(repo)}
               </button>
@@ -193,7 +193,7 @@ function DeadlinesCard({ repos }: { repos: RepoInfo[] }) {
         <ul className="py-1">
           {list.slice(0, 6).map(({ repo, days }) => (
             <li key={repo.path}>
-              <button type="button" onClick={() => openSheet(repo.path)} className="flex h-9 w-full items-center gap-2 px-4 text-left text-[13px] hover:bg-raised/60">
+              <button type="button" onClick={() => openSheet(repo.path)} className="flex h-9 w-full items-center gap-2 px-4 text-left text-[13px] row-hover">
                 <span className="min-w-0 flex-1 truncate font-medium">{displayName(repo)}</span>
                 <span className="shrink-0 text-xs text-faint">{repo.meta.deadline}</span>
                 <Badge tone={days < 0 ? "danger" : days <= 2 ? "warn" : "neutral"}>{deadlineLabel(days)}</Badge>
@@ -251,7 +251,7 @@ function NextProjectCard() {
     body = (
       <div className="px-4 py-4">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="selectable truncate text-[15px] font-semibold">{top.epitech?.project ?? top.repo.name}</h3>
+          <h3 className="display selectable truncate text-lg font-semibold">{top.epitech?.project ?? top.repo.name}</h3>
           {top.epitech && (
             <Badge tone="accent" mono>
               {top.epitech.module}

@@ -90,14 +90,14 @@ function Body({ a }: { a: Analytics }) {
             Commits by project
           </CardTitle>
           <RepoBars repos={a.repos} />
-          <p className="border-t border-line px-4 py-2.5 text-xs text-faint">
+          <p className="border-t border-white/6 px-4 py-2.5 text-xs text-faint">
             {a.soloRepos} solo · {a.sharedRepos} shared. A commit count compares volume, not the value of each contribution.
           </p>
         </Card>
         <Card className="self-start">
           <CardTitle>Languages</CardTitle>
           <Languages a={a} />
-          <p className="border-t border-line px-4 py-2.5 text-xs text-faint">
+          <p className="border-t border-white/6 px-4 py-2.5 text-xs text-faint">
             Lines in tracked files of repositories you committed to{topLang ? "" : " (none found)"}. A line of code is not a unit of productivity.
           </p>
         </Card>
@@ -112,9 +112,9 @@ function Body({ a }: { a: Analytics }) {
 
 function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <Card className="px-4 py-3.5">
+    <Card className="px-4 py-4">
       <p className="text-xs text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
+      <p className="display number-gradient mt-1 text-[30px] leading-tight font-semibold">{value}</p>
       {note && <p className="mt-0.5 truncate text-xs text-faint">{note}</p>}
     </Card>
   );
@@ -248,7 +248,7 @@ function Columns({ data, everyLabel }: { data: Array<{ key: string; label: strin
           </div>
         ))}
       </div>
-      <div className="mt-1.5 flex gap-[2px] border-t border-line pt-1">
+      <div className="mt-1.5 flex gap-[2px] border-t border-white/6 pt-1">
         {data.map((d, i) => (
           <span key={d.key} className="min-w-0 flex-1 text-center text-[10px] text-faint">
             {i % everyLabel === 0 ? d.label : ""}

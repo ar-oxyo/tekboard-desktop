@@ -46,7 +46,7 @@ export function GitPage() {
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
               <Input className="pl-8" placeholder="Filter…" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
-            <ul className="max-h-[calc(100vh-190px)] overflow-y-auto rounded-(--radius-card) border border-line bg-surface py-1">
+            <ul className="card max-h-[calc(100vh-200px)] overflow-y-auto py-1.5">
               {list.map((r) => {
                 const a = attention(r);
                 return (
@@ -55,7 +55,7 @@ export function GitPage() {
                       type="button"
                       onClick={() => openGit(r.path)}
                       aria-current={selected?.path === r.path}
-                      className={cn("flex h-9 w-full items-center gap-2 px-3 text-left text-[13px]", selected?.path === r.path ? "bg-raised text-fg" : "text-muted hover:bg-hover hover:text-fg")}
+                      className={cn("row-hover flex h-9 w-full items-center gap-2 px-3 text-left text-[13px]", selected?.path === r.path ? "bg-accent-soft text-fg" : "text-muted hover:text-fg")}
                     >
                       <span className={cn("size-1.5 shrink-0 rounded-full", a.length === 0 ? "bg-line-strong" : a[0].level === "danger" ? "bg-danger" : a[0].level === "warn" ? "bg-warn" : "bg-info")} />
                       <span className="min-w-0 flex-1 truncate">{displayName(r)}</span>
@@ -167,7 +167,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
     <div className="flex min-w-0 flex-col gap-4">
       <Card>
         <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-          <h2 className="mr-1 truncate text-[15px] font-semibold">{displayName(repo)}</h2>
+          <h2 className="display mr-1 truncate text-lg font-semibold">{displayName(repo)}</h2>
           {repo.epitech && (
             <Badge tone="accent" mono>
               {repo.epitech.module}
@@ -188,7 +188,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
             </Button>
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-2 border-t border-line px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-2 border-t border-white/6 px-4 py-2.5">
           <GitBranch className="size-3.5 text-faint" />
           {st.branch === null ? (
             <span className="font-mono text-xs text-warn">detached HEAD</span>
@@ -230,7 +230,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
         </div>
 
         {confirmPush && (
-          <div className="border-t border-line bg-raised/50 px-4 py-3">
+          <div className="border-t border-white/6 bg-raised/50 px-4 py-3">
             <p className="text-[13px] font-medium">{st.upstream ? `Push ${d.outgoing.length} commit${d.outgoing.length === 1 ? "" : "s"} to ${st.upstream}?` : `Publish branch “${st.branch}” to origin?`}</p>
             <p className="mt-0.5 text-xs text-muted">A normal push: if the remote has newer commits it is refused, never forced.</p>
             {d.outgoing.length > 0 && (
@@ -254,7 +254,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
           </div>
         )}
         {output && (
-          <pre className="selectable max-h-28 overflow-auto border-t border-line bg-bg px-4 py-2 font-mono text-xs whitespace-pre-wrap text-muted" onDoubleClick={() => setOutput(null)}>
+          <pre className="selectable max-h-28 overflow-auto border-t border-white/6 bg-bg px-4 py-2 font-mono text-xs whitespace-pre-wrap text-muted" onDoubleClick={() => setOutput(null)}>
             {output}
           </pre>
         )}
@@ -271,7 +271,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
             onSelect={(c) => setFile({ path: c.path, staged: true, untracked: false })}
             action={{ label: "Unstage", icon: <Minus className="size-3.5" />, run: (paths) => unstage.mutate(paths) }}
           />
-          <div className="border-t border-line">
+          <div className="border-t border-white/6">
             <ChangeList
               title="Changes"
               empty="Working tree clean"
@@ -283,7 +283,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
             />
           </div>
           <form
-            className="flex flex-col gap-2 border-t border-line p-3"
+            className="flex flex-col gap-2 border-t border-white/6 p-3"
             onSubmit={(e) => {
               e.preventDefault();
               if (staged.length > 0 && message.trim()) commit.mutate();
