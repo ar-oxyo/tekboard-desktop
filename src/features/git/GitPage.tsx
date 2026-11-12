@@ -3,7 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, GitBranch, GitCommitHorizontal, Minus, Play, Plus, RefreshCw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Badge, Button, Card, CardTitle, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Select, Spinner } from "../../components/ui";
+import { Select } from "../../components/Select";
+import { Badge, Button, Card, CardTitle, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
 import { api, asAppError, type Change, type GitDetail, type RepoInfo } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { keys, useRepos, useSettings } from "../../lib/hooks";
@@ -196,14 +197,16 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
           {st.branch === null ? (
             <span className="font-mono text-xs text-warn">detached HEAD</span>
           ) : (
-            <Select className="h-7 w-52 font-mono text-xs" value={st.branch} aria-label="Branch" disabled={switchBranch.isPending || st.unborn} onChange={(e) => switchBranch.mutate(e.target.value)}>
-              {!d.branches.some((b) => b.name === st.branch) && <option value={st.branch}>{st.branch}</option>}
-              {d.branches.map((b) => (
-                <option key={b.name} value={b.name}>
-                  {b.name}
-                </option>
-              ))}
-            </Select>
+            <Select
+              size="sm"
+              mono
+              className="w-52"
+              label="Branch"
+              value={st.branch}
+              disabled={switchBranch.isPending || st.unborn}
+              onChange={(v) => v !== st.branch && switchBranch.mutate(v)}
+              options={[...(d.branches.some((b) => b.name === st.branch) ? [] : [{ value: st.branch, label: st.branch }]), ...d.branches.map((b) => ({ value: b.name, label: b.name, hint: b.upstream ?? undefined }))]}
+            />
           )}
           {newBranch === null ? (
             <Button size="sm" variant="ghost" icon={<Plus className="size-3.5" />} disabled={st.unborn} onClick={() => setNewBranch("")}>

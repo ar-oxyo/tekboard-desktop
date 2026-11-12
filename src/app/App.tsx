@@ -1,3 +1,5 @@
+import { listen } from "@tauri-apps/api/event";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { Toaster } from "../components/Toaster";
 import { LauncherDialog } from "../features/launcher/LauncherDialog";
@@ -16,6 +18,8 @@ import { CozyPage } from "../features/cozy/CozyPage";
 import { GitPage } from "../features/git/GitPage";
 import { LibraryPage } from "../features/library/LibraryPage";
 import { MyEpitechPage } from "../features/myepitech/MyEpitechPage";
+import { AgendaPage } from "../features/agenda/AgendaPage";
+import { PromptsPage } from "../features/prompts/PromptsPage";
 import { TestingPage } from "../features/testing/TestingPage";
 import { PackageDialog } from "../features/tools/PackageDialog";
 import { ReadmeDialog } from "../features/tools/ReadmeDialog";
@@ -82,6 +86,27 @@ export function App() {
     );
   }, [setPage]);
 
+  // An automatic MY Epitech sync ended: every screen fed by it re-reads its data.
+  const qc = useQueryClient();
+  useEffect(() => {
+    const off = listen<{ ok: number; failed: number; unauthorized: boolean; detail: string }>("my-synced", (e) => {
+      for (const key of [["repos"], ["my-data"], ["my-overview"], ["my-status"], ["my-academic"]]) void qc.invalidateQueries({ queryKey: key });
+      if (e.payload.unauthorized) useUi.getState().toast({ kind: "error", title: "MY Epitech refused the session", detail: "Automatic sync stopped. Open MY Epitech and sign in again." });
+    });
+    return () => void off.then((f) => f());
+  }, [qc]);
+  // The day changed while the window stayed open: hand-in states are recomputed.
+  useEffect(() => {
+    let day = new Date().toDateString();
+    const id = window.setInterval(() => {
+      const d = new Date().toDateString();
+      if (d !== day) {
+        day = d;
+        void qc.invalidateQueries({ queryKey: ["repos"] });
+      }
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, [qc]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
@@ -106,7 +131,7 @@ export function App() {
       <div className="app-bg" aria-hidden />
       <Sidebar />
       <main className="relative z-[1] min-w-0 flex-1 overflow-y-auto">
-        <div key={page} className={`anim-rise mx-auto px-7 py-6 ${page === "library" || page === "testing" ? "max-w-[1480px]" : "max-w-[1180px]"}`}>
+        <div key={page} className={`anim-rise mx-auto px-7 py-6 ${page === "library" || page === "testing" || page === "prompts" ? "max-w-[1480px]" : "max-w-[1180px]"}`}>
           {page === "overview" && <OverviewPage />}
           {page === "projects" && <ProjectsPage />}
           {page === "git" && <GitPage />}
@@ -118,6 +143,8 @@ export function App() {
           {page === "cozy" && <CozyPage />}
           {page === "templates" && <TemplatesPage />}
           {page === "settings" && <SettingsPage />}
+          {page === "prompts" && <PromptsPage />}
+          {page === "agenda" && <AgendaPage />}
         </div>
       </main>
       <CommandPalette />

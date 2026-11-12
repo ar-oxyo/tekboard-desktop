@@ -6,6 +6,7 @@ import { Card, CardTitle, EmptyState, ErrorNote, PageHeader, Spinner } from "../
 import { api, asAppError, type Analytics, type DayCount, type RepoStat } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { useSettings } from "../../lib/hooks";
+import { AcademicSection } from "./Academic";
 
 // Chart colours, validated for the dark surface (lightness band, CVD separation, contrast).
 const YOU = "#7c6ef2";
@@ -103,6 +104,8 @@ function Body({ a }: { a: Analytics }) {
         </Card>
       </div>
 
+      <AcademicSection />
+
       <p className="selectable text-xs text-faint">
         “You” = commits authored as {a.myEmails.length > 0 ? a.myEmails.join(", ") : "nobody: git user.email is not set"}. {a.totalCommits.toLocaleString()} commits read in total, merges excluded, each commit counted once even when cloned twice.
       </p>
@@ -110,7 +113,7 @@ function Body({ a }: { a: Analytics }) {
   );
 }
 
-function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
+export function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <Card className="px-4 py-4">
       <p className="text-xs text-muted">{label}</p>
@@ -234,7 +237,7 @@ function Heatmap({ days }: { days: DayCount[] }) {
   );
 }
 
-function Columns({ data, everyLabel }: { data: Array<{ key: string; label: string; value: number; tip: string }>; everyLabel: number }) {
+export function Columns({ data, everyLabel }: { data: Array<{ key: string; label: string; value: number; tip: string }>; everyLabel: number }) {
   const tip = useTip();
   const max = Math.max(1, ...data.map((d) => d.value));
   const H = 120;

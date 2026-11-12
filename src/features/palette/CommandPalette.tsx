@@ -2,7 +2,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, PawPrint, Plus, RefreshCw, ScrollText, Settings } from "lucide-react";
+import { CalendarDays, PenLine, ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, PawPrint, Plus, RefreshCw, ScrollText, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge } from "../../components/ui";
 import { api } from "../../lib/api";
@@ -27,6 +27,8 @@ const GO: Array<[Page, string, ReactNode]> = [
   ["myepitech", "MY Epitech", <GraduationCap className={ic} />],
   ["cozy", "Cozy Fox", <PawPrint className={ic} />],
   ["settings", "Settings", <Settings className={ic} />],
+  ["agenda", "Agenda", <CalendarDays className={ic} />],
+  ["prompts", "Prompts", <PenLine className={ic} />],
 ];
 type ToolId = "testing" | "library" | "package" | "readme";
 const TOOLS: Array<[ToolId, string, ReactNode]> = [

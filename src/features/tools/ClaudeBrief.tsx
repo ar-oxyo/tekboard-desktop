@@ -5,7 +5,7 @@ import { CodeView } from "../../components/DiffView";
 import { Button, ErrorNote, Spinner } from "../../components/ui";
 import { api, asAppError } from "../../lib/api";
 
-export function ClaudeBriefDialog({ repo, task, disclosure = false, confirmLabel, onClose, onConfirm }: { repo: string; task: "tests" | "readme" | "subject"; disclosure?: boolean; confirmLabel: string; onClose: () => void; onConfirm: () => void }) {
+export function ClaudeBriefDialog({ repo, task, disclosure = false, confirmLabel, onClose, onConfirm }: { repo: string; task: "tests" | "readme" | "subject" | "analysis"; disclosure?: boolean; confirmLabel: string; onClose: () => void; onConfirm: () => void }) {
   const brief = useQuery({ queryKey: ["claude-brief", repo, task, disclosure], queryFn: () => api.claudeBrief(repo, task, disclosure), staleTime: 0 });
   const p = brief.data?.plan;
   return (
@@ -13,7 +13,7 @@ export function ClaudeBriefDialog({ repo, task, disclosure = false, confirmLabel
       open
       onClose={onClose}
       width="w-[720px]"
-      title={task === "tests" ? "Generate unit tests with Claude Code" : task === "readme" ? "Write the README with Claude Code" : "Check the subject with Claude Code"}
+      title={task === "tests" ? "Generate unit tests with Claude Code" : task === "readme" ? "Write the README with Claude Code" : task === "analysis" ? "Analyse the repository with Claude Code" : "Check the subject with Claude Code"}
       description="Nothing starts until you confirm."
       footer={
         <>

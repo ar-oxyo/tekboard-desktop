@@ -3,11 +3,12 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { Copy, FileText, FolderInput, LayoutTemplate, Pencil, Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Modal } from "../../components/Modal";
-import { Badge, Button, Card, cn, EmptyState, ErrorNote, Field, Input, PageHeader, Select, Spinner } from "../../components/ui";
+import { Select } from "../../components/Select";
+import { Badge, Button, Card, cn, EmptyState, ErrorNote, Field, Input, PageHeader, Spinner } from "../../components/ui";
 import { api, asAppError, type TemplateSummary } from "../../lib/api";
 import { formatBytes, tildify } from "../../lib/format";
 import { keys, useHome, useRepos, useSettings, useTemplates } from "../../lib/hooks";
-import { displayName } from "../../lib/repos";
+import { repoOptions } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 
 export function TemplatesPage() {
@@ -162,19 +163,7 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
         </div>
         {template.description && <p className="selectable mt-1 text-[13px] text-muted">{template.description}</p>}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Select
-            className="w-56"
-            value=""
-            aria-label="Apply to a project"
-            onChange={(e) => e.target.value && openLauncher({ mode: "existing", path: e.target.value, templateId: template.id })}
-          >
-            <option value="">Apply to a project…</option>
-            {(repos.data ?? []).map((r) => (
-              <option key={r.path} value={r.path}>
-                {displayName(r)}
-              </option>
-            ))}
-          </Select>
+          <Select className="w-56" value={null} label="Apply to a project" placeholder="Apply to a project…" search onChange={(path) => path && openLauncher({ mode: "existing", path, templateId: template.id })} options={repoOptions(repos.data ?? [])} />
           <Button size="sm" variant="ghost" icon={<Star className="size-3.5" fill={isDefault ? "currentColor" : "none"} />} onClick={() => setDefault.mutate()}>
             {isDefault ? "Default for new projects" : "Set as default"}
           </Button>

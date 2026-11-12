@@ -24,6 +24,9 @@ export function MyEpitechPage() {
     }
   });
   const [confirmForget, setConfirmForget] = useState(false);
+  // Explanations are open until the agreement is given, then fold away.
+  const [how, setHow] = useState<boolean | null>(null);
+  const showHow = how ?? !consent;
   const [tab, setTab] = useState<"projects" | "progress" | "raw">("projects");
   const fail = (title: string) => (e: unknown) => toast({ kind: "error", title, detail: asAppError(e).message });
   const connect = useMutation({ mutationFn: api.myConnect, onSuccess: () => void qc.invalidateQueries({ queryKey: ["my-status"] }), onError: fail("The sign-in window did not open") });
@@ -34,6 +37,8 @@ export function MyEpitechPage() {
       void qc.invalidateQueries({ queryKey: ["my-data"] });
       void qc.invalidateQueries({ queryKey: ["my-overview"] });
       void qc.invalidateQueries({ queryKey: ["my-status"] });
+      void qc.invalidateQueries({ queryKey: ["repos"] });
+      void qc.invalidateQueries({ queryKey: ["my-academic"] });
     },
     onError: fail("Not synced"),
   });
@@ -66,6 +71,11 @@ export function MyEpitechPage() {
           <Card>
             <CardTitle right={s ? <Badge tone={s.connected ? "ok" : s.windowOpen ? "info" : "neutral"}>{s.connected ? "Connected" : s.windowOpen ? "Waiting for sign-in" : "Not connected"}</Badge> : <Spinner />}>Connection</CardTitle>
             <div className="flex flex-col gap-3 p-4 text-[13px]">
+              <button type="button" aria-expanded={showHow} onClick={() => setHow(!showHow)} className="flex items-center gap-1 text-left text-xs text-muted hover:text-fg">
+                {showHow ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />} How the connection works and what is stored
+              </button>
+              {showHow && (
+                <>
               <ul className="flex list-disc flex-col gap-1 pl-4 text-xs text-muted">
                 <li>A separate window opens <span className="font-mono">my.epitech.eu</span>. Microsoft sign-in and MFA happen there, as in a browser.</li>
                 <li>That window keeps its browser session in a folder of its own on this computer, so you stay signed in. “Erase session” deletes it.</li>
@@ -73,6 +83,8 @@ export function MyEpitechPage() {
                 <li>Syncing happens only when you click: about {s?.routes ?? 15} read-only requests (plus two per ongoing project), half a second apart, on your own account.</li>
                 <li>The answers are stored on this computer so you can read them offline. Check that this use fits your school's rules.</li>
               </ul>
+                </>
+              )}
               <label className="flex items-center gap-2">
                 <input type="checkbox" className="accent-(--color-accent)" checked={consent} onChange={(e) => accept(e.target.checked)} />
                 I agree to keep a MY Epitech session in TekBoard on this computer
@@ -91,7 +103,17 @@ export function MyEpitechPage() {
                 </div>
               )}
               {s?.connected && <p className="selectable text-xs text-muted">{s.account ? `Signed in as ${s.account}. ` : ""}{s.expiresAt ? `This token is valid until ${new Date(s.expiresAt * 1000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}; keep the sign-in window open and the site renews it.` : ""}</p>}
-              {s && !s.connected && s.windowOpen && <p className="text-xs text-muted">Sign in in the MY Epitech window. This turns to “Connected” a moment after the dashboard loads.</p>}
+              {s && (
+                <p className="text-xs text-muted">
+                  {s.syncMinutes > 0 ? `Automatic sync every ${s.syncMinutes >= 60 ? `${s.syncMinutes / 60} h` : `${s.syncMinutes} min`} while connected` : "Automatic sync is off"}
+                  {s.lastSync ? ` · last sync ${timeAgo(s.lastSync)}` : ""}.{" "}
+                  <button type="button" className="text-accent-strong hover:underline" onClick={() => useUi.getState().setPage("settings")}>
+                    Change in Settings
+                  </button>
+                </p>
+              )}
+              {s && !s.connected && s.windowHidden && <p className="text-xs text-warn">The stored session was reopened in the background but the site has not handed over a session: sign-in is required. Click “Show the sign-in window”.</p>}
+              {s && !s.connected && s.windowOpen && !s.windowHidden && <p className="text-xs text-muted">Sign in in the MY Epitech window. This turns to “Connected” a moment after the dashboard loads.</p>}
             </div>
           </Card>
           <Card>

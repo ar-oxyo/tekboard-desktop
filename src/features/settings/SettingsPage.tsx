@@ -2,13 +2,16 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Check, FolderPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Badge, Button, Card, CardTitle, Code, ErrorNote, Field, IconButton, Input, PageHeader, Select, Spinner } from "../../components/ui";
+import { Select } from "../../components/Select";
+import { Badge, Button, Card, CardTitle, Code, ErrorNote, Field, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
 import { api, asAppError, type Settings } from "../../lib/api";
 import { tildify } from "../../lib/format";
-import { keys, useEnv, useHome, useRepos, useSettings, useTemplates } from "../../lib/hooks";
+import { keys, useEnv, useHome, usePref, useRepos, useSettings, useTemplates } from "../../lib/hooks";
 import { cloneTargets } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { ClaudeCard } from "./ClaudeCard";
+
+const TABS: Array<[string, string]> = [["general", "General"], ["tools", "Tools & Claude"], ["my", "MY Epitech"], ["design", "Design"]];
 
 export function SettingsPage() {
   const qc = useQueryClient();
@@ -18,6 +21,7 @@ export function SettingsPage() {
   const templates = useTemplates();
   const repos = useRepos((settings.data?.roots.length ?? 0) > 0);
   const [draft, setDraft] = useState<Settings | null>(null);
+  const [savedTab, setTab] = usePref<string>("settings.tab", "general");
 
   useEffect(() => {
     if (settings.data && draft === null) setDraft(settings.data);
@@ -46,6 +50,7 @@ export function SettingsPage() {
     );
   }
 
+  const tab = TABS.some(([id]) => id === savedTab) ? savedTab : "general";
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings.data);
   const set = (patch: Partial<Settings>) => setDraft({ ...draft, ...patch });
 
@@ -83,8 +88,15 @@ export function SettingsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <div className="flex flex-col gap-4">
+      <div className="mb-4 flex items-center gap-1 border-b border-white/6" role="tablist" aria-label="Settings sections">
+        {TABS.map(([id, label]) => (
+          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`-mb-px h-9 border-b-2 px-3.5 text-[13px] transition-colors ${tab === id ? "border-accent font-medium text-fg" : "border-transparent text-muted hover:text-fg"}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === "general" && (
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
           <Card>
             <CardTitle
               right={
@@ -111,14 +123,7 @@ export function SettingsPage() {
             )}
             <div className="border-t border-white/6 px-4 py-3">
               <Field label="Clone new projects into" hint="Automatic: next to the repositories of the same kind (Epitech with Epitech).">
-                <Select value={draft.cloneDir ?? ""} onChange={(e) => set({ cloneDir: e.target.value || null })}>
-                  <option value="">Automatic</option>
-                  {targets.map((t) => (
-                    <option key={t} value={t}>
-                      {tildify(t, home)}
-                    </option>
-                  ))}
-                </Select>
+                <Select label="Clone folder" mono value={draft.cloneDir ?? ""} onChange={(v) => set({ cloneDir: v || null })} options={[{ value: "", label: "Automatic" }, ...targets.map((t) => ({ value: t, label: tildify(t, home) }))]} />
               </Field>
             </div>
             <div className="border-t border-white/6 px-4 py-3">
@@ -144,7 +149,6 @@ export function SettingsPage() {
               )}
             </div>
           </Card>
-
           <Card>
             <CardTitle>Workspace</CardTitle>
             <div className="flex flex-col gap-3 px-4 py-4">
@@ -165,18 +169,72 @@ export function SettingsPage() {
                 <Input className="font-mono text-xs" placeholder="ptyxis --new-window -d {dir} --" value={draft.terminalRunCmd} onChange={(e) => set({ terminalRunCmd: e.target.value })} />
               </Field>
               <Field label="Default template for new projects">
-                <Select value={draft.defaultTemplate ?? ""} onChange={(e) => set({ defaultTemplate: e.target.value || null })}>
-                  <option value="">None</option>
-                  {(templates.data ?? []).map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </Select>
+                <Select label="Default template" value={draft.defaultTemplate ?? ""} onChange={(v) => set({ defaultTemplate: v || null })} options={[{ value: "", label: "None" }, ...(templates.data ?? []).map((t) => ({ value: t.id, label: t.name }))]} />
               </Field>
             </div>
           </Card>
-
+        </div>
+      )}
+      {tab === "tools" && (
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+          <div className="flex flex-col gap-4">
+            <ClaudeCard configured={settings.data.claudePath} saving={save.isPending} onPick={(claudePath) => save.mutate({ ...settings.data!, claudePath })} />
+          <Card>
+            <CardTitle
+              right={
+                <Button size="sm" onClick={() => useUi.getState().setPage("prompts")}>
+                  Open the prompt manager
+                </Button>
+              }
+            >
+              Prompts
+            </CardTitle>
+            <p className="px-4 py-3 text-xs text-muted">Read and personalise what TekBoard asks Claude Code: pre-check against the subject, unit tests, README, repository analysis. Your versions are kept across updates.</p>
+          </Card>
+          </div>
+          <EnvironmentCard />
+        </div>
+      )}
+      {tab === "my" && (
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+          <Card>
+            <CardTitle
+              right={
+                <Button size="sm" onClick={() => useUi.getState().setPage("myepitech")}>
+                  Open MY Epitech
+                </Button>
+              }
+            >
+              MY Epitech synchronisation
+            </CardTitle>
+            <div className="flex flex-col gap-3 px-4 py-4">
+              <Field label="Automatic sync" hint="Runs only while TekBoard is open and signed in to MY Epitech. Read-only requests on your own account, half a second apart. A failed sync is reported, never retried in a loop.">
+                <Select
+                  label="Automatic sync"
+                  value={String(draft.mySyncMinutes)}
+                  onChange={(v) => set({ mySyncMinutes: Number(v) })}
+                  options={[
+                    { value: "0", label: "Off — only when I click “Sync now”" },
+                    { value: "15", label: "Every 15 minutes" },
+                    { value: "30", label: "Every 30 minutes" },
+                    { value: "60", label: "Every hour" },
+                    { value: "180", label: "Every 3 hours" },
+                  ]}
+                />
+              </Field>
+              <label className="flex items-start gap-3">
+                <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={draft.myAutoReconnect} onChange={(e) => set({ myAutoReconnect: e.target.checked })} />
+                <span>
+                  <span className="block text-[13px]">Reconnect when TekBoard starts</span>
+                  <span className="block text-xs text-faint">Opens the MY Epitech session kept on this computer in a hidden window. If the site asks you to sign in again, nothing is forced: the status says so and you open the window yourself.</span>
+                </span>
+              </label>
+            </div>
+          </Card>
+        </div>
+      )}
+      {tab === "design" && (
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
           <Card>
             <CardTitle>Design</CardTitle>
             <ThemePicker
@@ -188,7 +246,6 @@ export function SettingsPage() {
               }}
             />
           </Card>
-
           <Card>
             <CardTitle>Appearance</CardTitle>
             <label className="flex items-center gap-3 px-4 py-4">
@@ -200,12 +257,7 @@ export function SettingsPage() {
             </label>
           </Card>
         </div>
-
-        <div className="flex flex-col gap-4">
-          <ClaudeCard configured={settings.data.claudePath} saving={save.isPending} onPick={(claudePath) => save.mutate({ ...settings.data!, claudePath })} />
-          <EnvironmentCard />
-        </div>
-      </div>
+      )}
     </>
   );
 }

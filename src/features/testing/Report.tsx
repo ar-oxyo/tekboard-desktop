@@ -334,6 +334,12 @@ export function Report({ data, onCancel, envActions, onClear }: { data: ReportDa
       {data.kind === "banana" && !running && <Banana s={s} />}
       {data.kind === "moulinette" && <Moulinette s={s} />}
       {data.kind === "gen_tests" && <GenTests s={s} />}
+      {data.kind === "analysis" && str(s.report) && (
+        <div>
+          <p className="mb-1 text-xs font-medium text-muted">Claude's analysis — its reading of the code, to verify, not a measurement or a grade</p>
+          <div className="selectable max-h-[30rem] overflow-auto rounded-lg border border-line bg-bg px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap">{str(s.report)}</div>
+        </div>
+      )}
       {data.kind === "build" && <p className="selectable text-[13px] text-muted"><span className="font-mono text-fg">{str(s.command)}</span> · exit {String(s.exitCode ?? "?")} · {num(s.warnings) ?? 0} warning(s){str(s.commit) && <> · commit <span className="font-mono">{str(s.commit)}</span></>}</p>}
       <div>
         <div className="mb-1 flex items-center justify-between">

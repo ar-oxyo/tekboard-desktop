@@ -3,11 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Download, FilePlus2, FileText, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Badge, Button, Card, CardTitle, EmptyState, ErrorNote, IconButton, Input, PageHeader, Select, Spinner } from "../../components/ui";
+import { Select } from "../../components/Select";
+import { Badge, Button, Card, CardTitle, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
 import { api, asAppError, type RepoInfo, type Subject, type SubjectImportResult } from "../../lib/api";
 import { formatBytes, tildify, timeAgo } from "../../lib/format";
 import { keys, useHome, useRepos, useSettings, useSubjects } from "../../lib/hooks";
-import { displayName } from "../../lib/repos";
+import { displayName, repoOptions } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 
 export function SubjectsPage() {
@@ -107,14 +108,7 @@ export function SubjectsPage() {
 
 function ProjectSelect({ value, repos, onChange, className }: { value: string | null; repos: RepoInfo[]; onChange: (path: string | null) => void; className?: string }) {
   return (
-    <Select className={className} value={value ?? ""} aria-label="Project" onChange={(e) => onChange(e.target.value || null)}>
-      <option value="">No project</option>
-      {repos.map((r) => (
-        <option key={r.path} value={r.path}>
-          {displayName(r)}
-        </option>
-      ))}
-    </Select>
+    <Select className={className} value={value ?? ""} label="Project" onChange={(v) => onChange(v || null)} options={[{ value: "", label: "No project" }, ...repoOptions(repos)]} />
   );
 }
 

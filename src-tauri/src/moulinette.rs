@@ -157,14 +157,11 @@ pub fn parse_checklist(answer: &str) -> Vec<Item> {
         .collect()
 }
 
-pub fn subject_prompt(subject: &str) -> String {
-    format!(
-        "You are checking a student project against its assignment, before a manual review. Work only from what you can read in this folder.\n\n\
-         1. From the assignment below, list the requirements that can be checked by reading the repository (expected files, binary name, required functions or behaviours, allowed/forbidden functions, build rules, error handling the text demands). Ignore anything about grading or deadlines. At most 25 items.\n\
-         2. For each one, read the relevant files and decide: \"met\", \"not_met\", or \"unclear\" when the code alone cannot tell (never guess: unclear is the right answer for behaviour you cannot verify by reading).\n\
-         3. Answer with ONLY a JSON array in a ```json block: [{{\"requirement\": \"…\", \"status\": \"met|not_met|unclear\", \"evidence\": \"file and line, or why it is unclear\"}}]. No other text.\n\n\
-         --- ASSIGNMENT ---\n{subject}\n--- END ---"
-    )
+/// The subject check, from the template in use (see `prompts`).
+pub fn subject_prompt(template: &str, repo: &Path, subject: &str) -> String {
+    let mut values = crate::prompts::common_values(repo);
+    values.insert("SUBJECT".into(), subject.to_string());
+    crate::prompts::render(template, &values)
 }
 
 pub fn overall(sections: &[Section]) -> &'static str {
@@ -181,7 +178,7 @@ pub fn overall(sections: &[Section]) -> &'static str {
     "Ready for manual review"
 }
 
-pub fn run(job: &Job, repo: &Path, params: &Params, subject_pdf: Option<PathBuf>) -> Result<&'static str> {
+pub fn run(job: &Job, repo: &Path, params: &Params, subject_pdf: Option<PathBuf>, subject_template: &str) -> Result<&'static str> {
     let mut sections: Vec<Section> = Vec::new();
     let mut push = |job: &Job, s: Section| {
         job.end(s.id, step_status(s.result), Some(s.detail.clone()));
@@ -293,7 +290,7 @@ pub fn run(job: &Job, repo: &Path, params: &Params, subject_pdf: Option<PathBuf>
     } else if subject_text.is_none() {
         push(job, Section { id: "subject", label: "Subject requirements", result: "not_run", evidence: "none", detail: "Not verified: no text could be read from the subject PDF".into(), items: vec![] });
     } else {
-        let (o, answer) = claude::run(job, repo, &subject_prompt(&subject_text.unwrap_or_default()), &[], Duration::from_secs(900))?;
+        let (o, answer) = claude::run(job, repo, &subject_prompt(subject_template, repo, &subject_text.unwrap_or_default()), &[], Duration::from_secs(900))?;
         if o.cancelled {
             return Ok("cancelled");
         }
@@ -318,26 +315,23 @@ pub fn run(job: &Job, repo: &Path, params: &Params, subject_pdf: Option<PathBuf>
 
 pub const GEN_STEPS: &[(&str, &str)] = &[("context", "Looking at the project"), ("claude", "Claude Code writes tests"), ("changes", "Files changed"), ("run", "Running the tests")];
 
-pub fn tests_prompt(detection: &testing::Detection, has_rule: bool) -> String {
-    let framework = if detection.frameworks.iter().any(|f| f == "Criterion") || detection.test_files == 0 { "Criterion (#include <criterion/criterion.h>)" } else { "the framework the existing tests already use" };
-    format!(
-        "Write unit tests for this C project.\n\n\
-         - Read the sources first (Glob/Grep/Read). Find the functions that have no test yet in tests/.\n\
-         - Write tests with {framework}, in new files under tests/ named test_<topic>.c. You may only create or edit files inside tests/: do not try to change anything else.\n\
-         - Follow the Epitech coding style: standard file header comment, 4-space indentation, snake_case names.\n\
-         - Test real behaviour you verified by reading the code, including edge cases (empty input, NULL when the function handles it, limits). Do not invent behaviour: if you are unsure what a function should return, do not test that case.\n\
-         - Do not test static functions or main().\n\
-         - {rule}\n\n\
-         End with a short plain-text summary: the files you wrote, the functions covered, and what you chose not to test and why.",
-        rule = if has_rule { "The Makefile has a test rule: keep to what it compiles (check which files it takes)." } else { "The Makefile has no tests_run rule and you cannot edit it: say so in your summary, with the exact rule the student should add." }
-    )
+/// Values of the test-generation prompt that depend on what the project already has.
+pub fn tests_values(repo: &Path, detection: &testing::Detection, has_rule: bool) -> std::collections::HashMap<String, String> {
+    let mut values = crate::prompts::common_values(repo);
+    values.insert("FRAMEWORK".into(), if detection.frameworks.iter().any(|f| f == "Criterion") || detection.test_files == 0 { "Criterion (#include <criterion/criterion.h>)" } else { "the framework the existing tests already use" }.to_string());
+    values.insert("TEST_RULE_NOTE".into(), if has_rule { "The Makefile has a test rule: keep to what it compiles (check which files it takes)." } else { "The Makefile has no tests_run rule and you cannot edit it: say so in your summary, with the exact rule the student should add." }.to_string());
+    values
+}
+
+pub fn tests_prompt(template: &str, repo: &Path, detection: &testing::Detection, has_rule: bool) -> String {
+    crate::prompts::render(template, &tests_values(repo, detection, has_rule))
 }
 
 fn porcelain(repo: &Path) -> Vec<String> {
     git::run(Some(repo), &["status", "--porcelain", "--untracked-files=all"]).map(|t| t.lines().map(str::to_string).collect()).unwrap_or_default()
 }
 
-pub fn generate_tests(job: &Job, repo: &Path) -> Result<&'static str> {
+pub fn generate_tests(job: &Job, repo: &Path, template: &str) -> Result<&'static str> {
     job.start("context");
     let detection = testing::detect(repo);
     let test_cmd = detection.suites.iter().find(|s| s.trusted).map(|s| s.command.clone());
@@ -345,7 +339,7 @@ pub fn generate_tests(job: &Job, repo: &Path) -> Result<&'static str> {
     job.end("context", "success", Some(format!("{} test file(s) already there; {}", detection.test_files, test_cmd.as_deref().map(|c| format!("`{c}` runs them")).unwrap_or_else(|| "no test rule in the Makefile".into()))));
 
     job.start("claude");
-    let (o, answer) = claude::run(job, repo, &tests_prompt(&detection, test_cmd.is_some()), &["tests"], Duration::from_secs(1200))?;
+    let (o, answer) = claude::run(job, repo, &tests_prompt(template, repo, &detection, test_cmd.is_some()), &["tests"], Duration::from_secs(1200))?;
     if o.cancelled {
         return Ok("cancelled");
     }

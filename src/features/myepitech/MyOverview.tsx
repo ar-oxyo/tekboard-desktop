@@ -1,7 +1,7 @@
 // What the synced MY Epitech data says: projects and hand-in dates, the local repository
 // each one matches, the latest automated test results, credits and validations.
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarCheck, ChevronDown, ChevronRight, FolderGit2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ChevronDown, ChevronRight, FolderGit2 } from "lucide-react";
 import { useState } from "react";
 import { Badge, Button, cn, ErrorNote, Spinner } from "../../components/ui";
 import { api, asAppError, type MyProject } from "../../lib/api";
@@ -12,31 +12,21 @@ import { useUi } from "../../lib/store";
 const day = (iso: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
 
 export function MyProjects() {
-  const qc = useQueryClient();
-  const toast = useUi((s) => s.toast);
   const o = useQuery({ queryKey: ["my-overview"], queryFn: api.myOverview, staleTime: 0 });
   const [showPast, setShowPast] = useState(false);
-  const apply = useMutation({
-    mutationFn: (ids: number[]) => api.myApplyDeadlines(ids),
-    onSuccess: (n) => {
-      toast({ kind: "ok", title: n === 0 ? "Deadlines were already up to date" : `${n} deadline${n > 1 ? "s" : ""} saved in TekBoard` });
-      void qc.invalidateQueries({ queryKey: ["my-overview"] });
-      void qc.invalidateQueries({ queryKey: ["repos"] });
-    },
-    onError: (e) => toast({ kind: "error", title: "Deadlines not saved", detail: asAppError(e).message }),
-  });
   if (o.isLoading) return <p className="flex items-center gap-2 px-4 py-8 text-[13px] text-muted"><Spinner /> Reading the synced data…</p>;
   if (o.error || !o.data) return <div className="p-4"><ErrorNote>{asAppError(o.error).message}</ErrorNote></div>;
   const all = o.data.projects;
-  const ongoing = all.filter((p) => p.ongoing);
-  const past = all.filter((p) => !p.ongoing);
-  const toApply = ongoing.filter((p) => p.repoPath && p.deadline && p.repoDeadline !== p.deadline);
+  const ongoing = all.filter((p) => p.ongoing || p.upcoming);
+  const past = all.filter((p) => !p.ongoing && !p.upcoming);
+  // Dates reach the repositories by themselves; what is left here are the ones you typed differently.
+  const typed = all.filter((p) => p.repoPath && p.deadline && p.repoDeadlineSource === "manual" && p.repoDeadline !== p.deadline);
   if (all.length === 0) return <p className="px-4 py-6 text-[13px] text-muted">No project in the synced data yet. Connect and click “Sync now”.</p>;
   return (
     <div>
       <div className="flex items-center gap-2 border-b border-white/6 px-4 py-2.5 text-xs text-muted">
-        <span className="mr-auto">{ongoing.length} ongoing · {past.length} finished{o.data.syncedAt ? ` · synced ${timeAgo(o.data.syncedAt)}` : ""}</span>
-        {toApply.length > 0 && <Button size="sm" variant="primary" icon={<CalendarCheck className="size-3.5" />} busy={apply.isPending} onClick={() => apply.mutate(toApply.map((p) => p.id))} title={toApply.map((p) => `${p.name}: ${p.deadline}${p.repoDeadline ? ` (now ${p.repoDeadline})` : ""}`).join("\n")}>Save {toApply.length} deadline{toApply.length > 1 ? "s" : ""} to my projects</Button>}
+        <span className="mr-auto">{all.filter((p) => p.ongoing).length} ongoing · {all.filter((p) => p.upcoming).length} to come · {past.length} finished{o.data.syncedAt ? ` · synced ${timeAgo(o.data.syncedAt)}` : ""}</span>
+        {typed.length > 0 && <span className="text-warn" title={typed.map((p) => `${p.name}: you typed ${p.repoDeadline}, MY Epitech says ${p.deadline}`).join("\n")}>{typed.length} date{typed.length > 1 ? "s" : ""} typed by you differ{typed.length > 1 ? "" : "s"}</span>}
       </div>
       <ul>{ongoing.map((p) => <ProjectRow key={p.id} p={p} />)}</ul>
       {past.length > 0 && (
@@ -80,7 +70,8 @@ function ProjectRow({ p }: { p: MyProject }) {
       {open && (
         <div className="flex flex-col gap-2 px-4 pb-3 pl-[42px] text-xs">
           {p.unitName && <p className="text-muted">{p.unitName}{p.groupMax !== null && ` · ${p.groupMax === 1 ? "solo" : `groups of up to ${p.groupMax}`}`}{p.url && <span className="selectable ml-2 font-mono text-[11px] text-faint">{p.url}</span>}</p>}
-          {p.repoPath && <p className="text-muted">Deadline saved in TekBoard: <span className={p.repoDeadline === p.deadline ? "text-ok" : "text-warn"}>{p.repoDeadline ?? "none"}</span>{p.repoDeadline !== p.deadline && p.deadline && ` (MY Epitech says ${p.deadline})`}</p>}
+          {p.repoPath && <p className="text-muted">Deadline in TekBoard: <span className={p.repoDeadline === p.deadline ? "text-ok" : "text-warn"}>{p.repoDeadline ?? "none"}</span>{p.repoDeadlineSource === "manual" ? " (typed by you" : p.repoDeadlineSource === "my" ? " (from MY Epitech" : " ("}{p.repoDeadline !== p.deadline && p.deadline ? `${p.repoDeadlineSource ? ", " : ""}MY Epitech says ${p.deadline})` : ")"}</p>}
+          {p.group.length > 1 && <p className="selectable text-muted">Group{p.groupName ? ` “${p.groupName}”` : ""}: {p.group.join(", ")}</p>}
           {t && (
             <div className="rounded-lg border border-line bg-bg px-3 py-2">
               <p className="text-fg">Latest automated tests: {t.passed ?? "?"}/{t.total ?? "?"} passed <span className="text-muted">· {t.runs} run{t.runs > 1 ? "s" : ""}{t.date && ` · ${timeAgo(t.date)}`}{t.commit && <> · commit <span className="selectable font-mono">{t.commit.slice(0, 7)}</span></>}</span></p>

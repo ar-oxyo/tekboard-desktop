@@ -18,10 +18,12 @@ pub mod jobs;
 pub mod launcher;
 pub mod library;
 pub mod moulinette;
+pub mod mydata;
 pub mod myepitech;
 pub mod myview;
 pub mod packager;
 pub mod projects;
+pub mod prompts;
 pub mod readme;
 pub mod runner;
 pub mod scanner;
@@ -51,6 +53,7 @@ pub fn run() {
             let cache_dir = app.path().app_cache_dir()?;
             std::fs::create_dir_all(&cache_dir)?;
             app.manage(AppState { db: std::sync::Arc::new(Mutex::new(conn)), data_dir, cache_dir, jobs: jobs::Jobs::default(), my: Mutex::new(myepitech::Session::default()), my_syncing: Mutex::new(false) });
+            commands_my::start_background(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -68,6 +71,12 @@ pub fn run() {
             commands_dev::job_active,
             commands_dev::claude_info,
             commands_dev::claude_check,
+            commands_dev::analysis_start,
+            commands_dev::prompts_list,
+            commands_dev::prompt_save,
+            commands_dev::prompt_delete,
+            commands_dev::prompt_activate,
+            commands_dev::prompt_preview,
             commands::project_set_status,
             commands::project_set_kind,
             commands::project_set_my,
@@ -146,6 +155,8 @@ pub fn run() {
             commands_my::my_forget,
             commands_my::my_overview,
             commands_my::my_apply_deadlines,
+            commands_my::my_agenda,
+            commands_my::my_academic,
             commands_dev::project_config_get,
             commands_dev::project_config_set,
             commands_dev::job_get,

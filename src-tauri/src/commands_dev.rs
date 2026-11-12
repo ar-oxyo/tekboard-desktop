@@ -8,6 +8,7 @@ use crate::error::{AppError, Result};
 use crate::jobs::{argv_of, JobView};
 use crate::moulinette;
 use crate::packager::{self, Package, Preview};
+use crate::prompts;
 use crate::readme::{self, Draft};
 use crate::settings;
 use crate::subjects;
@@ -348,8 +349,9 @@ pub fn moulinette_start(state: State<'_, AppState>, repo: String, params: moulin
     }
     argv_of(&params.build)?;
     let subject = if params.subject_ai { linked_subject(&state, &dir)?.map(|(_, p)| p) } else { None };
+    let template = prompts::template(&state.conn(), prompts::SUBJECT)?;
     let title = title_for(&dir, "Claude Moulinette");
-    Ok(state.jobs.start(state.db.clone(), "moulinette", Some(key), title, moulinette::STEPS, move |job| moulinette::run(job, &dir, &params, subject)))
+    Ok(state.jobs.start(state.db.clone(), "moulinette", Some(key), title, moulinette::STEPS, move |job| moulinette::run(job, &dir, &params, subject, &template)))
 }
 
 #[derive(Serialize)]
@@ -368,14 +370,15 @@ pub fn claude_brief(state: State<'_, AppState>, repo: String, task: String, disc
         "tests" => {
             let d = testing::detect(&dir);
             let has_rule = d.suites.iter().any(|s| s.trusted);
-            Ok(ClaudeBrief { plan: claude::plan(&["tests"]), prompt: moulinette::tests_prompt(&d, has_rule) })
+            Ok(ClaudeBrief { plan: claude::plan(&["tests"]), prompt: moulinette::tests_prompt(&prompts::template(&state.conn(), prompts::TESTS)?, &dir, &d, has_rule) })
         }
         "readme" => {
             let subject = linked_subject(&state, &dir)?;
             let draft = readme::draft(&dir, &readme::Facts { subject: subject.as_ref().map(|(n, _)| n.as_str()), ai_disclosure: disclosure });
-            Ok(ClaudeBrief { plan: claude::plan(&[]), prompt: readme::ai_prompt(&draft.proposed, disclosure) })
+            Ok(ClaudeBrief { plan: claude::plan(&[]), prompt: readme::ai_prompt(&prompts::template(&state.conn(), prompts::README)?, &dir, &draft.proposed, disclosure) })
         }
-        "subject" => Ok(ClaudeBrief { plan: claude::plan(&[]), prompt: moulinette::subject_prompt("<the text of the linked subject PDF>") }),
+        "subject" => Ok(ClaudeBrief { plan: claude::plan(&[]), prompt: moulinette::subject_prompt(&prompts::template(&state.conn(), prompts::SUBJECT)?, &dir, "<the text of the linked subject PDF>") }),
+        "analysis" => Ok(ClaudeBrief { plan: claude::plan(&[]), prompt: prompts::render(&prompts::template(&state.conn(), prompts::ANALYZE)?, &prompts::common_values(&dir)) }),
         _ => Err(AppError::new("invalid_mode", "Unknown task")),
     }
 }
@@ -387,8 +390,149 @@ pub fn gen_tests_start(state: State<'_, AppState>, repo: String) -> Result<u64> 
     if let Some(id) = state.jobs.active("gen_tests", Some(&key)) {
         return Ok(id);
     }
+    let template = prompts::template(&state.conn(), prompts::TESTS)?;
     let title = title_for(&dir, "Generate tests with Claude");
-    Ok(state.jobs.start(state.db.clone(), "gen_tests", Some(key), title, moulinette::GEN_STEPS, move |job| moulinette::generate_tests(job, &dir)))
+    Ok(state.jobs.start(state.db.clone(), "gen_tests", Some(key), title, moulinette::GEN_STEPS, move |job| moulinette::generate_tests(job, &dir, &template)))
+}
+
+/// Asks Claude Code (read-only) for a review of the repository. The report lands in the job summary.
+#[tauri::command(async)]
+pub fn analysis_start(state: State<'_, AppState>, repo: String) -> Result<u64> {
+    let dir = repo_dir(&state, &repo)?;
+    let key = dir.to_string_lossy().into_owned();
+    if let Some(id) = state.jobs.active("analysis", Some(&key)) {
+        return Ok(id);
+    }
+    let prompt = prompts::render(&prompts::template(&state.conn(), prompts::ANALYZE)?, &prompts::common_values(&dir));
+    let title = title_for(&dir, "Repository analysis");
+    Ok(state.jobs.start(state.db.clone(), "analysis", Some(key), title, &[("claude", "Claude Code reads the project")], move |job| {
+        job.start("claude");
+        let (o, answer) = claude::run(job, &dir, &prompt, &[], Duration::from_secs(900))?;
+        if o.cancelled {
+            return Ok("cancelled");
+        }
+        match answer {
+            Ok(a) => {
+                job.set("report", format!("{}\n", claude::fenced(&a.text, "markdown").trim_end()));
+                job.set("costUsd", a.cost_usd);
+                job.end("claude", "success", Some(format!("{} turn(s) — Claude's reading of the code, not a measurement", a.turns.unwrap_or(0))));
+                Ok("success")
+            }
+            Err(e) => {
+                job.end("claude", "failed", Some(e.to_string()));
+                Ok("failed")
+            }
+        }
+    }))
+}
+
+// ───────────────────────────── prompts ─────────────────────────────
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PresetView {
+    pub name: String,
+    pub body: String,
+    pub updated_at: i64,
+    /// Why this variant is not usable any more, if so (it then falls back to the default).
+    pub problem: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromptView {
+    #[serde(flatten)]
+    pub def: prompts::Def,
+    pub presets: Vec<PresetView>,
+    /// Variant in use; `None` = the default.
+    pub active: Option<String>,
+}
+
+#[tauri::command(async)]
+pub fn prompts_list(state: State<'_, AppState>) -> Result<Vec<PromptView>> {
+    let conn = state.conn();
+    prompts::DEFS
+        .iter()
+        .map(|d| {
+            let presets = db::prompt_variants(&conn, d.id)?.into_iter().map(|(name, body, updated_at)| PresetView { problem: prompts::validate(d, &body).err().map(|e| e.to_string()), name, body, updated_at }).collect();
+            Ok(PromptView { def: *d, presets, active: prompts::active_preset(&conn, d.id)? })
+        })
+        .collect()
+}
+
+/// Saves a variant of a prompt. Returns warnings (the variant is saved anyway).
+#[tauri::command(async)]
+pub fn prompt_save(state: State<'_, AppState>, id: String, preset: String, body: String, activate: bool) -> Result<Vec<String>> {
+    let conn = state.conn();
+    let warnings = prompts::save(&conn, &id, &preset, &body, crate::commands::now())?;
+    if activate {
+        prompts::set_active(&conn, &id, Some(preset.trim()))?;
+    }
+    Ok(warnings)
+}
+
+#[tauri::command(async)]
+pub fn prompt_delete(state: State<'_, AppState>, id: String, preset: String) -> Result<()> {
+    prompts::delete(&state.conn(), &id, &preset)
+}
+
+/// Chooses the variant in use; `None` restores the default.
+#[tauri::command(async)]
+pub fn prompt_activate(state: State<'_, AppState>, id: String, preset: Option<String>) -> Result<()> {
+    prompts::set_active(&state.conn(), &id, preset.as_deref())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromptPreview {
+    /// The prompt as Claude Code would receive it.
+    pub text: String,
+    /// Each variable used, its value's origin (`project` or `sample`) and length.
+    pub variables: Vec<(String, &'static str, usize)>,
+    pub error: Option<String>,
+    pub warnings: Vec<String>,
+}
+
+/// Resolves a prompt being edited, with the values of `repo` when given (samples otherwise). Nothing is run.
+#[tauri::command(async)]
+pub fn prompt_preview(state: State<'_, AppState>, id: String, body: String, repo: Option<String>) -> Result<PromptPreview> {
+    let d = prompts::def(&id)?;
+    let mut values = prompts::sample_values(d);
+    let mut real: Vec<String> = Vec::new();
+    if let Some(repo) = repo {
+        let dir = repo_dir(&state, &repo)?;
+        let mut found = prompts::common_values(&dir);
+        match d.id {
+            prompts::TESTS => {
+                let det = testing::detect(&dir);
+                let has_rule = det.suites.iter().any(|s| s.trusted);
+                found.extend(moulinette::tests_values(&dir, &det, has_rule));
+            }
+            prompts::README => {
+                let subject = linked_subject(&state, &dir)?;
+                let draft = readme::draft(&dir, &readme::Facts { subject: subject.as_ref().map(|(n, _)| n.as_str()), ai_disclosure: false });
+                found.extend(readme::ai_values(&dir, &draft.proposed, false));
+            }
+            prompts::SUBJECT => {
+                if let Some(text) = linked_subject(&state, &dir)?.and_then(|(_, p)| claude::pdf_text(&p, 60_000)) {
+                    found.insert("SUBJECT".into(), text);
+                }
+            }
+            _ => {}
+        }
+        real = found.keys().cloned().collect();
+        values.extend(found);
+    }
+    let (error, warnings) = match prompts::validate(d, &body) {
+        Ok(w) => (None, w),
+        Err(e) => (Some(e.to_string()), vec![]),
+    };
+    let variables = prompts::variables_in(&body).into_iter().filter(|n| values.contains_key(n)).map(|n| {
+        let len = values[&n].chars().count();
+        let origin = if real.contains(&n) { "project" } else { "sample" };
+        (n, origin, len)
+    }).collect();
+    Ok(PromptPreview { text: prompts::render(&body, &values), variables, error, warnings })
 }
 
 // ───────────────────────────── package for AI ─────────────────────────────
@@ -457,7 +601,7 @@ pub fn readme_ai_start(state: State<'_, AppState>, repo: String, disclosure: boo
     }
     let subject = linked_subject(&state, &dir)?;
     let draft = readme::draft(&dir, &readme::Facts { subject: subject.as_ref().map(|(n, _)| n.as_str()), ai_disclosure: disclosure });
-    let prompt = readme::ai_prompt(&draft.proposed, disclosure);
+    let prompt = readme::ai_prompt(&prompts::template(&state.conn(), prompts::README)?, &dir, &draft.proposed, disclosure);
     let title = title_for(&dir, "README with Claude");
     Ok(state.jobs.start(state.db.clone(), "readme", Some(key), title, &[("claude", "Claude Code reads the project")], move |job| {
         job.start("claude");

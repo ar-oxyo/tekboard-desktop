@@ -190,17 +190,16 @@ pub fn write(repo: &Path, content: &str, expected_hash: Option<&str>, backups: &
     Ok(saved)
 }
 
-pub fn ai_prompt(draft: &str, disclosure: bool) -> String {
-    format!(
-        "Write the README.md of this project. Work only from what you can read in this folder.\n\n\
-         - Read the sources, the Makefile and the tests first. Describe what the program really does, how to build it, how to run it (real arguments, taken from the argument handling in the code), and how to run the tests.\n\
-         - Do not invent features, options, or example output you did not derive from the code. If something cannot be known from the files, leave an HTML comment `<!-- TODO: … -->` instead of guessing.\n\
-         - Keep it short and practical: no badges, no marketing, no licence section unless a LICENSE file exists.\n\
-         - {disclosure}\n\
-         - Below is a factual skeleton TekBoard extracted (binary name, rules, test command, structure). Keep its facts; replace its TODO comments where the code lets you.\n\n\
-         Answer with ONLY the README content inside one ```markdown block.\n\n--- SKELETON ---\n{draft}\n--- END ---",
-        disclosure = if disclosure { "Include one sentence, in the Tests section, saying part of the tests was written with an AI assistant and reviewed by the author." } else { "Do not mention AI assistance anywhere." }
-    )
+pub fn ai_values(repo: &Path, draft: &str, disclosure: bool) -> std::collections::HashMap<String, String> {
+    let mut values = crate::prompts::common_values(repo);
+    values.insert("SKELETON".into(), draft.to_string());
+    values.insert("DISCLOSURE".into(), if disclosure { "Include one sentence, in the Tests section, saying part of the tests was written with an AI assistant and reviewed by the author." } else { "Do not mention AI assistance anywhere." }.to_string());
+    values
+}
+
+/// The README request, from the template in use (see `prompts`).
+pub fn ai_prompt(template: &str, repo: &Path, draft: &str, disclosure: bool) -> String {
+    crate::prompts::render(template, &ai_values(repo, draft, disclosure))
 }
 
 #[cfg(test)]

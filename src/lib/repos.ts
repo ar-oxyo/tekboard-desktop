@@ -305,3 +305,8 @@ export function preferredCloneDir(repos: RepoInfo[], school: boolean): string | 
   }
   return best;
 }
+
+/** Rows for a project picker: short name, with the module (or the folder) as a hint. */
+export function repoOptions(repos: RepoInfo[]): Array<{ value: string; label: string; hint?: string }> {
+  return repos.map((r) => ({ value: r.path, label: displayName(r), hint: moduleOf(r) ?? (r.group || undefined) }));
+}

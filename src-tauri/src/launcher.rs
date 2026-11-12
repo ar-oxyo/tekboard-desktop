@@ -31,6 +31,36 @@ pub struct Candidate {
     pub reasons: Vec<String>,
 }
 
+/// A project MY Epitech lists as running or about to start, with no local repository yet.
+#[derive(Debug, Clone)]
+pub struct Expected {
+    pub name: String,
+    pub unit_code: String,
+    /// `starts …` / `hand-in …`, already worded.
+    pub when: String,
+}
+
+/// Puts first the remote repositories that MY Epitech expects you to work on: same module
+/// and same project name (punctuation aside). A fact from the school's own list, so it
+/// outranks every heuristic; the rest keeps its order.
+pub fn prefer_expected(candidates: Vec<Candidate>, expected: &[Expected]) -> Vec<Candidate> {
+    let mut tagged: Vec<(bool, Candidate)> = candidates
+        .into_iter()
+        .map(|mut c| {
+            let hit = c.epitech.as_ref().and_then(|e| expected.iter().find(|x| x.unit_code == e.module && crate::myview::norm(&x.name) == crate::myview::norm(&e.project)));
+            if let Some(x) = hit {
+                c.score = 100;
+                c.confidence = Confidence::High;
+                c.reasons.insert(0, format!("MY Epitech lists “{}” ({})", x.name, x.when));
+            }
+            (hit.is_some(), c)
+        })
+        .collect();
+    // Stable: among the others the existing ranking is untouched.
+    tagged.sort_by(|a, b| b.0.cmp(&a.0));
+    tagged.into_iter().map(|(_, c)| c).collect()
+}
+
 /// What the local clones tell us about this student's school repositories.
 #[derive(Debug, Default)]
 pub struct LocalContext {
@@ -188,6 +218,25 @@ mod tests {
 
     fn now() -> DateTime<Utc> {
         "2026-11-10T12:00:00Z".parse().unwrap()
+    }
+
+    #[test]
+    fn a_project_listed_by_my_epitech_outranks_every_heuristic() {
+        let list = vec![
+            remote("EpitechOrg", "G-PSU-100-LYN-1-1-mytop-4", "2026-11-09T08:00:00Z"),
+            remote("EpitechOrg", "G-PSU-100-LYN-1-1-mysudo-1", "2026-10-01T08:00:00Z"),
+            remote("me", "my_sudo", "2026-11-10T08:00:00Z"),
+        ];
+        let expected = vec![Expected { name: "my_sudo".into(), unit_code: "G-PSU-100".into(), when: "starts 2026-11-14".into() }];
+        let ranked = prefer_expected(rank(list.clone(), &ctx(), now()), &expected);
+        assert_eq!(ranked[0].repo.name, "G-PSU-100-LYN-1-1-mysudo-1");
+        assert_eq!(ranked[0].score, 100);
+        assert_eq!(ranked[0].confidence, Confidence::High);
+        assert_eq!(ranked[0].reasons[0], "MY Epitech lists “my_sudo” (starts 2026-11-14)");
+        // A personal repository with the same name is not mistaken for it, and nothing changes without a match.
+        assert!(ranked.iter().find(|c| c.repo.owner == "me").unwrap().score < 100);
+        let plain = rank(list, &ctx(), now());
+        assert_eq!(prefer_expected(plain.clone(), &[]).iter().map(|c| c.repo.name.clone()).collect::<Vec<_>>(), plain.iter().map(|c| c.repo.name.clone()).collect::<Vec<_>>());
     }
 
     #[test]

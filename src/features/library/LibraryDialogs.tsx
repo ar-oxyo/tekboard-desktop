@@ -5,7 +5,8 @@ import { FolderOpen, RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CodeView, DiffView } from "../../components/DiffView";
 import { Modal } from "../../components/Modal";
-import { Badge, Button, cn, ErrorNote, Field, Input, Select, Spinner } from "../../components/ui";
+import { Select } from "../../components/Select";
+import { Badge, Button, cn, ErrorNote, Field, Input, Spinner } from "../../components/ui";
 import { api, asAppError, type Catalog, type ImportCandidate, type LibFileState, type Library } from "../../lib/api";
 import { formatBytes, tildify } from "../../lib/format";
 import { useHome } from "../../lib/hooks";
@@ -148,9 +149,7 @@ export function ImportDialog({ libraries, libraryId, paths, onClose, onImported 
       <div className="flex flex-col gap-3">
         {libraries.length > 1 && (
           <Field label="Library">
-            <Select value={target} onChange={(e) => setTarget(Number(e.target.value))}>
-              {libraries.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </Select>
+            <Select label="Library" value={String(target)} onChange={(v) => setTarget(Number(v))} options={libraries.map((l) => ({ value: String(l.id), label: l.name }))} />
           </Field>
         )}
         {analysis.isLoading && <p className="flex items-center gap-2 py-6 text-[13px] text-muted"><Spinner /> Reading the files…</p>}
@@ -165,9 +164,7 @@ export function ImportDialog({ libraries, libraryId, paths, onClose, onImported 
           <label className="flex items-center gap-2.5 rounded-lg border border-line bg-bg px-3 py-2 text-[13px]">
             <input type="checkbox" className="accent-(--color-accent)" checked={declare} onChange={(e) => setDeclare(e.target.checked)} />
             <span className="flex-1">Add the prototypes of new functions to</span>
-            <Select className="h-7 w-40 font-mono text-xs" value={header} onChange={(e) => setHeader(e.target.value)} disabled={!declare}>
-              {analysis.data.headers.map((h) => <option key={h} value={h}>{h}</option>)}
-            </Select>
+            <Select size="sm" mono className="w-40" label="Header" value={header} onChange={setHeader} disabled={!declare} options={analysis.data.headers.map((h) => ({ value: h, label: h }))} />
           </label>
         )}
         {(analysis.data?.ignored.length ?? 0) > 0 && (
@@ -208,10 +205,7 @@ function CandidateRow({ c, row, dirs, existing, onChange }: { c: ImportCandidate
         {custom ? (
           <Input autoFocus className="h-7 w-48 font-mono text-xs" value={row.dir} placeholder="new/folder" onChange={(e) => onChange({ dir: e.target.value.replace(/^\/+|\/+$/g, "") })} />
         ) : (
-          <Select className="h-7 w-48 font-mono text-xs" value={row.dir} onChange={(e) => (e.target.value === "\0new" ? setCustom(true) : onChange({ dir: e.target.value }))}>
-            {[...new Set([...dirs, row.dir])].map((d) => <option key={d} value={d}>{d === "" ? "(library root)" : `${d}/`}</option>)}
-            <option value={"\0new"}>New folder…</option>
-          </Select>
+          <Select size="sm" mono className="w-48" label="Folder" value={row.dir} onChange={(v) => (v === "\0new" ? setCustom(true) : onChange({ dir: v }))} options={[...[...new Set([...dirs, row.dir])].map((d) => ({ value: d, label: d === "" ? "(library root)" : `${d}/` })), { value: "\0new", label: "New folder…" }]} />
         )}
         <span className="min-w-0 flex-1 truncate text-faint" title={c.suggestionReason}>{row.dir === c.suggestedDir ? `Suggested: ${c.suggestionReason}` : ""}</span>
         {exists && (

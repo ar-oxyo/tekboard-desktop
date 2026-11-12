@@ -1,13 +1,15 @@
 // Testing center: everything that checks a project — unit tests, clean-clone test, Banana,
 // the pre-check, test generation — with one live report and one history.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Banana as BananaIcon, Bot, FileText, FlaskConical, FolderOpen, GitBranch, PackageOpen, Play, ShieldCheck, Sparkles, SquareTerminal, Trash2 } from "lucide-react";
+import { Banana as BananaIcon, Bot, ChevronDown, FileText, FlaskConical, FolderOpen, GitBranch, PackageOpen, PenLine, Play, ScanSearch, ShieldCheck, Sparkles, SquareTerminal, Trash2 } from "lucide-react";
+import { Menu, MenuItem, MenuLabel, MenuSeparator } from "../../components/Menu";
 import { useEffect, useState, type ReactNode } from "react";
-import { Badge, Button, Card, CardTitle, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Select, Spinner } from "../../components/ui";
+import { Select } from "../../components/Select";
+import { Badge, Button, Card, CardTitle, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
 import { api, asAppError, type RunKind, type TestingInfo } from "../../lib/api";
 import { formatBytes, timeAgo } from "../../lib/format";
-import { useRepos } from "../../lib/hooks";
-import { displayName } from "../../lib/repos";
+import { usePref, useRepos } from "../../lib/hooks";
+import { displayName, repoOptions } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { ClaudeBriefDialog } from "../tools/ClaudeBrief";
 import { QuickBar } from "./QuickBar";
@@ -53,7 +55,7 @@ export function TestingPage() {
   const openEnv = (name: string, terminal: boolean) => api.testrepoEnvOpen(name, terminal).catch(fail(terminal ? "The terminal did not start" : "Could not open the folder"));
   const [toDelete, setToDelete] = useState<string | null>(null);
   const delEnv = useMutation({ mutationFn: (name: string) => api.testrepoEnvDelete(name), onSuccess: () => { setToDelete(null); void qc.invalidateQueries({ queryKey: ["testrepo-envs"] }); }, onError: fail("Not deleted") });
-  const [brief, setBrief] = useState(false);
+  const [brief, setBrief] = useState<"tests" | "analysis" | null>(null);
 
   const raw: ReportData | null = runId !== null ? (run.data ? { ...run.data, steps: run.data.summary.steps ?? [], log: run.data.log ?? "" } : null) : (job.data ?? null);
   const busy = job.data?.status === "running" && runId === null;
@@ -78,10 +80,7 @@ export function TestingPage() {
         title="Testing"
         subtitle="Run, check and validate a project. Every result below was produced on this computer."
         actions={
-          <Select className="w-64" value={repoPath ?? ""} onChange={(e) => useUi.setState({ testingRepo: e.target.value || null, runId: null })} aria-label="Project">
-            <option value="">Choose a project…</option>
-            {(repos.data ?? []).map((r) => <option key={r.path} value={r.path}>{displayName(r)}</option>)}
-          </Select>
+          <Select className="w-64" label="Project" placeholder="Choose a project…" search value={repoPath} onChange={(v) => useUi.setState({ testingRepo: v || null, runId: null })} options={repoOptions(repos.data ?? [])} />
         }
       />
       {repoPath === null ? (
@@ -111,14 +110,11 @@ export function TestingPage() {
         </div>
         <div className="grid grid-cols-[minmax(0,5fr)_minmax(0,6fr)] items-start gap-4">
           <div className="flex min-w-0 flex-col gap-4">
-            <Actions key={repoPath} repo={repoPath} info={info.data} busy={start.isPending} onStart={(fn) => start.mutate(fn)} onBrief={() => setBrief(true)} onTool={(k) => openTool(k, repoPath)} />
+            <Actions key={repoPath} repo={repoPath} info={info.data} busy={start.isPending} onStart={(fn) => start.mutate(fn)} onBrief={setBrief} onTool={(k) => openTool(k, repoPath)} />
 
             <Card>
               <CardTitle right={
-                <Select className="h-7 w-36 text-xs" value={kind} onChange={(e) => setKind(e.target.value as RunKind | "all")} aria-label="Kind of run">
-                  <option value="all">Everything</option>
-                  {(Object.keys(KIND_LABEL) as RunKind[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
-                </Select>
+                <Select size="sm" className="w-40" label="Kind of run" value={kind} onChange={(v) => setKind(v as RunKind | "all")} options={[{ value: "all", label: "Everything" }, ...(Object.keys(KIND_LABEL) as RunKind[]).map((k) => ({ value: k as string, label: KIND_LABEL[k] }))]} />
               }>History</CardTitle>
               {(runs.data?.length ?? 0) === 0 ? (
                 <p className="px-4 py-4 text-[13px] text-muted">Nothing was run on this project yet. Builds, tests and checks are listed here with their logs.</p>
@@ -184,7 +180,19 @@ export function TestingPage() {
         </div>
         </>
       )}
-      {brief && repoPath && <ClaudeBriefDialog repo={repoPath} task="tests" confirmLabel="Start Claude Code" onClose={() => setBrief(false)} onConfirm={() => { setBrief(false); start.mutate(() => api.genTestsStart(repoPath)); }} />}
+      {brief && repoPath && (
+        <ClaudeBriefDialog
+          repo={repoPath}
+          task={brief}
+          confirmLabel="Start Claude Code"
+          onClose={() => setBrief(null)}
+          onConfirm={() => {
+            const task = brief;
+            setBrief(null);
+            start.mutate(() => (task === "tests" ? api.genTestsStart(repoPath) : api.analysisStart(repoPath)));
+          }}
+        />
+      )}
     </>
   );
 }
@@ -213,15 +221,20 @@ function Seg<T extends string>({ value, options, onChange }: { value: T; options
   );
 }
 
-function Tile({ icon, title, children, action }: { icon: ReactNode; title: string; children: ReactNode; action: ReactNode }) {
+/** One check: its button is always there; its options fold away (remembered). */
+function Tile({ id, icon, title, children, action, folded, onToggle }: { id: string; icon: ReactNode; title: string; children: ReactNode; action: ReactNode; folded: string[]; onToggle: (id: string) => void }) {
+  const closed = folded.includes(id);
   return (
-    <div className="border-b border-white/6 px-4 py-3 last:border-b-0">
+    <div className="border-b border-white/6 px-4 py-2.5 last:border-b-0">
       <div className="flex items-center gap-2.5">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-strong">{icon}</span>
-        <h3 className="display min-w-0 flex-1 text-[14px] font-semibold">{title}</h3>
+        <button type="button" aria-expanded={!closed} onClick={() => onToggle(id)} className="group flex min-w-0 flex-1 items-center gap-2.5 text-left" title={closed ? "Show the options" : "Hide the options"}>
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-strong">{icon}</span>
+          <h3 className="display min-w-0 truncate text-[14px] font-semibold">{title}</h3>
+          <ChevronDown className={cn("size-3.5 shrink-0 text-faint transition-transform group-hover:text-fg", closed && "-rotate-90")} />
+        </button>
         {action}
       </div>
-      <div className="mt-2 flex flex-col gap-2 pl-[38px] text-xs text-muted">{children}</div>
+      {!closed && <div className="mt-2 flex flex-col gap-2 pb-1 pl-[38px] text-xs text-muted">{children}</div>}
     </div>
   );
 }
@@ -235,7 +248,7 @@ function Labeled({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string; info: TestingInfo; busy: boolean; onStart: (fn: () => Promise<number>) => void; onBrief: () => void; onTool: (kind: "package" | "readme") => void }) {
+function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string; info: TestingInfo; busy: boolean; onStart: (fn: () => Promise<number>) => void; onBrief: (task: "tests" | "analysis") => void; onTool: (kind: "package" | "readme") => void }) {
   const qc = useQueryClient();
   const toast = useUi((s) => s.toast);
   const suites = info.detection.suites;
@@ -261,17 +274,32 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
     void qc.invalidateQueries({ queryKey: ["testing-info", repo] });
     return api.testsRun(repo, custom.trim(), false);
   };
+  const claudeReady = info.claude.state === "ready";
+  const setPage = useUi((s) => s.setPage);
+  // Options folded by default: the buttons stay, the screen breathes.
+  const [folded, setFolded] = usePref<string[]>("testing.folded", ["testrepo", "banana", "moulinette", "ai"]);
+  const fold = { folded, onToggle: (id: string) => setFolded(folded.includes(id) ? folded.filter((f) => f !== id) : [...folded, id]) };
   const banana = info.banana.repoChecker !== null || (info.banana.epiclang !== null && info.banana.plugin);
 
   return (
     <Card>
       <CardTitle>Checks</CardTitle>
-      <Tile icon={<FlaskConical className="size-4" />} title="Unit tests" action={<Button variant="primary" size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={command === "\0custom" ? !custom.trim() : !command || (chosen !== undefined && !chosen.trusted && !ack)} onClick={() => onStart(command === "\0custom" ? runCustom : () => api.testsRun(repo, command, ack))}>Run Unit Tests</Button>}>
-        <Select className="h-7 font-mono text-xs" value={command} onChange={(e) => { setCommand(e.target.value); setAck(false); }} aria-label="Test command">
-          {suites.map((s) => <option key={s.id} value={s.command}>{s.command}{s.trusted ? "" : "  (script)"}</option>)}
-          {saved && !suites.some((s) => s.command === saved) && <option value={saved}>{saved}  (saved)</option>}
-          <option value={"\0custom"}>Another command…</option>
-        </Select>
+      <Tile id="tests" {...fold} icon={<FlaskConical className="size-4" />} title="Unit tests" action={<Button variant="primary" size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={command === "\0custom" ? !custom.trim() : !command || (chosen !== undefined && !chosen.trusted && !ack)} onClick={() => onStart(command === "\0custom" ? runCustom : () => api.testsRun(repo, command, ack))}>Run Unit Tests</Button>}>
+        <Select
+          size="sm"
+          mono
+          label="Test command"
+          value={command}
+          onChange={(v) => {
+            setCommand(v);
+            setAck(false);
+          }}
+          options={[
+            ...suites.map((s) => ({ value: s.command, label: s.command, hint: s.trusted ? undefined : "script" })),
+            ...(saved && !suites.some((s) => s.command === saved) ? [{ value: saved, label: saved, hint: "saved" }] : []),
+            { value: "\0custom", label: "Another command…" },
+          ]}
+        />
         {command === "\0custom" && <Input className="h-7 font-mono text-xs" placeholder="make my_tests" value={custom} onChange={(e) => setCustom(e.target.value)} />}
         {command === "\0custom" && <p>Saved for this project. One program and its arguments: no pipes, quotes or &amp;&amp; (put those in a Makefile rule).</p>}
         {chosen && !chosen.trusted && (
@@ -287,7 +315,7 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
         {info.detection.notes.map((n) => <p key={n} className="text-warn">{n}</p>)}
       </Tile>
 
-      <Tile icon={<GitBranch className="size-4" />} title="TestRepo" action={<Button variant="primary" size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} onClick={() => onStart(() => api.testrepoStart(repo, { mode, rev: null, build: build.trim(), tests: withTests ? firstTrusted : null, isolation, image: info.config.image }))}>TestRepo</Button>}>
+      <Tile id="testrepo" {...fold} icon={<GitBranch className="size-4" />} title="TestRepo" action={<Button variant="primary" size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} onClick={() => onStart(() => api.testrepoStart(repo, { mode, rev: null, build: build.trim(), tests: withTests ? firstTrusted : null, isolation, image: info.config.image }))}>TestRepo</Button>}>
         <p>Clones the repository into a fresh folder and builds it there, to see what someone else gets.</p>
         <Labeled label="Source">
           <Seg value={mode} onChange={setMode} options={[{ id: "remote", label: "Remote clone", disabled: !info.hasRemote, title: info.hasRemote ? "What is published: the reference before a hand-in" : "This repository has no remote" }, { id: "snapshot", label: "Local Git snapshot", title: "What Git holds here at HEAD. Does not prove it was pushed." }]} />
@@ -310,7 +338,7 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
         </label>
       </Tile>
 
-      <Tile icon={<BananaIcon className="size-4" />} title="Banana Repo Checker" action={<Button variant="primary" size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!banana} onClick={() => onStart(() => api.bananaRun(repo))}>Run Banana</Button>}>
+      <Tile id="banana" {...fold} icon={<BananaIcon className="size-4" />} title="Banana" action={<Button variant="primary" size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!banana} onClick={() => onStart(() => api.bananaRun(repo))}>Run Banana</Button>}>
         {banana ? (
           <p className="selectable">
             {info.banana.repoChecker ? <>Delivery files with <code className="font-mono">{info.banana.repoChecker}</code>{info.banana.version && ` (${info.banana.version})`}</> : "banana-check-repo is not installed"}
@@ -321,28 +349,64 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
         )}
       </Tile>
 
-      <Tile icon={<ShieldCheck className="size-4" />} title="Claude Moulinette" action={<Button variant="primary" size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} onClick={() => { if (memory.trim() !== (info.config.runCmd ?? "")) saveConfig.mutate({ runCmd: memory.trim() || null }); onStart(() => api.moulinetteStart(repo, { build: build.trim(), tests: firstTrusted, memoryRun: memory.trim() || null, subjectAi })); }}>Run pre-check</Button>}>
+      <Tile id="moulinette" {...fold} icon={<ShieldCheck className="size-4" />} title="Claude Moulinette" action={<Button variant="primary" size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} onClick={() => { if (memory.trim() !== (info.config.runCmd ?? "")) saveConfig.mutate({ runCmd: memory.trim() || null }); onStart(() => api.moulinetteStart(repo, { build: build.trim(), tests: firstTrusted, memoryRun: memory.trim() || null, subjectAi })); }}>Run pre-check</Button>}>
         <p>Build, structure, Banana, tests, memory, then the subject. A personal pre-check in your working folder: not Epitech's Moulinette, and no grade.</p>
         <Labeled label="Memory run"><Input className="h-7 font-mono text-xs" placeholder={info.valgrind ? "./program arguments — run under Valgrind" : "Valgrind is not installed"} disabled={!info.valgrind} value={memory} onChange={(e) => setMemory(e.target.value)} /></Labeled>
-        <label className={cn("flex items-start gap-2", (!info.claude.path || !info.subject) && "opacity-60")}>
-          <input type="checkbox" className="mt-0.5 accent-(--color-accent)" disabled={!info.claude.path || !info.subject} checked={subjectAi} onChange={(e) => setSubjectAi(e.target.checked)} />
+        <label className={cn("flex items-start gap-2", (!claudeReady || !info.subject) && "opacity-60")}>
+          <input type="checkbox" className="mt-0.5 accent-(--color-accent)" disabled={!claudeReady || !info.subject} checked={subjectAi} onChange={(e) => setSubjectAi(e.target.checked)} />
           <span>
             Ask Claude Code to compare the code with the subject
             {info.subject ? <> (<span className="font-mono">{info.subject}</span>)</> : " — link a subject to this project first"}
-            {!info.claude.path && " — Claude Code is not installed"}
+            {!claudeReady && " — Claude Code is not installed"}
             {subjectAi && <span className="block text-faint">Read-only. The subject's text and the files Claude reads are sent to Anthropic; it counts toward your Claude usage.</span>}
           </span>
         </label>
       </Tile>
 
-      <Tile icon={<Bot className="size-4" />} title="Generate Unit Tests with Claude" action={<Button size="sm" icon={<Sparkles className="size-3.5" />} disabled={!info.claude.path || busy} onClick={onBrief}>Review &amp; start…</Button>}>
-        {info.claude.path ? <p>Claude Code {info.claude.version?.split(" ")[0]} reads the project and writes tests in <code className="font-mono">tests/</code> only. You see exactly what it may do before it starts, and review the files afterwards.</p> : <p className="text-warn">Claude Code is not installed on this computer (the <code className="font-mono">claude</code> command was not found).</p>}
+      <Tile
+        id="ai"
+        {...fold}
+        icon={<Bot className="size-4" />}
+        title="Claude Code"
+        action={
+          <Menu
+            trigger={
+              <Button size="sm" icon={<Sparkles className="size-3.5" />}>
+                AI tools
+              </Button>
+            }
+          >
+            <MenuLabel>{claudeReady ? `Claude Code ${info.claude.version?.split(" ")[0] ?? ""}` : "Claude Code is not available"}</MenuLabel>
+            <MenuItem icon={<FlaskConical className="size-4" />} disabled={!claudeReady || busy} onSelect={() => onBrief("tests")} hint="writes in tests/">
+              Generate unit tests…
+            </MenuItem>
+            <MenuItem icon={<ScanSearch className="size-4" />} disabled={!claudeReady || busy} onSelect={() => onBrief("analysis")} hint="read-only">
+              Analyse repository…
+            </MenuItem>
+            <MenuItem icon={<FileText className="size-4" />} onSelect={() => onTool("readme")}>
+              Generate README…
+            </MenuItem>
+            <MenuSeparator />
+            <MenuItem icon={<PackageOpen className="size-4" />} onSelect={() => onTool("package")} hint="no AI call">
+              Package for AI…
+            </MenuItem>
+            <MenuItem icon={<PenLine className="size-4" />} onSelect={() => setPage("prompts")}>
+              Edit the prompts
+            </MenuItem>
+          </Menu>
+        }
+      >
+        {claudeReady ? (
+          <p>Test generation writes in <code className="font-mono">tests/</code> only; the analysis and the README are read-only. You see exactly what Claude Code may do and the instructions it receives before anything starts.</p>
+        ) : (
+          <p className="text-warn">
+            {info.claude.state === "not_found" ? "Claude Code was not found on this computer." : (info.claude.detail ?? "Claude Code cannot be used.")}{" "}
+            <button type="button" className="text-accent-strong hover:underline" onClick={() => setPage("settings")}>
+              Check it in Settings
+            </button>
+          </p>
+        )}
       </Tile>
-
-      <div className="flex items-center gap-2 px-4 py-3">
-        <Button size="sm" icon={<PackageOpen className="size-3.5" />} onClick={() => onTool("package")}>Package for AI</Button>
-        <Button size="sm" icon={<FileText className="size-3.5" />} onClick={() => onTool("readme")}>Generate README</Button>
-      </div>
     </Card>
   );
 }

@@ -275,12 +275,17 @@ pub fn github_status() -> GhStatus {
 #[tauri::command(async)]
 pub fn launch_candidates(state: State<'_, AppState>) -> Result<Vec<Candidate>> {
     let remote = github::list_repos()?;
-    let (roots, meta) = {
-        let conn = state.conn();
-        (settings::load(&conn)?.roots, db::all_meta(&conn)?)
-    };
-    let local = scanner::scan(&roots, &meta);
-    Ok(launcher::rank(remote, &LocalContext::from_repos(&local), chrono::Utc::now()))
+    let (local, overview) = load_repos(&state)?;
+    let ranked = launcher::rank(remote, &LocalContext::from_repos(&local), chrono::Utc::now());
+    // Projects MY Epitech expects and that are not cloned yet come first.
+    let day = |iso: &Option<String>| iso.as_deref().and_then(crate::myview::local_day).unwrap_or_default();
+    let expected: Vec<launcher::Expected> = overview
+        .projects
+        .iter()
+        .filter(|p| p.repo_path.is_none() && (p.ongoing || p.upcoming) && p.repo_enabled != Some(false))
+        .map(|p| launcher::Expected { name: p.name.clone(), unit_code: p.unit_code.clone(), when: if p.upcoming { format!("starts {}", day(&p.start)) } else { format!("hand-in {}", day(&p.end)) } })
+        .collect();
+    Ok(launcher::prefer_expected(ranked, &expected))
 }
 
 #[tauri::command(async)]

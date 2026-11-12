@@ -4,7 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Check, CircleCheck, GitCommitHorizontal, Play } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Modal } from "../../components/Modal";
-import { Badge, Button, cn, ErrorNote, Field, Input, Select, Spinner } from "../../components/ui";
+import { Select } from "../../components/Select";
+import { Badge, Button, cn, ErrorNote, Field, Input, Spinner } from "../../components/ui";
 import { api, asAppError, type ApplyReport, type Candidate, type PlanEntry, type Vars } from "../../lib/api";
 import { looksLikeEpitech, repoNameFromUrl, tildify } from "../../lib/format";
 import { keys, useCandidates, useEnv, useHome, useRepos, useSettings, useTemplates } from "../../lib/hooks";
@@ -271,25 +272,12 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
                 <Input autoFocus={!request.url} className="font-mono text-xs" placeholder="git@github.com:Organisation/G-XXX-000-CITY-0-0-project-0.git" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && canStart && void start()} />
               </Field>
               <Field label="Clone into" hint={repoName && effectiveParent ? `→ ${tildify(effectiveParent, home)}/${repoName}` : undefined}>
-                <Select value={effectiveParent ?? ""} onChange={(e) => setParent(e.target.value)}>
-                  {targets.map((t) => (
-                    <option key={t} value={t}>
-                      {tildify(t, home)}
-                    </option>
-                  ))}
-                </Select>
+                <Select label="Parent folder" mono value={effectiveParent ?? null} onChange={setParent} options={targets.map((t) => ({ value: t, label: tildify(t, home) }))} />
               </Field>
             </>
           )}
           <Field label="Template" hint={template ? template.description : isNew ? "The repository is cloned and opened as is." : "Pick the template to apply."}>
-            <Select value={chosenTemplate} onChange={(e) => setTemplateId(e.target.value)}>
-              <option value="">{isNew ? "No template" : "Choose…"}</option>
-              {(templates.data ?? []).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} — {t.fileCount} file{t.fileCount === 1 ? "" : "s"}
-                </option>
-              ))}
-            </Select>
+            <Select label="Template" value={chosenTemplate} onChange={setTemplateId} options={[{ value: "", label: isNew ? "No template" : "Choose…" }, ...(templates.data ?? []).map((t) => ({ value: t.id, label: t.name, hint: `${t.fileCount} file${t.fileCount === 1 ? "" : "s"}` }))]} />
           </Field>
         </div>
       )}

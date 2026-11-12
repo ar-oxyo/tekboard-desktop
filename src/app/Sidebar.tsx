@@ -1,4 +1,4 @@
-import { ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, PawPrint, Search, Settings } from "lucide-react";
+import { CalendarDays, ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, PawPrint, Search, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn, Kbd } from "../components/ui";
 import { useEnv } from "../lib/hooks";
@@ -16,6 +16,7 @@ const GROUPS: Array<{ title: string | null; items: NavItem[] }> = [
     items: [
       { page: "overview", label: "Overview", icon: <LayoutDashboard className="size-4" /> },
       { page: "projects", label: "Projects", icon: <FolderGit2 className="size-4" /> },
+      { page: "agenda", label: "Agenda", icon: <CalendarDays className="size-4" /> },
       { page: "git", label: "Git", icon: <GitBranch className="size-4" /> },
       { page: "library", label: "Library", icon: <LibraryBig className="size-4" /> },
       { page: "testing", label: "Testing", icon: <FlaskConical className="size-4" /> },
@@ -87,7 +88,7 @@ export function Sidebar() {
                   type="button"
                   aria-current={page === item.page ? "page" : undefined}
                   onClick={() => setPage(item.page)}
-                  title={n <= 9 ? `Ctrl+${n}` : undefined}
+                  title={n >= 1 && n <= 9 ? `Ctrl+${n}` : undefined}
                   className={cn("nav-item flex h-[34px] shrink-0 items-center gap-2.5 px-2.5 text-[13px]", page === item.page ? "font-medium" : "text-muted hover:bg-white/5 hover:text-fg")}
                 >
                   <span className={page === item.page ? "text-accent" : ""}>{item.icon}</span>

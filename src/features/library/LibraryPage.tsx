@@ -6,11 +6,12 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { BookMarked, Check, ChevronDown, ChevronRight, FilePlus2, FolderOpen, FolderPlus, Hammer, Library as LibraryIcon, PackagePlus, Plus, Search, Trash2, TriangleAlert, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CodeView, DiffView } from "../../components/DiffView";
-import { Badge, Button, Card, CardTitle, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Select, Spinner } from "../../components/ui";
+import { Select } from "../../components/Select";
+import { Badge, Button, Card, CardTitle, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
 import { api, asAppError, type CatalogFile, type LibFileState, type LibPlanAction, type RunReport } from "../../lib/api";
 import { tildify } from "../../lib/format";
 import { useHome, useRepos } from "../../lib/hooks";
-import { displayName } from "../../lib/repos";
+import { repoOptions } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { AddLibraryDialog, FileDetailDialog, ImportDialog } from "./LibraryDialogs";
 import { buildRequest, counts, fileTitle, filterFiles, isEmptyRequest, isPresent, needsAttention, type StateFilter } from "./model";
@@ -199,9 +200,7 @@ export function LibraryPage() {
         subtitle={<span className="selectable">{tildify(lib.path, home)} · {sources.length} files · {sources.reduce((n, f) => n + f.functions.length, 0)} functions</span>}
         actions={
           <>
-            <Select className="w-44" value={libId} onChange={(e) => setLibId(Number(e.target.value))} aria-label="Library">
-              {libs.data!.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </Select>
+            <Select className="w-44" label="Library" value={String(libId)} onChange={(v) => setLibId(Number(v))} options={libs.data!.map((l) => ({ value: String(l.id), label: l.name }))} />
             <IconButton label="Open the library folder" onClick={() => api.libraryReveal(libId).catch(fail("Could not open the folder"))}><FolderOpen className="size-4" /></IconButton>
             <Button icon={<Plus className="size-3.5" />} onClick={() => setAdding(true)}>Library</Button>
           </>
@@ -251,12 +250,7 @@ export function LibraryPage() {
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
               <Input autoFocus className="pl-8" placeholder="Search a function, a tag, a file…" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
-            <Select className="w-36" value={stateFilter} onChange={(e) => setStateFilter(e.target.value as StateFilter)} aria-label="Filter by state" disabled={!hasProject}>
-              <option value="all">All</option>
-              <option value="in">In the project</option>
-              <option value="out">Not installed</option>
-              <option value="attention">Needs attention{attention ? ` (${attention})` : ""}</option>
-            </Select>
+            <Select className="w-44" label="Filter by state" value={stateFilter} onChange={(v) => setStateFilter(v as StateFilter)} disabled={!hasProject} options={[{ value: "all", label: "All" }, { value: "in", label: "In the project" }, { value: "out", label: "Not installed" }, { value: "attention", label: "Needs attention", hint: attention ? String(attention) : undefined }]} />
           </div>
           {catalog.isLoading ? (
             <p className="flex items-center gap-2 px-4 py-10 text-[13px] text-muted"><Spinner /> Reading the library…</p>
@@ -281,10 +275,7 @@ export function LibraryPage() {
           <Card>
             <CardTitle right={status.isFetching ? <Spinner /> : undefined}>Project</CardTitle>
             <div className="flex flex-col gap-2.5 p-3">
-              <Select value={repoPath ?? ""} onChange={(e) => setRepo(e.target.value || null)} aria-label="Target project">
-                <option value="">No project — browse only</option>
-                {(repos.data ?? []).map((r) => <option key={r.path} value={r.path}>{displayName(r)}</option>)}
-              </Select>
+              <Select label="Target project" search value={repoPath ?? ""} onChange={(v) => setRepo(v || null)} options={[{ value: "", label: "No project — browse only" }, ...repoOptions(repos.data ?? [])]} />
               {status.error && <ErrorNote>{asAppError(status.error).message}</ErrorNote>}
               {hasProject && (
                 <>

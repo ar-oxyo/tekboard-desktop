@@ -637,6 +637,37 @@ export interface ReadmeDraft {
   missing: string[];
 }
 
+// ── Prompts
+export interface PromptVar {
+  name: string;
+  description: string;
+  sample: string;
+  required: boolean;
+}
+export interface PromptPreset {
+  name: string;
+  body: string;
+  updatedAt: number;
+  problem: string | null;
+}
+export interface PromptDef {
+  id: string;
+  title: string;
+  description: string;
+  access: string;
+  expects: string;
+  default: string;
+  vars: PromptVar[];
+  presets: PromptPreset[];
+  /** Variant in use; `null` = the default. */
+  active: string | null;
+}
+export interface PromptPreview {
+  text: string;
+  variables: Array<[string, "project" | "sample", number]>;
+  error: string | null;
+  warnings: string[];
+}
 // ── MY Epitech
 export interface MyStatus {
   windowOpen: boolean;
@@ -644,6 +675,9 @@ export interface MyStatus {
   expiresAt: number | null;
   account: string | null;
   sessionStored: boolean;
+  windowHidden: boolean;
+  syncMinutes: number;
+  lastSync: number | null;
   routes: number;
 }
 export interface MyEntry {
@@ -698,6 +732,41 @@ export interface MyOverview {
   creditsTotal: number | null;
   blocks: Array<{ title: string; grade: string | null; credits: number | null; validated: number; total: number }>;
   exams: Array<{ label: string; best: number | null; required: number | null; max: number | null }>;
+}
+export interface AgendaItem {
+  kind: "deadline" | "start" | "activity" | "event" | "holiday";
+  title: string;
+  day: string;
+  start: string | null;
+  end: string | null;
+  module: string | null;
+  detail: string | null;
+  mine: boolean;
+  mandatory: boolean;
+  exam: boolean;
+  repoPath: string | null;
+  until: string | null;
+}
+export interface Agenda {
+  items: AgendaItem[];
+  syncedAt: number | null;
+  modules: string[];
+  notes: string[];
+}
+export interface Academic {
+  syncedAt: number | null;
+  creditsAcquired: number | null;
+  creditsTotal: number | null;
+  semester: number | null;
+  units: Array<{ title: string; grade: string | null; credits: number | null; validated: number; total: number; countsInGpa: boolean | null; alert: string | null; outcomes: Array<{ title: string; validated: boolean; mandatory: boolean; points: number | null; total: number | null }> }>;
+  competencies: Array<{ name: string; available: number | null; secure: number | null; reachable: number | null; alert: string | null }>;
+  exams: Array<{ label: string; best: number | null; required: number | null; max: number | null }>;
+  logtime: Array<{ date: string; mine: number; promo: number | null }>;
+  tests: Array<{ project: string; module: string; date: string | null; passed: number; total: number; runs: number; styleMajor: number; styleMinor: number }>;
+  graph: Array<[string, string, number]>;
+  projectsTotal: number;
+  projectsDone: number;
+  notes: string[];
 }
 export interface MySyncReport {
   ok: number;
@@ -818,7 +887,13 @@ export const api = {
   testrepoEnvDelete: (name: string) => invoke<void>("testrepo_env_delete", { name }),
   testrepoEnvOpen: (name: string, terminal: boolean) => invoke<void>("testrepo_env_open", { name, terminal }),
   moulinetteStart: (repo: string, params: MoulinetteParams) => invoke<number>("moulinette_start", { repo, params }),
-  claudeBrief: (repo: string, task: "tests" | "readme" | "subject", disclosure: boolean) => invoke<ClaudeBrief>("claude_brief", { repo, task, disclosure }),
+  analysisStart: (repo: string) => invoke<number>("analysis_start", { repo }),
+  promptsList: () => invoke<PromptDef[]>("prompts_list"),
+  promptSave: (id: string, preset: string, body: string, activate: boolean) => invoke<string[]>("prompt_save", { id, preset, body, activate }),
+  promptDelete: (id: string, preset: string) => invoke<void>("prompt_delete", { id, preset }),
+  promptActivate: (id: string, preset: string | null) => invoke<void>("prompt_activate", { id, preset }),
+  promptPreview: (id: string, body: string, repo: string | null) => invoke<PromptPreview>("prompt_preview", { id, body, repo }),
+  claudeBrief: (repo: string, task: "tests" | "readme" | "subject" | "analysis", disclosure: boolean) => invoke<ClaudeBrief>("claude_brief", { repo, task, disclosure }),
   genTestsStart: (repo: string) => invoke<number>("gen_tests_start", { repo }),
   packagePreview: (repo: string, options: PackOptions) => invoke<PackPreview>("package_preview", { repo, options }),
   packageCreate: (repo: string, options: PackOptions) => invoke<{ path: string; dir: string; files: number; size: number }>("package_create", { repo, options }),
@@ -834,6 +909,8 @@ export const api = {
   myData: () => invoke<{ entries: MyEntry[]; history: Array<{ at: number; ok: number; failed: number; detail: string }> }>("my_data"),
   myForget: (eraseCache: boolean) => invoke<void>("my_forget", { eraseCache }),
 
+  myAgenda: () => invoke<Agenda>("my_agenda"),
+  myAcademic: () => invoke<Academic>("my_academic"),
   myOverview: () => invoke<MyOverview>("my_overview"),
   myApplyDeadlines: (projectIds: number[]) => invoke<number>("my_apply_deadlines", { projectIds }),
 

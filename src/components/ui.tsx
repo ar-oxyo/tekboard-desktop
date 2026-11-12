@@ -126,21 +126,6 @@ export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputEleme
   );
 }
 
-export function Select({ className, children, ...rest }: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      className={cn(
-        sized(className),
-        "select border border-white/8 px-2 text-[13px] text-fg hover:border-line-strong focus:border-accent focus:outline-none",
-        className,
-      )}
-      {...rest}
-    >
-      {children}
-    </select>
-  );
-}
-
 export function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
   return (
     <label className="block">
