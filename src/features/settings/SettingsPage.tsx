@@ -22,6 +22,8 @@ export function SettingsPage() {
   const repos = useRepos((settings.data?.roots.length ?? 0) > 0);
   const [draft, setDraft] = useState<Settings | null>(null);
   const [savedTab, setTab] = usePref<string>("settings.tab", "general");
+  // `--run claude-check` opens the Tools tab. (Hooks stay above the early return below.)
+  const [forceTools] = useState(() => useUi.getState().claudeAutoCheck);
 
   useEffect(() => {
     if (settings.data && draft === null) setDraft(settings.data);
@@ -50,7 +52,6 @@ export function SettingsPage() {
     );
   }
 
-  const forceTools = useUi((s) => s.claudeAutoCheck);
   const tab = forceTools ? "tools" : TABS.some(([id]) => id === savedTab) ? savedTab : "general";
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings.data);
   const set = (patch: Partial<Settings>) => setDraft({ ...draft, ...patch });
