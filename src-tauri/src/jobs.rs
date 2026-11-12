@@ -147,7 +147,7 @@ impl Job {
         let mut file = std::fs::OpenOptions::new().read(true).write(true).create_new(true).open(&path)?;
         let _ = std::fs::remove_file(&path);
         let started = Instant::now();
-        let mut child = Command::new(&argv[0])
+        let mut child = crate::toolenv::command(&argv[0])
             .args(&argv[1..])
             .envs(envs.iter().copied())
             .current_dir(cwd)
@@ -329,9 +329,96 @@ pub fn argv_of(command: &str) -> Result<Vec<String>> {
     Ok(argv)
 }
 
+/// Splits a command typed by the user into a program and its arguments, the way a shell
+/// would read quotes, but without any shell: `"…"` and `'…'` group words, `\` escapes the
+/// next character outside single quotes. Operators that only a shell understands
+/// (pipes, `&&`, redirections, `$VAR`, backticks) are refused when they are not quoted,
+/// instead of being handed to the program as literal words.
+pub fn split_command(command: &str) -> Result<Vec<String>> {
+    let refuse = |c: char| AppError::new("invalid_command", format!("“{c}” needs a shell, and commands here run without one. Quote it to pass it as text, or put the pipeline in a Makefile rule or a script."));
+    let mut words: Vec<String> = Vec::new();
+    let mut cur = String::new();
+    let mut in_word = false;
+    let mut quote: Option<char> = None;
+    let mut chars = command.chars();
+    while let Some(c) = chars.next() {
+        match quote {
+            Some('\'') => {
+                if c == '\'' { quote = None } else { cur.push(c) }
+            }
+            Some(_) => match c {
+                '"' => quote = None,
+                '\\' => match chars.next() {
+                    Some(n @ ('"' | '\\')) => cur.push(n),
+                    Some(n) => {
+                        cur.push('\\');
+                        cur.push(n);
+                    }
+                    None => return Err(AppError::new("invalid_command", "The command ends with a lone backslash")),
+                },
+                '$' | '`' => return Err(refuse(c)),
+                _ => cur.push(c),
+            },
+            None => match c {
+                '\'' | '"' => {
+                    quote = Some(c);
+                    in_word = true;
+                }
+                '\\' => match chars.next() {
+                    Some(n) => {
+                        cur.push(n);
+                        in_word = true;
+                    }
+                    None => return Err(AppError::new("invalid_command", "The command ends with a lone backslash")),
+                },
+                '|' | '&' | ';' | '<' | '>' | '`' | '$' | '\n' | '\r' | '\0' => return Err(refuse(if c.is_control() { '⏎' } else { c })),
+                c if c.is_whitespace() => {
+                    if in_word {
+                        words.push(std::mem::take(&mut cur));
+                        in_word = false;
+                    }
+                }
+                _ => {
+                    cur.push(c);
+                    in_word = true;
+                }
+            },
+        }
+    }
+    if quote.is_some() {
+        return Err(AppError::new("invalid_command", "A quote is not closed"));
+    }
+    if in_word {
+        words.push(cur);
+    }
+    if words.is_empty() {
+        return Err(AppError::new("not_configured", "No command to run"));
+    }
+    if words[0].is_empty() {
+        return Err(AppError::new("invalid_command", "The program name is empty"));
+    }
+    Ok(words)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn typed_commands_are_split_like_a_shell_would_without_running_one() {
+        let ok = |c: &str| split_command(c).unwrap();
+        assert_eq!(ok("make  re"), vec!["make", "re"]);
+        assert_eq!(ok("./my_hunter -h"), vec!["./my_hunter", "-h"]);
+        assert_eq!(ok(r#"./a.out "two words" 'it is $HOME; rm -rf' plain"#), vec!["./a.out", "two words", "it is $HOME; rm -rf", "plain"]);
+        assert_eq!(ok(r#"echo a\ b "say \"hi\"" ''"#), vec!["echo", "a b", "say \"hi\"", ""]);
+        assert_eq!(ok(r#"grep -n "a|b" 'x>y'"#), vec!["grep", "-n", "a|b", "x>y"], "operators are plain text once quoted");
+        assert_eq!(ok("make CFLAGS=-g3"), vec!["make", "CFLAGS=-g3"]);
+        for bad in ["make && rm -rf x", "echo $HOME", "a | b", "ls > out", "cat < in", "echo `id`", "make; ls", "sleep 1 &", "echo \"$(id)\"", "a\nb", "say 'unclosed", "tail \\"] {
+            assert_eq!(split_command(bad).unwrap_err().code(), "invalid_command", "{bad}");
+        }
+        assert_eq!(split_command("   ").unwrap_err().code(), "not_configured");
+        assert_eq!(split_command("'' arg").unwrap_err().code(), "invalid_command");
+    }
 
     fn wait(jobs: &Jobs, id: u64) -> JobView {
         for _ in 0..400 {

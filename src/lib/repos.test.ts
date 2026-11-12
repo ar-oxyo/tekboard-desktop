@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type { RepoInfo, RepoStatus } from "./api";
-import { attention, cloneTargets, currentFocus, daysLeft, deadlineLabel, deadlines, displayName, filterRepos, preferredCloneDir } from "./repos";
+import type { MyLink, RepoInfo, RepoMeta, RepoStatus } from "./api";
+import { attention, cloneTargets, currentFocus, daysLeft, deadlineLabel, deadlines, displayName, due, dueTime, filterRepos, modulesOf, preferredCloneDir, sortRepos } from "./repos";
 import { looksLikeEpitech, repoNameFromUrl, tildify, timeAgo } from "./format";
 
 const clean: RepoStatus = { branch: "main", upstream: "origin/main", ahead: 0, behind: 0, staged: 0, unstaged: 0, untracked: 0, conflicted: 0, unborn: false };
 
-function repo(over: Omit<Partial<RepoInfo>, "status"> & { status?: Partial<RepoStatus> | null }): RepoInfo {
-  const { status, ...rest } = over;
+const noMeta: RepoMeta = { favorite: false, archived: false, lastOpenedAt: null, deadline: null, deadlineAt: null, deadlineSource: null, status: null, kindOverride: null, myProjectId: null, runBin: null, runArgs: null };
+
+function repo(over: Omit<Partial<RepoInfo>, "status" | "meta"> & { status?: Partial<RepoStatus> | null; meta?: Partial<RepoMeta> }): RepoInfo {
+  const { status, meta, ...rest } = over;
+  const m = { ...noMeta, ...meta };
   return {
     path: "/r/Tek/x",
     name: "x",
@@ -17,7 +20,15 @@ function repo(over: Omit<Partial<RepoInfo>, "status"> & { status?: Partial<RepoS
     status: status === null ? null : { ...clean, ...status },
     lastCommit: null,
     error: null,
-    meta: { favorite: false, archived: false, lastOpenedAt: null, deadline: null },
+    meta: m,
+    addedAt: null,
+    // As the backend fills them: finished when archived, school when the name says so.
+    progress: m.archived ? "done" : (m.status ?? "todo"),
+    progressInferred: m.status === null && !m.archived,
+    kind: over.epitech ? "epitech" : "personal",
+    kindReason: "",
+    deadlineState: "unknown",
+    my: null,
     ...rest,
   };
 }
@@ -54,26 +65,42 @@ describe("displayName", () => {
 describe("filterRepos", () => {
   const repos = [
     repo({ name: "G-CPE-110-LYN-1-1-settingup-27", epitech: school }),
-    repo({ name: "tekcraft", group: "Perso", status: { unstaged: 1 }, meta: { favorite: true, archived: false, lastOpenedAt: null, deadline: null } }),
+    repo({ name: "tekcraft", group: "Perso", status: { unstaged: 1 }, meta: { favorite: true } }),
   ];
-  it("filters by kind", () => {
-    expect(filterRepos(repos, "", "school").map((r) => r.name)).toEqual(["G-CPE-110-LYN-1-1-settingup-27"]);
-    expect(filterRepos(repos, "", "personal").map((r) => r.name)).toEqual(["tekcraft"]);
+  it("filters by state", () => {
     expect(filterRepos(repos, "", "changes").map((r) => r.name)).toEqual(["tekcraft"]);
     expect(filterRepos(repos, "", "favorites").map((r) => r.name)).toEqual(["tekcraft"]);
+    expect(filterRepos(repos, "", "active")).toHaveLength(2);
+  });
+  it("Epitech only hides what is not part of the curriculum, by classification and not by name", () => {
+    expect(filterRepos(repos, "", "active", { epitechOnly: true }).map((r) => r.name)).toEqual(["G-CPE-110-LYN-1-1-settingup-27"]);
+    // A school repository with a free name, and a personal one that merely looks like school work.
+    const free = repo({ name: "free-project", kind: "epitech" });
+    const lookalike = repo({ name: "G-CPE-110-LYN-1-1-settingup-27", epitech: school, kind: "personal" });
+    expect(filterRepos([free, lookalike], "", "active", { epitechOnly: true }).map((r) => r.name)).toEqual(["free-project"]);
+    expect(filterRepos([free, lookalike], "", "active", {})).toHaveLength(2);
+  });
+  it("filters by module, taken from MY Epitech before the name", () => {
+    const my = { unitCode: "G-PSU-100", unitName: "Unix System" } as MyLink;
+    const linked = repo({ name: "renamed", my });
+    expect(filterRepos([...repos, linked], "", "active", { module: "G-PSU-100" }).map((r) => r.name)).toEqual(["renamed"]);
+    expect(modulesOf([...repos, linked])).toEqual([
+      { code: "G-CPE-110", name: null, count: 1 },
+      { code: "G-PSU-100", name: "Unix System", count: 1 },
+    ]);
   });
   it("matches every word, case-insensitively", () => {
-    expect(filterRepos(repos, "cpe SETTING", "all")).toHaveLength(1);
-    expect(filterRepos(repos, "perso tek", "all").map((r) => r.name)).toEqual(["tekcraft"]);
-    expect(filterRepos(repos, "nothing", "all")).toHaveLength(0);
+    expect(filterRepos(repos, "cpe SETTING", "active")).toHaveLength(1);
+    expect(filterRepos(repos, "perso tek", "active").map((r) => r.name)).toEqual(["tekcraft"]);
+    expect(filterRepos(repos, "nothing", "active")).toHaveLength(0);
   });
 });
 
 describe("currentFocus", () => {
   it("prefers the last project opened in TekBoard", () => {
     const a = repo({ name: "a", lastCommit: { hash: "1", subject: "s", author: "me", date: "2026-11-09T10:00:00+01:00" } });
-    const b = repo({ name: "b", meta: { favorite: false, archived: false, lastOpenedAt: 50, deadline: null } });
-    const c = repo({ name: "c", meta: { favorite: false, archived: false, lastOpenedAt: 90, deadline: null } });
+    const b = repo({ name: "b", meta: { lastOpenedAt: 50 } });
+    const c = repo({ name: "c", meta: { lastOpenedAt: 90 } });
     expect(currentFocus([a, b, c])?.name).toBe("c");
   });
   it("falls back to the most recent commit, then to nothing", () => {
@@ -86,7 +113,7 @@ describe("currentFocus", () => {
 
 describe("deadlines", () => {
   const now = new Date(2026, 10, 10, 23, 30);
-  const meta = (deadline: string | null, archived = false) => ({ favorite: false, archived, lastOpenedAt: null, deadline });
+  const meta = (deadline: string | null, archived = false) => ({ archived, deadline });
   it("counts whole local days", () => {
     expect(daysLeft("2026-11-10", now)).toBe(0);
     expect(daysLeft("2026-11-11", now)).toBe(1);
@@ -102,11 +129,85 @@ describe("deadlines", () => {
     expect(list.map((d) => d.repo.name)).toEqual(["late", "later"]);
   });
   it("finished projects leave the working lists and the focus", () => {
-    const done = repo({ name: "done", meta: { favorite: false, archived: true, lastOpenedAt: 99, deadline: null } });
+    const done = repo({ name: "done", meta: { archived: true, lastOpenedAt: 99 } });
     const live = repo({ name: "live" });
-    expect(filterRepos([done, live], "", "all").map((r) => r.name)).toEqual(["live"]);
+    expect(filterRepos([done, live], "", "active").map((r) => r.name)).toEqual(["live"]);
     expect(filterRepos([done, live], "", "done").map((r) => r.name)).toEqual(["done"]);
     expect(currentFocus([done, live])?.name).toBe("live");
+  });
+  it("the three statuses each have their list, and a project moves freely between them", () => {
+    const p = (status: "todo" | "in_progress" | "done") => repo({ name: status, progress: status });
+    const all = [p("todo"), p("in_progress"), p("done")];
+    expect(filterRepos(all, "", "todo").map((r) => r.name)).toEqual(["todo"]);
+    expect(filterRepos(all, "", "in_progress").map((r) => r.name)).toEqual(["in_progress"]);
+    expect(filterRepos(all, "", "done").map((r) => r.name)).toEqual(["done"]);
+    expect(filterRepos(all, "", "active").map((r) => r.name)).toEqual(["todo", "in_progress"]);
+    // Marked done by mistake, then set back: it returns to the working list with its deadline.
+    const back = { ...all[2], progress: "in_progress" as const, meta: { ...all[2].meta, deadline: "2026-11-13" } };
+    expect(filterRepos([back], "", "active")).toHaveLength(1);
+    expect(deadlines([back], now).map((d) => d.days)).toEqual([3]);
+  });
+});
+
+describe("hand-in state", () => {
+  // A hand-in at 19:42 local time on the 20th.
+  const at = new Date(2026, 10, 20, 19, 42).toISOString();
+  const on = (d: number, h: number, m = 0) => new Date(2026, 10, d, h, m);
+  it("follows the exact hour, not midnight", () => {
+    expect(due("2026-11-20", at, on(11, 12))).toMatchObject({ state: "upcoming", label: "in 9 days", tone: "neutral" });
+    expect(due("2026-11-20", at, on(19, 23))).toMatchObject({ state: "upcoming", label: "tomorrow 19:42", tone: "warn" });
+    expect(due("2026-11-20", at, on(20, 8))).toMatchObject({ state: "today", label: "today 19:42", tone: "warn" });
+    expect(due("2026-11-20", at, on(20, 19, 41))).toMatchObject({ state: "today" });
+    expect(due("2026-11-20", at, on(20, 19, 50))).toMatchObject({ state: "overdue", label: "8 min late", tone: "danger" });
+    expect(due("2026-11-20", at, on(20, 23))).toMatchObject({ state: "overdue", label: "3 h late" });
+    expect(due("2026-11-20", at, on(22, 9))).toMatchObject({ state: "overdue", label: "2 days late" });
+  });
+  it("a day without hour lasts until midnight, and no date is unknown, never invented", () => {
+    expect(due("2026-11-20", null, on(20, 23, 59))).toMatchObject({ state: "today", label: "today", time: null });
+    expect(due("2026-11-20", null, on(21, 0, 1))).toMatchObject({ state: "overdue", label: "1 day late" });
+    expect(due(null, null, on(20, 12))).toEqual({ state: "unknown", label: "", tone: "neutral", time: null });
+    expect(due("soon", null, on(20, 12)).state).toBe("unknown");
+    expect(due("2026-11-20", "garbage", on(19, 12))).toMatchObject({ state: "upcoming", label: "tomorrow" });
+  });
+  it("orders by the moment the hand-in closes", () => {
+    expect(dueTime("2026-11-20", at)).toBe(Date.parse(at));
+    expect(dueTime("2026-11-20", null)! > dueTime("2026-11-20", at)!).toBe(true);
+    expect(dueTime(null, null)).toBeNull();
+  });
+});
+
+describe("sortRepos", () => {
+  const now = new Date(2026, 10, 11, 12, 0);
+  const commit = (date: string) => ({ hash: "1", subject: "s", author: "me", date });
+  const repos = [
+    repo({ name: "zeta-old", path: "/r/zeta", progress: "todo", addedAt: 100, lastCommit: commit("2026-06-01T10:00:00+02:00") }),
+    repo({ name: "hunter", path: "/r/hunter", progress: "in_progress", addedAt: 400, meta: { deadline: "2026-11-20" }, epitech: { ...school, module: "G-MUL-100", project: "myhunter" } }),
+    repo({ name: "setting", path: "/r/setting", progress: "in_progress", addedAt: 300, meta: { deadline: "2026-11-13" }, epitech: school }),
+    repo({ name: "late", path: "/r/late", progress: "todo", addedAt: 200, meta: { deadline: "2026-11-09" } }),
+    repo({ name: "alpha-wip", path: "/r/alpha", progress: "in_progress", addedAt: 500, lastCommit: commit("2026-11-10T10:00:00+01:00") }),
+    repo({ name: "ls-done", path: "/r/ls", progress: "done", addedAt: 50, meta: { deadline: "2026-11-06" }, epitech: { ...school, module: "G-PSU-100", project: "myls" } }),
+    repo({ name: "pool-done", path: "/r/pool", progress: "done", addedAt: 10, meta: { deadline: "2026-10-08" } }),
+  ];
+  const names = (key: Parameters<typeof sortRepos>[1]) => sortRepos(repos, key, now).map((r) => r.name);
+  it("smart: late or due first, then nearest hand-in, then active, then to do, finished last", () => {
+    expect(names("smart")).toEqual(["late", "setting", "hunter", "alpha-wip", "zeta-old", "ls-done", "pool-done"]);
+  });
+  it("deadline: nearest first, undated last by activity", () => {
+    expect(names("deadline")).toEqual(["pool-done", "ls-done", "late", "setting", "hunter", "alpha-wip", "zeta-old"]);
+  });
+  it("activity, date added, name, status, module", () => {
+    expect(names("activity").slice(0, 2)).toEqual(["alpha-wip", "zeta-old"]);
+    expect(names("added")).toEqual(["alpha-wip", "hunter", "setting", "late", "zeta-old", "ls-done", "pool-done"]);
+    expect(names("name")).toEqual(["alpha-wip", "late", "myhunter", "myls", "pool-done", "settingup", "zeta-old"].map((n) => ({ myhunter: "hunter", myls: "ls-done", settingup: "setting" })[n] ?? n));
+    expect(names("status")).toEqual(["setting", "hunter", "alpha-wip", "late", "zeta-old", "ls-done", "pool-done"]);
+    expect(names("module").slice(0, 3)).toEqual(["setting", "hunter", "ls-done"]);
+  });
+  it("is stable and never mutates its input", () => {
+    const before = repos.map((r) => r.name);
+    const twins = [repo({ name: "same", path: "/r/b" }), repo({ name: "same", path: "/r/a" })];
+    expect(sortRepos(twins, "name", now).map((r) => r.path)).toEqual(["/r/a", "/r/b"]);
+    expect(sortRepos(twins.reverse(), "smart", now).map((r) => r.path)).toEqual(["/r/a", "/r/b"]);
+    expect(repos.map((r) => r.name)).toEqual(before);
   });
 });
 

@@ -4,7 +4,7 @@
 //! anything absent is simply left out.
 
 use crate::scanner::RepoInfo;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, Utc};
 use rusqlite::Connection;
 use serde::Serialize;
 use serde_json::Value;
@@ -62,15 +62,27 @@ pub struct Project {
     pub end: Option<String>,
     /// Hand-in day in local time (`YYYY-MM-DD`).
     pub deadline: Option<String>,
+    /// Hand-in instant with the local offset.
+    pub deadline_at: Option<String>,
+    /// Started and not handed in yet, at the time of the call (not at the time of the sync).
     pub ongoing: bool,
+    /// Starts later.
+    pub upcoming: bool,
     pub group_max: Option<i64>,
+    /// Logins of the registered group (the user's own included), as MY Epitech lists them.
+    pub group: Vec<String>,
+    pub group_name: Option<String>,
+    /// A repository is expected for this project.
+    pub repo_enabled: Option<bool>,
     pub url: Option<String>,
     /// Local repository this project corresponds to, when the match is certain.
     pub repo_path: Option<String>,
-    /// How the repository was matched: `repository link` or `module and name`.
+    /// How the repository was matched: `your choice`, `repository link` or `module and name`.
     pub matched_by: Option<&'static str>,
     /// Deadline currently saved in TekBoard for that repository.
     pub repo_deadline: Option<String>,
+    /// `manual` when the user typed that date: MY Epitech does not replace it.
+    pub repo_deadline_source: Option<String>,
     pub activities: Vec<Activity>,
     pub last_test: Option<TestRun>,
 }
@@ -145,22 +157,53 @@ fn owner_name(link: &str) -> Option<(String, String)> {
 }
 
 /// The one local repository matching a project, or none when zero or several do.
-pub fn match_repo<'a>(repos: &'a [RepoInfo], unit_code: &str, name: &str, repo_link: Option<&str>) -> Option<(&'a RepoInfo, &'static str)> {
+/// A repository the user tied to a project by hand always wins, and is never offered to another project.
+pub fn match_repo<'a>(repos: &'a [RepoInfo], id: i64, unit_code: &str, name: &str, repo_link: Option<&str>) -> Option<(&'a RepoInfo, &'static str)> {
+    if let Some(r) = repos.iter().find(|r| r.meta.my_project_id == Some(id)) {
+        return Some((r, "your choice"));
+    }
+    let free = |r: &&RepoInfo| r.meta.my_project_id.is_none();
     if let Some((owner, repo_name)) = repo_link.and_then(owner_name) {
-        let hits: Vec<&RepoInfo> = repos.iter().filter(|r| r.remote.as_ref().is_some_and(|x| x.owner.to_lowercase() == owner && x.name.to_lowercase() == repo_name)).collect();
+        let hits: Vec<&RepoInfo> = repos.iter().filter(free).filter(|r| r.remote.as_ref().is_some_and(|x| x.owner.to_lowercase() == owner && x.name.to_lowercase() == repo_name)).collect();
         if hits.len() == 1 {
             return Some((hits[0], "repository link"));
         }
     }
     let wanted = norm(name);
-    let hits: Vec<&RepoInfo> = repos.iter().filter(|r| r.epitech.as_ref().is_some_and(|e| e.module == unit_code && norm(&e.project) == wanted)).collect();
+    let hits: Vec<&RepoInfo> = repos.iter().filter(free).filter(|r| r.epitech.as_ref().is_some_and(|e| e.module == unit_code && norm(&e.project) == wanted)).collect();
     (hits.len() == 1 && !wanted.is_empty()).then(|| (hits[0], "module and name"))
+}
+
+/// Organisations (lowercased) that host the repositories MY Epitech tested for this account.
+pub fn known_orgs(conn: &Connection) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let Ok(mut st) = conn.prepare("SELECT body FROM my_cache WHERE route LIKE '/units/instances/projects/%/test-results' AND status BETWEEN 200 AND 299") else { return out };
+    let Ok(rows) = st.query_map([], |r| r.get::<_, String>(0)) else { return out };
+    for body in rows.flatten() {
+        let Ok(v) = serde_json::from_str::<Value>(&body) else { continue };
+        for r in v["results"].as_array().into_iter().flatten() {
+            if let Some((owner, _)) = r["repoLink"].as_str().and_then(owner_name) {
+                if !out.contains(&owner) {
+                    out.push(owner);
+                }
+            }
+        }
+    }
+    out
+}
+
+fn instant(iso: Option<&str>) -> Option<DateTime<Utc>> {
+    DateTime::parse_from_rfc3339(iso?).ok().map(|d| d.with_timezone(&Utc))
 }
 
 const ALL: &str = "/units/instances/projects?page=1&limit=50&registeredOnly=true";
 const ONGOING: &str = "/units/instances/projects?page=1&limit=50&status=ongoing&registeredOnly=true";
 
 pub fn overview(conn: &Connection, repos: &[RepoInfo]) -> Overview {
+    overview_at(conn, repos, Utc::now())
+}
+
+pub fn overview_at(conn: &Connection, repos: &[RepoInfo], now: DateTime<Utc>) -> Overview {
     let mut o = Overview::default();
     o.synced_at = conn.query_row("SELECT MAX(fetched_at) FROM my_cache", [], |r| r.get(0)).ok().flatten();
     o.account = cached(conn, "/auth/verify").and_then(|v| s(&v["login"]));
@@ -173,27 +216,43 @@ pub fn overview(conn: &Connection, repos: &[RepoInfo]) -> Overview {
         let end = s(&p["endDate"]);
         let last_test = cached(conn, &format!("/units/instances/projects/{id}/test-results")).as_ref().and_then(test_run);
         let activities = cached(conn, &format!("/units/instances/projects/{id}/my-activities")).and_then(|v| v.as_array().map(|a| a.iter().map(|x| Activity { name: s(&x["name"]).unwrap_or_default(), start: s(&x["startDate"]), end: s(&x["endDate"]), mandatory: x["mandatory"].as_bool().unwrap_or(false), status: s(&x["status"]) }).collect())).unwrap_or_default();
-        let hit = match_repo(repos, &unit_code, &name, last_test.as_ref().and_then(|t| t.repo_link.as_deref()));
+        let hit = match_repo(repos, id, &unit_code, &name, last_test.as_ref().and_then(|t| t.repo_link.as_deref()));
+        let start = s(&p["startDate"]);
+        // "Ongoing" is a fact about now. The list MY Epitech gave at sync time is only used when a date is missing.
+        let (ongoing, upcoming) = match (instant(start.as_deref()), instant(end.as_deref())) {
+            (Some(a), Some(b)) => (a <= now && now <= b, now < a),
+            (None, Some(b)) => (now <= b && ongoing_ids.contains(&id), false),
+            _ => (ongoing_ids.contains(&id), false),
+        };
+        let due = end.as_deref().and_then(crate::deadlines::from_instant);
+        let reg = p["registrations"].as_array().and_then(|a| a.first());
         o.projects.push(Project {
             id,
-            deadline: end.as_deref().and_then(local_day),
-            ongoing: ongoing_ids.contains(&id),
+            deadline: due.as_ref().map(|d| d.day.clone()).or_else(|| end.as_deref().and_then(local_day)),
+            deadline_at: due.and_then(|d| d.at),
+            ongoing,
+            upcoming,
+            group: reg.and_then(|r| r["members"].as_array()).map(|m| m.iter().filter_map(|x| s(&x["login"])).collect()).unwrap_or_default(),
+            group_name: reg.and_then(|r| s(&r["groupName"])),
+            repo_enabled: p["repoEnabled"].as_bool(),
             unit_name: s(&p["unitInstance"]["name"]),
-            start: s(&p["startDate"]),
+            start,
             end,
             group_max: p["groupSizeMax"].as_i64(),
             url: s(&p["hermesActivityUrl"]).filter(|u| u.starts_with("https://")),
             repo_path: hit.map(|(r, _)| r.path.clone()),
             matched_by: hit.map(|(_, how)| how),
             repo_deadline: hit.and_then(|(r, _)| r.meta.deadline.clone()),
+            repo_deadline_source: hit.and_then(|(r, _)| r.meta.deadline_source.clone()),
             activities,
             last_test,
             name,
             unit_code,
         });
     }
-    // Ongoing first, nearest hand-in first; then finished ones, most recent first.
-    o.projects.sort_by(|a, b| b.ongoing.cmp(&a.ongoing).then_with(|| if a.ongoing { a.end.cmp(&b.end) } else { b.end.cmp(&a.end) }));
+    // Ongoing first, nearest hand-in first; then the ones to come; then finished ones, most recent first.
+    let rank = |p: &Project| if p.ongoing { 0 } else if p.upcoming { 1 } else { 2 };
+    o.projects.sort_by(|a, b| rank(a).cmp(&rank(b)).then_with(|| if rank(a) < 2 { a.end.cmp(&b.end) } else { b.end.cmp(&a.end) }));
     if let Some(c) = cached(conn, "/evaluations/validations/credits/me") {
         o.credits_acquired = c["acquiredCredits"].as_i64();
         o.credits_total = c["totalAcquiredCredits"].as_i64();
@@ -215,7 +274,7 @@ mod tests {
 
     fn repo(dir: &str, remote: Option<&str>) -> RepoInfo {
         let name = dir.rsplit('/').next().unwrap().to_string();
-        RepoInfo { path: dir.into(), epitech: parse_repo_name(&name), name, group: "Tek".into(), remote_url: remote.map(str::to_string), remote: remote.and_then(parse_remote), status: None, last_commit: None, error: None, meta: RepoMeta::default() }
+        RepoInfo { path: dir.into(), epitech: parse_repo_name(&name), name, group: "Tek".into(), remote_url: remote.map(str::to_string), remote: remote.and_then(parse_remote), meta: RepoMeta::default(), ..Default::default() }
     }
 
     fn put(conn: &Connection, route: &str, body: &str) {
@@ -235,11 +294,42 @@ mod tests {
             repo("/r/G-CPE-101-LYN-1-1-myprintf-8", None),
             repo("/r/copy/G-CPE-101-LYN-1-1-myprintf-8", None),
         ];
-        let (r, how) = match_repo(&repos, "G-XXX-000", "whatever", Some("https://github.com/EpitechPGE1-2026/G-CPE-110-LYN-1-1-settingup-27")).unwrap();
+        let (r, how) = match_repo(&repos, 1, "G-XXX-000", "whatever", Some("https://github.com/EpitechPGE1-2026/G-CPE-110-LYN-1-1-settingup-27")).unwrap();
         assert_eq!((r.path.as_str(), how), ("/r/G-CPE-110-LYN-1-1-settingup-27", "repository link"));
-        assert_eq!(match_repo(&repos, "G-PSU-100", "my_ls", None).unwrap().1, "module and name");
-        assert!(match_repo(&repos, "G-PSU-101", "my_ls", None).is_none(), "same name, other module");
-        assert!(match_repo(&repos, "G-CPE-101", "my_printf", None).is_none(), "two copies: no guess");
+        assert_eq!(match_repo(&repos, 2, "G-PSU-100", "my_ls", None).unwrap().1, "module and name");
+        assert!(match_repo(&repos, 2, "G-PSU-101", "my_ls", None).is_none(), "same name, other module");
+        assert!(match_repo(&repos, 3, "G-CPE-101", "my_printf", None).is_none(), "two copies: no guess");
+    }
+
+    #[test]
+    fn a_manual_association_settles_ambiguity_and_is_exclusive() {
+        let mut repos = vec![repo("/r/G-CPE-101-LYN-1-1-myprintf-8", None), repo("/r/copy/G-CPE-101-LYN-1-1-myprintf-8", None), repo("/r/whatever", None)];
+        repos[1].meta.my_project_id = Some(3);
+        let (r, how) = match_repo(&repos, 3, "G-CPE-101", "my_printf", None).unwrap();
+        assert_eq!((r.path.as_str(), how), ("/r/copy/G-CPE-101-LYN-1-1-myprintf-8", "your choice"));
+        // A repository tied to project 9 is not offered to project 3 even when its name fits.
+        repos[1].meta.my_project_id = Some(9);
+        let (r, how) = match_repo(&repos, 3, "G-CPE-101", "my_printf", None).unwrap();
+        assert_eq!((r.path.as_str(), how), ("/r/G-CPE-101-LYN-1-1-myprintf-8", "module and name"));
+        repos[2].meta.my_project_id = Some(3);
+        assert_eq!(match_repo(&repos, 3, "G-CPE-101", "my_printf", None).unwrap().0.path, "/r/whatever", "any repository can be chosen by hand");
+    }
+
+    #[test]
+    fn ongoing_is_decided_by_the_clock_not_by_the_last_sync() {
+        let conn = db::open_in_memory().unwrap();
+        let p = r#"{"id":7,"name":"my_sudo","startDate":"2026-11-14T07:42:00.000Z","endDate":"2026-12-04T18:42:00.000Z","repoEnabled":true,"registrations":[{"groupName":"g","members":[{"login":"a@epitech.eu"},{"login":"b@epitech.eu"}]}],"unitInstance":{"unitCode":"G-PSU-100"}}"#;
+        put(&conn, ALL, &format!(r#"{{"data":[{p}]}}"#));
+        put(&conn, ONGOING, r#"{"data":[]}"#);
+        let at = |iso: &str| DateTime::parse_from_rfc3339(iso).unwrap().with_timezone(&Utc);
+        let before = overview_at(&conn, &[], at("2026-11-11T12:00:00Z"));
+        assert_eq!((before.projects[0].ongoing, before.projects[0].upcoming), (false, true));
+        let during = overview_at(&conn, &[], at("2026-11-20T12:00:00Z"));
+        assert_eq!((during.projects[0].ongoing, during.projects[0].upcoming), (true, false), "started since the sync");
+        let after = overview_at(&conn, &[], at("2026-12-04T18:42:01Z"));
+        assert_eq!((after.projects[0].ongoing, after.projects[0].upcoming), (false, false), "over as soon as the hand-in passes");
+        assert_eq!(during.projects[0].group, vec!["a@epitech.eu", "b@epitech.eu"]);
+        assert_eq!(during.projects[0].repo_enabled, Some(true));
     }
 
     #[test]
@@ -255,11 +345,14 @@ mod tests {
         put(&conn, "/evaluations/validations/me", r#"{"blocks":[{"title":"Applied Mathematics I","grade":"in progress","credits":2,"validatedCount":0,"totalCount":4}]}"#);
         put(&conn, "/students/exams", r#"{"exams":[{"label":"TEPitech","maxMark":990,"requiredScore":600,"best":{"score":735}}]}"#);
         let repos = vec![repo("/r/G-CPE-110-LYN-1-1-settingup-27", Some("git@github.com:Org/G-CPE-110-LYN-1-1-settingup-27.git")), repo("/r/G-PSU-100-LYN-1-1-myls-1", None)];
-        let o = overview(&conn, &repos);
+        let o = overview_at(&conn, &repos, DateTime::parse_from_rfc3339("2026-11-10T12:00:00Z").unwrap().with_timezone(&Utc));
         assert_eq!((o.account.as_deref(), o.synced_at, o.credits_acquired), (Some("me@epitech.eu"), Some(500), Some(3)));
         assert_eq!(o.projects.iter().map(|p| (p.name.as_str(), p.ongoing)).collect::<Vec<_>>(), vec![("SettingUp", true), ("my_ls", false)]);
         let su = &o.projects[0];
-        assert_eq!((su.deadline.as_deref(), su.matched_by, su.repo_path.as_deref()), (Some("2026-11-13"), Some("repository link"), Some("/r/G-CPE-110-LYN-1-1-settingup-27")));
+        assert_eq!((su.matched_by, su.repo_path.as_deref()), (Some("repository link"), Some("/r/G-CPE-110-LYN-1-1-settingup-27")));
+        assert_eq!(su.deadline, crate::deadlines::from_instant("2026-11-13T18:42:00.000Z").map(|d| d.day));
+        assert!(su.deadline_at.is_some());
+        assert_eq!(known_orgs(&conn), vec!["org".to_string()]);
         let t = su.last_test.as_ref().unwrap();
         assert_eq!((t.commit.as_deref(), t.passed, t.total, t.runs, t.style_minor), (Some("bbb"), Some(20), Some(24), 2, 1));
         assert_eq!(t.failing_skills, vec![("Parsing".to_string(), 2, 4)]);

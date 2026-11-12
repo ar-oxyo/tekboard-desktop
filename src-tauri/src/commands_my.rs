@@ -81,9 +81,12 @@ pub fn my_sync(state: State<'_, AppState>) -> Result<SyncReport> {
     }
     let fetched = myepitech::fetch_all(&token);
     *state.my_syncing.lock().unwrap_or_else(|e| e.into_inner()) = false;
-    let report = myepitech::store(&state.conn(), &fetched, now())?;
+    let report = myepitech::store(&state.conn(), &fetched.fetched, fetched.skipped_details, now())?;
     if report.unauthorized {
         state.my.lock().unwrap_or_else(|e| e.into_inner()).token = None;
+    } else {
+        // The new hand-in dates reach the repositories right away (typed dates are kept).
+        let _ = crate::commands::load_repos(&state);
     }
     Ok(report)
 }
@@ -123,29 +126,13 @@ pub async fn my_forget(app: AppHandle, state: State<'_, AppState>, erase_cache: 
 /// Projects, deadlines, test results and credits, read from the cache and matched with local repositories.
 #[tauri::command(async)]
 pub fn my_overview(state: State<'_, AppState>) -> Result<crate::myview::Overview> {
-    let (roots, meta) = {
-        let conn = state.conn();
-        (crate::settings::load(&conn)?.roots, crate::db::all_meta(&conn)?)
-    };
-    let repos = crate::scanner::scan(&roots, &meta);
-    Ok(crate::myview::overview(&state.conn(), &repos))
+    Ok(crate::commands::load_repos(&state)?.1)
 }
 
-/// Saves the hand-in day of the given MY Epitech projects as the deadline of their matched
-/// repository. Only TekBoard's own project sheet changes; repositories are not touched.
+/// Saves the hand-in date of the given MY Epitech projects on their matched repository,
+/// unless a date was typed by hand there. Only TekBoard's own data changes.
 #[tauri::command(async)]
 pub fn my_apply_deadlines(state: State<'_, AppState>, project_ids: Vec<i64>) -> Result<usize> {
-    let overview = my_overview(state.clone())?;
-    let conn = state.conn();
-    let mut changed = 0;
-    for p in overview.projects.iter().filter(|p| project_ids.contains(&p.id)) {
-        let (Some(path), Some(day)) = (&p.repo_path, &p.deadline) else { continue };
-        let mut sheet = crate::db::get_sheet(&conn, path)?;
-        if sheet.deadline.as_deref() != Some(day.as_str()) {
-            sheet.deadline = Some(day.clone());
-            crate::db::save_sheet(&conn, path, &sheet)?;
-            changed += 1;
-        }
-    }
-    Ok(changed)
+    let (_, overview) = crate::commands::load_repos(&state)?;
+    crate::projects::apply_my_deadlines(&state.conn(), &overview, Some(&project_ids))
 }

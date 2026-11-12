@@ -1,7 +1,6 @@
 // Pure helpers over repository data. No I/O: covered by unit tests.
 import type { RepoInfo } from "./api";
 
-export type RepoFilter = "all" | "school" | "personal" | "changes" | "favorites" | "done";
 
 /** Short name. A folder renamed after cloning ("… (Copy)") keeps its suffix so two copies stay distinguishable. */
 export function displayName(repo: RepoInfo): string {
@@ -36,21 +35,39 @@ export function attention(repo: RepoInfo): Attention[] {
   return out;
 }
 
+export type RepoFilter = "active" | "todo" | "in_progress" | "done" | "changes" | "favorites";
+
+export interface FilterOptions {
+  /** Hide repositories that are not part of the curriculum. */
+  epitechOnly?: boolean;
+  /** Keep only this module (`G-CPE-110`). */
+  module?: string | null;
+}
+
+/** Module code of a repository: what MY Epitech says, else what its name says. */
+export function moduleOf(repo: RepoInfo): string | null {
+  return repo.my?.unitCode || repo.epitech?.module || null;
+}
+
+export function isDone(repo: RepoInfo): boolean {
+  return repo.progress === "done";
+}
+
 export function matchesFilter(repo: RepoInfo, filter: RepoFilter): boolean {
   switch (filter) {
-    // Finished projects leave the working lists; they stay reachable under "Done".
-    case "all":
-      return !repo.meta.archived;
-    case "school":
-      return repo.epitech !== null && !repo.meta.archived;
-    case "personal":
-      return repo.epitech === null && !repo.meta.archived;
+    // Finished projects leave the working list; they stay reachable under "Done", and their status can be changed back there.
+    case "active":
+      return !isDone(repo);
+    case "todo":
+      return repo.progress === "todo";
+    case "in_progress":
+      return repo.progress === "in_progress";
+    case "done":
+      return isDone(repo);
     case "changes":
-      return attention(repo).length > 0 && !repo.meta.archived;
+      return attention(repo).length > 0 && !isDone(repo);
     case "favorites":
       return repo.meta.favorite;
-    case "done":
-      return repo.meta.archived;
   }
 }
 
@@ -58,16 +75,32 @@ export function matchesFilter(repo: RepoInfo, filter: RepoFilter): boolean {
 export function matchesQuery(repo: RepoInfo, query: string): boolean {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return true;
-  const hay = [repo.name, repo.epitech?.module, repo.epitech?.project, repo.group, repo.status?.branch, repo.remote?.owner]
+  const hay = [repo.name, repo.epitech?.module, repo.epitech?.project, repo.my?.name, repo.my?.unitCode, repo.my?.unitName, repo.group, repo.status?.branch, repo.remote?.owner]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
   return words.every((w) => hay.includes(w));
 }
 
-export function filterRepos(repos: RepoInfo[], query: string, filter: RepoFilter): RepoInfo[] {
-  return repos.filter((r) => matchesFilter(r, filter) && matchesQuery(r, query));
+export function filterRepos(repos: RepoInfo[], query: string, filter: RepoFilter, options: FilterOptions = {}): RepoInfo[] {
+  return repos.filter((r) => matchesFilter(r, filter) && matchesQuery(r, query) && (!options.epitechOnly || r.kind === "epitech") && (!options.module || moduleOf(r) === options.module));
 }
+
+/** Modules present in the list, sorted, with how many repositories each has. */
+export function modulesOf(repos: RepoInfo[]): Array<{ code: string; name: string | null; count: number }> {
+  const map = new Map<string, { code: string; name: string | null; count: number }>();
+  for (const r of repos) {
+    const code = moduleOf(r);
+    if (!code) continue;
+    const cur = map.get(code) ?? { code, name: null, count: 0 };
+    cur.count += 1;
+    cur.name = cur.name ?? r.my?.unitName ?? null;
+    map.set(code, cur);
+  }
+  return [...map.values()].sort((a, b) => a.code.localeCompare(b.code));
+}
+
+// ── Hand-in dates
 
 /** Whole days from today to a `YYYY-MM-DD` deadline (local time). Negative when overdue, `null` when unparseable. */
 export function daysLeft(deadline: string, now: Date = new Date()): number | null {
@@ -87,6 +120,61 @@ export function deadlineLabel(days: number): string {
   return `in ${days} days`;
 }
 
+/** Moment the hand-in closes, in ms: the exact instant when known, else the end of the day. `null` without a usable date. */
+export function dueTime(day: string | null, at: string | null): number | null {
+  if (at) {
+    const t = Date.parse(at);
+    if (!Number.isNaN(t)) return t;
+  }
+  const m = day ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(day) : null;
+  if (!m) return null;
+  const end = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59).getTime();
+  return Number.isNaN(end) ? null : end;
+}
+
+export type DueState = "upcoming" | "today" | "overdue" | "unknown";
+
+export interface Due {
+  state: DueState;
+  /** "today 19:42", "in 9 days", "2 h late"… Empty when there is no date. */
+  label: string;
+  /** Badge colour: late, close (two days or less), or neither. */
+  tone: "danger" | "warn" | "neutral";
+  /** Local `HH:MM` of the hand-in, when the hour is known. */
+  time: string | null;
+}
+
+const hhmm = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
+
+/** State and wording of a hand-in date right now. With an exact hour, "late" starts when it passes, not at midnight. */
+export function due(day: string | null, at: string | null, now: Date = new Date()): Due {
+  const exact = at ? Date.parse(at) : Number.NaN;
+  const days = day ? daysLeft(day, now) : null;
+  if (!Number.isNaN(exact)) {
+    const time = hhmm(exact);
+    const late = now.getTime() - exact;
+    if (late > 0) {
+      const min = Math.floor(late / 60_000);
+      const label = min < 60 ? `${Math.max(1, min)} min late` : min < 24 * 60 ? `${Math.floor(min / 60)} h late` : deadlineLabel(Math.min(-1, days ?? -Math.floor(min / 1440)));
+      return { state: "overdue", label, tone: "danger", time };
+    }
+    const d = days ?? Math.round(-late / 86_400_000);
+    if (d <= 0) return { state: "today", label: `today ${time}`, tone: "warn", time };
+    return { state: "upcoming", label: d === 1 ? `tomorrow ${time}` : deadlineLabel(d), tone: d <= 2 ? "warn" : "neutral", time };
+  }
+  if (days === null) return { state: "unknown", label: "", tone: "neutral", time: null };
+  if (days < 0) return { state: "overdue", label: deadlineLabel(days), tone: "danger", time: null };
+  return { state: days === 0 ? "today" : "upcoming", label: deadlineLabel(days), tone: days <= 2 ? "warn" : "neutral", time: null };
+}
+
+export const dueOf = (repo: RepoInfo, now: Date = new Date()): Due => due(repo.meta.deadline, repo.meta.deadlineAt, now);
+
+/** Local `HH:MM` of a saved instant, for the time field of the project sheet. */
+export function localTime(at: string | null): string {
+  const t = at ? Date.parse(at) : Number.NaN;
+  return Number.isNaN(t) ? "" : hhmm(t);
+}
+
 export interface Deadline {
   repo: RepoInfo;
   days: number;
@@ -94,18 +182,92 @@ export interface Deadline {
 
 /** Unfinished projects with a deadline, most urgent first. */
 export function deadlines(repos: RepoInfo[], now: Date = new Date()): Deadline[] {
-  const out: Deadline[] = [];
+  const out: Array<Deadline & { t: number }> = [];
   for (const repo of repos) {
-    if (repo.meta.archived || !repo.meta.deadline) continue;
+    if (isDone(repo) || !repo.meta.deadline) continue;
     const days = daysLeft(repo.meta.deadline, now);
-    if (days !== null) out.push({ repo, days });
+    const t = dueTime(repo.meta.deadline, repo.meta.deadlineAt);
+    if (days !== null && t !== null) out.push({ repo, days, t });
   }
-  return out.sort((a, b) => a.days - b.days);
+  return out.sort((a, b) => a.t - b.t).map(({ repo, days }) => ({ repo, days }));
+}
+
+// ── Sorting
+
+export type SortKey = "smart" | "deadline" | "added" | "activity" | "name" | "status" | "module";
+
+export const SORTS: Array<{ id: SortKey; label: string; hint: string }> = [
+  { id: "smart", label: "Smart", hint: "Active work with the nearest hand-in first" },
+  { id: "deadline", label: "Deadline", hint: "Nearest hand-in first, undated last" },
+  { id: "activity", label: "Recent activity", hint: "Last commit or last opened" },
+  { id: "added", label: "Date added", hint: "Newest on this computer first" },
+  { id: "name", label: "Name", hint: "A to Z" },
+  { id: "status", label: "Status", hint: "In progress, to do, done" },
+  { id: "module", label: "Module", hint: "By module code" },
+];
+
+/** Last sign of life, in ms: the latest of the last commit and the last time it was opened here. */
+export function lastActivity(repo: RepoInfo): number {
+  const commit = repo.lastCommit ? Date.parse(repo.lastCommit.date) : Number.NaN;
+  const opened = repo.meta.lastOpenedAt !== null ? repo.meta.lastOpenedAt * 1000 : Number.NaN;
+  return Math.max(Number.isNaN(commit) ? 0 : commit, Number.isNaN(opened) ? 0 : opened);
+}
+
+const byName = (a: RepoInfo, b: RepoInfo) => displayName(a).localeCompare(displayName(b), undefined, { sensitivity: "base", numeric: true }) || a.path.localeCompare(b.path);
+const byActivity = (a: RepoInfo, b: RepoInfo) => lastActivity(b) - lastActivity(a) || byName(a, b);
+/** Dated before undated; nearest (or longest overdue) first. */
+function byDeadline(a: RepoInfo, b: RepoInfo): number {
+  const ta = dueTime(a.meta.deadline, a.meta.deadlineAt);
+  const tb = dueTime(b.meta.deadline, b.meta.deadlineAt);
+  if (ta === null || tb === null) return ta === tb ? byActivity(a, b) : ta === null ? 1 : -1;
+  return ta - tb || byName(a, b);
+}
+
+/**
+ * Default order. What needs you first:
+ * 0. active with a hand-in that is late or today; 1. active with a hand-in to come (nearest first);
+ * 2. in progress without a date; 3. to do without a date; 4. finished (most recent first).
+ */
+function smartRank(repo: RepoInfo, now: Date): number {
+  if (isDone(repo)) return 4;
+  const state = dueOf(repo, now).state;
+  if (state === "overdue" || state === "today") return 0;
+  if (state === "upcoming") return 1;
+  return repo.progress === "in_progress" ? 2 : 3;
+}
+
+const STATUS_ORDER = { in_progress: 0, todo: 1, done: 2 } as const;
+
+/** A new array in the requested order. Every order is total: equal rows fall back to the name, then the path. */
+export function sortRepos(repos: RepoInfo[], key: SortKey, now: Date = new Date()): RepoInfo[] {
+  const smart = (a: RepoInfo, b: RepoInfo) => {
+    const ra = smartRank(a, now);
+    const rb = smartRank(b, now);
+    if (ra !== rb) return ra - rb;
+    if (ra <= 1) return byDeadline(a, b);
+    if (ra === 4) return (dueTime(b.meta.deadline, b.meta.deadlineAt) ?? lastActivity(b)) - (dueTime(a.meta.deadline, a.meta.deadlineAt) ?? lastActivity(a)) || byName(a, b);
+    return byActivity(a, b);
+  };
+  const cmp: Record<SortKey, (a: RepoInfo, b: RepoInfo) => number> = {
+    smart,
+    deadline: byDeadline,
+    activity: byActivity,
+    added: (a, b) => (b.addedAt ?? 0) - (a.addedAt ?? 0) || byName(a, b),
+    name: byName,
+    status: (a, b) => STATUS_ORDER[a.progress] - STATUS_ORDER[b.progress] || smart(a, b),
+    module: (a, b) => {
+      const ma = moduleOf(a);
+      const mb = moduleOf(b);
+      if (ma === null || mb === null) return ma === mb ? byName(a, b) : ma === null ? 1 : -1;
+      return ma.localeCompare(mb) || byName(a, b);
+    },
+  };
+  return [...repos].sort(cmp[key]);
 }
 
 /** The project to resume: last opened in TekBoard, otherwise the most recent commit. Finished projects are skipped. */
 export function currentFocus(all: RepoInfo[]): RepoInfo | null {
-  const repos = all.filter((r) => !r.meta.archived);
+  const repos = all.filter((r) => !isDone(r));
   let best: RepoInfo | null = null;
   for (const r of repos) {
     if (r.meta.lastOpenedAt !== null && (best === null || r.meta.lastOpenedAt > (best.meta.lastOpenedAt ?? 0))) best = r;
@@ -129,7 +291,7 @@ export function cloneTargets(repos: RepoInfo[], roots: string[]): string[] {
 export function preferredCloneDir(repos: RepoInfo[], school: boolean): string | null {
   const counts = new Map<string, number>();
   for (const r of repos) {
-    if ((r.epitech !== null) !== school) continue;
+    if ((r.kind === "epitech") !== school) continue;
     const dir = r.path.slice(0, r.path.lastIndexOf("/"));
     counts.set(dir, (counts.get(dir) ?? 0) + 1);
   }

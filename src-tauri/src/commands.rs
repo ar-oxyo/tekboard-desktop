@@ -81,7 +81,24 @@ pub fn get_settings(state: State<'_, AppState>) -> Result<Settings> {
 
 #[tauri::command(async)]
 pub fn save_settings(state: State<'_, AppState>, settings: Settings) -> Result<Settings> {
-    settings::save(&state.conn(), &settings)
+    let saved = settings::save(&state.conn(), &settings)?;
+    crate::toolenv::set_override("claude", saved.claude_path.as_deref());
+    Ok(saved)
+}
+
+/// Small interface preferences (sort order, filters, folded sections), kept as one JSON object.
+#[tauri::command(async)]
+pub fn ui_prefs_get(state: State<'_, AppState>) -> Result<serde_json::Value> {
+    Ok(db::get_setting(&state.conn(), "ui_prefs")?.and_then(|v| serde_json::from_str(&v).ok()).unwrap_or_else(|| serde_json::json!({})))
+}
+
+#[tauri::command(async)]
+pub fn ui_prefs_set(state: State<'_, AppState>, prefs: serde_json::Value) -> Result<()> {
+    let text = prefs.to_string();
+    if !prefs.is_object() || text.len() > 16 * 1024 {
+        return Err(AppError::new("invalid_prefs", "Preferences must be a small JSON object"));
+    }
+    db::set_setting(&state.conn(), "ui_prefs", &text)
 }
 
 #[tauri::command(async)]
@@ -101,13 +118,38 @@ pub fn test_github_ssh() -> SshCheck {
 
 // ───────────────────────────── repositories ─────────────────────────────
 
+/// Every repository with what TekBoard knows about it, and the MY Epitech view it was matched against.
+/// Hand-in dates reported by MY Epitech are saved on the way, so every screen reads the same date.
+pub(crate) fn load_repos(state: &AppState) -> Result<(Vec<RepoInfo>, crate::myview::Overview)> {
+    let (s, meta) = {
+        let conn = state.conn();
+        (settings::load(&conn)?, db::all_meta(&conn)?)
+    };
+    let mut repos = scanner::scan(&s.roots, &meta);
+    let now = chrono::Utc::now();
+    let conn = state.conn();
+    let mut overview = crate::myview::overview_at(&conn, &repos, now);
+    if crate::projects::apply_my_deadlines(&conn, &overview, None)? > 0 {
+        let meta = db::all_meta(&conn)?;
+        for r in repos.iter_mut() {
+            r.meta = meta.get(&r.path).cloned().unwrap_or_default();
+        }
+        overview = crate::myview::overview_at(&conn, &repos, now);
+    }
+    crate::projects::enrich(&mut repos, &overview, &crate::myview::known_orgs(&conn), &s.epitech_dirs, now);
+    Ok((repos, overview))
+}
+
 #[tauri::command(async)]
 pub fn scan_repos(state: State<'_, AppState>) -> Result<Vec<RepoInfo>> {
-    let (roots, meta) = {
-        let conn = state.conn();
-        (settings::load(&conn)?.roots, db::all_meta(&conn)?)
-    };
-    Ok(scanner::scan(&roots, &meta))
+    Ok(load_repos(&state)?.0)
+}
+
+/// Unfinished work and its hand-in state, MY Epitech projects not cloned yet included.
+#[tauri::command(async)]
+pub fn deadline_board(state: State<'_, AppState>) -> Result<Vec<crate::projects::BoardItem>> {
+    let (repos, overview) = load_repos(&state)?;
+    Ok(crate::projects::board(&repos, &overview, chrono::Utc::now()))
 }
 
 #[tauri::command(async)]
@@ -173,6 +215,53 @@ pub fn reveal_in_files(state: State<'_, AppState>, path: String) -> Result<()> {
         return Err(AppError::new("outside_roots", "This folder is not managed by TekBoard"));
     }
     workspace::reveal(&canon)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenedRemote {
+    pub url: String,
+    /// `firefox`, or `default` when Firefox is not installed and the system browser was used.
+    pub browser: &'static str,
+}
+
+/// Opens the repository's page on its host, in Firefox. The address comes from the real git remote.
+#[tauri::command(async)]
+pub fn open_remote(state: State<'_, AppState>, path: String) -> Result<OpenedRemote> {
+    let dir = repo_dir(&state, &path)?;
+    let remote = git::any_remote_url(&dir).ok_or_else(|| AppError::new("no_remote", "This repository has no remote: there is nothing to open. Add one with `git remote add origin <url>`."))?;
+    let url = git::web_url(&remote, git::ssh_hostname).ok_or_else(|| AppError::new("no_web_remote", format!("The remote “{remote}” is not a web address TekBoard can open (a local path, or an SSH alias ssh does not know).")))?;
+    let browser = match crate::toolenv::which("firefox") {
+        Some(firefox) => {
+            workspace::spawn_detached(&[firefox.to_string_lossy().into_owned(), "--new-tab".into(), url.clone()], &dir)?;
+            "firefox"
+        }
+        None => {
+            workspace::spawn_detached(&["xdg-open".to_string(), url.clone()], &dir).map_err(|e| AppError::new("no_browser", format!("Firefox is not installed and the default browser could not be started: {e}")))?;
+            "default"
+        }
+    };
+    Ok(OpenedRemote { url, browser })
+}
+
+/// Which program "Launch Binary" would start for this project.
+#[tauri::command(async)]
+pub fn project_run_info(state: State<'_, AppState>, path: String) -> Result<crate::runner::BinaryInfo> {
+    let dir = repo_dir(&state, &path)?;
+    let sheet = db::get_sheet(&state.conn(), &dir.to_string_lossy())?;
+    Ok(crate::runner::info(&dir, sheet.run_bin.as_deref(), sheet.run_args.as_deref(), &state.settings()?.terminal_run_cmd))
+}
+
+/// Starts the project's program in a terminal window. Returns at once; the program belongs to that window.
+#[tauri::command(async)]
+pub fn project_launch(state: State<'_, AppState>, path: String) -> Result<String> {
+    let dir = repo_dir(&state, &path)?;
+    let sheet = db::get_sheet(&state.conn(), &dir.to_string_lossy())?;
+    let terminal = state.settings()?.terminal_run_cmd;
+    let bin = sheet.run_bin.clone().or_else(|| crate::runner::detect(&dir).map(|(n, _)| n)).ok_or_else(|| AppError::new("binary_unknown", "TekBoard could not tell which program this project builds (no plain NAME in the Makefile, no executable at the root). Set the binary in the project sheet."))?;
+    crate::runner::launch(&terminal, &dir, &bin, sheet.run_args.as_deref())?;
+    db::log_activity(&state.conn(), now(), "launch", Some(&dir.to_string_lossy()), Some(&bin))?;
+    Ok(bin)
 }
 
 // ───────────────────────────── GitHub & launcher ─────────────────────────────
@@ -341,17 +430,100 @@ pub fn project_get(state: State<'_, AppState>, path: String) -> Result<ProjectSh
     db::get_sheet(&state.conn(), &dir.to_string_lossy())
 }
 
+/// What the sheet sends back. The date is a local day, optionally with a local `HH:MM`.
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct SheetInput {
+    pub deadline: Option<String>,
+    pub deadline_time: Option<String>,
+    pub build_cmd: Option<String>,
+    pub notes: String,
+    pub run_bin: Option<String>,
+    pub run_args: Option<String>,
+}
+
+fn same_instant(a: Option<&str>, b: Option<&str>) -> bool {
+    let ts = |v: Option<&str>| v.and_then(|x| chrono::DateTime::parse_from_rfc3339(x).ok()).map(|d| d.timestamp());
+    ts(a) == ts(b)
+}
+
 #[tauri::command(async)]
-pub fn project_save(state: State<'_, AppState>, path: String, sheet: ProjectSheet) -> Result<ProjectSheet> {
+pub fn project_save(state: State<'_, AppState>, path: String, sheet: SheetInput) -> Result<ProjectSheet> {
     let dir = repo_dir(&state, &path)?;
-    let mut sheet = sheet;
-    sheet.deadline = sheet.deadline.map(|d| d.trim().to_string()).filter(|d| !d.is_empty());
-    if let Some(d) = &sheet.deadline {
-        chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").map_err(|_| AppError::new("invalid_date", format!("“{d}” is not a valid date (expected YYYY-MM-DD)")))?;
+    let key = dir.to_string_lossy().into_owned();
+    let conn = state.conn();
+    let cur = db::get_sheet(&conn, &key)?;
+    let clean = |v: Option<String>| v.map(|c| c.trim().to_string()).filter(|c| !c.is_empty());
+    let mut next = ProjectSheet { build_cmd: clean(sheet.build_cmd), notes: sheet.notes, run_bin: clean(sheet.run_bin), run_args: clean(sheet.run_args), ..cur.clone() };
+    match clean(sheet.deadline) {
+        // Clearing the date also forgets where it came from: MY Epitech may fill it again.
+        None => {
+            next.deadline = None;
+            next.deadline_at = None;
+            next.deadline_source = None;
+        }
+        Some(day) => {
+            let due = crate::deadlines::from_input(&day, sheet.deadline_time.as_deref())?;
+            // Only a date the user actually changed becomes "typed by hand".
+            if cur.deadline.as_deref() != Some(due.day.as_str()) || !same_instant(cur.deadline_at.as_deref(), due.at.as_deref()) {
+                next.deadline = Some(due.day);
+                next.deadline_at = due.at;
+                next.deadline_source = Some("manual".into());
+            }
+        }
     }
-    sheet.build_cmd = sheet.build_cmd.map(|c| c.trim().to_string()).filter(|c| !c.is_empty());
-    db::save_sheet(&state.conn(), &dir.to_string_lossy(), &sheet)?;
-    Ok(sheet)
+    if let Some(bin) = &next.run_bin {
+        if templates::safe_rel(bin).is_none() {
+            return Err(AppError::new("invalid_path", "The binary must be a path inside the project folder (for example `my_hunter` or `build/app`)"));
+        }
+    }
+    if let Some(args) = &next.run_args {
+        crate::jobs::split_command(&format!("x {args}"))?;
+    }
+    db::save_sheet(&conn, &key, &next)?;
+    Ok(next)
+}
+
+/// `todo`, `in_progress` or `done`. Applied at once, in both directions: a project marked
+/// done by mistake goes back to work with its deadline and notes untouched.
+#[tauri::command(async)]
+pub fn project_set_status(state: State<'_, AppState>, path: String, status: String) -> Result<()> {
+    let dir = repo_dir(&state, &path)?;
+    if !db::STATUSES.contains(&status.as_str()) {
+        return Err(AppError::new("invalid_status", "Unknown status"));
+    }
+    let conn = state.conn();
+    db::set_status(&conn, &dir.to_string_lossy(), &status)?;
+    db::log_activity(&conn, now(), "status", Some(&dir.to_string_lossy()), Some(&status))
+}
+
+/// `epitech`, `personal`, or nothing to let TekBoard decide again.
+#[tauri::command(async)]
+pub fn project_set_kind(state: State<'_, AppState>, path: String, kind: Option<String>) -> Result<()> {
+    let dir = repo_dir(&state, &path)?;
+    if kind.as_deref().is_some_and(|k| k != "epitech" && k != "personal") {
+        return Err(AppError::new("invalid_kind", "Unknown classification"));
+    }
+    db::set_kind_override(&state.conn(), &dir.to_string_lossy(), kind.as_deref())
+}
+
+/// Ties this repository to a MY Epitech project chosen by hand (or unties it).
+#[tauri::command(async)]
+pub fn project_set_my(state: State<'_, AppState>, path: String, project_id: Option<i64>) -> Result<()> {
+    let dir = repo_dir(&state, &path)?;
+    let conn = state.conn();
+    if let Some(id) = project_id {
+        // One repository per project: the previous holder of that project is released.
+        conn.execute("UPDATE repo_meta SET my_project_id = NULL WHERE my_project_id = ?1", [id])?;
+    }
+    db::set_my_project(&conn, &dir.to_string_lossy(), project_id)
+}
+
+/// Drops a hand-typed date so that the MY Epitech one applies again (at the next listing).
+#[tauri::command(async)]
+pub fn project_deadline_from_my(state: State<'_, AppState>, path: String) -> Result<()> {
+    let dir = repo_dir(&state, &path)?;
+    db::set_deadline(&state.conn(), &dir.to_string_lossy(), None, None, None)
 }
 
 /// Runs the project's build command (default `make`) and returns its output.

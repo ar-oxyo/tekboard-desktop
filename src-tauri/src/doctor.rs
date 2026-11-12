@@ -29,11 +29,8 @@ const TOOLS: &[(&str, &str, bool, &[&str])] = &[
     ("gcovr", "Coverage report for unit tests", false, &["--version"]),
 ];
 
-fn version(bin: &str, args: &[&str]) -> Option<String> {
-    let out = Command::new(bin).args(args).stdin(Stdio::null()).output().ok()?;
-    let text = if out.stdout.is_empty() { out.stderr } else { out.stdout };
-    let line = String::from_utf8_lossy(&text).lines().next()?.trim().to_string();
-    if line.is_empty() { None } else { Some(line.chars().take(80).collect()) }
+fn version(bin: &std::path::Path, args: &[&str]) -> Option<String> {
+    crate::toolenv::first_line(bin, args, std::time::Duration::from_secs(5)).ok().map(|l| l.chars().take(80).collect())
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -58,7 +55,7 @@ pub fn check() -> EnvStatus {
         .iter()
         .map(|(name, purpose, required, args)| {
             let path = which(name);
-            Tool { name: name.to_string(), purpose: purpose.to_string(), version: path.as_ref().and_then(|_| version(name, args)), path: path.map(|p| p.to_string_lossy().into_owned()), required: *required }
+            Tool { name: name.to_string(), purpose: purpose.to_string(), version: path.as_ref().and_then(|p| version(p, args)), path: path.map(|p| p.to_string_lossy().into_owned()), required: *required }
         })
         .collect();
     EnvStatus {

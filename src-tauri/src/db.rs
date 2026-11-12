@@ -95,6 +95,29 @@ const MIGRATIONS: &[&str] = &[
         failed INTEGER NOT NULL,
         detail TEXT NOT NULL
      );",
+    // v5: three-state project status, hand-in instant and its origin, manual classification
+    // and MY Epitech association, binary to launch; customised prompts; quick-command history.
+    "ALTER TABLE repo_meta ADD COLUMN status TEXT;
+     ALTER TABLE repo_meta ADD COLUMN deadline_at TEXT;
+     ALTER TABLE repo_meta ADD COLUMN deadline_source TEXT;
+     ALTER TABLE repo_meta ADD COLUMN kind_override TEXT;
+     ALTER TABLE repo_meta ADD COLUMN my_project_id INTEGER;
+     ALTER TABLE repo_meta ADD COLUMN run_bin TEXT;
+     ALTER TABLE repo_meta ADD COLUMN run_args TEXT;
+     UPDATE repo_meta SET status = 'done' WHERE archived != 0;
+     CREATE TABLE prompts (
+        id TEXT NOT NULL,
+        preset TEXT NOT NULL,
+        body TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (id, preset)
+     );
+     CREATE TABLE cmd_history (
+        repo_path TEXT NOT NULL,
+        command TEXT NOT NULL,
+        ts INTEGER NOT NULL,
+        PRIMARY KEY (repo_path, command)
+     );",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {
@@ -140,17 +163,45 @@ pub fn set_setting(conn: &Connection, key: &str, value: &str) -> Result<()> {
 #[serde(rename_all = "camelCase")]
 pub struct RepoMeta {
     pub favorite: bool,
+    /// Same as `status == done`; kept for the screens that only need "finished or not".
     pub archived: bool,
     pub last_opened_at: Option<i64>,
+    /// Hand-in day, local time (`YYYY-MM-DD`).
     pub deadline: Option<String>,
+    /// Hand-in instant (RFC 3339) when the hour is known.
+    pub deadline_at: Option<String>,
+    /// `manual` or `my`. `None` for dates saved before 0.3.
+    pub deadline_source: Option<String>,
+    /// `todo`, `in_progress` or `done`, when the user chose one.
+    pub status: Option<String>,
+    /// `epitech` or `personal`, when the user corrected the classification.
+    pub kind_override: Option<String>,
+    /// MY Epitech project chosen by hand for this repository.
+    pub my_project_id: Option<i64>,
+    pub run_bin: Option<String>,
+    pub run_args: Option<String>,
 }
 
+pub const STATUSES: &[&str] = &["todo", "in_progress", "done"];
+
 pub fn all_meta(conn: &Connection) -> Result<HashMap<String, RepoMeta>> {
-    let mut stmt = conn.prepare("SELECT path, favorite, archived, last_opened_at, deadline FROM repo_meta")?;
+    let mut stmt = conn.prepare("SELECT path, favorite, archived, last_opened_at, deadline, deadline_at, deadline_source, status, kind_override, my_project_id, run_bin, run_args FROM repo_meta")?;
     let rows = stmt.query_map([], |r| {
         Ok((
             r.get::<_, String>(0)?,
-            RepoMeta { favorite: r.get::<_, i64>(1)? != 0, archived: r.get::<_, i64>(2)? != 0, last_opened_at: r.get(3)?, deadline: r.get(4)? },
+            RepoMeta {
+                favorite: r.get::<_, i64>(1)? != 0,
+                archived: r.get::<_, i64>(2)? != 0,
+                last_opened_at: r.get(3)?,
+                deadline: r.get(4)?,
+                deadline_at: r.get(5)?,
+                deadline_source: r.get(6)?,
+                status: r.get(7)?,
+                kind_override: r.get(8)?,
+                my_project_id: r.get(9)?,
+                run_bin: r.get(10)?,
+                run_args: r.get(11)?,
+            },
         ))
     })?;
     let mut map = HashMap::new();
@@ -181,18 +232,23 @@ pub fn touch_opened(conn: &Connection, path: &str, ts: i64) -> Result<()> {
 #[derive(Debug, Clone, Default, Serialize, serde::Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectSheet {
-    /// `YYYY-MM-DD`, entered by hand. Never guessed.
+    /// Hand-in day (`YYYY-MM-DD`, local time). Never guessed.
     pub deadline: Option<String>,
+    /// Hand-in instant (RFC 3339) when the hour is known.
+    pub deadline_at: Option<String>,
+    /// `manual` or `my`.
+    pub deadline_source: Option<String>,
     pub build_cmd: Option<String>,
     pub notes: String,
-    /// Marked as finished. The repository itself is never touched.
-    pub archived: bool,
+    /// Binary to launch, relative to the project folder. Empty = detected.
+    pub run_bin: Option<String>,
+    pub run_args: Option<String>,
 }
 
 pub fn get_sheet(conn: &Connection, path: &str) -> Result<ProjectSheet> {
     let row = conn
-        .query_row("SELECT deadline, build_cmd, notes, archived FROM repo_meta WHERE path = ?1", [path], |r| {
-            Ok(ProjectSheet { deadline: r.get(0)?, build_cmd: r.get(1)?, notes: r.get::<_, Option<String>>(2)?.unwrap_or_default(), archived: r.get::<_, i64>(3)? != 0 })
+        .query_row("SELECT deadline, deadline_at, deadline_source, build_cmd, notes, run_bin, run_args FROM repo_meta WHERE path = ?1", [path], |r| {
+            Ok(ProjectSheet { deadline: r.get(0)?, deadline_at: r.get(1)?, deadline_source: r.get(2)?, build_cmd: r.get(3)?, notes: r.get::<_, Option<String>>(4)?.unwrap_or_default(), run_bin: r.get(5)?, run_args: r.get(6)? })
         })
         .optional()?;
     Ok(row.unwrap_or_default())
@@ -200,10 +256,79 @@ pub fn get_sheet(conn: &Connection, path: &str) -> Result<ProjectSheet> {
 
 pub fn save_sheet(conn: &Connection, path: &str, sheet: &ProjectSheet) -> Result<()> {
     conn.execute(
-        "INSERT INTO repo_meta (path, deadline, build_cmd, notes, archived) VALUES (?1, ?2, ?3, ?4, ?5)
-         ON CONFLICT(path) DO UPDATE SET deadline = excluded.deadline, build_cmd = excluded.build_cmd, notes = excluded.notes, archived = excluded.archived",
-        params![path, sheet.deadline, sheet.build_cmd, sheet.notes, sheet.archived as i64],
+        "INSERT INTO repo_meta (path, deadline, deadline_at, deadline_source, build_cmd, notes, run_bin, run_args) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+         ON CONFLICT(path) DO UPDATE SET deadline = excluded.deadline, deadline_at = excluded.deadline_at, deadline_source = excluded.deadline_source,
+            build_cmd = excluded.build_cmd, notes = excluded.notes, run_bin = excluded.run_bin, run_args = excluded.run_args",
+        params![path, sheet.deadline, sheet.deadline_at, sheet.deadline_source, sheet.build_cmd, sheet.notes, sheet.run_bin, sheet.run_args],
     )?;
+    Ok(())
+}
+
+/// Only the hand-in date changes; notes, commands and status are left alone.
+pub fn set_deadline(conn: &Connection, path: &str, day: Option<&str>, at: Option<&str>, source: Option<&str>) -> Result<()> {
+    conn.execute(
+        "INSERT INTO repo_meta (path, deadline, deadline_at, deadline_source) VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT(path) DO UPDATE SET deadline = excluded.deadline, deadline_at = excluded.deadline_at, deadline_source = excluded.deadline_source",
+        params![path, day, at, source],
+    )?;
+    Ok(())
+}
+
+/// `status` is one of `STATUSES`. `archived` follows it so older code keeps working.
+pub fn set_status(conn: &Connection, path: &str, status: &str) -> Result<()> {
+    let archived = (status == "done") as i64;
+    conn.execute(
+        "INSERT INTO repo_meta (path, status, archived) VALUES (?1, ?2, ?3) ON CONFLICT(path) DO UPDATE SET status = excluded.status, archived = excluded.archived",
+        params![path, status, archived],
+    )?;
+    Ok(())
+}
+
+pub fn set_kind_override(conn: &Connection, path: &str, kind: Option<&str>) -> Result<()> {
+    conn.execute("INSERT INTO repo_meta (path, kind_override) VALUES (?1, ?2) ON CONFLICT(path) DO UPDATE SET kind_override = excluded.kind_override", params![path, kind])?;
+    Ok(())
+}
+
+pub fn set_my_project(conn: &Connection, path: &str, id: Option<i64>) -> Result<()> {
+    conn.execute("INSERT INTO repo_meta (path, my_project_id) VALUES (?1, ?2) ON CONFLICT(path) DO UPDATE SET my_project_id = excluded.my_project_id", params![path, id])?;
+    Ok(())
+}
+
+// ───────────────────────────── quick-command history ─────────────────────────────
+
+pub fn remember_command(conn: &Connection, repo: &str, command: &str, ts: i64, keep: u32) -> Result<()> {
+    conn.execute("INSERT INTO cmd_history (repo_path, command, ts) VALUES (?1, ?2, ?3) ON CONFLICT(repo_path, command) DO UPDATE SET ts = excluded.ts", params![repo, command, ts])?;
+    conn.execute("DELETE FROM cmd_history WHERE repo_path = ?1 AND command NOT IN (SELECT command FROM cmd_history WHERE repo_path = ?1 ORDER BY ts DESC LIMIT ?2)", params![repo, keep])?;
+    Ok(())
+}
+
+pub fn recent_commands(conn: &Connection, repo: &str, limit: u32) -> Result<Vec<String>> {
+    let mut st = conn.prepare("SELECT command FROM cmd_history WHERE repo_path = ?1 ORDER BY ts DESC, command LIMIT ?2")?;
+    let rows = st.query_map(params![repo, limit], |r| r.get::<_, String>(0))?;
+    Ok(rows.collect::<std::result::Result<_, _>>()?)
+}
+
+pub fn forget_command(conn: &Connection, repo: &str, command: &str) -> Result<()> {
+    conn.execute("DELETE FROM cmd_history WHERE repo_path = ?1 AND command = ?2", params![repo, command])?;
+    Ok(())
+}
+
+// ───────────────────────────── customised prompts ─────────────────────────────
+
+/// (preset, body) of every saved variant of one prompt.
+pub fn prompt_variants(conn: &Connection, id: &str) -> Result<Vec<(String, String, i64)>> {
+    let mut st = conn.prepare("SELECT preset, body, updated_at FROM prompts WHERE id = ?1 ORDER BY preset")?;
+    let rows = st.query_map([id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?;
+    Ok(rows.collect::<std::result::Result<_, _>>()?)
+}
+
+pub fn prompt_save(conn: &Connection, id: &str, preset: &str, body: &str, ts: i64) -> Result<()> {
+    conn.execute("INSERT INTO prompts (id, preset, body, updated_at) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(id, preset) DO UPDATE SET body = excluded.body, updated_at = excluded.updated_at", params![id, preset, body, ts])?;
+    Ok(())
+}
+
+pub fn prompt_delete(conn: &Connection, id: &str, preset: &str) -> Result<()> {
+    conn.execute("DELETE FROM prompts WHERE id = ?1 AND preset = ?2", params![id, preset])?;
     Ok(())
 }
 
@@ -314,12 +439,63 @@ mod tests {
         let conn = open_in_memory().unwrap();
         assert_eq!(get_sheet(&conn, "/r").unwrap(), ProjectSheet::default());
         set_favorite(&conn, "/r", true).unwrap();
-        let sheet = ProjectSheet { deadline: Some("2026-11-22".into()), build_cmd: Some("make".into()), notes: "# todo".into(), archived: true };
+        set_status(&conn, "/r", "done").unwrap();
+        let sheet = ProjectSheet { deadline: Some("2026-11-22".into()), deadline_at: Some("2026-11-22T19:42:00+01:00".into()), deadline_source: Some("manual".into()), build_cmd: Some("make".into()), notes: "# todo".into(), run_bin: Some("a.out".into()), run_args: Some("-x 1".into()) };
         save_sheet(&conn, "/r", &sheet).unwrap();
         assert_eq!(get_sheet(&conn, "/r").unwrap(), sheet);
         let meta = &all_meta(&conn).unwrap()["/r"];
         assert!(meta.favorite && meta.archived);
-        assert_eq!(meta.deadline.as_deref(), Some("2026-11-22"));
+        assert_eq!((meta.deadline.as_deref(), meta.status.as_deref(), meta.run_bin.as_deref()), (Some("2026-11-22"), Some("done"), Some("a.out")));
+    }
+
+    #[test]
+    fn a_finished_project_can_go_back_to_any_status() {
+        let conn = open_in_memory().unwrap();
+        set_deadline(&conn, "/r", Some("2026-11-13"), None, Some("my")).unwrap();
+        for (status, archived) in [("done", true), ("in_progress", false), ("done", true), ("todo", false)] {
+            set_status(&conn, "/r", status).unwrap();
+            let meta = &all_meta(&conn).unwrap()["/r"];
+            assert_eq!((meta.status.as_deref(), meta.archived), (Some(status), archived));
+            assert_eq!(meta.deadline.as_deref(), Some("2026-11-13"), "the deadline survives a status change");
+        }
+    }
+
+    #[test]
+    fn projects_archived_before_v5_become_done() {
+        let conn = Connection::open_in_memory().unwrap();
+        for (i, sql) in MIGRATIONS.iter().enumerate().take(4) {
+            conn.execute_batch(sql).unwrap();
+            conn.pragma_update(None, "user_version", (i + 1) as i64).unwrap();
+        }
+        conn.execute("INSERT INTO repo_meta (path, archived, deadline) VALUES ('/old', 1, '2026-11-13'), ('/cur', 0, NULL)", []).unwrap();
+        migrate(&conn).unwrap();
+        let meta = all_meta(&conn).unwrap();
+        assert_eq!((meta["/old"].status.as_deref(), meta["/old"].deadline.as_deref(), meta["/old"].deadline_source.as_deref()), (Some("done"), Some("2026-11-13"), None));
+        assert_eq!(meta["/cur"].status, None);
+    }
+
+    #[test]
+    fn command_history_is_recent_first_deduplicated_and_bounded() {
+        let conn = open_in_memory().unwrap();
+        for (i, c) in ["make", "make re", "make", "./a.out 1", "make fclean"].iter().enumerate() {
+            remember_command(&conn, "/r", c, i as i64, 3).unwrap();
+        }
+        assert_eq!(recent_commands(&conn, "/r", 10).unwrap(), vec!["make fclean", "./a.out 1", "make"]);
+        assert!(recent_commands(&conn, "/other", 10).unwrap().is_empty());
+        forget_command(&conn, "/r", "make").unwrap();
+        assert_eq!(recent_commands(&conn, "/r", 10).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn prompt_variants_are_kept_per_preset() {
+        let conn = open_in_memory().unwrap();
+        prompt_save(&conn, "readme.generate", "custom", "v1", 1).unwrap();
+        prompt_save(&conn, "readme.generate", "custom", "v2", 2).unwrap();
+        prompt_save(&conn, "readme.generate", "short", "s", 3).unwrap();
+        let v = prompt_variants(&conn, "readme.generate").unwrap();
+        assert_eq!(v.iter().map(|(p, b, _)| (p.as_str(), b.as_str())).collect::<Vec<_>>(), vec![("custom", "v2"), ("short", "s")]);
+        prompt_delete(&conn, "readme.generate", "custom").unwrap();
+        assert_eq!(prompt_variants(&conn, "readme.generate").unwrap().len(), 1);
     }
 
     #[test]

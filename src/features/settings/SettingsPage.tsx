@@ -8,6 +8,7 @@ import { tildify } from "../../lib/format";
 import { keys, useEnv, useHome, useRepos, useSettings, useTemplates } from "../../lib/hooks";
 import { cloneTargets } from "../../lib/repos";
 import { useUi } from "../../lib/store";
+import { ClaudeCard } from "./ClaudeCard";
 
 export function SettingsPage() {
   const qc = useQueryClient();
@@ -28,6 +29,9 @@ export function SettingsPage() {
       qc.setQueryData(keys.settings, saved);
       setDraft(saved);
       void qc.invalidateQueries({ queryKey: keys.repos });
+      void qc.invalidateQueries({ queryKey: ["claude-info"] });
+      void qc.invalidateQueries({ queryKey: ["testing-info"] });
+      void qc.invalidateQueries({ queryKey: ["run-info"] });
       toast({ kind: "ok", title: "Settings saved" });
     },
   });
@@ -50,6 +54,10 @@ export function SettingsPage() {
     if (typeof dir === "string" && draft && !draft.roots.includes(dir)) set({ roots: [...draft.roots, dir] });
   }
 
+  async function addSchoolDir() {
+    const dir = await open({ directory: true, multiple: false, title: "A folder that holds school work", defaultPath: draft?.roots[0] });
+    if (typeof dir === "string" && draft && !draft.epitechDirs.includes(dir)) set({ epitechDirs: [...draft.epitechDirs, dir] });
+  }
   const targets = cloneTargets(repos.data ?? [], draft.roots).filter((t) => draft.roots.some((r) => t === r || t.startsWith(r + "/")));
 
   return (
@@ -113,6 +121,28 @@ export function SettingsPage() {
                 </Select>
               </Field>
             </div>
+            <div className="border-t border-white/6 px-4 py-3">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-xs font-medium text-muted">School folders</span>
+                <Button size="sm" variant="ghost" icon={<FolderPlus className="size-3.5" />} onClick={() => void addSchoolDir()}>
+                  Add
+                </Button>
+              </div>
+              {draft.epitechDirs.length === 0 ? (
+                <p className="text-xs text-faint">Optional. Repositories inside these folders count as Epitech work even without a module name or a MY Epitech match.</p>
+              ) : (
+                <ul>
+                  {draft.epitechDirs.map((dir) => (
+                    <li key={dir} className="flex h-8 items-center gap-2">
+                      <span className="selectable min-w-0 flex-1 truncate font-mono text-xs">{tildify(dir, home)}</span>
+                      <IconButton label="No longer a school folder" onClick={() => set({ epitechDirs: draft.epitechDirs.filter((d) => d !== dir) })}>
+                        <X className="size-4" />
+                      </IconButton>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </Card>
 
           <Card>
@@ -130,6 +160,9 @@ export function SettingsPage() {
               </Field>
               <Field label="Terminal command">
                 <Input className="font-mono text-xs" placeholder="ptyxis --new-window -d {dir}" value={draft.terminalCmd} onChange={(e) => set({ terminalCmd: e.target.value })} />
+              </Field>
+              <Field label="Terminal that runs a program" hint="Used by “Launch Binary”. The program and its arguments are appended after this command.">
+                <Input className="font-mono text-xs" placeholder="ptyxis --new-window -d {dir} --" value={draft.terminalRunCmd} onChange={(e) => set({ terminalRunCmd: e.target.value })} />
               </Field>
               <Field label="Default template for new projects">
                 <Select value={draft.defaultTemplate ?? ""} onChange={(e) => set({ defaultTemplate: e.target.value || null })}>
@@ -168,7 +201,10 @@ export function SettingsPage() {
           </Card>
         </div>
 
-        <EnvironmentCard />
+        <div className="flex flex-col gap-4">
+          <ClaudeCard configured={settings.data.claudePath} saving={save.isPending} onPick={(claudePath) => save.mutate({ ...settings.data!, claudePath })} />
+          <EnvironmentCard />
+        </div>
       </div>
     </>
   );
@@ -219,7 +255,7 @@ function EnvironmentCard() {
   const gh = env.data?.github;
 
   return (
-    <Card className="self-start">
+    <Card>
       <CardTitle
         right={
           <Button size="sm" variant="ghost" busy={env.isFetching} onClick={() => void qc.invalidateQueries({ queryKey: keys.env })}>

@@ -10,6 +10,7 @@ import { useRepos } from "../../lib/hooks";
 import { displayName } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { ClaudeBriefDialog } from "../tools/ClaudeBrief";
+import { QuickBar } from "./QuickBar";
 import { duration, KIND_LABEL, Report, STATUS_LABEL, STATUS_TONE, type ReportData } from "./Report";
 
 export function TestingPage() {
@@ -42,6 +43,7 @@ export function TestingPage() {
       void qc.invalidateQueries({ queryKey: ["runs"] });
       void qc.invalidateQueries({ queryKey: ["testrepo-envs"] });
       void qc.invalidateQueries({ queryKey: ["repos"] });
+      void qc.invalidateQueries({ queryKey: ["job-active"] });
     }
   }, [finished, qc]);
 
@@ -53,8 +55,22 @@ export function TestingPage() {
   const delEnv = useMutation({ mutationFn: (name: string) => api.testrepoEnvDelete(name), onSuccess: () => { setToDelete(null); void qc.invalidateQueries({ queryKey: ["testrepo-envs"] }); }, onError: fail("Not deleted") });
   const [brief, setBrief] = useState(false);
 
-  const data: ReportData | null = runId !== null ? (run.data ? { ...run.data, steps: run.data.summary.steps ?? [], log: run.data.log ?? "" } : null) : (job.data ?? null);
+  const raw: ReportData | null = runId !== null ? (run.data ? { ...run.data, steps: run.data.summary.steps ?? [], log: run.data.log ?? "" } : null) : (job.data ?? null);
   const busy = job.data?.status === "running" && runId === null;
+  // "clear" empties the log shown here, from that point on. The process, if any, is not touched.
+  const [cut, setCut] = useState<{ key: string; at: number } | null>(null);
+  const viewKey = runId !== null ? `run${runId}` : jobId !== null ? `job${jobId}` : "";
+  const data: ReportData | null = raw && cut?.key === viewKey ? { ...raw, log: raw.log.slice(Math.min(cut.at, raw.log.length)) } : raw;
+  const clearLog = () => {
+    if (raw && raw.status === "running") setCut({ key: viewKey, at: raw.log.length });
+    else {
+      setCut(null);
+      useUi.setState({ jobId: null, runId: null });
+    }
+  };
+  // A command still running in this repository is shown again when coming back to the screen.
+  const active = useQuery({ queryKey: ["job-active", repoPath, "command"], queryFn: () => api.jobActive(repoPath!, "command"), enabled: repoPath !== null, staleTime: 0, refetchInterval: busy && job.data?.kind === "command" ? 1000 : false });
+  const runningCommand = job.data?.kind === "command" && job.data.status === "running" ? job.data.id : (active.data ?? null);
 
   return (
     <>
@@ -77,6 +93,22 @@ export function TestingPage() {
       ) : info.error || !info.data ? (
         <ErrorNote>{asAppError(info.error).message}</ErrorNote>
       ) : (
+        <>
+        <div className="mb-4">
+          <QuickBar
+            key={repoPath}
+            repo={repoPath}
+            running={runningCommand}
+            terminal={info.data.terminal}
+            onClear={clearLog}
+            onStarted={(id) => {
+              setCut(null);
+              showJob(id, repoPath);
+              void qc.invalidateQueries({ queryKey: ["job-active", repoPath, "command"] });
+            }}
+            onStop={(id) => cancel.mutate(id)}
+          />
+        </div>
         <div className="grid grid-cols-[minmax(0,5fr)_minmax(0,6fr)] items-start gap-4">
           <div className="flex min-w-0 flex-col gap-4">
             <Actions key={repoPath} repo={repoPath} info={info.data} busy={start.isPending} onStart={(fn) => start.mutate(fn)} onBrief={() => setBrief(true)} onTool={(k) => openTool(k, repoPath)} />
@@ -140,7 +172,7 @@ export function TestingPage() {
               {runId !== null ? "Report from the history" : busy ? "Running" : "Report"}
             </CardTitle>
             {data ? (
-              <Report data={data} onCancel={busy && jobId !== null ? () => cancel.mutate(jobId) : undefined} envActions={(n, t) => void openEnv(n, t)} />
+              <Report data={data} onCancel={busy && jobId !== null ? () => cancel.mutate(jobId) : undefined} envActions={(n, t) => void openEnv(n, t)} onClear={clearLog} />
             ) : (runId !== null && run.isLoading) || (jobId !== null && job.isLoading) ? (
               <p className="flex items-center gap-2 px-4 py-8 text-[13px] text-muted"><Spinner /> Loading…</p>
             ) : job.error && jobId !== null ? (
@@ -150,6 +182,7 @@ export function TestingPage() {
             )}
           </Card>
         </div>
+        </>
       )}
       {brief && repoPath && <ClaudeBriefDialog repo={repoPath} task="tests" confirmLabel="Start Claude Code" onClose={() => setBrief(false)} onConfirm={() => { setBrief(false); start.mutate(() => api.genTestsStart(repoPath)); }} />}
     </>

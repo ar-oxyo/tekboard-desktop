@@ -56,7 +56,6 @@ pub fn project_ids(body: &str) -> Vec<i64> {
     let list = v.as_array().or_else(|| ["data", "items", "results", "projects"].iter().find_map(|k| v[k].as_array()));
     let mut ids: Vec<i64> = list.map(|l| l.iter().filter_map(|x| x["id"].as_i64().or_else(|| x["projectInstanceId"].as_i64())).collect()).unwrap_or_default();
     ids.dedup();
-    ids.truncate(MAX_PROJECT_DETAILS);
     ids
 }
 
@@ -204,9 +203,15 @@ fn get(agent: &ureq::Agent, token: &str, route: &str) -> (i64, String) {
     }
 }
 
+pub struct FetchOutcome {
+    pub fetched: Vec<Fetched>,
+    /// Ongoing projects whose details were not read because there are more than `MAX_PROJECT_DETAILS`.
+    pub skipped_details: usize,
+}
+
 /// Reads every route once, half a second apart, then the details of each ongoing project.
 /// Stops at once when the session is refused.
-pub fn fetch_all(token: &str) -> Vec<Fetched> {
+pub fn fetch_all(token: &str) -> FetchOutcome {
     let config = ureq::Agent::config_builder().http_status_as_error(false).timeout_global(Some(Duration::from_secs(20))).user_agent("TekBoard (personal desktop client, read-only)").max_redirects(0).build();
     let agent: ureq::Agent = config.into();
     let today = chrono::Local::now().date_naive();
@@ -223,10 +228,11 @@ pub fn fetch_all(token: &str) -> Vec<Fetched> {
         }
         out.push(Fetched { route: route.to_string(), status, body });
         if status == 401 && i == 0 {
-            return out;
+            return FetchOutcome { fetched: out, skipped_details: 0 };
         }
     }
-    for id in ids {
+    let skipped_details = ids.len().saturating_sub(MAX_PROJECT_DETAILS);
+    for id in ids.into_iter().take(MAX_PROJECT_DETAILS) {
         for tail in ["my-activities", "test-results"] {
             pause();
             let route = format!("/units/instances/projects/{id}/{tail}");
@@ -234,7 +240,7 @@ pub fn fetch_all(token: &str) -> Vec<Fetched> {
             out.push(Fetched { route, status, body });
         }
     }
-    out
+    FetchOutcome { fetched: out, skipped_details }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -247,17 +253,15 @@ pub struct SyncReport {
     pub detail: String,
 }
 
-/// Stores what was fetched. A failed route keeps its previous good answer in the cache.
-pub fn store(conn: &Connection, fetched: &[Fetched], now: i64) -> Result<SyncReport> {
+/// Stores what was fetched. A failed route keeps its previous good answer in the cache, and
+/// the details of a project stay once it is over: its test results and repository link are
+/// what ties it to a local repository.
+pub fn store(conn: &Connection, fetched: &[Fetched], skipped_details: usize, now: i64) -> Result<SyncReport> {
     let mut ok = 0;
     let mut problems = Vec::new();
     for f in fetched {
         if (200..300).contains(&f.status) {
             ok += 1;
-            if f.route == ROUTES[1].0 {
-                // Details of projects that are no longer ongoing leave the cache.
-                conn.execute("DELETE FROM my_cache WHERE route LIKE '/units/instances/projects/%/%'", [])?;
-            }
             conn.execute("INSERT INTO my_cache (route, fetched_at, status, body) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(route) DO UPDATE SET fetched_at = excluded.fetched_at, status = excluded.status, body = excluded.body", params![f.route, now, f.status, f.body])?;
         } else {
             problems.push(format!("{} → {}", f.route, if f.status == 0 { "no answer".to_string() } else { f.status.to_string() }));
@@ -275,6 +279,10 @@ pub fn store(conn: &Connection, fetched: &[Fetched], now: i64) -> Result<SyncRep
     let mut detail = problems.join("; ");
     if skipped > 0 {
         detail = format!("session refused, {skipped} route(s) not tried. {detail}");
+    }
+    if skipped_details > 0 {
+        let note = format!("details of {skipped_details} ongoing project(s) not read (limit of {MAX_PROJECT_DETAILS} per sync)");
+        detail = if detail.is_empty() { note } else { format!("{detail}; {note}") };
     }
     conn.execute("INSERT INTO my_sync_log (at, ok, failed, detail) VALUES (?1, ?2, ?3, ?4)", params![now, ok as i64, problems.len() as i64, detail])?;
     Ok(SyncReport { ok, failed: problems.len(), unauthorized, detail })
@@ -312,6 +320,8 @@ mod tests {
         assert_eq!(expand("/events?startDate={from}&endDate={to}", day), "/events?startDate=2026-11-03T00:00:00.000Z&endDate=2026-12-17T00:00:00.000Z");
         assert_eq!(project_ids("[{\"id\":4138},{\"id\":7},{\"name\":\"x\"}]"), vec![4138, 7]);
         assert_eq!(project_ids("{\"data\":[{\"id\":3}],\"total\":1}"), vec![3]);
+        let many = format!("[{}]", (1..=20).map(|i| format!("{{\"id\":{i}}}")).collect::<Vec<_>>().join(","));
+        assert_eq!(project_ids(&many).len(), 20, "the list is not cut here: the sync reports what it skipped");
         assert!(project_ids("{\"message\":\"no\"}").is_empty());
     }
 
@@ -319,10 +329,12 @@ mod tests {
     fn good_answers_are_cached_and_errors_do_not_erase_them() {
         let conn = db::open_in_memory().unwrap();
         let first = [Fetched { route: "/auth/verify".into(), status: 200, body: "{\"login\":\"x\"}".into() }, Fetched { route: "/students/exams".into(), status: 200, body: "[1,2]".into() }];
-        let r = store(&conn, &first, 100).unwrap();
+        let r = store(&conn, &first, 0, 100).unwrap();
         assert_eq!((r.ok, r.failed, r.unauthorized), (2, 0, false));
         let second = [Fetched { route: "/auth/verify".into(), status: 200, body: "{\"login\":\"y\"}".into() }, Fetched { route: "/students/exams".into(), status: 500, body: "{}".into() }, Fetched { route: "/students/logtime".into(), status: 404, body: "{\"message\":\"Cannot GET\"}".into() }];
-        let r = store(&conn, &second, 200).unwrap();
+        // Details of a project that was ongoing at an earlier sync.
+        conn.execute("INSERT INTO my_cache (route, fetched_at, status, body) VALUES ('/units/instances/projects/9/test-results', 50, 200, '{}')", []).unwrap();
+        let r = store(&conn, &second, 2, 200).unwrap();
         assert_eq!((r.ok, r.failed), (1, 2));
         let all = entries(&conn).unwrap();
         let get = |route: &str| all.iter().find(|e| e.route == route).unwrap();
@@ -332,12 +344,14 @@ mod tests {
         let h = history(&conn, 10).unwrap();
         assert_eq!(h.len(), 2);
         assert!(h[0].detail.contains("/students/exams → 500"));
+        assert!(h[0].detail.contains("details of 2 ongoing project(s) not read"), "nothing is dropped silently");
+        assert_eq!(get("/units/instances/projects/9/test-results").status, 200, "details of a finished project are kept");
     }
 
     #[test]
     fn a_refused_session_is_reported() {
         let conn = db::open_in_memory().unwrap();
-        let r = store(&conn, &[Fetched { route: "/auth/verify".into(), status: 401, body: "{}".into() }], 1).unwrap();
+        let r = store(&conn, &[Fetched { route: "/auth/verify".into(), status: 401, body: "{}".into() }], 0, 1).unwrap();
         assert!(r.unauthorized && r.detail.contains("not tried"));
     }
 }

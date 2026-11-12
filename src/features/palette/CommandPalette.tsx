@@ -101,7 +101,7 @@ export function CommandPalette() {
               </Command.Group>
               {(repos.data ?? []).length > 0 && (
                 <Command.Group heading="Project tools" className={groupClass}>
-                  {(repos.data ?? []).filter((r) => !r.meta.archived).slice(0, 40).flatMap((repo) =>
+                  {(repos.data ?? []).filter((r) => r.progress !== "done").slice(0, 40).flatMap((repo) =>
                     TOOLS.map(([id, label, icon]) => (
                       <Command.Item key={`${id}-${repo.path}`} value={`${label} ${repo.name} ${repo.path}`} onSelect={run(() => tool(id, repo.path))} className={itemClass}>
                         <span className="text-faint">{icon}</span>

@@ -9,7 +9,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RepoInfo {
     pub path: String,
@@ -24,6 +24,26 @@ pub struct RepoInfo {
     /// Set when git could not read the repository.
     pub error: Option<String>,
     pub meta: RepoMeta,
+    /// When the folder appeared on this computer (unix seconds): its creation time, else its first commit.
+    pub added_at: Option<i64>,
+    // The fields below are filled by `projects::enrich`, from the user's choices and the MY Epitech cache.
+    /// Where the project stands: `todo`, `in_progress` or `done` (`status` above is git's).
+    pub progress: String,
+    /// The progress was not chosen by the user: it follows the hand-in date and recent activity.
+    pub progress_inferred: bool,
+    /// `epitech` or `personal`.
+    pub kind: String,
+    /// Why, in words: shown next to the classification.
+    pub kind_reason: String,
+    /// `upcoming`, `today`, `overdue` or `unknown`.
+    pub deadline_state: String,
+    /// MY Epitech project this repository corresponds to.
+    pub my: Option<crate::projects::MyLink>,
+}
+
+fn added_at(repo: &Path) -> Option<i64> {
+    let created = std::fs::metadata(repo).ok().and_then(|m| m.created().ok()).and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_secs() as i64);
+    created.or_else(|| git::run(Some(repo), &["log", "--max-parents=0", "--format=%ct", "-1"]).ok().and_then(|t| t.trim().parse().ok()))
 }
 
 const MAX_DEPTH: usize = 5;
@@ -54,7 +74,7 @@ pub fn inspect(root: &Path, repo: &Path, meta: RepoMeta) -> RepoInfo {
         Ok(s) => (Some(s), None),
         Err(e) => (None, Some(e.to_string())),
     };
-    RepoInfo { path: repo.to_string_lossy().into_owned(), name, group, remote_url, remote, epitech, status, last_commit: git::last_commit(repo), error, meta }
+    RepoInfo { path: repo.to_string_lossy().into_owned(), name, group, remote_url, remote, epitech, status, last_commit: git::last_commit(repo), error, meta, added_at: added_at(repo), ..Default::default() }
 }
 
 pub fn scan(roots: &[String], meta: &HashMap<String, RepoMeta>) -> Vec<RepoInfo> {
@@ -118,6 +138,7 @@ mod tests {
         let ib = infos.iter().find(|r| r.name == "tool").unwrap();
         assert_eq!(ib.status.as_ref().unwrap().untracked, 1);
         assert!(ib.epitech.is_none() && ib.remote_url.is_none());
+        assert!(ib.added_at.is_some_and(|t| t > 1_600_000_000), "the folder's creation time is read");
     }
 
     #[test]

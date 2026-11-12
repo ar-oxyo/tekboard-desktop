@@ -24,6 +24,11 @@ export interface Settings {
   theme: string;
   foxSignals: boolean;
   onboarded: boolean;
+  epitechDirs: string[];
+  claudePath: string | null;
+  terminalRunCmd: string;
+  mySyncMinutes: number;
+  myAutoReconnect: boolean;
 }
 
 export interface RootSuggestion {
@@ -64,11 +69,40 @@ export interface Commit {
   date: string;
 }
 
+export type Progress = "todo" | "in_progress" | "done";
+export type DeadlineState = "upcoming" | "today" | "overdue" | "unknown";
+export type RepoKind = "epitech" | "personal";
 export interface RepoMeta {
   favorite: boolean;
   archived: boolean;
   lastOpenedAt: number | null;
+  /** Hand-in day, local time (`YYYY-MM-DD`). */
   deadline: string | null;
+  /** Hand-in instant (RFC 3339) when the hour is known. */
+  deadlineAt: string | null;
+  deadlineSource: "manual" | "my" | null;
+  status: Progress | null;
+  kindOverride: RepoKind | null;
+  myProjectId: number | null;
+  runBin: string | null;
+  runArgs: string | null;
+}
+/** What MY Epitech says about the project behind a repository. */
+export interface MyLink {
+  id: number;
+  name: string;
+  unitCode: string;
+  unitName: string | null;
+  start: string | null;
+  end: string | null;
+  deadline: string | null;
+  deadlineAt: string | null;
+  ongoing: boolean;
+  url: string | null;
+  group: string[];
+  matchedBy: string;
+  testsPassed: number | null;
+  testsTotal: number | null;
 }
 
 export interface RepoInfo {
@@ -82,6 +116,62 @@ export interface RepoInfo {
   lastCommit: Commit | null;
   error: string | null;
   meta: RepoMeta;
+  /** When the folder appeared on this computer (unix seconds). */
+  addedAt: number | null;
+  /** Where the project stands (`status` is git's). */
+  progress: Progress;
+  /** Not chosen by the user: follows the hand-in date and recent activity. */
+  progressInferred: boolean;
+  kind: RepoKind;
+  kindReason: string;
+  deadlineState: DeadlineState;
+  my: MyLink | null;
+}
+/** One line of the dashboard's deadlines: a repository, or a MY Epitech project not cloned yet. */
+export interface BoardItem {
+  title: string;
+  module: string | null;
+  repoPath: string | null;
+  myId: number | null;
+  day: string | null;
+  at: string | null;
+  source: "manual" | "my" | null;
+  state: DeadlineState;
+  status: Progress;
+  cloned: boolean;
+  repoExpected: boolean;
+  starts: string | null;
+  myDay: string | null;
+}
+export interface BinaryInfo {
+  configured: string | null;
+  detected: string | null;
+  detectedFrom: string | null;
+  effective: string | null;
+  exists: boolean;
+  args: string | null;
+  terminal: boolean;
+}
+export interface ClaudeInfo {
+  path: string | null;
+  target: string | null;
+  version: string | null;
+  state: "ready" | "not_found" | "not_executable" | "version_failed";
+  source: "settings" | "path" | "user" | "shell" | null;
+  detail: string | null;
+}
+export interface ClaudeReport extends ClaudeInfo {
+  configured: string | null;
+  appPath: string[];
+  shellPath: string[];
+  shell: string | null;
+}
+export interface ClaudeCheck {
+  ok: boolean;
+  answer: string | null;
+  error: string | null;
+  costUsd: number | null;
+  durationMs: number;
 }
 
 export type GhStatus =
@@ -184,9 +274,21 @@ export type Vars = Record<string, string>;
 
 export interface ProjectSheet {
   deadline: string | null;
+  deadlineAt: string | null;
+  deadlineSource: "manual" | "my" | null;
   buildCmd: string | null;
   notes: string;
-  archived: boolean;
+  runBin: string | null;
+  runArgs: string | null;
+}
+/** What the sheet sends back: a local day, optionally with a local `HH:MM`. */
+export interface SheetInput {
+  deadline: string | null;
+  deadlineTime: string | null;
+  buildCmd: string | null;
+  notes: string;
+  runBin: string | null;
+  runArgs: string | null;
 }
 
 export interface RunReport {
@@ -429,7 +531,7 @@ export interface JobStep {
   detail: string | null;
   durationMs: number | null;
 }
-export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "gen_tests" | "readme" | "build";
+export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "gen_tests" | "readme" | "build" | "command" | "analysis";
 /** Kind-specific facts; see the Rust module that produces each kind. */
 export type RunSummary = Record<string, unknown> & { steps?: JobStep[] };
 export interface JobView {
@@ -473,10 +575,11 @@ export interface TestingInfo {
   detection: { suites: TestSuite[]; frameworks: string[]; testFiles: number; notes: string[] };
   config: ProjectConfig;
   defaultBuild: string;
-  claude: { path: string | null; version: string | null };
+  claude: ClaudeInfo;
   banana: { repoChecker: string | null; version: string | null; epiclang: string | null; plugin: boolean };
   docker: boolean;
   valgrind: boolean;
+  terminal: boolean;
   defaultImage: string;
   subject: string | null;
   hasRemote: boolean;
@@ -559,12 +662,18 @@ export interface MyProject {
   start: string | null;
   end: string | null;
   deadline: string | null;
+  deadlineAt: string | null;
   ongoing: boolean;
+  upcoming: boolean;
   groupMax: number | null;
+  group: string[];
+  groupName: string | null;
+  repoEnabled: boolean | null;
   url: string | null;
   repoPath: string | null;
   matchedBy: string | null;
   repoDeadline: string | null;
+  repoDeadlineSource: "manual" | "my" | null;
   activities: Array<{ name: string; start: string | null; end: string | null; mandatory: boolean; status: string | null }>;
   lastTest: {
     date: string | null;
@@ -634,7 +743,23 @@ export const api = {
   commitStaged: (repo: string, message: string) => invoke<RepoStatus>("commit_staged", { repo, message }),
 
   projectGet: (path: string) => invoke<ProjectSheet>("project_get", { path }),
-  projectSave: (path: string, sheet: ProjectSheet) => invoke<ProjectSheet>("project_save", { path, sheet }),
+  projectSave: (path: string, sheet: SheetInput) => invoke<ProjectSheet>("project_save", { path, sheet }),
+  projectSetStatus: (path: string, status: Progress) => invoke<void>("project_set_status", { path, status }),
+  projectSetKind: (path: string, kind: RepoKind | null) => invoke<void>("project_set_kind", { path, kind }),
+  projectSetMy: (path: string, projectId: number | null) => invoke<void>("project_set_my", { path, projectId }),
+  projectDeadlineFromMy: (path: string) => invoke<void>("project_deadline_from_my", { path }),
+  projectRunInfo: (path: string) => invoke<BinaryInfo>("project_run_info", { path }),
+  projectLaunch: (path: string) => invoke<string>("project_launch", { path }),
+  openRemote: (path: string) => invoke<{ url: string; browser: "firefox" | "default" }>("open_remote", { path }),
+  deadlineBoard: () => invoke<BoardItem[]>("deadline_board"),
+  uiPrefsGet: () => invoke<Record<string, unknown>>("ui_prefs_get"),
+  uiPrefsSet: (prefs: Record<string, unknown>) => invoke<void>("ui_prefs_set", { prefs }),
+  quickRun: (repo: string, command: string) => invoke<number>("quick_run", { repo, command }),
+  quickHistory: (repo: string) => invoke<string[]>("quick_history", { repo }),
+  quickForget: (repo: string, command: string) => invoke<void>("quick_forget", { repo, command }),
+  jobActive: (repo: string, kind: RunKind) => invoke<number | null>("job_active", { repo, kind }),
+  claudeInfo: () => invoke<ClaudeReport>("claude_info"),
+  claudeCheck: () => invoke<ClaudeCheck>("claude_check"),
   projectBuild: (path: string) => invoke<RunReport>("project_build", { path }),
 
   subjectsList: () => invoke<Subject[]>("subjects_list"),

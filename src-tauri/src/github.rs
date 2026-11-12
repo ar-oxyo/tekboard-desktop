@@ -3,7 +3,7 @@
 
 use crate::error::{AppError, Result};
 use serde::{Deserialize, Serialize};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(tag = "state", rename_all = "camelCase")]
@@ -18,7 +18,7 @@ pub enum GhStatus {
 }
 
 fn gh(args: &[&str]) -> std::io::Result<std::process::Output> {
-    Command::new("gh").args(args).env("GH_PROMPT_DISABLED", "1").env("NO_COLOR", "1").stdin(Stdio::null()).output()
+    crate::toolenv::command("gh").args(args).env("GH_PROMPT_DISABLED", "1").env("NO_COLOR", "1").stdin(Stdio::null()).output()
 }
 
 pub fn status() -> GhStatus {

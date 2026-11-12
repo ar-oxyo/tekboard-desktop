@@ -86,6 +86,135 @@ fn title_for(dir: &Path, what: &str) -> String {
     format!("{} — {what}", dir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default())
 }
 
+// ───────────────────────────── quick commands ─────────────────────────────
+
+const QUICK_HISTORY: u32 = 15;
+
+/// Runs one command typed or picked by the user in the repository folder: a program and its
+/// arguments, started without a shell, with a live log, an exit code and a Stop button.
+/// Reachable only from TekBoard's own window, on an explicit click; nothing read from a
+/// repository, a document or MY Epitech is ever passed here.
+#[tauri::command(async)]
+pub fn quick_run(state: State<'_, AppState>, repo: String, command: String) -> Result<u64> {
+    let dir = repo_dir(&state, &repo)?;
+    let key = dir.to_string_lossy().into_owned();
+    let command = command.trim().to_string();
+    if command.len() > 2000 {
+        return Err(AppError::new("invalid_command", "This command is too long"));
+    }
+    let argv = crate::jobs::split_command(&command)?;
+    if state.jobs.active("command", Some(&key)).is_some() {
+        return Err(AppError::new("busy", "A command is already running in this repository. Stop it first."));
+    }
+    db::remember_command(&state.conn(), &key, &command, crate::commands::now(), QUICK_HISTORY)?;
+    let title = title_for(&dir, &command);
+    let shown = command.clone();
+    Ok(state.jobs.start(state.db.clone(), "command", Some(key), title, &[("run", "Running the command")], move |job| {
+        job.start("run");
+        job.set("command", &shown);
+        let o = match job.run(&argv, &dir, Duration::from_secs(1800), &[]) {
+            Ok(o) => o,
+            Err(e) => {
+                job.set("exitCode", Option::<i32>::None);
+                job.end("run", "failed", Some(e.to_string()));
+                return Err(e);
+            }
+        };
+        job.set("exitCode", o.code);
+        job.set("timedOut", o.timed_out);
+        if o.cancelled {
+            job.end("run", "cancelled", Some("stopped".to_string()));
+            return Ok("cancelled");
+        }
+        let (status, detail) = match o.code {
+            Some(0) => ("success", "exit code 0".to_string()),
+            Some(c) => ("failed", format!("exit code {c}")),
+            None if o.timed_out => ("failed", "stopped after 30 minutes".to_string()),
+            None => ("failed", "ended by a signal".to_string()),
+        };
+        job.end("run", status, Some(detail));
+        Ok(status)
+    }))
+}
+
+#[tauri::command(async)]
+pub fn quick_history(state: State<'_, AppState>, repo: String) -> Result<Vec<String>> {
+    let dir = repo_dir(&state, &repo)?;
+    db::recent_commands(&state.conn(), &dir.to_string_lossy(), QUICK_HISTORY)
+}
+
+#[tauri::command(async)]
+pub fn quick_forget(state: State<'_, AppState>, repo: String, command: String) -> Result<()> {
+    let dir = repo_dir(&state, &repo)?;
+    db::forget_command(&state.conn(), &dir.to_string_lossy(), &command)
+}
+
+/// The job of this kind running on this repository, if any (to show it again after leaving the screen).
+#[tauri::command(async)]
+pub fn job_active(state: State<'_, AppState>, repo: String, kind: String) -> Result<Option<u64>> {
+    let dir = repo_dir(&state, &repo)?;
+    Ok(state.jobs.active(&kind, Some(&dir.to_string_lossy())))
+}
+
+// ───────────────────────────── Claude Code detection ─────────────────────────────
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaudeReport {
+    #[serde(flatten)]
+    pub info: ClaudeInfo,
+    /// Path picked in Settings, if any.
+    pub configured: Option<String>,
+    /// What this application received as PATH, and what the login shell has: the difference
+    /// is why a program can work in a terminal and be "missing" here.
+    pub app_path: Vec<String>,
+    pub shell_path: Vec<String>,
+    pub shell: Option<String>,
+}
+
+#[tauri::command(async)]
+pub fn claude_info() -> ClaudeReport {
+    let dirs = |v: Vec<std::path::PathBuf>| v.into_iter().map(|p| p.to_string_lossy().into_owned()).collect();
+    ClaudeReport {
+        info: claude::detect(),
+        configured: crate::toolenv::override_for("claude").map(|p| p.to_string_lossy().into_owned()),
+        app_path: std::env::var_os("PATH").map(|p| dirs(std::env::split_paths(&p).collect())).unwrap_or_default(),
+        shell_path: dirs(crate::toolenv::shell_dirs().to_vec()),
+        shell: std::env::var("SHELL").ok(),
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaudeCheck {
+    pub ok: bool,
+    pub answer: Option<String>,
+    pub error: Option<String>,
+    pub cost_usd: Option<f64>,
+    pub duration_ms: u64,
+}
+
+/// Really asks Claude Code something, headless, in an empty folder: proves that the
+/// program found is logged in and answers. Counts toward the user's Claude usage.
+#[tauri::command(async)]
+pub fn claude_check(state: State<'_, AppState>) -> Result<ClaudeCheck> {
+    let exe = claude::executable()?;
+    let dir = state.cache_dir.join("claude-check");
+    std::fs::create_dir_all(&dir)?;
+    let mut argv = claude::build_argv("Reply with exactly one word: ready", &[]);
+    argv[0] = exe;
+    let report = workspace::run_argv_captured(&argv, &dir, Duration::from_secs(120), &[])?;
+    let (answer, error, cost_usd) = if report.timed_out {
+        (None, Some("Claude Code did not answer within 2 minutes".to_string()), None)
+    } else {
+        match claude::parse_answer(&report.output) {
+            Ok(a) => (Some(a.text.trim().chars().take(200).collect()), None, a.cost_usd),
+            Err(e) => (None, Some(e.to_string()), None),
+        }
+    };
+    Ok(ClaudeCheck { ok: error.is_none(), answer, error, cost_usd, duration_ms: report.duration_ms })
+}
+
 // ───────────────────────────── testing center ─────────────────────────────
 
 #[derive(Serialize)]
@@ -98,6 +227,8 @@ pub struct TestingInfo {
     pub banana: CheckerInfo,
     pub docker: bool,
     pub valgrind: bool,
+    /// A terminal command is configured (for "open a terminal here").
+    pub terminal: bool,
     pub default_image: &'static str,
     /// File name of the subject linked to this project.
     pub subject: Option<String>,
@@ -122,6 +253,7 @@ pub fn testing_info(state: State<'_, AppState>, repo: String) -> Result<TestingI
         banana: checker::detect(),
         docker: settings::which("docker").is_some(),
         valgrind: settings::which("valgrind").is_some(),
+        terminal: !state.settings()?.terminal_cmd.trim().is_empty(),
         default_image: testrepo::DEFAULT_IMAGE,
         subject: linked_subject(&state, &dir)?.map(|(n, _)| n),
         has_remote: crate::git::origin_url(&dir).is_some(),

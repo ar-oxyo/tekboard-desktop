@@ -8,6 +8,7 @@ pub mod commands_my;
 pub mod cozy;
 pub mod cparse;
 pub mod db;
+pub mod deadlines;
 pub mod doctor;
 pub mod epitech;
 pub mod error;
@@ -20,13 +21,16 @@ pub mod moulinette;
 pub mod myepitech;
 pub mod myview;
 pub mod packager;
+pub mod projects;
 pub mod readme;
+pub mod runner;
 pub mod scanner;
 pub mod settings;
 pub mod subjects;
 pub mod templates;
 pub mod testing;
 pub mod testrepo;
+pub mod toolenv;
 pub mod workspace;
 
 use commands::AppState;
@@ -40,6 +44,9 @@ pub fn run() {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
             let conn = db::open(&data_dir.join("tekboard.db"))?;
+            // Programs are looked up like the user's terminal would: see `toolenv`.
+            toolenv::set_override("claude", settings::load(&conn).ok().and_then(|s| s.claude_path).as_deref());
+            toolenv::warm_up();
             templates::ensure_builtins(&data_dir.join("templates"))?;
             let cache_dir = app.path().app_cache_dir()?;
             std::fs::create_dir_all(&cache_dir)?;
@@ -49,6 +56,22 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_settings,
             commands::save_settings,
+            commands::ui_prefs_get,
+            commands::ui_prefs_set,
+            commands::deadline_board,
+            commands::open_remote,
+            commands::project_run_info,
+            commands::project_launch,
+            commands_dev::quick_run,
+            commands_dev::quick_history,
+            commands_dev::quick_forget,
+            commands_dev::job_active,
+            commands_dev::claude_info,
+            commands_dev::claude_check,
+            commands::project_set_status,
+            commands::project_set_kind,
+            commands::project_set_my,
+            commands::project_deadline_from_my,
             commands::suggest_roots,
             commands::env_status,
             commands::test_github_ssh,

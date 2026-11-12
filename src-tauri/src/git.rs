@@ -146,6 +146,42 @@ pub fn origin_url(repo: &Path) -> Option<String> {
     if out.ok && !url.is_empty() { Some(url.to_string()) } else { None }
 }
 
+/// URL of the remote to show in a browser: `origin`, else the first remote git lists.
+pub fn any_remote_url(repo: &Path) -> Option<String> {
+    origin_url(repo).or_else(|| {
+        let names = run(Some(repo), &["remote"]).ok()?;
+        let first = names.lines().map(str::trim).find(|n| !n.is_empty())?.to_string();
+        let out = run_raw(Some(repo), &["config", "--get", &format!("remote.{first}.url")]).ok()?;
+        let url = out.stdout.trim();
+        (out.ok && !url.is_empty()).then(|| url.to_string())
+    })
+}
+
+/// The real host behind an SSH alias (`Host gh-school` in `~/.ssh/config`), asked to ssh itself.
+pub fn ssh_hostname(alias: &str) -> Option<String> {
+    if alias.is_empty() || alias.starts_with('-') || !alias.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_')) {
+        return None;
+    }
+    let out = crate::toolenv::command("ssh").args(["-G", alias]).stdin(Stdio::null()).output().ok()?;
+    String::from_utf8_lossy(&out.stdout).lines().find_map(|l| l.strip_prefix("hostname ").map(|h| h.trim().to_string())).filter(|h| !h.is_empty())
+}
+
+/// The web page of a remote: `git@github.com:Org/repo.git`, `ssh://…` and `https://…` all
+/// become `https://github.com/Org/repo`. `resolve` turns an SSH alias into its real host.
+/// Returns `None` for a remote that is not on a web host (a local path, a bare name).
+pub fn web_url(remote: &str, resolve: impl Fn(&str) -> Option<String>) -> Option<String> {
+    let r = crate::epitech::parse_remote(remote)?;
+    let host = if r.host.contains('.') { r.host.clone() } else { resolve(&r.host)? };
+    let host = host.to_lowercase();
+    let host_ok = host.contains('.') && !host.starts_with(['.', '-']) && host.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-'));
+    let part_ok = |p: &str| !p.is_empty() && !p.starts_with(['.', '-']) && p.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'));
+    // GitLab-style groups may be nested: every segment is checked.
+    if !host_ok || !r.owner.split('/').all(part_ok) || !part_ok(&r.name) {
+        return None;
+    }
+    Some(format!("https://{host}/{}/{}", r.owner, r.name))
+}
+
 pub fn config_get(repo: Option<&Path>, key: &str) -> Option<String> {
     let out = run_raw(repo, &["config", "--get", key]).ok()?;
     let v = out.stdout.trim();
@@ -408,6 +444,48 @@ pub fn is_repo(dir: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_remote_form_gives_the_same_web_page() {
+        let none = |_: &str| None;
+        let page = Some("https://github.com/EpitechPGE1-2026/G-CPE-110-LYN-1-1-settingup-27".to_string());
+        for remote in [
+            "git@github.com:EpitechPGE1-2026/G-CPE-110-LYN-1-1-settingup-27.git",
+            "https://github.com/EpitechPGE1-2026/G-CPE-110-LYN-1-1-settingup-27.git",
+            "https://github.com/EpitechPGE1-2026/G-CPE-110-LYN-1-1-settingup-27",
+            "ssh://git@github.com/EpitechPGE1-2026/G-CPE-110-LYN-1-1-settingup-27.git",
+            "ssh://git@github.com:22/EpitechPGE1-2026/G-CPE-110-LYN-1-1-settingup-27.git",
+            "https://user:secret@github.com/EpitechPGE1-2026/G-CPE-110-LYN-1-1-settingup-27.git",
+            "  git@GitHub.com:EpitechPGE1-2026/G-CPE-110-LYN-1-1-settingup-27.git\n",
+        ] {
+            assert_eq!(web_url(remote, none), page, "{remote}");
+        }
+        assert_eq!(web_url("git@gitlab.com:group/sub/repo.git", none).as_deref(), Some("https://gitlab.com/group/sub/repo"));
+    }
+
+    #[test]
+    fn ssh_aliases_are_resolved_and_non_web_remotes_are_refused() {
+        let alias = |h: &str| (h == "gh-school").then(|| "github.com".to_string());
+        assert_eq!(web_url("gh-school:Org/repo.git", alias).as_deref(), Some("https://github.com/Org/repo"));
+        assert_eq!(web_url("unknown-alias:Org/repo.git", alias), None, "an alias ssh does not know is not turned into a guess");
+        for bad in ["/home/me/bare.git", "../other", "file:///tmp/x/origin.git", "nonsense", "", "git@github.com:Org/re po.git", "git@github.com:-x/repo.git", "https://github.com/Org/repo?x=<script>"] {
+            assert_eq!(web_url(bad, alias), None, "{bad}");
+        }
+        // Credentials embedded in an HTTPS remote never reach the browser.
+        assert!(!web_url("https://user:secret@github.com/Org/repo.git", alias).unwrap().contains("secret"));
+    }
+
+    #[test]
+    fn the_first_remote_is_used_when_there_is_no_origin() {
+        let tmp = tempfile::tempdir().unwrap();
+        let repo = tmp.path();
+        run(Some(repo), &["init", "-q", "-b", "main"]).unwrap();
+        assert_eq!(any_remote_url(repo), None, "no remote at all");
+        run(Some(repo), &["remote", "add", "upstream", "git@github.com:Org/up.git"]).unwrap();
+        assert_eq!(any_remote_url(repo).as_deref(), Some("git@github.com:Org/up.git"));
+        run(Some(repo), &["remote", "add", "origin", "https://github.com/Me/fork.git"]).unwrap();
+        assert_eq!(any_remote_url(repo).as_deref(), Some("https://github.com/Me/fork.git"), "origin wins");
+    }
 
     #[test]
     fn parses_clean_tracking_branch() {

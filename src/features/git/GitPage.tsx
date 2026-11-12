@@ -18,7 +18,7 @@ export function GitPage() {
   const [query, setQuery] = useState("");
 
   const list = useMemo(() => {
-    const all = (repos.data ?? []).filter((r) => !r.meta.archived && matchesQuery(r, query));
+    const all = (repos.data ?? []).filter((r) => r.progress !== "done" && matchesQuery(r, query));
     // Repositories with something to do first; the scan order (latest commit) is kept inside each group.
     return [...all.filter((r) => attention(r).length > 0), ...all.filter((r) => attention(r).length === 0)];
   }, [repos.data, query]);

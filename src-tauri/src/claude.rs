@@ -7,7 +7,6 @@
 
 use crate::error::{AppError, Result};
 use crate::jobs::{Job, Outcome};
-use crate::settings;
 use serde::Serialize;
 use std::path::Path;
 use std::time::Duration;
@@ -15,14 +14,45 @@ use std::time::Duration;
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClaudeInfo {
+    /// The executable that will be run. `None` when none was found.
     pub path: Option<String>,
+    /// What the link points to, when `path` is a symbolic link.
+    pub target: Option<String>,
     pub version: Option<String>,
+    /// `ready`, `not_found`, `not_executable` (the path picked in Settings is wrong) or
+    /// `version_failed` (found, but `--version` did not answer).
+    pub state: &'static str,
+    /// Where it was found: `settings`, `path`, `user` (a per-user install folder) or `shell` (the login shell's PATH).
+    pub source: Option<&'static str>,
+    /// What went wrong, in the program's own words when it said something.
+    pub detail: Option<String>,
 }
 
+/// Finds Claude Code and checks that it answers. Nothing is assumed about where it is installed.
 pub fn detect() -> ClaudeInfo {
-    let path = settings::which("claude");
-    let version = path.as_ref().and_then(|p| std::process::Command::new(p).arg("--version").stdin(std::process::Stdio::null()).output().ok()).filter(|o| o.status.success()).map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
-    ClaudeInfo { path: path.map(|p| p.to_string_lossy().into_owned()), version }
+    let picked = crate::toolenv::override_for("claude");
+    if let Some(p) = picked.as_ref().filter(|p| !crate::toolenv::is_executable(p)) {
+        return ClaudeInfo { path: Some(p.to_string_lossy().into_owned()), target: None, version: None, state: "not_executable", source: Some("settings"), detail: Some("The path set in Settings is not an executable file.".into()) };
+    }
+    let Some(found) = crate::toolenv::find("claude") else {
+        return ClaudeInfo { path: None, target: None, version: None, state: "not_found", source: None, detail: Some("No `claude` program in this application's PATH, in the usual per-user folders, or in your login shell's PATH.".into()) };
+    };
+    let target = std::fs::canonicalize(&found.path).ok().filter(|t| *t != found.path).map(|t| t.to_string_lossy().into_owned());
+    let path = Some(found.path.to_string_lossy().into_owned());
+    match crate::toolenv::first_line(&found.path, &["--version"], Duration::from_secs(8)) {
+        Ok(version) => ClaudeInfo { path, target, version: Some(version), state: "ready", source: Some(found.source), detail: None },
+        Err(why) => ClaudeInfo { path, target, version: None, state: "version_failed", source: Some(found.source), detail: Some(format!("`--version` failed: {why}")) },
+    }
+}
+
+/// The executable to run, or an error that says exactly what is wrong.
+pub fn executable() -> Result<String> {
+    let info = detect();
+    match (info.state, info.path) {
+        ("ready", Some(p)) => Ok(p),
+        ("not_found", _) => Err(AppError::new("claude_missing", "Claude Code was not found (no `claude` program in the PATH, the per-user folders or your shell's PATH). Set its path in Settings → Tools.")),
+        (_, p) => Err(AppError::new("claude_missing", format!("Claude Code cannot be used ({}): {}", p.unwrap_or_default(), info.detail.unwrap_or_default()))),
+    }
 }
 
 /// Files Claude is never allowed to read, whatever the task.
@@ -65,10 +95,13 @@ pub fn build_argv(prompt: &str, write_dirs: &[&str]) -> Vec<String> {
 pub fn plan(write_dirs: &[&str]) -> Plan {
     let info = detect();
     let mut argv = build_argv("<instructions>", write_dirs);
+    if let Some(p) = &info.path {
+        argv[0] = p.clone();
+    }
     argv.truncate(argv.len() - 1);
     argv.push("<instructions shown below>".into());
     Plan {
-        available: info.path.is_some(),
+        available: info.state == "ready",
         version: info.version,
         argv,
         can_read: "Files of this project folder, except .git and files that look like secrets (.env, keys, credentials). What it reads is sent to Anthropic to produce the answer.".into(),
@@ -108,11 +141,11 @@ fn last_line(output: &str) -> String {
 
 /// Runs Claude Code in `dir` as part of a job. The prompt is logged in full first.
 pub fn run(job: &Job, dir: &Path, prompt: &str, write_dirs: &[&str], timeout: Duration) -> Result<(Outcome, Result<Answer>)> {
-    if detect().path.is_none() {
-        return Err(AppError::new("claude_missing", "Claude Code is not installed on this computer (the `claude` command was not found)."));
-    }
+    let exe = executable()?;
     job.log(&format!("Instructions given to Claude Code:\n{prompt}\n"));
-    let argv = build_argv(prompt, write_dirs);
+    let mut argv = build_argv(prompt, write_dirs);
+    // The absolute path found by `detect`, never the bare name: the desktop PATH may not have it.
+    argv[0] = exe;
     // The log shows the command with the prompt elided: it is printed just above.
     let o = job.run(&argv, dir, timeout, &[])?;
     let answer = if o.cancelled {
@@ -141,7 +174,7 @@ pub fn fenced(text: &str, lang: &str) -> String {
 
 /// Text of a PDF, through `pdftotext`. `None` when the tool is missing or the file has no text.
 pub fn pdf_text(pdf: &Path, max_chars: usize) -> Option<String> {
-    let out = std::process::Command::new("pdftotext").arg("-layout").arg(pdf).arg("-").stdin(std::process::Stdio::null()).output().ok()?;
+    let out = crate::toolenv::command("pdftotext").arg("-layout").arg(pdf).arg("-").stdin(std::process::Stdio::null()).output().ok()?;
     if !out.status.success() {
         return None;
     }

@@ -1,12 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, CalendarClock, Code2, FolderGit2, GitCommitHorizontal, Play, Plus, RefreshCw, SquareTerminal } from "lucide-react";
+import { ArrowRight, CalendarClock, ChevronDown, ChevronRight, CloudDownload, FolderGit2, GitCommitHorizontal, Play, Plus, RefreshCw } from "lucide-react";
+import { useState } from "react";
 import { Badge, Button, Card, CardTitle, Code, EmptyState, ErrorNote, PageHeader, Spinner } from "../../components/ui";
-import { asAppError, type Activity, type Candidate, type RepoInfo } from "../../lib/api";
+import { asAppError, type Activity, type BoardItem, type Candidate, type RepoInfo } from "../../lib/api";
 import { greeting, timeAgo, tildify } from "../../lib/format";
-import { keys, useActivity, useCandidates, useEnv, useHome, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
-import { attention, currentFocus, deadlineLabel, deadlines, displayName } from "../../lib/repos";
+import { keys, useActivity, useBoard, useCandidates, useEnv, useHome, useNow, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
+import { attention, currentFocus, displayName, due } from "../../lib/repos";
 import { useUi } from "../../lib/store";
-import { BranchLabel, RepoActions, StatusChips } from "../projects/RepoBits";
+import { BranchLabel, DueBadge, ProgressPicker, RepoMenu, StatusChips } from "../projects/RepoBits";
 import { Onboarding } from "../settings/Onboarding";
 
 export function OverviewPage() {
@@ -61,7 +62,7 @@ export function OverviewPage() {
             <AttentionCard repos={repos.data ?? []} />
           </div>
           <div className="flex min-w-0 flex-col gap-4">
-            <DeadlinesCard repos={repos.data ?? []} />
+            <DeadlinesCard />
             <NextProjectCard />
             <ActivityCard repos={repos.data ?? []} />
           </div>
@@ -101,11 +102,12 @@ function FocusCard({ repo }: { repo: RepoInfo | null }) {
       <div className="px-5 pt-5 pb-5">
         <div className="flex flex-wrap items-center gap-2.5">
           <h3 className="display selectable truncate text-[26px] leading-tight font-semibold">{displayName(repo)}</h3>
-          {repo.epitech && (
+          {(repo.my?.unitCode ?? repo.epitech?.module) && (
             <Badge tone="accent" mono>
-              {repo.epitech.module}
+              {repo.my?.unitCode ?? repo.epitech?.module}
             </Badge>
           )}
+          <DueBadge repo={repo} />
         </div>
         <p className="selectable mt-0.5 truncate font-mono text-xs text-faint">{tildify(repo.path, home)}</p>
 
@@ -128,23 +130,20 @@ function FocusCard({ repo }: { repo: RepoInfo | null }) {
           <Button variant="primary" icon={<Play className="size-3.5" />} busy={act.workspace.isPending} onClick={() => act.workspace.mutate(repo)}>
             Continue working
           </Button>
-          <Button onClick={() => openSheet(repo.path)}>Notes &amp; deadline</Button>
-          <Button icon={<Code2 className="size-3.5" />} onClick={() => act.ide.mutate(repo)}>
-            IDE
-          </Button>
-          <Button icon={<SquareTerminal className="size-3.5" />} onClick={() => act.terminal.mutate(repo)}>
-            Terminal
-          </Button>
+          <Button onClick={() => openSheet(repo.path)}>Project sheet</Button>
+          <ProgressPicker repo={repo} />
+          <span className="ml-auto">
+            <RepoMenu repo={repo} />
+          </span>
         </div>
       </div>
     </Card>
   );
 }
-
 function AttentionCard({ repos }: { repos: RepoInfo[] }) {
   const setPage = useUi((s) => s.setPage);
   const openSheet = useUi((s) => s.openSheet);
-  const flagged = repos.filter((r) => !r.meta.archived && attention(r).length > 0);
+  const flagged = repos.filter((r) => r.progress !== "done" && attention(r).length > 0);
   const shown = flagged.slice(0, 6);
   return (
     <Card>
@@ -169,7 +168,9 @@ function AttentionCard({ repos }: { repos: RepoInfo[] }) {
                 {displayName(repo)}
               </button>
               <StatusChips repo={repo} max={2} />
-              <RepoActions repo={repo} className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100" />
+              <span className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+                <RepoMenu repo={repo} />
+              </span>
             </li>
           ))}
         </ul>
@@ -178,29 +179,102 @@ function AttentionCard({ repos }: { repos: RepoInfo[] }) {
   );
 }
 
-function DeadlinesCard({ repos }: { repos: RepoInfo[] }) {
+const dayText = (day: string | null) => {
+  const m = day ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(day) : null;
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : "";
+};
+
+/** Hand-ins in three groups: late, to come, and school projects whose date is not known. Nothing is ever estimated. */
+function DeadlinesCard() {
+  const board = useBoard();
+  const now = useNow();
   const openSheet = useUi((s) => s.openSheet);
-  const list = deadlines(repos);
+  const openLauncher = useUi((s) => s.openLauncher);
+  const setPage = useUi((s) => s.setPage);
+  const [showUnknown, setShowUnknown] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const items = board.data ?? [];
+  // The state is recomputed here so that it changes when the hour passes, without waiting for a rescan.
+  const withDue = items.map((i) => ({ i, d: due(i.day, i.at, now) }));
+  const overdue = withDue.filter((x) => x.d.state === "overdue");
+  const coming = withDue.filter((x) => x.d.state === "today" || x.d.state === "upcoming");
+  const unknown = withDue.filter((x) => x.d.state === "unknown");
+  const shownComing = showAll ? coming : coming.slice(0, 6);
+  const row = ({ i, d }: { i: BoardItem; d: ReturnType<typeof due> }) => (
+    <li key={`${i.repoPath ?? "my"}-${i.myId ?? i.title}`}>
+      <button
+        type="button"
+        onClick={() => (i.repoPath ? openSheet(i.repoPath) : i.repoExpected ? openLauncher({ mode: "new" }) : setPage("myepitech"))}
+        title={i.repoPath ? `${i.repoPath}\n${i.source === "my" ? "Date from MY Epitech" : i.source === "manual" ? "Date typed by you" : "Date saved earlier"}${i.myDay ? `\nMY Epitech says ${i.myDay}` : ""}` : i.repoExpected ? "Listed by MY Epitech, no local repository yet. Click to clone it." : "Listed by MY Epitech. No repository is expected for it."}
+        className="flex min-h-9 w-full items-center gap-2 px-4 py-1 text-left text-[13px] row-hover"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5">
+            <span className="truncate font-medium">{i.title}</span>
+            {!i.cloned && i.repoExpected && (
+              <span className="flex shrink-0 items-center gap-1 text-[11px] text-info">
+                <CloudDownload className="size-3" /> not cloned
+              </span>
+            )}
+          </span>
+          {i.module && <span className="block truncate font-mono text-[11px] text-faint">{i.module}{i.starts ? ` · starts ${dayText(i.starts.slice(0, 10))}` : ""}</span>}
+        </span>
+        {i.day && <span className="shrink-0 text-xs text-faint">{dayText(i.day)}</span>}
+        {d.state !== "unknown" && <Badge tone={d.tone}>{d.label}</Badge>}
+      </button>
+    </li>
+  );
   return (
     <Card>
-      <CardTitle>Deadlines</CardTitle>
-      {list.length === 0 ? (
+      <CardTitle right={board.isFetching ? <Spinner /> : overdue.length + coming.length > 0 ? <span className="text-xs text-faint">{coming.length} to come{overdue.length > 0 ? ` · ${overdue.length} late` : ""}</span> : undefined}>Deadlines</CardTitle>
+      {board.error ? (
+        <div className="p-3">
+          <ErrorNote title="Deadlines could not be read">{asAppError(board.error).message}</ErrorNote>
+        </div>
+      ) : board.isLoading ? (
+        <p className="flex items-center gap-2 px-4 py-4 text-[13px] text-muted">
+          <Spinner /> Reading hand-in dates…
+        </p>
+      ) : items.length === 0 ? (
         <p className="flex items-start gap-2 px-4 py-4 text-[13px] text-muted">
           <CalendarClock className="mt-0.5 size-4 shrink-0 text-faint" />
-          No deadline set. Click a project to add its due date — TekBoard never guesses one.
+          <span>
+            No hand-in date is known. Sync{" "}
+            <button type="button" className="text-accent-strong hover:underline" onClick={() => setPage("myepitech")}>
+              MY Epitech
+            </button>{" "}
+            to get them, or set one in a project sheet — TekBoard never guesses a date.
+          </span>
         </p>
       ) : (
-        <ul className="py-1">
-          {list.slice(0, 6).map(({ repo, days }) => (
-            <li key={repo.path}>
-              <button type="button" onClick={() => openSheet(repo.path)} className="flex h-9 w-full items-center gap-2 px-4 text-left text-[13px] row-hover">
-                <span className="min-w-0 flex-1 truncate font-medium">{displayName(repo)}</span>
-                <span className="shrink-0 text-xs text-faint">{repo.meta.deadline}</span>
-                <Badge tone={days < 0 ? "danger" : days <= 2 ? "warn" : "neutral"}>{deadlineLabel(days)}</Badge>
+        <div className="py-1">
+          {overdue.length > 0 && (
+            <>
+              <p className="px-4 pt-1.5 pb-0.5 text-[10px] font-semibold tracking-[0.12em] text-danger uppercase">Late</p>
+              <ul>{overdue.map(row)}</ul>
+            </>
+          )}
+          {coming.length > 0 && (
+            <>
+              {overdue.length > 0 && <p className="px-4 pt-2 pb-0.5 text-[10px] font-semibold tracking-[0.12em] text-faint uppercase">To come</p>}
+              <ul>{shownComing.map(row)}</ul>
+              {coming.length > shownComing.length && (
+                <button type="button" onClick={() => setShowAll(true)} className="flex h-8 w-full items-center gap-1 px-4 text-xs text-muted hover:text-fg">
+                  <ChevronRight className="size-3.5" /> {coming.length - shownComing.length} more
+                </button>
+              )}
+            </>
+          )}
+          {overdue.length + coming.length === 0 && <p className="px-4 py-2 text-[13px] text-muted">Nothing is due.</p>}
+          {unknown.length > 0 && (
+            <>
+              <button type="button" aria-expanded={showUnknown} onClick={() => setShowUnknown(!showUnknown)} className="mt-1 flex h-8 w-full items-center gap-1 border-t border-white/6 px-4 text-xs text-muted hover:text-fg" title="School projects that are not finished and have no hand-in date, neither typed nor reported by MY Epitech.">
+                {showUnknown ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />} {unknown.length} without a known date
               </button>
-            </li>
-          ))}
-        </ul>
+              {showUnknown && <ul>{unknown.map(row)}</ul>}
+            </>
+          )}
+        </div>
       )}
     </Card>
   );

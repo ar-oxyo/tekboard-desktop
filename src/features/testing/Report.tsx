@@ -19,7 +19,7 @@ export interface ReportData {
 
 export const STATUS_LABEL: Record<JobStatus, string> = { running: "Running", success: "Success", warning: "Warning", failed: "Failed", cancelled: "Cancelled" };
 export const STATUS_TONE: Record<JobStatus, "info" | "ok" | "warn" | "danger" | "neutral"> = { running: "info", success: "ok", warning: "warn", failed: "danger", cancelled: "neutral" };
-export const KIND_LABEL: Record<RunKind, string> = { tests: "Unit tests", testrepo: "TestRepo", banana: "Banana", moulinette: "Claude Moulinette", gen_tests: "Generated tests", readme: "README", build: "Build" };
+export const KIND_LABEL: Record<RunKind, string> = { tests: "Unit tests", testrepo: "TestRepo", banana: "Banana", moulinette: "Claude Moulinette", gen_tests: "Generated tests", readme: "README", build: "Build", command: "Command", analysis: "Repository analysis" };
 
 export function duration(ms: number): string {
   if (ms < 1000) return `${ms} ms`;
@@ -296,7 +296,21 @@ function GenTests({ s }: { s: RunSummary }) {
   );
 }
 
-export function Report({ data, onCancel, envActions }: { data: ReportData; onCancel?: () => void; envActions?: (name: string, terminal: boolean) => void }) {
+function CommandResult({ s, status }: { s: RunSummary; status: JobStatus }) {
+  const code = num(s.exitCode);
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <code className="selectable min-w-0 flex-1 truncate rounded-md border border-line bg-bg px-2.5 py-1.5 font-mono text-xs text-fg">$ {str(s.command) ?? ""}</code>
+      {status !== "running" && (
+        <Badge tone={code === 0 ? "ok" : status === "cancelled" ? "neutral" : "danger"}>
+          {status === "cancelled" ? "stopped" : code !== null ? `exit code ${code}` : s.timedOut === true ? "time limit" : "no exit code"}
+        </Badge>
+      )}
+    </div>
+  );
+}
+
+export function Report({ data, onCancel, envActions, onClear }: { data: ReportData; onCancel?: () => void; envActions?: (name: string, terminal: boolean) => void; onClear?: () => void }) {
   const running = data.status === "running";
   const [full, setFull] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
@@ -312,9 +326,9 @@ export function Report({ data, onCancel, envActions }: { data: ReportData; onCan
         <Badge tone={STATUS_TONE[data.status]}>{running && <Spinner className="size-3" />}{STATUS_LABEL[data.status]}</Badge>
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{data.title}</span>
         <span className="text-xs text-faint">{duration(data.durationMs)}</span>
-        {running && onCancel && <Button size="sm" variant="danger" onClick={onCancel}>Cancel</Button>}
+        {running && onCancel && <Button size="sm" variant="danger" onClick={onCancel}>{data.kind === "command" ? "Stop" : "Cancel"}</Button>}
       </div>
-      <Stepper steps={data.steps} />
+      {data.kind === "command" ? <CommandResult s={s} status={data.status} /> : <Stepper steps={data.steps} />}
       {data.kind === "testrepo" && <TestRepo s={s} steps={data.steps} envActions={envActions} />}
       {data.kind === "tests" && !running && <Tests tests={rec(s.tests)} />}
       {data.kind === "banana" && !running && <Banana s={s} />}
@@ -324,7 +338,10 @@ export function Report({ data, onCancel, envActions }: { data: ReportData; onCan
       <div>
         <div className="mb-1 flex items-center justify-between">
           <p className="text-[11px] font-semibold tracking-wide text-muted uppercase">Log</p>
-          {lines.length > 300 && <button type="button" className="text-xs text-muted hover:text-fg" onClick={() => setFull(!full)}>{full ? "Show the end only" : `Show all ${lines.length} lines`}</button>}
+          <span className="flex items-center gap-3">
+            {lines.length > 300 && <button type="button" className="text-xs text-muted hover:text-fg" onClick={() => setFull(!full)}>{full ? "Show the end only" : `Show all ${lines.length} lines`}</button>}
+            {onClear && <button type="button" className="text-xs text-muted hover:text-fg" onClick={onClear} title="Empties this view. The full log stays in the history.">Clear</button>}
+          </span>
         </div>
         <div ref={logRef} className="max-h-80 overflow-auto rounded-md">
           <CodeView text={shown.trim() === "" ? "(nothing printed yet)" : shown.replace(/\n$/, "")} className="min-h-10 overflow-visible" />

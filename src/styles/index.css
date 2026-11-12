@@ -505,19 +505,60 @@ code,
   background: var(--field-bg);
   border-radius: var(--btn-radius);
 }
-.select {
-  appearance: none;
-  -webkit-appearance: none;
-  color: var(--color-fg);
+/* Drop-down lists and action menus: one panel style for the five designs. */
+.select-trigger {
+  background: var(--select-bg);
   border-radius: var(--btn-radius);
-  padding-right: 28px;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa0b6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 9px center,
-    var(--select-bg);
 }
-.select option {
-  background: var(--color-raised);
+.menu {
+  background: var(--overlay-bg);
+  border: 1px solid var(--btn2-border);
+  border-radius: calc(var(--btn-radius) + 3px);
+  box-shadow: var(--overlay-shadow);
   color: var(--color-fg);
+  transform-origin: var(--radix-select-content-transform-origin, var(--radix-dropdown-menu-content-transform-origin, var(--radix-popover-content-transform-origin, top)));
+}
+:root[data-glass="on"] .menu {
+  background: var(--overlay-bg-glass);
+  backdrop-filter: blur(18px) saturate(1.3);
+}
+.menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 9px;
+  border-radius: var(--btn-radius);
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: default;
+  user-select: none;
+  outline: none;
+  white-space: nowrap;
+}
+.menu-item[data-highlighted],
+.menu-item[data-selected="true"] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+.menu-item[data-state="checked"] {
+  font-weight: 500;
+}
+.menu-item[data-disabled],
+.menu-item[data-disabled="true"],
+.menu-item[aria-disabled="true"] {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.menu-label,
+.menu [cmdk-group-heading] {
+  padding: 7px 9px 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-faint);
 }
 
 /* Glass is reserved for overlays, and has an opaque fallback. */

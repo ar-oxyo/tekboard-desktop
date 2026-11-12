@@ -3,7 +3,7 @@
 
 use crate::error::{AppError, Result};
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 /// Splits a configured command line on whitespace and substitutes `{dir}`.
 /// When the placeholder is absent the folder is appended as the last argument.
@@ -34,7 +34,7 @@ pub fn launch(template: &str, dir: &Path) -> Result<()> {
 }
 
 pub fn spawn_detached(argv: &[String], cwd: &Path) -> Result<()> {
-    let mut child = Command::new(&argv[0])
+    let mut child = crate::toolenv::command(&argv[0])
         .args(&argv[1..])
         .current_dir(cwd)
         .stdin(Stdio::null())
@@ -87,7 +87,7 @@ pub fn run_argv_captured(argv: &[String], cwd: &Path, timeout: std::time::Durati
     // One anonymous file shared by stdout and stderr keeps their relative order.
     let mut log = tempfile_in_tmp()?;
     let started = std::time::Instant::now();
-    let mut child = Command::new(&argv[0])
+    let mut child = crate::toolenv::command(&argv[0])
         .args(&argv[1..])
         .envs(envs.iter().copied())
         .current_dir(cwd)
