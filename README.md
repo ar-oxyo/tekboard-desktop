@@ -53,6 +53,18 @@ command library, AppImage. See `docs/ARCHITECTURE.md`.
 
 Command line: `tekboard --page testing --repo <path> --run banana|tests|testrepo|testrepo-remote|moulinette`, `--tool package|readme`, `--pick <files>` (Library), `--report <id>`.
 
+## Reliability and daily use (v0.3)
+
+- **Deadlines you can trust.** A hand-in date is either typed by you or reported by MY Epitech — never derived. Dates from MY Epitech reach the matching repository by themselves, with their hour; a date you typed is kept and the difference is shown. The dashboard lists what is late, what is coming (projects not cloned yet included) and school projects whose date is unknown.
+- **Status: To do / In progress / Done**, changed in one click from any list or sheet, in both directions. Until you choose, the status follows the facts (handed in according to MY Epitech, touched recently).
+- **Projects:** sort by smart order, deadline, date added, recent activity, name, status or module; “Epitech only” and module filters. A repository counts as school work because of a MY Epitech match, its remote organisation, a folder you declared, or its name — and you can correct it. Sort and filters are remembered.
+- **Open on GitHub** (address built from the real remote, SSH or HTTPS, opened in Firefox) and **Launch Binary** (the program the Makefile names, or the one you set, started in a terminal that stays open and shows the exit code).
+- **Quick command bar** in Testing: `make`, `make re`, `make clean`, `make fclean` or your own command, run in the repository without a shell, with live log, exit code, Stop and history. `clear` only empties the log shown.
+- **Claude Code is found like your terminal finds it.** A desktop application does not get the `PATH` your shell builds in `~/.zshrc`; TekBoard also looks in per-user install folders and asks your login shell. Settings → Tools shows the executable, its version and state, lets you pick it by hand and run a real test prompt.
+- **Prompt manager:** read and personalise every instruction given to Claude Code, with variables, presets, the default at hand and a resolved preview. A prompt is only text: what Claude Code may read or write is fixed per task and it never gets a shell.
+- **MY Epitech, connected to the rest:** Agenda (hand-ins, sessions, holidays), Academic analytics (credits, units and learning outcomes, skills, log time, automated tests), modules as filters, launcher that prefers the projects the school lists, optional periodic sync. What the site does not give is reported as unavailable.
+- **Interface:** one drop-down component in the five designs (keyboard, search for long lists), secondary actions in menus, foldable sections, Settings in tabs.
+
 ## Install
 
 On Ubuntu or Debian, from a clone of this repository:

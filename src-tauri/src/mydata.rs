@@ -236,6 +236,15 @@ pub struct Academic {
     pub tests: Vec<TestPoint>,
     /// Nodes of the validation graph by kind and status: (kind, status, count).
     pub graph: Vec<(String, String, usize)>,
+    /// MY Epitech's own warning levels (`green`, `orange`, `red`…), as it words them.
+    pub global_alert: Option<String>,
+    pub credits_alert: Option<String>,
+    /// Units whose credits MY Epitech counts as lost or at risk: (title, credits).
+    pub credits_lost: Vec<(String, i64)>,
+    pub credits_at_risk: Vec<(String, i64)>,
+    pub level: Option<i64>,
+    pub xp: Option<i64>,
+    pub xp_to_next: Option<i64>,
     /// Projects registered, and how many are over.
     pub projects_total: usize,
     pub projects_done: usize,
@@ -284,6 +293,18 @@ pub fn academic(conn: &Connection, overview: &Overview) -> Academic {
             }).collect();
             a.competencies = v["competencyBlocks"].as_array().into_iter().flatten().map(|c| Competency { name: s(&c["name"]).unwrap_or_default(), available: c["availableCredits"].as_i64(), secure: c["secureCredits"].as_i64(), reachable: c["reachableCredits"].as_i64(), alert: s(&c["alertLevel"]) }).collect();
         }
+    }
+    if let Ok(v) = cached(conn, "/evaluations/validations/alerts/me") {
+        let list = |key: &str| v[key].as_array().into_iter().flatten().filter_map(|x| Some((s(&x["title"])?, x["credits"].as_i64()?))).collect::<Vec<_>>();
+        a.global_alert = s(&v["globalAlert"]);
+        a.credits_alert = s(&v["creditsAlert"]);
+        a.credits_lost = list("creditsLost");
+        a.credits_at_risk = list("creditsAtRisk");
+    }
+    if let Ok(v) = cached(conn, "/gamification/xp/me") {
+        a.level = v["level"].as_i64();
+        a.xp = v["totalXp"].as_i64();
+        a.xp_to_next = v["xpToNext"].as_i64();
     }
     match cached(conn, "/students/logtime") {
         Err(why) => a.notes.push(format!("Log time: {why}.")),
@@ -406,6 +427,12 @@ mod tests {
         assert_eq!(a.graph, vec![("project".into(), "completed".into(), 2), ("skill".into(), "available".into(), 1)]);
         assert_eq!(a.tests, vec![TestPoint { project: "SettingUp".into(), module: "G-CPE-110".into(), date: Some("2026-11-10T12:21:47Z".into()), passed: 20, total: 24, runs: 1, style_major: 1, style_minor: 2 }]);
         assert_eq!((a.projects_total, a.projects_done), (2, 0));
+        assert_eq!((a.global_alert.clone(), a.level, a.credits_lost.len()), (None, None, 0), "absent answers stay absent");
+        put(&conn, "/evaluations/validations/alerts/me", 200, r#"{"globalAlert":"orange","creditsAlert":"green","creditsLost":[{"blockId":1,"title":"C Pool","credits":4},{"title":"no credits"}],"creditsAtRisk":[]}"#);
+        put(&conn, "/gamification/xp/me", 200, r#"{"level":3,"totalXp":1250,"xpToNext":250}"#);
+        let a = academic(&conn, &o);
+        assert_eq!((a.global_alert.as_deref(), a.credits_alert.as_deref(), a.credits_lost.clone()), (Some("orange"), Some("green"), vec![("C Pool".to_string(), 4)]));
+        assert_eq!((a.level, a.xp, a.xp_to_next), (Some(3), Some(1250), Some(250)));
         assert!(a.notes.is_empty(), "{:?}", a.notes);
     }
 

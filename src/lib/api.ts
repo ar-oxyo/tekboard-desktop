@@ -764,6 +764,13 @@ export interface Academic {
   logtime: Array<{ date: string; mine: number; promo: number | null }>;
   tests: Array<{ project: string; module: string; date: string | null; passed: number; total: number; runs: number; styleMajor: number; styleMinor: number }>;
   graph: Array<[string, string, number]>;
+  globalAlert: string | null;
+  creditsAlert: string | null;
+  creditsLost: Array<[string, number]>;
+  creditsAtRisk: Array<[string, number]>;
+  level: number | null;
+  xp: number | null;
+  xpToNext: number | null;
   projectsTotal: number;
   projectsDone: number;
   notes: string[];
@@ -773,6 +780,7 @@ export interface MySyncReport {
   failed: number;
   unauthorized: boolean;
   detail: string;
+  subjectsImported: number;
 }
 
 export const api = {
@@ -909,10 +917,11 @@ export const api = {
   myData: () => invoke<{ entries: MyEntry[]; history: Array<{ at: number; ok: number; failed: number; detail: string }> }>("my_data"),
   myForget: (eraseCache: boolean) => invoke<void>("my_forget", { eraseCache }),
 
+  myImportSubjects: () => invoke<{ imported: number; problems: string[] }>("my_import_subjects"),
   myAgenda: () => invoke<Agenda>("my_agenda"),
   myAcademic: () => invoke<Academic>("my_academic"),
   myOverview: () => invoke<MyOverview>("my_overview"),
   myApplyDeadlines: (projectIds: number[]) => invoke<number>("my_apply_deadlines", { projectIds }),
 
-  startup: () => invoke<{ page: string | null; sheet: string | null; theme: string | null; repo: string | null; pick: string | null; tool: string | null; run: string | null; report: number | null }>("startup"),
+  startup: () => invoke<{ page: string | null; sheet: string | null; theme: string | null; repo: string | null; pick: string | null; tool: string | null; run: string | null; report: number | null; anchor: string | null }>("startup"),
 };

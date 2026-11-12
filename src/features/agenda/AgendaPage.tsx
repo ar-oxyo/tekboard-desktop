@@ -112,7 +112,7 @@ export function AgendaPage() {
                           <span className={cn("flex size-6 shrink-0 items-center justify-center rounded-md", i.kind === "deadline" ? "bg-accent-soft text-accent-strong" : "bg-white/5 text-muted")} title={KIND[i.kind]}>
                             {ICON[i.kind]}
                           </span>
-                          <span className="w-[92px] shrink-0 font-mono text-xs text-muted">{span || "all day"}</span>
+                          <span className="w-[104px] shrink-0 font-mono text-xs whitespace-nowrap text-muted">{span || "all day"}</span>
                           <span className="min-w-0 flex-1">
                             <span className={cn("block truncate text-[13px]", i.kind === "deadline" && "font-medium")}>{i.title}</span>
                             {i.detail && <span className="block truncate text-xs text-faint">{i.detail}</span>}

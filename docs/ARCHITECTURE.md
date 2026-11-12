@@ -96,6 +96,23 @@ Read from the public front-end code and unauthenticated probes only:
 
 `myepitech.rs` / `commands_my.rs`: a second window (`my-epitech`) loads the real site with its own `data_directory` (`<data>/my-session`). It gets **no** Tauri capability, so the remote page cannot call any command. An initialization script finds the site's access token in its `localStorage` and hands it over through `document.title` (`on_document_title_changed`); the token stays in memory. `my_sync` then does GET requests from Rust (`ureq`) on the routes listed in `myepitech::ROUTES`, 500 ms apart, and stores raw bodies in `my_cache` plus a line in `my_sync_log`. The calendar-token route is excluded because its answer is a credential. Response shapes are not interpreted yet.
 
+## Added in 0.3
+
+| Module | Role |
+|---|---|
+| `deadlines.rs` | One model for hand-in dates: local day, exact instant when known, state (`upcoming`, `today`, `overdue`, `unknown`). Dates are typed or reported, never derived. |
+| `projects.rs` | Ties repositories to the MY Epitech cache: link, classification (`epitech` / `personal` and why), progress, automatic report of MY Epitech dates (typed dates win), the dashboard's deadline board. |
+| `toolenv.rs` | Program lookup that does not depend on the desktop session's `PATH`: Settings override, process `PATH`, per-user folders, login shell `PATH` (asked once, bounded in time). Children get the completed `PATH`; the process environment is never modified. |
+| `runner.rs` | Binary detection (Makefile `NAME`, executable at the root) and launch in a terminal through a fixed wrapper script: program and arguments are positional parameters, never pasted into a command line. |
+| `prompts.rs` | Prompt templates with declared variables, single-pass substitution, validation, presets stored in the database (`prompts` table, active one in `settings`). |
+| `mydata.rs` | Typed views over `my_cache` for the Agenda and Academic analytics; each lists what could not be read. |
+
+Database migration v5 adds `status`, `deadline_at`, `deadline_source`, `kind_override`, `my_project_id`, `run_bin`, `run_args` to `repo_meta`, and the `prompts` and `cmd_history` tables. `archived` is kept in sync with `status = done`.
+
+**Commands typed by the user** (quick command bar, binary arguments) go through `jobs::split_command`: quotes group words, and anything only a shell understands (`|`, `&&`, `;`, redirections, `$VAR`, backticks) is refused unless quoted. They are reachable only through IPC from the main window, on an explicit action; no deep link and no synced or repository content can feed them.
+
+**MY Epitech background work** (`commands_my::start_background`): optional hidden reopening of the stored session at startup, and a sync every N minutes while a valid token is in memory. A failed sync is logged and not retried before the next interval; a refused session stops it and is reported.
+
 ## Roadmap
 
 1. ~~Foundations, Project Launcher, Templates~~

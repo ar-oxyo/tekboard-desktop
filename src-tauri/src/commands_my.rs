@@ -103,14 +103,137 @@ pub(crate) fn sync_now(state: &AppState) -> Result<SyncReport> {
     }
     let fetched = myepitech::fetch_all(&token);
     *state.my_syncing.lock().unwrap_or_else(|e| e.into_inner()) = false;
-    let report = myepitech::store(&state.conn(), &fetched.fetched, fetched.skipped_details, now())?;
+    let mut report = myepitech::store(&state.conn(), &fetched.fetched, fetched.skipped_details, now())?;
     if report.unauthorized {
         state.my.lock().unwrap_or_else(|e| e.into_inner()).token = None;
     } else {
         // The new hand-in dates reach the repositories right away (typed dates are kept).
         let _ = crate::commands::load_repos(state);
+        let (imported, problems) = import_subjects(state, &token);
+        report.subjects_imported = imported;
+        if !problems.is_empty() {
+            let note = format!("subjects not imported: {}", problems.join("; "));
+            report.detail = if report.detail.is_empty() { note } else { format!("{}; {note}", report.detail) };
+        }
     }
     Ok(report)
+}
+
+const MAX_SUBJECTS_PER_SYNC: usize = 12;
+
+/// Adds to the subjects library the PDFs MY Epitech attaches to running and coming projects,
+/// linked to the matching repository when there is one. A document already in the library
+/// (same name and size) is not downloaded again. Returns how many were added, and what failed.
+pub(crate) fn import_subjects(state: &AppState, token: &str) -> (usize, Vec<String>) {
+    use crate::myres;
+    let mut problems = Vec::new();
+    let Ok((_, overview)) = crate::commands::load_repos(state) else { return (0, vec!["projects could not be listed".into()]) };
+    let library = crate::db::list_subjects(&state.conn()).unwrap_or_default();
+    let mut wanted: Vec<(myres::Resource, Option<String>)> = Vec::new();
+    for p in overview.projects.iter().filter(|p| p.ongoing || p.upcoming) {
+        let body: Option<String> = state.conn().query_row("SELECT body FROM my_cache WHERE route = ?1 AND status BETWEEN 200 AND 299", [myres::listing_route(p.id)], |r| r.get(0)).ok();
+        let Some(listing) = body.and_then(|b| serde_json::from_str::<serde_json::Value>(&b).ok()) else { continue };
+        let mut files: Vec<myres::Resource> = myres::parse_listing(p.id, &listing).into_iter().filter(myres::is_pdf).collect();
+        // The project's own subject is imported last, so it is the most recent one linked to the repository.
+        files.sort_by_key(|f| f.main);
+        for f in files {
+            let known = library.iter().any(|s| s.name == f.name && f.size.is_none_or(|size| size == s.size));
+            if !known {
+                wanted.push((f, p.repo_path.clone()));
+            }
+        }
+    }
+    let skipped = wanted.len().saturating_sub(MAX_SUBJECTS_PER_SYNC);
+    if skipped > 0 {
+        problems.push(format!("{skipped} more document(s) left for the next sync"));
+    }
+    let dir = state.cache_dir.join("my-resources");
+    let mut imported = 0;
+    for (res, repo) in wanted.into_iter().take(MAX_SUBJECTS_PER_SYNC) {
+        let outcome = (|| -> Result<bool> {
+            let route = myres::link_route(&res).ok_or_else(|| AppError::new("invalid_path", "unusable file name"))?;
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            let (status, body) = myepitech::get_once(token, &route);
+            if !(200..300).contains(&status) {
+                return Err(AppError::new("download_failed", format!("the site answered HTTP {status}")));
+            }
+            let url = myres::link_from_body(&body).ok_or_else(|| AppError::new("download_failed", "the site did not answer with a download link"))?;
+            std::fs::create_dir_all(&dir)?;
+            // Only the last path component of the name is used on disk.
+            let file_name = std::path::Path::new(&res.name).file_name().map(|n| n.to_owned()).ok_or_else(|| AppError::new("invalid_path", "unusable file name"))?;
+            let tmp = dir.join(file_name);
+            let result = myres::download(&url, &tmp).and_then(|_| {
+                if !myres::looks_like_pdf(&tmp) {
+                    return Err(AppError::new("download_failed", "what was downloaded is not a PDF"));
+                }
+                crate::subjects::import(&state.conn(), &state.subjects(), &tmp, repo.as_deref(), now())
+            });
+            let _ = std::fs::remove_file(&tmp);
+            Ok(!result?.duplicate)
+        })();
+        match outcome {
+            Ok(true) => imported += 1,
+            Ok(false) => {}
+            Err(e) => problems.push(format!("{}: {e}", res.name)),
+        }
+    }
+    if imported > 0 {
+        let _ = crate::db::log_activity(&state.conn(), now(), "subjects_import", None, Some(&format!("{imported} from MY Epitech")));
+    }
+    (imported, problems)
+}
+
+/// Documents MY Epitech attaches to each project, from the last sync, and whether each PDF is in the library.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectDocs {
+    pub project_id: i64,
+    pub project: String,
+    pub module: String,
+    pub repo_path: Option<String>,
+    pub files: Vec<DocFile>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocFile {
+    #[serde(flatten)]
+    pub file: crate::myres::Resource,
+    pub pdf: bool,
+    pub in_library: bool,
+}
+
+#[tauri::command(async)]
+pub fn my_documents(state: State<'_, AppState>) -> Result<Vec<ProjectDocs>> {
+    use crate::myres;
+    let (_, overview) = crate::commands::load_repos(&state)?;
+    let conn = state.conn();
+    let library = crate::db::list_subjects(&conn)?;
+    let mut out = Vec::new();
+    for p in &overview.projects {
+        let body: Option<String> = conn.query_row("SELECT body FROM my_cache WHERE route = ?1 AND status BETWEEN 200 AND 299", [myres::listing_route(p.id)], |r| r.get(0)).ok();
+        let Some(listing) = body.and_then(|b| serde_json::from_str::<serde_json::Value>(&b).ok()) else { continue };
+        let files: Vec<DocFile> = myres::parse_listing(p.id, &listing).into_iter().map(|f| DocFile { pdf: myres::is_pdf(&f), in_library: library.iter().any(|s| s.name == f.name && f.size.is_none_or(|size| size == s.size)), file: f }).collect();
+        if !files.is_empty() {
+            out.push(ProjectDocs { project_id: p.id, project: p.name.clone(), module: p.unit_code.clone(), repo_path: p.repo_path.clone(), files });
+        }
+    }
+    Ok(out)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubjectsImport {
+    pub imported: usize,
+    pub problems: Vec<String>,
+}
+
+/// Fetches the subject PDFs listed at the last sync that are not in the library yet. Needs a live session.
+#[tauri::command(async)]
+pub fn my_import_subjects(state: State<'_, AppState>) -> Result<SubjectsImport> {
+    let token = valid_token(&state).ok_or_else(myepitech::not_connected)?;
+    let (imported, problems) = import_subjects(&state, &token);
+    Ok(SubjectsImport { imported, problems })
 }
 
 #[tauri::command(async)]
@@ -123,10 +246,69 @@ pub fn sync_due(interval_minutes: u32, last_sync: Option<i64>, now: i64) -> bool
     interval_minutes > 0 && last_sync.is_none_or(|at| now - at >= interval_minutes as i64 * 60)
 }
 
+/// Development aid, absent from release builds: with `TEKBOARD_MY_PROBE=<routes file>:<report file>`,
+/// reads each listed route once (GET, on the signed-in account, half a second apart) and
+/// writes its HTTP status and the *shape* of the answer (field names and types, no values).
+/// Used to find out what a student account may read before adding a route to the sync.
+#[cfg(debug_assertions)]
+fn probe(app: AppHandle) {
+    let Ok(spec) = std::env::var("TEKBOARD_MY_PROBE") else { return };
+    let Some((input, output)) = spec.split_once(':') else { return };
+    let (input, output) = (input.to_string(), output.to_string());
+    std::thread::spawn(move || {
+        // A route written `!/path` also shows short text values (names, kinds), not only types.
+        fn shape(v: &serde_json::Value, depth: usize) -> serde_json::Value {
+            use serde_json::{json, Value};
+            match v {
+                Value::String(t) if depth >= 100 && t.len() <= 90 && !t.starts_with("http") => json!(t),
+                Value::String(t) if depth >= 100 && t.starts_with("http") => json!(format!("(link to {}, {} characters)", t.split('/').nth(2).unwrap_or("?"), t.len())),
+                Value::Number(n) if depth >= 100 => json!(n),
+                Value::Object(m) if depth >= 100 => Value::Object(m.iter().take(40).map(|(k, x)| (k.clone(), shape(x, depth + 1))).collect()),
+                Value::Array(a) if depth >= 100 => Value::Array(a.iter().take(6).map(|x| shape(x, depth + 1)).collect()),
+                Value::Object(m) if depth < 4 => Value::Object(m.iter().take(40).map(|(k, x)| (k.clone(), shape(x, depth + 1))).collect()),
+                Value::Object(m) => json!(format!("{{…{} fields}}", m.len())),
+                Value::Array(a) => json!([format!("{} item(s)", a.len()), a.first().map(|x| shape(x, depth + 1)).unwrap_or(Value::Null)]),
+                Value::String(_) => json!("string"),
+                Value::Number(_) => json!("number"),
+                Value::Bool(_) => json!("bool"),
+                Value::Null => Value::Null,
+            }
+        }
+        let mut report = String::new();
+        let token = (0..600).find_map(|_| {
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            valid_token(&app.state::<AppState>())
+        });
+        let Some(token) = token else {
+            let _ = std::fs::write(&output, "no token received within 5 minutes: sign-in is required\n");
+            return;
+        };
+        let routes = std::fs::read_to_string(&input).unwrap_or_default();
+        for line in routes.lines().map(str::trim).filter(|r| r.trim_start_matches('!').starts_with('/') && !r.contains("token")) {
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            let route = line.trim_start_matches('!');
+            let (status, body) = myepitech::get_once(&token, route);
+            let described = serde_json::from_str::<serde_json::Value>(&body).map(|v| shape(&v, if line.starts_with('!') { 100 } else { 0 }).to_string()).unwrap_or_else(|_| format!("(not JSON, {} bytes)", body.len()));
+            report.push_str(&format!("{status} {route}\n    {}\n", described.chars().take(2600).collect::<String>()));
+            let _ = std::fs::write(&output, &report);
+        }
+        if std::env::var_os("TEKBOARD_MY_PROBE_SYNC").is_some() {
+            match sync_now(&app.state::<AppState>()) {
+                Ok(r) => report.push_str(&format!("sync: {} read, {} not available, {} subject(s) imported; {}\n", r.ok, r.failed, r.subjects_imported, r.detail)),
+                Err(e) => report.push_str(&format!("sync failed: {e}\n")),
+            }
+        }
+        report.push_str("done\n");
+        let _ = std::fs::write(&output, &report);
+    });
+}
+
 /// Background companion of the MY Epitech connector: reopens the stored session at startup
 /// when asked to, then syncs at the interval chosen in Settings while a valid token is in
 /// memory. It never signs in by itself and never retries a failed sync before the next interval.
 pub fn start_background(app: AppHandle) {
+    #[cfg(debug_assertions)]
+    probe(app.clone());
     std::thread::spawn(move || {
         use tauri::Emitter;
         std::thread::sleep(std::time::Duration::from_secs(3));

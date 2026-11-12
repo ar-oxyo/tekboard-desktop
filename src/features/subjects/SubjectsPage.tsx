@@ -1,7 +1,7 @@
 // Subjects library: PDF copies kept by TekBoard, linked to projects.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Download, FilePlus2, FileText, Search, Trash2 } from "lucide-react";
+import { Download, FilePlus2, FileText, GraduationCap, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Select } from "../../components/Select";
 import { Badge, Button, Card, CardTitle, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
@@ -20,6 +20,14 @@ export function SubjectsPage() {
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(false);
 
+  const fromMy = useMutation({
+    mutationFn: api.myImportSubjects,
+    onSuccess: (r) => {
+      void qc.invalidateQueries({ queryKey: keys.subjects });
+      toast({ kind: r.problems.length > 0 ? "info" : "ok", title: r.imported === 0 ? "No new subject on MY Epitech" : `${r.imported} subject${r.imported > 1 ? "s" : ""} added from MY Epitech`, detail: r.problems.join("\n") || undefined });
+    },
+    onError: (e) => toast({ kind: "error", title: "Subjects not fetched", detail: asAppError(e).code === "my_not_connected" ? "Connect to MY Epitech first (MY Epitech screen), then try again." : asAppError(e).message }),
+  });
   const repoList = repos.data ?? [];
   const list = subjects.data ?? [];
   const shown = useMemo(() => {
@@ -57,6 +65,9 @@ export function SubjectsPage() {
         subtitle="Your subjects and course documents, kept in one place and linked to their project."
         actions={
           <>
+            <Button variant="ghost" icon={<GraduationCap className="size-4" />} busy={fromMy.isPending} onClick={() => fromMy.mutate()} title="Fetches the subject PDFs MY Epitech attaches to your running projects and links them to their repository. Also done at each sync. Needs a connected MY Epitech session.">
+              From MY Epitech
+            </Button>
             <Button icon={<FilePlus2 className="size-4" />} onClick={() => void addFiles()}>
               Add files…
             </Button>

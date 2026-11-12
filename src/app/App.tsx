@@ -37,6 +37,7 @@ async function startFromCli(repo: string, what: string) {
     else if (what === "tests" && tests) id = await api.testsRun(repo, tests, false);
     else if (what === "testrepo" || what === "testrepo-remote") id = await api.testrepoStart(repo, { mode: what === "testrepo" ? "snapshot" : "remote", rev: null, build: info.defaultBuild, tests: tests ?? null, isolation: "none", image: null });
     else if (what === "moulinette") id = await api.moulinetteStart(repo, { build: info.defaultBuild, tests: tests ?? null, memoryRun: info.config.runCmd, subjectAi: false });
+    else if (what === "analysis") id = await api.analysisStart(repo);
     if (id !== null) ui.showJob(id, repo);
     else ui.toast({ kind: "error", title: `Nothing to run for “${what}”` });
   } catch (e) {
@@ -77,7 +78,20 @@ export function App() {
         if (s.pick) useUi.setState({ libraryPick: s.pick.split(",").filter(Boolean) });
         if (s.repo && (s.tool === "package" || s.tool === "readme")) useUi.getState().openTool(s.tool, s.repo);
         if (s.report !== null) useUi.setState({ runId: s.report, page: "testing" });
-        if (s.run === "my-connect") {
+        if (s.anchor) {
+          // The section may appear once its data is loaded: try for a few seconds.
+          let tries = 0;
+          const id = window.setInterval(() => {
+            const el = document.getElementById(s.anchor!);
+            if (el) el.scrollIntoView({ block: "start" });
+            if (el || ++tries > 20) window.clearInterval(id);
+          }, 400);
+        }
+        if (s.run === "claude-check") {
+          // `tekboard --run claude-check`: opens Settings → Tools and sends the test prompt.
+          useUi.setState({ claudeAutoCheck: true });
+          setPage("settings");
+        } else if (s.run === "my-connect") {
           setPage("myepitech");
           void api.myConnect().catch(() => undefined);
         } else if (s.repo && s.run) void startFromCli(s.repo, s.run);
@@ -90,7 +104,7 @@ export function App() {
   const qc = useQueryClient();
   useEffect(() => {
     const off = listen<{ ok: number; failed: number; unauthorized: boolean; detail: string }>("my-synced", (e) => {
-      for (const key of [["repos"], ["my-data"], ["my-overview"], ["my-status"], ["my-academic"]]) void qc.invalidateQueries({ queryKey: key });
+      for (const key of [["repos"], ["my-data"], ["my-overview"], ["my-status"], ["my-academic"], ["subjects"]]) void qc.invalidateQueries({ queryKey: key });
       if (e.payload.unauthorized) useUi.getState().toast({ kind: "error", title: "MY Epitech refused the session", detail: "Automatic sync stopped. Open MY Epitech and sign in again." });
     });
     return () => void off.then((f) => f());

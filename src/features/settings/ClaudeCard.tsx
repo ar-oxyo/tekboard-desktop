@@ -2,11 +2,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { ChevronDown, ChevronRight, FolderSearch, Play, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge, Button, Card, CardTitle, ErrorNote, Input, Spinner } from "../../components/ui";
 import { api, asAppError, type ClaudeReport } from "../../lib/api";
 import { tildify } from "../../lib/format";
 import { useHome } from "../../lib/hooks";
+import { useUi } from "../../lib/store";
 
 const STATE: Record<ClaudeReport["state"], { label: string; tone: "ok" | "danger" | "warn" }> = {
   ready: { label: "Ready", tone: "ok" },
@@ -30,6 +31,14 @@ export function ClaudeCard({ configured, onPick, saving }: { configured: string 
   const [typed, setTyped] = useState<string | null>(null);
   const [why, setWhy] = useState(false);
   const d = info.data;
+  const auto = useUi((s) => s.claudeAutoCheck);
+  useEffect(() => {
+    if (auto && d?.state === "ready") {
+      useUi.setState({ claudeAutoCheck: false });
+      check.mutate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, d?.state]);
   const value = typed ?? configured ?? "";
   const recheck = () => {
     check.reset();

@@ -31,7 +31,7 @@ export function AcademicSection() {
   const empty = a.syncedAt === null;
   return (
     <>
-      <div className="mt-2 flex items-end justify-between gap-3">
+      <div id="academic" className="mt-2 flex scroll-mt-4 items-end justify-between gap-3">
         <div>
           <h2 className="display text-lg font-semibold">Academic</h2>
           <p className="text-xs text-muted">{empty ? "From MY Epitech — nothing synced yet." : `As reported by MY Epitech, synced ${timeAgo(a.syncedAt!)}${a.semester !== null ? ` · semester ${a.semester}` : ""}.`}</p>
@@ -58,6 +58,31 @@ function Filled({ a }: { a: Academic }) {
         <Stat label="Projects" value={a.projectsTotal > 0 ? `${a.projectsDone}/${a.projectsTotal}` : "—"} note="handed in / registered" />
         <Stat label="Log time" value={a.logtime.length > 0 ? hours(logged) : "—"} note={a.logtime.length > 0 ? `over ${a.logtime.length} days` : "not available"} />
       </div>
+      {(a.creditsLost.length > 0 || a.creditsAtRisk.length > 0 || a.globalAlert || a.level !== null) && (
+        <Card>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 text-[13px]">
+            {a.globalAlert && (
+              <span className="flex items-center gap-2">
+                <span className="text-muted">MY Epitech alert level</span>
+                <Badge tone={a.globalAlert === "green" ? "ok" : a.globalAlert === "red" ? "danger" : "warn"}>{a.globalAlert}</Badge>
+              </span>
+            )}
+            {a.creditsAtRisk.length > 0 && <span className="text-warn">At risk: {a.creditsAtRisk.map(([t, c]) => `${t} (${c} cr.)`).join(", ")}</span>}
+            {a.creditsLost.length > 0 && (
+              <span className="selectable min-w-0 text-muted" title={a.creditsLost.map(([t, c]) => `${t}: ${c} credit${c === 1 ? "" : "s"}`).join("\n")}>
+                Counted as lost by MY Epitech: {a.creditsLost.reduce((n, [, c]) => n + c, 0)} credits in {a.creditsLost.length} unit{a.creditsLost.length === 1 ? "" : "s"}
+              </span>
+            )}
+            {a.level !== null && (
+              <span className="ml-auto text-muted">
+                Level {a.level}
+                {a.xp !== null && ` · ${a.xp.toLocaleString()} XP`}
+                {a.xpToNext !== null && ` · ${a.xpToNext.toLocaleString()} to the next`}
+              </span>
+            )}
+          </div>
+        </Card>
+      )}
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Card>
           <CardTitle>Units</CardTitle>

@@ -238,8 +238,15 @@ pub struct TestingInfo {
 
 fn linked_subject(state: &AppState, dir: &Path) -> Result<Option<(String, PathBuf)>> {
     let key = dir.to_string_lossy();
-    let all = db::list_subjects(&state.conn())?;
-    Ok(all.into_iter().find(|s| s.repo_path.as_deref() == Some(key.as_ref())).map(|s| (s.name.clone(), subjects::file_path(&state.subjects(), &s))))
+    let linked: Vec<db::Subject> = db::list_subjects(&state.conn())?.into_iter().filter(|s| s.repo_path.as_deref() == Some(key.as_ref())).collect();
+    Ok(pick_subject(&linked).map(|s| (s.name.clone(), subjects::file_path(&state.subjects(), s))))
+}
+
+/// Among the documents linked to a project, the one to check the code against: the
+/// subject itself rather than a bootstrap or a workshop, the most recent when several remain.
+pub fn pick_subject(linked: &[db::Subject]) -> Option<&db::Subject> {
+    let side = |s: &&db::Subject| ["bootstrap", "workshop", "kick-off", "kickoff"].iter().any(|w| s.name.to_lowercase().contains(w));
+    linked.iter().find(|s| !side(s)).or_else(|| linked.first())
 }
 
 #[tauri::command(async)]
@@ -622,4 +629,23 @@ pub fn readme_ai_start(state: State<'_, AppState>, repo: String, disclosure: boo
             }
         }
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::pick_subject;
+    use crate::db::Subject;
+
+    fn doc(id: i64, name: &str) -> Subject {
+        Subject { id, name: name.into(), file: name.into(), hash: id.to_string(), size: 1, repo_path: Some("/r".into()), added_at: id }
+    }
+
+    #[test]
+    fn the_subject_is_preferred_to_a_bootstrap_whatever_was_imported_last() {
+        // Newest first, as the library lists them.
+        let linked = vec![doc(3, "102architect-bootstrap.pdf"), doc(2, "G-MAT-100_102architect.pdf"), doc(1, "old_102architect.pdf")];
+        assert_eq!(pick_subject(&linked).unwrap().name, "G-MAT-100_102architect.pdf");
+        assert_eq!(pick_subject(&linked[..1]).unwrap().name, "102architect-bootstrap.pdf", "a bootstrap is better than nothing");
+        assert!(pick_subject(&[]).is_none());
+    }
 }

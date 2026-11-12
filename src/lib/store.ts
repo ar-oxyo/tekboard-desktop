@@ -48,6 +48,8 @@ interface UiState {
   launch: LaunchRequest | null;
   openLauncher: (req: LaunchRequest) => void;
   closeLauncher: () => void;
+  /** Run the Claude Code test prompt as soon as its card is ready (`--run claude-check`). */
+  claudeAutoCheck: boolean;
   /** Design forced for this run by `--theme` (preview). */
   themeOverride: string | null;
   toasts: Toast[];
@@ -81,6 +83,7 @@ export const useUi = create<UiState>((set, get) => ({
   launch: null,
   openLauncher: (launch) => set({ launch, paletteOpen: false, sheetPath: null }),
   closeLauncher: () => set({ launch: null }),
+  claudeAutoCheck: false,
   themeOverride: null,
   toasts: [],
   toast: (t) => {

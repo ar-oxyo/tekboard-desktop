@@ -33,12 +33,13 @@ export function MyEpitechPage() {
   const sync = useMutation({
     mutationFn: api.mySync,
     onSuccess: (r) => {
-      toast({ kind: r.unauthorized ? "error" : r.failed > 0 ? "info" : "ok", title: r.unauthorized ? "MY Epitech refused the session" : `Synced: ${r.ok} route(s) read${r.failed ? `, ${r.failed} not available` : ""}`, detail: r.unauthorized ? "Open the sign-in window and sign in again." : r.detail || undefined });
+      toast({ kind: r.unauthorized ? "error" : r.failed > 0 ? "info" : "ok", title: r.unauthorized ? "MY Epitech refused the session" : `Synced: ${r.ok} route(s) read${r.failed ? `, ${r.failed} not available` : ""}${r.subjectsImported ? `, ${r.subjectsImported} subject${r.subjectsImported > 1 ? "s" : ""} added` : ""}`, detail: r.unauthorized ? "Open the sign-in window and sign in again." : r.detail || undefined });
       void qc.invalidateQueries({ queryKey: ["my-data"] });
       void qc.invalidateQueries({ queryKey: ["my-overview"] });
       void qc.invalidateQueries({ queryKey: ["my-status"] });
       void qc.invalidateQueries({ queryKey: ["repos"] });
       void qc.invalidateQueries({ queryKey: ["my-academic"] });
+      void qc.invalidateQueries({ queryKey: ["subjects"] });
     },
     onError: fail("Not synced"),
   });
@@ -80,7 +81,7 @@ export function MyEpitechPage() {
                 <li>A separate window opens <span className="font-mono">my.epitech.eu</span>. Microsoft sign-in and MFA happen there, as in a browser.</li>
                 <li>That window keeps its browser session in a folder of its own on this computer, so you stay signed in. “Erase session” deletes it.</li>
                 <li>TekBoard receives the site's access token from that window and keeps it in memory only. It is not written to its database or logs.</li>
-                <li>Syncing happens only when you click: about {s?.routes ?? 15} read-only requests (plus two per ongoing project), half a second apart, on your own account.</li>
+                <li>Syncing happens when you click, or at the interval you set in Settings: about {s?.routes ?? 18} read-only requests (plus three per ongoing project, and one download per new subject PDF), half a second apart, on your own account.</li>
                 <li>The answers are stored on this computer so you can read them offline. Check that this use fits your school's rules.</li>
               </ul>
                 </>

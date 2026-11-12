@@ -20,6 +20,7 @@ pub mod library;
 pub mod moulinette;
 pub mod mydata;
 pub mod myepitech;
+pub mod myres;
 pub mod myview;
 pub mod packager;
 pub mod projects;
@@ -156,6 +157,8 @@ pub fn run() {
             commands_my::my_overview,
             commands_my::my_apply_deadlines,
             commands_my::my_agenda,
+            commands_my::my_documents,
+            commands_my::my_import_subjects,
             commands_my::my_academic,
             commands_dev::project_config_get,
             commands_dev::project_config_set,

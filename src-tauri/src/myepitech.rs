@@ -39,6 +39,9 @@ pub const ROUTES: &[(&str, &str)] = &[
     ("/peer-evaluations/results/me", "Peer evaluation results"),
     ("/cursus/me/attendance-plan", "Attendance plan"),
     ("/notifications/feed", "Notifications"),
+    ("/evaluations/validations/alerts/me", "Credit and unit alerts"),
+    ("/evaluations/rncp/me", "RNCP blocks"),
+    ("/gamification/xp/me", "XP"),
 ];
 
 /// Per-project details read after the list of ongoing projects, for at most this many projects.
@@ -165,7 +168,7 @@ pub fn entries(conn: &Connection) -> Result<Vec<Entry>> {
     let mut all = Vec::new();
     for row in rows {
         let (route, fetched_at, status, body) = row?;
-        let label = ROUTES.iter().find(|(r, _)| *r == route).map(|(_, l)| l.to_string()).unwrap_or_else(|| if route.ends_with("/my-activities") { "Project activities".into() } else if route.ends_with("/test-results") { "Project test results".into() } else { "No longer synced".into() });
+        let label = ROUTES.iter().find(|(r, _)| *r == route).map(|(_, l)| l.to_string()).unwrap_or_else(|| if route.ends_with("/my-activities") { "Project activities".into() } else if route.ends_with("/test-results") { "Project test results".into() } else if route.ends_with("/related-resources/files") { "Project documents".into() } else { "No longer synced".into() });
         all.push(Entry { size: body.len(), body: serde_json::from_str(&body).unwrap_or(serde_json::Value::String(body)), route, label, fetched_at, status });
     }
     all.sort_by_key(|e| ROUTES.iter().position(|(r, _)| *r == e.route).unwrap_or(usize::MAX));
@@ -203,6 +206,15 @@ fn get(agent: &ureq::Agent, token: &str, route: &str) -> (i64, String) {
     }
 }
 
+fn agent() -> ureq::Agent {
+    ureq::Agent::config_builder().http_status_as_error(false).timeout_global(Some(Duration::from_secs(20))).user_agent("TekBoard (personal desktop client, read-only)").max_redirects(0).build().into()
+}
+
+/// One GET outside a sync (development probe, on-demand reads).
+pub fn get_once(token: &str, route: &str) -> (i64, String) {
+    get(&agent(), token, route)
+}
+
 pub struct FetchOutcome {
     pub fetched: Vec<Fetched>,
     /// Ongoing projects whose details were not read because there are more than `MAX_PROJECT_DETAILS`.
@@ -233,7 +245,7 @@ pub fn fetch_all(token: &str) -> FetchOutcome {
     }
     let skipped_details = ids.len().saturating_sub(MAX_PROJECT_DETAILS);
     for id in ids.into_iter().take(MAX_PROJECT_DETAILS) {
-        for tail in ["my-activities", "test-results"] {
+        for tail in ["my-activities", "test-results", "related-resources/files"] {
             pause();
             let route = format!("/units/instances/projects/{id}/{tail}");
             let (status, body) = get(&agent, token, &route);
@@ -251,6 +263,8 @@ pub struct SyncReport {
     /// The site refused the session: sign in again in the MY Epitech window.
     pub unauthorized: bool,
     pub detail: String,
+    /// Subject PDFs added to the library by this sync.
+    pub subjects_imported: usize,
 }
 
 /// Stores what was fetched. A failed route keeps its previous good answer in the cache, and
@@ -285,7 +299,7 @@ pub fn store(conn: &Connection, fetched: &[Fetched], skipped_details: usize, now
         detail = if detail.is_empty() { note } else { format!("{detail}; {note}") };
     }
     conn.execute("INSERT INTO my_sync_log (at, ok, failed, detail) VALUES (?1, ?2, ?3, ?4)", params![now, ok as i64, problems.len() as i64, detail])?;
-    Ok(SyncReport { ok, failed: problems.len(), unauthorized, detail })
+    Ok(SyncReport { ok, failed: problems.len(), unauthorized, detail, subjects_imported: 0 })
 }
 
 pub fn not_connected() -> AppError {

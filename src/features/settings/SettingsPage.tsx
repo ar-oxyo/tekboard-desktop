@@ -50,7 +50,8 @@ export function SettingsPage() {
     );
   }
 
-  const tab = TABS.some(([id]) => id === savedTab) ? savedTab : "general";
+  const forceTools = useUi((s) => s.claudeAutoCheck);
+  const tab = forceTools ? "tools" : TABS.some(([id]) => id === savedTab) ? savedTab : "general";
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings.data);
   const set = (patch: Partial<Settings>) => setDraft({ ...draft, ...patch });
 
