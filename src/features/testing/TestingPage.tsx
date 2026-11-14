@@ -1,11 +1,11 @@
 // Testing center: everything that checks a project — unit tests, clean-clone test, Banana,
 // the pre-check, test generation — with one live report and one history.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Banana as BananaIcon, Bot, ChevronDown, FileText, FlaskConical, FolderOpen, GitBranch, PackageOpen, PenLine, Play, ScanSearch, ShieldCheck, Sparkles, SquareTerminal, Trash2 } from "lucide-react";
+import { Banana as BananaIcon, Bot, ChevronDown, FileText, FlaskConical, FolderOpen, GitBranch, PackageOpen, PenLine, Play, ScanSearch, ShieldCheck, SquareTerminal, Trash2 } from "lucide-react";
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from "../../components/Menu";
 import { useEffect, useState, type ReactNode } from "react";
 import { Select } from "../../components/Select";
-import { Badge, Button, Card, CardTitle, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
+import { Button, Card, CardTitle, cn, Dot, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
 import { api, asAppError, type RunKind, type TestingInfo } from "../../lib/api";
 import { formatBytes, timeAgo } from "../../lib/format";
 import { usePref, useRepos } from "../../lib/hooks";
@@ -80,11 +80,11 @@ export function TestingPage() {
         title="Testing"
         subtitle="Run, check and validate a project. Every result below was produced on this computer."
         actions={
-          <Select className="w-64" label="Project" placeholder="Choose a project…" search value={repoPath} onChange={(v) => useUi.setState({ testingRepo: v || null, runId: null })} options={repoOptions(repos.data ?? [])} />
+          <Select className="w-64" label="Project" placeholder="Project" search value={repoPath} onChange={(v) => useUi.setState({ testingRepo: v || null, runId: null })} options={repoOptions(repos.data ?? [])} />
         }
       />
       {repoPath === null ? (
-        <Card hero>
+        <Card>
           <EmptyState icon={<FlaskConical className="size-6" />} title="Choose a project">Pick a repository at the top right to see what can be run on it.</EmptyState>
         </Card>
       ) : info.isLoading ? (
@@ -122,9 +122,11 @@ export function TestingPage() {
                 <ul className="max-h-72 overflow-y-auto py-1">
                   {runs.data!.map((r) => (
                     <li key={r.id}>
-                      <button type="button" onClick={() => useUi.setState({ runId: r.id })} className={cn("row-hover flex h-9 w-full items-center gap-2.5 px-4 text-left", runId === r.id && "bg-accent-soft")}>
-                        <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
-                        <span className="w-28 shrink-0 text-[13px]">{KIND_LABEL[r.kind] ?? r.kind}</span>
+                      <button type="button" onClick={() => useUi.setState({ runId: r.id })} className={cn("row-hover flex h-9 w-full items-center gap-3 px-4 text-left", runId === r.id && "bg-raised")}>
+                        <span className="flex w-20 shrink-0">
+                          <Dot tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Dot>
+                        </span>
+                        <span className="w-28 shrink-0 truncate text-[13px]">{KIND_LABEL[r.kind] ?? r.kind}</span>
                         <span className="min-w-0 flex-1 truncate text-xs text-muted">{headline(r.kind, r.summary) ?? r.title.split(" — ").pop()}</span>
                         <span className="shrink-0 text-xs text-faint">{duration(r.durationMs)} · {timeAgo(r.startedAt)}</span>
                       </button>
@@ -213,7 +215,7 @@ function Seg<T extends string>({ value, options, onChange }: { value: T; options
   return (
     <div className="inline-flex rounded-lg border border-line bg-bg p-0.5">
       {options.map((o) => (
-        <button key={o.id} type="button" disabled={o.disabled} title={o.title} onClick={() => onChange(o.id)} className={cn("h-6 rounded-md px-2.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40", value === o.id ? "bg-accent-soft text-accent-strong" : "text-muted hover:text-fg")}>
+        <button key={o.id} type="button" disabled={o.disabled} title={o.title} onClick={() => onChange(o.id)} className={cn("h-6 rounded-md px-2.5 text-xs transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40", value === o.id ? "bg-raised text-fg" : "text-muted hover:text-fg")}>
           {o.label}
         </button>
       ))}
@@ -225,16 +227,16 @@ function Seg<T extends string>({ value, options, onChange }: { value: T; options
 function Tile({ id, icon, title, children, action, folded, onToggle }: { id: string; icon: ReactNode; title: string; children: ReactNode; action: ReactNode; folded: string[]; onToggle: (id: string) => void }) {
   const closed = folded.includes(id);
   return (
-    <div className="border-b border-white/6 px-4 py-2.5 last:border-b-0">
-      <div className="flex items-center gap-2.5">
-        <button type="button" aria-expanded={!closed} onClick={() => onToggle(id)} className="group flex min-w-0 flex-1 items-center gap-2.5 text-left" title={closed ? "Show the options" : "Hide the options"}>
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-strong">{icon}</span>
-          <h3 className="display min-w-0 truncate text-[14px] font-semibold">{title}</h3>
-          <ChevronDown className={cn("size-3.5 shrink-0 text-faint transition-transform group-hover:text-fg", closed && "-rotate-90")} />
+    <div className="border-b border-white/6 px-4 py-2 last:border-b-0">
+      <div className="flex h-8 items-center gap-3">
+        <button type="button" aria-expanded={!closed} onClick={() => onToggle(id)} className="group flex min-w-0 flex-1 items-center gap-3 text-left" title={closed ? "Show the options" : "Hide the options"}>
+          <span className="flex w-4 shrink-0 justify-center text-faint">{icon}</span>
+          <h3 className="min-w-0 truncate text-[13px] font-medium">{title}</h3>
+          <ChevronDown className={cn("size-3.5 shrink-0 text-faint transition-transform duration-150 group-hover:text-fg", closed && "-rotate-90")} />
         </button>
         {action}
       </div>
-      {!closed && <div className="mt-2 flex flex-col gap-2 pb-1 pl-[38px] text-xs text-muted">{children}</div>}
+      {!closed && <div className="mt-2 flex flex-col gap-2 pb-2 pl-7 text-xs text-muted">{children}</div>}
     </div>
   );
 }
@@ -315,7 +317,7 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
         {info.detection.notes.map((n) => <p key={n} className="text-warn">{n}</p>)}
       </Tile>
 
-      <Tile id="testrepo" {...fold} icon={<GitBranch className="size-4" />} title="TestRepo" action={<Button variant="primary" size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} onClick={() => onStart(() => api.testrepoStart(repo, { mode, rev: null, build: build.trim(), tests: withTests ? firstTrusted : null, isolation, image: info.config.image }))}>TestRepo</Button>}>
+      <Tile id="testrepo" {...fold} icon={<GitBranch className="size-4" />} title="TestRepo" action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} onClick={() => onStart(() => api.testrepoStart(repo, { mode, rev: null, build: build.trim(), tests: withTests ? firstTrusted : null, isolation, image: info.config.image }))}>TestRepo</Button>}>
         <p>Clones the repository into a fresh folder and builds it there, to see what someone else gets.</p>
         <Labeled label="Source">
           <Seg value={mode} onChange={setMode} options={[{ id: "remote", label: "Remote clone", disabled: !info.hasRemote, title: info.hasRemote ? "What is published: the reference before a hand-in" : "This repository has no remote" }, { id: "snapshot", label: "Local Git snapshot", title: "What Git holds here at HEAD. Does not prove it was pushed." }]} />
@@ -338,7 +340,7 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
         </label>
       </Tile>
 
-      <Tile id="banana" {...fold} icon={<BananaIcon className="size-4" />} title="Banana" action={<Button variant="primary" size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!banana} onClick={() => onStart(() => api.bananaRun(repo))}>Run Banana</Button>}>
+      <Tile id="banana" {...fold} icon={<BananaIcon className="size-4" />} title="Banana" action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!banana} onClick={() => onStart(() => api.bananaRun(repo))}>Run Banana</Button>}>
         {banana ? (
           <p className="selectable">
             {info.banana.repoChecker ? <>Delivery files with <code className="font-mono">{info.banana.repoChecker}</code>{info.banana.version && ` (${info.banana.version})`}</> : "banana-check-repo is not installed"}
@@ -349,7 +351,7 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
         )}
       </Tile>
 
-      <Tile id="moulinette" {...fold} icon={<ShieldCheck className="size-4" />} title="Claude Moulinette" action={<Button variant="primary" size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} onClick={() => { if (memory.trim() !== (info.config.runCmd ?? "")) saveConfig.mutate({ runCmd: memory.trim() || null }); onStart(() => api.moulinetteStart(repo, { build: build.trim(), tests: firstTrusted, memoryRun: memory.trim() || null, subjectAi })); }}>Run pre-check</Button>}>
+      <Tile id="moulinette" {...fold} icon={<ShieldCheck className="size-4" />} title="Claude Moulinette" action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} onClick={() => { if (memory.trim() !== (info.config.runCmd ?? "")) saveConfig.mutate({ runCmd: memory.trim() || null }); onStart(() => api.moulinetteStart(repo, { build: build.trim(), tests: firstTrusted, memoryRun: memory.trim() || null, subjectAi })); }}>Run pre-check</Button>}>
         <p>Build, structure, Banana, tests, memory, then the subject. A personal pre-check in your working folder: not Epitech's Moulinette, and no grade.</p>
         <Labeled label="Memory run"><Input className="h-7 font-mono text-xs" placeholder={info.valgrind ? "./program arguments — run under Valgrind" : "Valgrind is not installed"} disabled={!info.valgrind} value={memory} onChange={(e) => setMemory(e.target.value)} /></Labeled>
         <label className={cn("flex items-start gap-2", (!claudeReady || !info.subject) && "opacity-60")}>
@@ -371,7 +373,7 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
         action={
           <Menu
             trigger={
-              <Button size="sm" icon={<Sparkles className="size-3.5" />}>
+              <Button size="sm" icon={<Bot className="size-3.5" />}>
                 AI tools
               </Button>
             }

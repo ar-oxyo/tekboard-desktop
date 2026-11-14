@@ -308,7 +308,7 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
 
       {phase === "done" && done && (
         <div className="flex flex-col gap-3 py-1">
-          <p className="flex items-center gap-2 text-[15px] font-semibold">
+          <p className="flex items-center gap-2 text-[15px] font-medium">
             <CircleCheck className="size-5 text-ok" /> {isNew ? "Project ready" : "Template applied"}
           </p>
           <p className="selectable font-mono text-xs text-muted">{tildify(done.path, home)}</p>

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, GraduationCap, LogIn, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { CodeView } from "../../components/DiffView";
-import { Badge, Button, Card, CardTitle, EmptyState, ErrorNote, PageHeader, Spinner } from "../../components/ui";
+import { Button, Card, CardTitle, cn, Dot, EmptyState, ErrorNote, PageHeader, Spinner } from "../../components/ui";
 import { api, asAppError, type MyEntry } from "../../lib/api";
 import { formatBytes, timeAgo } from "../../lib/format";
 import { useUi } from "../../lib/store";
@@ -28,6 +28,7 @@ export function MyEpitechPage() {
   const [how, setHow] = useState<boolean | null>(null);
   const showHow = how ?? !consent;
   const [tab, setTab] = useState<"projects" | "progress" | "raw">("projects");
+  const [showHistory, setShowHistory] = useState(false);
   const fail = (title: string) => (e: unknown) => toast({ kind: "error", title, detail: asAppError(e).message });
   const connect = useMutation({ mutationFn: api.myConnect, onSuccess: () => void qc.invalidateQueries({ queryKey: ["my-status"] }), onError: fail("The sign-in window did not open") });
   const sync = useMutation({
@@ -66,18 +67,34 @@ export function MyEpitechPage() {
 
   return (
     <>
-      <PageHeader title="MY Epitech" subtitle="Your own account, read-only. You sign in on the real site; TekBoard never sees your password." />
-      <div className="grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] items-start gap-4">
+      <PageHeader title="MY Epitech" subtitle="Your own account, read-only. You sign in on the real site, TekBoard never sees your password" />
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <Card className="min-w-0">
+          <div className="flex h-11 items-center gap-1 border-b border-white/6 px-3">
+            {([["projects", "Projects & deadlines"], ["progress", "Credits & validations"], ["raw", "Raw answers"]] as const).map(([id, label]) => (
+              <button key={id} type="button" onClick={() => setTab(id)} className={cn("h-7 rounded-md px-2.5 text-[13px] transition-colors duration-150", tab === id ? "bg-raised text-fg" : "text-muted hover:text-fg")}>{label}</button>
+            ))}
+          </div>
+          {tab === "projects" && <MyProjects />}
+          {tab === "progress" && <MyProgress />}
+          {tab === "raw" && (data.error ? (
+            <div className="p-4"><ErrorNote>{asAppError(data.error).message}</ErrorNote></div>
+          ) : entries.length === 0 ? (
+            <EmptyState icon={<GraduationCap className="size-5" />} title="Nothing synced yet">Connect, then click “Sync now”. What MY Epitech answers is shown here as it is.</EmptyState>
+          ) : (
+            <ul className="py-1">{entries.map((e) => <EntryRow key={e.route} entry={e} />)}</ul>
+          ))}
+        </Card>
         <div className="flex flex-col gap-4">
           <Card>
-            <CardTitle right={s ? <Badge tone={s.connected ? "ok" : s.windowOpen ? "info" : "neutral"}>{s.connected ? "Connected" : s.windowOpen ? "Waiting for sign-in" : "Not connected"}</Badge> : <Spinner />}>Connection</CardTitle>
+            <CardTitle right={s ? <Dot tone={s.connected ? "ok" : s.windowOpen ? "info" : "neutral"}>{s.connected ? "Connected" : s.windowOpen ? "Waiting for sign-in" : "Not connected"}</Dot> : <Spinner />}>Connection</CardTitle>
             <div className="flex flex-col gap-3 p-4 text-[13px]">
               <button type="button" aria-expanded={showHow} onClick={() => setHow(!showHow)} className="flex items-center gap-1 text-left text-xs text-muted hover:text-fg">
                 {showHow ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />} How the connection works and what is stored
               </button>
               {showHow && (
                 <>
-              <ul className="flex list-disc flex-col gap-1 pl-4 text-xs text-muted">
+              <ul className="flex list-disc flex-col gap-1.5 pl-4 text-xs leading-relaxed text-muted">
                 <li>A separate window opens <span className="font-mono">my.epitech.eu</span>. Microsoft sign-in and MFA happen there, as in a browser.</li>
                 <li>That window keeps its browser session in a folder of its own on this computer, so you stay signed in. “Erase session” deletes it.</li>
                 <li>TekBoard receives the site's access token from that window and keeps it in memory only. It is not written to its database or logs.</li>
@@ -118,38 +135,31 @@ export function MyEpitechPage() {
             </div>
           </Card>
           <Card>
-            <CardTitle>Sync history</CardTitle>
-            {(data.data?.history.length ?? 0) === 0 ? (
-              <p className="px-4 py-4 text-[13px] text-muted">No synchronisation yet.</p>
-            ) : (
-              <ul className="max-h-64 overflow-y-auto py-1">
-                {data.data!.history.map((h) => (
-                  <li key={h.at} className="selectable px-4 py-1.5 text-xs">
-                    <span className="text-fg">{timeAgo(h.at)}</span> · <span className="text-ok">{h.ok} read</span>{h.failed > 0 && <span className="text-warn"> · {h.failed} not available</span>}
-                    {h.detail && <p className="font-mono text-[11px] text-faint">{h.detail}</p>}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <button type="button" aria-expanded={showHistory} onClick={() => setShowHistory(!showHistory)} className="flex h-11 w-full items-center gap-2 px-4 text-left text-[13px] font-medium">
+              <span className="mr-auto">Sync history</span>
+              <span className="text-xs font-normal text-faint">{(data.data?.history.length ?? 0) === 0 ? "none yet" : `${data.data!.history.length} sync${data.data!.history.length > 1 ? "s" : ""}`}</span>
+              {showHistory ? <ChevronDown className="size-3.5 text-faint" /> : <ChevronRight className="size-3.5 text-faint" />}
+            </button>
+            {showHistory &&
+              ((data.data?.history.length ?? 0) === 0 ? (
+                <p className="border-t border-white/6 px-4 py-4 text-[13px] text-muted">No synchronisation yet</p>
+              ) : (
+                <ul className="max-h-80 overflow-y-auto border-t border-white/6 py-1">
+                  {data.data!.history.map((h) => (
+                    <li key={h.at} className="selectable px-4 py-2 text-xs text-muted" title={h.detail || undefined}>
+                      <span className="flex items-center gap-3">
+                        <span className="mr-auto text-fg">{timeAgo(h.at)}</span>
+                        <span className="font-mono">{h.ok} read</span>
+                        {h.failed > 0 && <Dot tone="warn" mono>{h.failed} not available</Dot>}
+                      </span>
+                      {h.detail && <p className="mt-1 font-mono text-[11px] leading-relaxed text-faint">{h.detail}</p>}
+                    </li>
+                  ))}
+                </ul>
+              ))}
           </Card>
         </div>
 
-        <Card className="min-w-0">
-          <div className="flex h-11 items-center gap-1 border-b border-white/6 px-3">
-            {([["projects", "Projects & deadlines"], ["progress", "Credits & validations"], ["raw", "Raw answers"]] as const).map(([id, label]) => (
-              <button key={id} type="button" onClick={() => setTab(id)} className={`h-7 rounded-md px-3 text-[13px] transition-colors ${tab === id ? "bg-accent-soft text-accent-strong" : "text-muted hover:text-fg"}`}>{label}</button>
-            ))}
-          </div>
-          {tab === "projects" && <MyProjects />}
-          {tab === "progress" && <MyProgress />}
-          {tab === "raw" && (data.error ? (
-            <div className="p-4"><ErrorNote>{asAppError(data.error).message}</ErrorNote></div>
-          ) : entries.length === 0 ? (
-            <EmptyState icon={<GraduationCap className="size-5" />} title="Nothing synced yet">Connect, then click “Sync now”. What MY Epitech answers is shown here as it is.</EmptyState>
-          ) : (
-            <ul className="py-1">{entries.map((e) => <EntryRow key={e.route} entry={e} />)}</ul>
-          ))}
-        </Card>
       </div>
     </>
   );
@@ -176,7 +186,7 @@ function EntryRow({ entry }: { entry: MyEntry }) {
           <span className="block text-[13px]">{entry.label} <span className="font-mono text-[11px] text-faint">{entry.route}</span></span>
           <span className="block truncate text-xs text-muted">{ok ? summary(entry.body) : entry.status === 0 ? "no answer" : `not available (HTTP ${entry.status})`}</span>
         </span>
-        <Badge tone={ok ? "ok" : "warn"} mono>{entry.status || "—"}</Badge>
+        <Dot tone={ok ? "ok" : "warn"} mono>{entry.status || "—"}</Dot>
         <span className="w-24 shrink-0 text-right text-xs text-faint">{formatBytes(entry.size)} · {timeAgo(entry.fetchedAt)}</span>
       </button>
       {open && <CodeView text={text.length > 60000 ? `${text.slice(0, 60000)}\n… (${formatBytes(text.length - 60000)} more)` : text} className="mx-4 mb-2 max-h-96 rounded-md" />}

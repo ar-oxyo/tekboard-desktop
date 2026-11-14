@@ -174,7 +174,7 @@ export function LibraryPage() {
     return (
       <>
         <PageHeader title="Library" subtitle="Your reusable C code, installed function by function." />
-        <Card hero>
+        <Card>
           <EmptyState icon={<LibraryIcon className="size-6" />} title="No library yet" action={<Button variant="primary" icon={<Plus className="size-3.5" />} onClick={() => setAdding(true)}>Add a library</Button>}>
             A library is any folder of <code className="font-mono text-xs">.c</code> and <code className="font-mono text-xs">.h</code> files, organised the way you like. TekBoard reads it, lists its functions and their dependencies, and copies into a project only what you tick.
           </EmptyState>
@@ -248,7 +248,7 @@ export function LibraryPage() {
           <div className="flex items-center gap-2 border-b border-white/6 p-2.5">
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
-              <Input autoFocus className="pl-8" placeholder="Search a function, a tag, a file…" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <Input autoFocus className="pl-8" aria-label="Search a function, a tag or a file" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
             <Select className="w-44" label="Filter by state" value={stateFilter} onChange={(v) => setStateFilter(v as StateFilter)} disabled={!hasProject} options={[{ value: "all", label: "All" }, { value: "in", label: "In the project" }, { value: "out", label: "Not installed" }, { value: "attention", label: "Needs attention", hint: attention ? String(attention) : undefined }]} />
           </div>
@@ -312,7 +312,7 @@ export function LibraryPage() {
               <div className="flex flex-col">
                 {plan.data.required.length > 0 && (
                   <div className="border-b border-white/6 px-3 py-2.5">
-                    <p className="mb-1.5 text-[11px] font-semibold tracking-wide text-muted uppercase">Required</p>
+                    <p className="mb-1.5 text-xs text-muted">Required</p>
                     {plan.data.required.map((r) => (
                       <label key={r.rel} className="flex min-h-6 items-center gap-2 text-xs" title={`Needed by ${r.neededBy}${r.via.length ? ` (${r.via.join(", ")})` : ""}`}>
                         <input type="checkbox" className="accent-(--color-accent)" checked onChange={() => flip(exclude, setExclude, r.rel)} />
@@ -372,7 +372,7 @@ export function LibraryPage() {
         <div className="pointer-events-none fixed inset-0 z-30 flex items-center justify-center bg-black/55">
           <div className="glass flex flex-col items-center gap-2 border border-accent/50 px-10 py-8 text-center">
             <FilePlus2 className="size-8 text-accent-strong" />
-            <p className="display text-lg font-semibold">Drop files to your library</p>
+            <p className="display text-lg font-medium">Drop files to your library</p>
             <p className="text-[13px] text-muted">Added to “{lib.name}” after you review them</p>
           </div>
         </div>

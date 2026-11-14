@@ -1,8 +1,41 @@
 import { create } from "zustand";
+import type { ScheduleAction, PlanEvent, PlanTask } from "./api";
+
+/** A plan waiting for review: computed locally or proposed by Claude. Nothing is saved before "Apply plan". */
+export interface Proposal {
+  title: string;
+  /** What the student should know (Claude's words, or what the local scheduler could not place). */
+  note: string | null;
+  actions: ScheduleAction[];
+  origin: "auto" | "claude";
+  costUsd?: number | null;
+}
+
+/** Work being timed. Survives a reload of the window. */
+export interface Focus {
+  title: string;
+  project: string | null;
+  taskId: number | null;
+  eventId: number | null;
+  /** ms */
+  startedAt: number;
+  plannedMin: number | null;
+}
+
+const FOCUS_KEY = "tekboard.focus";
+function storedFocus(): Focus | null {
+  try {
+    const raw = localStorage.getItem(FOCUS_KEY);
+    return raw ? (JSON.parse(raw) as Focus) : null;
+  } catch {
+    return null;
+  }
+}
 
 export type Page = "overview" | "projects" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "myepitech" | "cozy" | "settings" | "prompts" | "agenda";
 
-export const PAGES: Page[] = ["overview", "projects", "git", "library", "testing", "subjects", "analytics", "templates", "myepitech", "cozy", "settings", "prompts", "agenda"];
+/** Sidebar order. Ctrl+1 to Ctrl+9 open the first nine. */
+export const PAGES: Page[] = ["overview", "projects", "agenda", "git", "testing", "library", "templates", "myepitech", "subjects", "analytics", "cozy", "settings", "prompts"];
 
 export interface Toast {
   id: number;
@@ -52,6 +85,25 @@ interface UiState {
   claudeAutoCheck: boolean;
   /** Design forced for this run by `--theme` (preview). */
   themeOverride: string | null;
+  /** Planning assistant panel, over any screen. `ask` is a request to send as soon as it opens. */
+  assistantOpen: boolean;
+  assistantAsk: { text: string; project?: string | null } | null;
+  openAssistant: (ask?: { text: string; project?: string | null }) => void;
+  closeAssistant: () => void;
+  proposal: Proposal | null;
+  propose: (p: Proposal | null) => void;
+  /** Calendar entry being created or edited (`id` absent = new). */
+  eventEdit: Partial<PlanEvent> | null;
+  editEvent: (e: Partial<PlanEvent> | null) => void;
+  taskEdit: Partial<PlanTask> | null;
+  editTask: (t: Partial<PlanTask> | null) => void;
+  captureOpen: boolean;
+  setCaptureOpen: (open: boolean) => void;
+  focus: Focus | null;
+  setFocus: (f: Focus | null) => void;
+  /** Day the Planning screen should show next time it opens (ms). */
+  planDate: number | null;
+  openPlanning: (date?: number) => void;
   toasts: Toast[];
   toast: (t: Omit<Toast, "id">) => void;
   dismissToast: (id: number) => void;
@@ -85,6 +137,30 @@ export const useUi = create<UiState>((set, get) => ({
   closeLauncher: () => set({ launch: null }),
   claudeAutoCheck: false,
   themeOverride: null,
+  assistantOpen: false,
+  assistantAsk: null,
+  openAssistant: (ask) => set({ assistantOpen: true, assistantAsk: ask ?? null, paletteOpen: false }),
+  closeAssistant: () => set({ assistantOpen: false, assistantAsk: null }),
+  proposal: null,
+  propose: (proposal) => set(proposal ? { proposal, assistantOpen: true } : { proposal }),
+  eventEdit: null,
+  editEvent: (eventEdit) => set({ eventEdit }),
+  taskEdit: null,
+  editTask: (taskEdit) => set({ taskEdit }),
+  captureOpen: false,
+  setCaptureOpen: (captureOpen) => set({ captureOpen, paletteOpen: false }),
+  focus: storedFocus(),
+  setFocus: (focus) => {
+    try {
+      if (focus) localStorage.setItem(FOCUS_KEY, JSON.stringify(focus));
+      else localStorage.removeItem(FOCUS_KEY);
+    } catch {
+      /* the timer still runs for this window */
+    }
+    set({ focus });
+  },
+  planDate: null,
+  openPlanning: (date) => set({ page: "agenda", planDate: date ?? null, sheetPath: null, paletteOpen: false }),
   toasts: [],
   toast: (t) => {
     const id = nextToast++;

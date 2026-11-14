@@ -1,19 +1,20 @@
 // Project sheet: what you add to a repository — status, deadline, notes, build and run commands, subjects.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronDown, ChevronRight, CircleCheck, CircleX, FileText, Globe, Hammer, Play, Rocket } from "lucide-react";
+import { Check, CircleCheck, CircleX, Code2, Hammer, Rocket } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Modal } from "../../components/Modal";
-import { Badge, Button, cn, ErrorNote, Field, Input, Spinner } from "../../components/ui";
+import { Button, cn, ErrorNote, Field, Input, Spinner, Tag } from "../../components/ui";
 import { api, asAppError, type ProjectSheet as Sheet, type RepoInfo, type SheetInput } from "../../lib/api";
 import { tildify } from "../../lib/format";
 import { keys, useHome, useNow, useProjectActions, useRepos, useSubjects } from "../../lib/hooks";
 import { displayName, due, localTime, moduleOf } from "../../lib/repos";
 import { useUi } from "../../lib/store";
-import { BranchLabel, ProgressPicker, RepoMenu, StatusChips } from "./RepoBits";
+import { Countdown, ProgressPicker } from "./RepoBits";
+import { AdvancedTab, GitTab, PlanOverview } from "./SheetPlan";
 import { DocsTab, LibraryTab, TestingTab } from "./SheetTabs";
 
-type Tab = "overview" | "library" | "testing" | "docs";
-const TABS: Array<[Tab, string]> = [["overview", "Overview"], ["library", "Library"], ["testing", "Testing"], ["docs", "Documentation"]];
+type Tab = "overview" | "details" | "git" | "library" | "testing" | "docs" | "advanced";
+const TABS: Array<[Tab, string]> = [["overview", "Overview"], ["details", "Deadline & notes"], ["git", "Git"], ["library", "Library"], ["testing", "Testing"], ["docs", "Documentation"], ["advanced", "Advanced"]];
 
 export function ProjectSheetDialog({ path }: { path: string }) {
   const close = useUi((s) => s.closeSheet);
@@ -57,7 +58,6 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
   const [draft, setDraft] = useState<SheetInput>(() => toInput(initial));
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
   const [tab, setTab] = useState<Tab>("overview");
-  const [runOpen, setRunOpen] = useState(initial.runBin !== null || initial.runArgs !== null);
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: keys.repos });
     void qc.invalidateQueries({ queryKey: ["run-info", repo.path] });
@@ -143,39 +143,63 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
   const bin = runInfo.data;
   const binary = draft.runBin ?? bin?.detected ?? null;
   const source = !draft.deadline ? null : dirty && (draft.deadline !== saved.deadline || draft.deadlineTime !== saved.deadlineTime) ? "will be saved as typed by you" : stored.deadlineSource === "my" ? "from MY Epitech" : stored.deadlineSource === "manual" ? "typed by you" : null;
+  const buildState = build.data && (
+    <span className={cn("flex items-center gap-1.5 text-[13px]", build.data.code === 0 ? "text-ok" : "text-danger")}>
+      {build.data.code === 0 ? <CircleCheck className="size-4" /> : <CircleX className="size-4" />}
+      {build.data.timedOut ? "Stopped after 5 minutes" : build.data.code === 0 ? "Build succeeded" : `Build failed (exit ${build.data.code ?? "?"})`}
+      <span className="text-faint">· {(build.data.durationMs / 1000).toFixed(1)} s</span>
+    </span>
+  );
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {mod && (
-          <Badge tone={repo.kind === "epitech" ? "accent" : "neutral"} mono title={my?.unitName ?? repo.kindReason}>
-            {mod}
-          </Badge>
-        )}
         <ProgressPicker repo={repo} />
-        <BranchLabel repo={repo} />
-        <StatusChips repo={repo} max={3} />
+        {mod && <Tag title={my?.unitName ?? repo.kindReason}>{mod}</Tag>}
+        {d.state !== "unknown" ? <Countdown tone={d.tone} title={source ?? undefined}>{d.label}</Countdown> : <button type="button" className="text-xs text-faint hover:text-fg" onClick={() => setTab("details")}>no deadline</button>}
         <span className="ml-auto flex items-center gap-1.5">
-          <Button size="sm" variant="primary" icon={<Play className="size-3.5" />} busy={act.workspace.isPending} onClick={() => act.workspace.mutate(repo)}>
-            Open workspace
+          <Button size="sm" variant="primary" icon={<Code2 className="size-3.5" />} busy={act.workspace.isPending} onClick={() => act.workspace.mutate(repo)} title="Opens the IDE and a terminal in the project">
+            Open IDE
           </Button>
-          <Button size="sm" icon={<Globe className="size-3.5" />} disabled={!repo.remoteUrl} busy={act.remote.isPending} title={repo.remoteUrl ? `Opens ${repo.remoteUrl} in Firefox` : "This repository has no remote"} onClick={() => act.remote.mutate(repo)}>
-            GitHub
+          <Button size="sm" icon={<Hammer className="size-3.5" />} busy={build.isPending} onClick={() => build.mutate()} title={draft.buildCmd ? `Runs ${draft.buildCmd}` : "Runs make (set another command in Deadline & notes)"}>
+            Build
           </Button>
-          <RepoMenu repo={repo} sheet={false} />
+          <Button
+            size="sm"
+            icon={<Rocket className="size-3.5" />}
+            busy={launch.isPending}
+            disabled={bin !== undefined && !bin.terminal}
+            title={!bin ? undefined : !bin.terminal ? "No terminal is configured to run programs (Settings → Workspace)" : binary ? `Runs ./${binary}${draft.runArgs ? ` ${draft.runArgs}` : ""} in a terminal` : "Set the binary in Deadline & notes: TekBoard could not tell which program this project builds"}
+            onClick={() => launch.mutate()}
+          >
+            Run
+          </Button>
         </span>
       </div>
       <p className="selectable -mt-2 truncate font-mono text-xs text-faint">{tildify(repo.path, home)}</p>
-      <div className="flex gap-1 border-b border-white/6">
+      {(buildState || build.error || launch.error) && (
+        <div className="-mt-1 flex flex-col gap-2">
+          {buildState}
+          {launch.error && <ErrorNote title="The program did not start">{asAppError(launch.error).message}</ErrorNote>}
+          {build.error && <ErrorNote title="The build could not start">{asAppError(build.error).message}</ErrorNote>}
+          {build.data && build.data.output.trim() !== "" && build.data.code !== 0 && (
+            <pre className="selectable max-h-48 overflow-auto rounded-md border border-line bg-bg p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted">{build.data.output}</pre>
+          )}
+        </div>
+      )}
+      <div className="flex gap-5 border-b border-white/6">
         {TABS.map(([id, label]) => (
-          <button key={id} type="button" onClick={() => setTab(id)} className={cn("-mb-px h-8 border-b-2 px-3 text-[13px] transition-colors", tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
+          <button key={id} type="button" onClick={() => setTab(id)} className={cn("-mb-px h-9 border-b-2 px-1 text-[13px] whitespace-nowrap transition-colors duration-150", tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
             {label}
           </button>
         ))}
       </div>
+      {tab === "overview" && <PlanOverview repo={repo} />}
+      {tab === "git" && <GitTab repo={repo} />}
+      {tab === "advanced" && <AdvancedTab repo={repo} />}
       {tab === "library" && <LibraryTab repo={repo} />}
       {tab === "testing" && <TestingTab repo={repo} />}
       {tab === "docs" && <DocsTab repo={repo} subjects={linked} onOpenSubject={(id) => openSubject.mutate(id)} />}
-      {tab === "overview" && (
+      {tab === "details" && (
         <>
           <div className="grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] items-start gap-3">
             <Field
@@ -209,9 +233,17 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
               </Button>
             </p>
           )}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Binary to run" hint={bin?.detected ? `Detected: ${bin.detected} (${bin.detectedFrom}). Leave empty to use it.${bin && binary && !bin.exists && draft.runBin === saved.runBin ? " Not built yet." : ""}` : "Nothing detected (no plain NAME in the Makefile, no executable at the root)."}>
+              <Input className="font-mono text-xs" placeholder={bin?.detected ?? "path/inside/the/project"} value={draft.runBin ?? ""} onChange={(e) => setDraft({ ...draft, runBin: e.target.value || null })} />
+            </Field>
+            <Field label="Arguments" hint={"Quotes group words. No pipes or redirections: the program is started without a shell."}>
+              <Input className="font-mono text-xs" placeholder={'-n 3 "a file.txt"'} value={draft.runArgs ?? ""} onChange={(e) => setDraft({ ...draft, runArgs: e.target.value || null })} />
+            </Field>
+          </div>
           <div>
-            <div className="mb-1 flex items-center justify-between">
-              <span className="text-xs font-medium text-muted">Notes</span>
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-xs text-muted">Notes</span>
               <span className="text-xs text-faint">{dirty ? "Unsaved — Ctrl+S" : "Saved"}</span>
             </div>
             <textarea
@@ -222,61 +254,11 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
               className="h-36 w-full resize-y rounded-md border border-line bg-bg p-2.5 font-mono text-xs leading-relaxed text-fg placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none"
             />
           </div>
-          {linked.length > 0 && (
-            <ul className="-mt-1 flex flex-wrap gap-2">
-              {linked.map((s) => (
-                <li key={s.id}>
-                  <Button size="sm" icon={<FileText className="size-3.5" />} onClick={() => openSubject.mutate(s.id)}>
-                    {s.name}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button icon={<Hammer className="size-3.5" />} busy={build.isPending} onClick={() => build.mutate()}>
-              Build
-            </Button>
-            <Button
-              icon={<Rocket className="size-3.5" />}
-              busy={launch.isPending}
-              disabled={bin !== undefined && !bin.terminal}
-              title={!bin ? undefined : !bin.terminal ? "No terminal is configured to run programs (Settings → Workspace)" : binary ? `Runs ./${binary}${draft.runArgs ? ` ${draft.runArgs}` : ""} in a terminal` : "Set the binary below: TekBoard could not tell which program this project builds"}
-              onClick={() => launch.mutate()}
-            >
-              Launch Binary
-            </Button>
-            <button type="button" aria-expanded={runOpen} onClick={() => setRunOpen(!runOpen)} className="flex h-8 items-center gap-1 rounded-md px-1.5 text-xs text-muted hover:text-fg">
-              {runOpen ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-              {binary ? <span className="font-mono">./{binary}</span> : "binary not found"}
-              {bin && binary && !bin.exists && draft.runBin === saved.runBin && <span className="text-warn">· not built yet</span>}
-            </button>
-            <Button className="ml-auto" variant="primary" icon={<Check className="size-3.5" />} disabled={!dirty} busy={save.isPending} onClick={() => save.mutate(draft)}>
+          <div className="flex justify-end">
+            <Button variant="primary" icon={<Check className="size-3.5" />} disabled={!dirty} busy={save.isPending} onClick={() => save.mutate(draft)}>
               Save
             </Button>
           </div>
-          {runOpen && (
-            <div className="grid grid-cols-2 gap-3 rounded-lg border border-line bg-bg p-3">
-              <Field label="Binary" hint={bin?.detected ? `Detected: ${bin.detected} (${bin.detectedFrom}). Leave empty to use it.` : "Nothing detected (no plain NAME in the Makefile, no executable at the root)."}>
-                <Input className="font-mono text-xs" placeholder={bin?.detected ?? "path/inside/the/project"} value={draft.runBin ?? ""} onChange={(e) => setDraft({ ...draft, runBin: e.target.value || null })} />
-              </Field>
-              <Field label="Arguments" hint={"Quotes group words. No pipes or redirections: the program is started without a shell."}>
-                <Input className="font-mono text-xs" placeholder={'-n 3 "a file.txt"'} value={draft.runArgs ?? ""} onChange={(e) => setDraft({ ...draft, runArgs: e.target.value || null })} />
-              </Field>
-            </div>
-          )}
-          {launch.error && <ErrorNote title="The program did not start">{asAppError(launch.error).message}</ErrorNote>}
-          {build.data && (
-            <span className={cn("flex items-center gap-1.5 text-[13px]", build.data.code === 0 ? "text-ok" : "text-danger")}>
-              {build.data.code === 0 ? <CircleCheck className="size-4" /> : <CircleX className="size-4" />}
-              {build.data.timedOut ? "Stopped after 5 minutes" : build.data.code === 0 ? "Build succeeded" : `Build failed (exit ${build.data.code ?? "?"})`}
-              <span className="text-faint">· {(build.data.durationMs / 1000).toFixed(1)} s</span>
-            </span>
-          )}
-          {build.error && <ErrorNote title="The build could not start">{asAppError(build.error).message}</ErrorNote>}
-          {build.data && build.data.output.trim() !== "" && (
-            <pre className="selectable max-h-56 overflow-auto rounded-md border border-line bg-bg p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted">{build.data.output}</pre>
-          )}
         </>
       )}
     </div>

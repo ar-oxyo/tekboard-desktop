@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, GitBranch, GitCommitHorizontal, Minus, Play, Plus, RefreshCw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Select } from "../../components/Select";
-import { Badge, Button, Card, CardTitle, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
+import { Button, Card, CardTitle, cn, Dot, EmptyState, ErrorNote, IconButton, Input, PageHeader, SectionLabel, Spinner, Tag } from "../../components/ui";
 import { api, asAppError, type Change, type GitDetail, type RepoInfo } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { keys, useRepos, useSettings } from "../../lib/hooks";
@@ -41,13 +41,13 @@ export function GitPage() {
           </EmptyState>
         </Card>
       ) : (
-        <div className="grid grid-cols-[250px_minmax(0,1fr)] gap-4">
+        <div className="grid grid-cols-[264px_minmax(0,1fr)] items-start gap-4">
           <div>
             <div className="relative mb-2">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
-              <Input className="pl-8" placeholder="Filter…" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <Input className="pl-8" aria-label="Filter repositories" placeholder="Filter" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
-            <ul className="card max-h-[calc(100vh-200px)] overflow-y-auto py-1.5">
+            <ul className="card flex max-h-[calc(100vh-196px)] flex-col gap-0.5 overflow-y-auto p-1.5">
               {list.map((r) => {
                 const a = attention(r);
                 return (
@@ -56,7 +56,7 @@ export function GitPage() {
                       type="button"
                       onClick={() => openGit(r.path)}
                       aria-current={selected?.path === r.path}
-                      className={cn("row-hover flex h-9 w-full items-center gap-2 px-3 text-left text-[13px]", selected?.path === r.path ? "bg-accent-soft text-fg" : "text-muted hover:text-fg")}
+                      className={cn("flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-[13px] transition-colors duration-150", selected?.path === r.path ? "bg-raised text-fg" : "text-muted hover:bg-white/4 hover:text-fg")}
                     >
                       <span className={cn("size-1.5 shrink-0 rounded-full", a.length === 0 ? "bg-line-strong" : a[0].level === "danger" ? "bg-danger" : a[0].level === "warn" ? "bg-warn" : "bg-info")} />
                       <span className="min-w-0 flex-1 truncate">{displayName(r)}</span>
@@ -162,19 +162,19 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
   const staged = d.changes.filter((c) => c.staged !== null);
   const unstaged = d.changes.filter((c) => c.unstaged !== null || c.untracked || c.conflicted);
   const busy = sync.isPending;
+  // The usual author is in each row's tooltip; only someone else's name is written out.
+  const authors = new Map<string, number>();
+  for (const c of d.log) authors.set(c.author, (authors.get(c.author) ?? 0) + 1);
+  const mainAuthor = [...authors.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
   const canPush = !!repo.remoteUrl && st.branch !== null && !st.unborn && (st.upstream === null || st.ahead > 0);
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <Card>
-        <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-          <h2 className="display mr-1 truncate text-lg font-semibold">{displayName(repo)}</h2>
-          {repo.epitech && (
-            <Badge tone="accent" mono>
-              {repo.epitech.module}
-            </Badge>
-          )}
-          <span className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-2 px-4 py-3">
+          <h2 className="display truncate text-base font-medium">{displayName(repo)}</h2>
+          {repo.epitech && <Tag>{repo.epitech.module}</Tag>}
+          <span className="ml-auto flex flex-wrap items-center gap-2 self-center">
             <Button size="sm" variant="ghost" icon={<Play className="size-3.5" />} busy={start.isPending} title="Fetch, then open IDE and terminal" onClick={() => start.mutate()}>
               Start working
             </Button>
@@ -306,7 +306,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
         <div className="flex min-w-0 flex-col gap-4">
           {file && <DiffCard repo={repo.path} file={file} />}
           <Card>
-            <CardTitle right={d.incoming.length > 0 ? <Badge tone="info">{d.incoming.length} on the remote</Badge> : undefined}>History</CardTitle>
+            <CardTitle right={d.incoming.length > 0 ? <Dot tone="info">{d.incoming.length} on the remote</Dot> : undefined}>History</CardTitle>
             {d.log.length === 0 ? (
               <p className="px-4 py-4 text-[13px] text-muted">No commit yet.</p>
             ) : (
@@ -316,8 +316,8 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
                     <span className={cn("size-1.5 shrink-0 rounded-full", i < st.ahead ? "bg-accent" : "bg-line-strong")} />
                     <span className="selectable shrink-0 font-mono text-xs text-faint">{c.hash.slice(0, 7)}</span>
                     <span className="selectable min-w-0 flex-1 truncate">{c.subject}</span>
-                    {i < st.ahead && <Badge tone="accent">not pushed</Badge>}
-                    <span className="hidden w-28 shrink-0 truncate text-right text-xs text-faint lg:block">{c.author}</span>
+                    {i < st.ahead && <span className="shrink-0 text-xs text-accent-strong">not pushed</span>}
+                    {c.author !== mainAuthor && <span className="hidden max-w-28 shrink-0 truncate text-right text-xs text-faint lg:block">{c.author}</span>}
                     <span className="w-20 shrink-0 text-right text-xs text-faint">{timeAgo(c.date)}</span>
                   </li>
                 ))}
@@ -336,9 +336,9 @@ function ChangeList({ title, empty, changes, letter, selected, onSelect, action 
   return (
     <div>
       <div className="flex h-9 items-center justify-between px-3">
-        <span className="text-[11px] font-semibold tracking-[0.08em] text-faint uppercase">
-          {title} <span className="ml-1 font-normal">{changes.length}</span>
-        </span>
+        <SectionLabel>
+          {title} <span className="ml-1 font-mono text-[11px]">{changes.length}</span>
+        </SectionLabel>
         {changes.length > 1 && (
           <Button size="sm" variant="ghost" onClick={() => action.run(changes.map((c) => c.path))}>
             {action.label} all
@@ -351,7 +351,7 @@ function ChangeList({ title, empty, changes, letter, selected, onSelect, action 
         <ul className="max-h-56 overflow-y-auto pb-1">
           {changes.map((c) => (
             <li key={c.path} className={cn("group flex h-7 items-center gap-2 pr-1 pl-3", selected === c.path ? "bg-raised" : "hover:bg-hover")}>
-              <span className={cn("w-3 shrink-0 text-center font-mono text-xs font-semibold", LETTER_TONE[letter(c)] ?? "text-muted")} title={c.conflicted ? "Conflict" : c.untracked ? "New file" : undefined}>
+              <span className={cn("w-3 shrink-0 text-center font-mono text-xs", LETTER_TONE[letter(c)] ?? "text-muted")} title={c.conflicted ? "Conflict" : c.untracked ? "New file" : undefined}>
                 {letter(c)}
               </span>
               <button type="button" onClick={() => onSelect(c)} className="min-w-0 flex-1 truncate text-left font-mono text-xs" title={c.path} dir="rtl">
@@ -373,7 +373,7 @@ function DiffCard({ repo, file }: { repo: string; file: { path: string; staged: 
   return (
     <Card className="min-w-0">
       <CardTitle right={<span className="text-xs text-faint">{file.staged ? "staged" : file.untracked ? "new file" : "not staged"}</span>}>
-        <span className="font-mono tracking-normal normal-case">{file.path}</span>
+        <span className="truncate font-mono text-xs font-normal">{file.path}</span>
       </CardTitle>
       {diff.isLoading ? (
         <p className="flex items-center gap-2 px-4 py-4 text-xs text-muted">

@@ -111,7 +111,7 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
             autoComplete="off"
             list={`quick-${repo}`}
             aria-label="Custom command"
-            placeholder="Custom command…  e.g.  ./my_hunter -h"
+            placeholder="./my_hunter -h"
             title={"A program and its arguments, run in the repository folder without a shell.\nQuotes group words; pipes, && and redirections are refused."}
             className="field h-7 w-full border border-white/8 px-2.5 pr-7 font-mono text-xs text-fg placeholder:font-sans placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none"
           />
@@ -127,7 +127,7 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
             <Square className="size-3" fill="currentColor" /> Stop
           </button>
         ) : (
-          <button type="submit" disabled={custom.trim() === "" || run.isPending} className="btn-primary flex h-7 shrink-0 items-center gap-1.5 rounded-(--btn-radius) px-2.5 text-xs disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="submit" disabled={custom.trim() === "" || run.isPending} className="btn-secondary flex h-7 shrink-0 items-center gap-1.5 rounded-(--btn-radius) px-2.5 text-xs disabled:cursor-not-allowed disabled:opacity-50">
             {run.isPending ? <Spinner /> : <Play className="size-3.5" />} Run
           </button>
         )}

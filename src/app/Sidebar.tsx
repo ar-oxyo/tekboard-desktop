@@ -10,29 +10,38 @@ interface NavItem {
   icon: ReactNode;
 }
 
-const GROUPS: Array<{ title: string | null; items: NavItem[] }> = [
+const icon = "size-4";
+const GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
-    title: null,
+    title: "Work",
     items: [
-      { page: "overview", label: "Overview", icon: <LayoutDashboard className="size-4" /> },
-      { page: "projects", label: "Projects", icon: <FolderGit2 className="size-4" /> },
-      { page: "agenda", label: "Agenda", icon: <CalendarDays className="size-4" /> },
-      { page: "git", label: "Git", icon: <GitBranch className="size-4" /> },
-      { page: "library", label: "Library", icon: <LibraryBig className="size-4" /> },
-      { page: "testing", label: "Testing", icon: <FlaskConical className="size-4" /> },
-      { page: "subjects", label: "Subjects", icon: <FileText className="size-4" /> },
-      { page: "analytics", label: "Analytics", icon: <ChartNoAxesColumn className="size-4" /> },
+      { page: "overview", label: "Overview", icon: <LayoutDashboard className={icon} /> },
+      { page: "projects", label: "Projects", icon: <FolderGit2 className={icon} /> },
+      { page: "agenda", label: "Planning", icon: <CalendarDays className={icon} /> },
     ],
   },
   {
-    title: "Workspace",
+    title: "Code",
     items: [
-      { page: "templates", label: "Templates", icon: <LayoutTemplate className="size-4" /> },
-      { page: "myepitech", label: "MY Epitech", icon: <GraduationCap className="size-4" /> },
-      { page: "cozy", label: "Cozy Fox", icon: <PawPrint className="size-4" /> },
+      { page: "git", label: "Git", icon: <GitBranch className={icon} /> },
+      { page: "testing", label: "Testing", icon: <FlaskConical className={icon} /> },
+      { page: "library", label: "Library", icon: <LibraryBig className={icon} /> },
+      { page: "templates", label: "Templates", icon: <LayoutTemplate className={icon} /> },
     ],
   },
-  { title: "System", items: [{ page: "settings", label: "Settings", icon: <Settings className="size-4" /> }] },
+  {
+    title: "School",
+    items: [
+      { page: "myepitech", label: "MY Epitech", icon: <GraduationCap className={icon} /> },
+      { page: "subjects", label: "Subjects", icon: <FileText className={icon} /> },
+      { page: "analytics", label: "Analytics", icon: <ChartNoAxesColumn className={icon} /> },
+    ],
+  },
+];
+/** Pinned under the groups: the companion and the settings are not part of the daily work. */
+const FOOT: NavItem[] = [
+  { page: "cozy", label: "Cozy Fox", icon: <PawPrint className={icon} /> },
+  { page: "settings", label: "Settings", icon: <Settings className={icon} /> },
 ];
 
 export function Logo({ className }: { className?: string }) {
@@ -59,49 +68,53 @@ export function Sidebar() {
   const missing = env.data?.tools.filter((t) => t.required && !t.path).length ?? 0;
   const gh = env.data?.github.state;
 
+  const row = (item: NavItem) => {
+    const n = PAGES.indexOf(item.page) + 1;
+    const current = page === item.page;
+    return (
+      <button
+        key={item.page}
+        type="button"
+        aria-current={current ? "page" : undefined}
+        onClick={() => setPage(item.page)}
+        title={n >= 1 && n <= 9 ? `Ctrl+${n}` : undefined}
+        className={cn("nav-item flex h-8 shrink-0 items-center gap-2.5 px-2.5 text-[13px]", current ? "font-medium" : "text-muted hover:bg-white/4 hover:text-fg")}
+      >
+        <span className={cn("flex w-4 shrink-0 justify-center", current ? "text-accent" : "text-faint")}>{item.icon}</span>
+        {item.label}
+      </button>
+    );
+  };
+
   return (
-    <aside className="sidebar flex w-[212px] shrink-0 flex-col">
-      <div className="flex items-center gap-2.5 px-4 pt-5 pb-4">
-        <Logo className="logo-glow size-8" />
-        <span className="display text-[17px] font-semibold">TekBoard</span>
+    <aside className="sidebar flex w-60 shrink-0 flex-col">
+      <div className="flex h-16 items-center gap-2.5 px-5">
+        <Logo className="logo-glow size-6" />
+        <span className="display text-[15px] font-medium">TekBoard</span>
       </div>
 
       <button
         type="button"
         onClick={() => setPaletteOpen(true)}
-        className="mx-3 mb-4 flex h-9 items-center gap-2 rounded-lg border border-white/8 bg-black/30 px-2.5 text-faint shadow-[inset_0_1px_2px_rgb(0_0_0/0.5)] transition-colors hover:border-white/16 hover:text-muted"
+        className="mx-3 flex h-8 items-center gap-2.5 rounded-(--btn-radius) border border-white/7 bg-white/3 px-2.5 text-faint transition-colors duration-150 hover:border-white/12 hover:text-muted"
       >
-        <Search className="size-3.5" />
+        <Search className="size-4" />
         <span className="flex-1 text-left text-[13px]">Search</span>
         <Kbd>Ctrl K</Kbd>
       </button>
 
-      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2.5 pb-2" aria-label="Main">
+      <nav className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3" aria-label="Main">
         {GROUPS.map((group) => (
-          <div key={group.title ?? "main"} className="flex flex-col gap-1">
-            {group.title && <p className="px-2.5 pt-3 pb-0.5 text-[10px] font-semibold tracking-[0.14em] text-faint uppercase">{group.title}</p>}
-            {group.items.map((item) => {
-              const n = PAGES.indexOf(item.page) + 1;
-              return (
-                <button
-                  key={item.page}
-                  type="button"
-                  aria-current={page === item.page ? "page" : undefined}
-                  onClick={() => setPage(item.page)}
-                  title={n >= 1 && n <= 9 ? `Ctrl+${n}` : undefined}
-                  className={cn("nav-item flex h-[34px] shrink-0 items-center gap-2.5 px-2.5 text-[13px]", page === item.page ? "font-medium" : "text-muted hover:bg-white/5 hover:text-fg")}
-                >
-                  <span className={page === item.page ? "text-accent" : ""}>{item.icon}</span>
-                  {item.label}
-                </button>
-              );
-            })}
+          <div key={group.title} className="flex flex-col gap-0.5">
+            <p className="px-2.5 pt-6 pb-2 text-xs text-faint">{group.title}</p>
+            {group.items.map(row)}
           </div>
         ))}
       </nav>
 
-      <div className="border-t border-white/6 px-4 py-3">
-        <button type="button" onClick={() => setPage("settings")} className="flex w-full flex-col gap-1.5 text-left text-xs text-faint hover:text-muted">
+      <div className="flex flex-col gap-0.5 border-t border-white/6 px-3 py-3">
+        {FOOT.map(row)}
+        <button type="button" onClick={() => setPage("settings")} title="Open Settings" className="mt-2 flex w-full flex-col gap-1 px-2.5 text-left text-xs text-faint transition-colors duration-150 hover:text-muted">
           <Status ok={env.data ? missing === 0 : null} label={env.data ? (missing === 0 ? "Tools ready" : `${missing} tool${missing > 1 ? "s" : ""} missing`) : "Checking tools…"} />
           <Status
             ok={gh === undefined ? null : gh === "ready"}
@@ -115,8 +128,10 @@ export function Sidebar() {
 
 function Status({ ok, label }: { ok: boolean | null; label: string }) {
   return (
-    <span className="flex items-center gap-2">
-      <span className={cn("size-1.5 rounded-full", ok === null ? "bg-faint" : ok ? "bg-ok" : "bg-warn")} />
+    <span className="flex h-5 items-center gap-2.5">
+      <span className="flex w-4 shrink-0 justify-center">
+        <span className={cn("size-1.5 rounded-full", ok === null ? "bg-faint" : ok ? "bg-ok" : "bg-warn")} />
+      </span>
       {label}
     </span>
   );

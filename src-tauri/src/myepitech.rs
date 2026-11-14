@@ -42,6 +42,9 @@ pub const ROUTES: &[(&str, &str)] = &[
     ("/evaluations/validations/alerts/me", "Credit and unit alerts"),
     ("/evaluations/rncp/me", "RNCP blocks"),
     ("/gamification/xp/me", "XP"),
+    // Documented in the site's API reference: only what the student is registered to.
+    ("/events?startDate={from}&endDate={to}&registered=me", "My timetable (sessions I am registered to)"),
+    ("/students/evaluations/marks", "Marks"),
 ];
 
 /// Per-project details read after the list of ongoing projects, for at most this many projects.
@@ -53,14 +56,44 @@ fn expand(route: &str, today: chrono::NaiveDate) -> String {
     route.replace("{from}", &iso(today - chrono::Duration::days(7))).replace("{to}", &iso(today + chrono::Duration::days(37)))
 }
 
-/// Ids of the projects listed in an answer, whether it is a bare array or `{ data | items: [...] }`.
-pub fn project_ids(body: &str) -> Vec<i64> {
-    let Ok(v) = serde_json::from_str::<serde_json::Value>(body) else { return vec![] };
-    let list = v.as_array().or_else(|| ["data", "items", "results", "projects"].iter().find_map(|k| v[k].as_array()));
-    let mut ids: Vec<i64> = list.map(|l| l.iter().filter_map(|x| x["id"].as_i64().or_else(|| x["projectInstanceId"].as_i64())).collect()).unwrap_or_default();
-    ids.dedup();
-    ids
+
+/// Route of the student's own registration to a project: group, and the repository link
+/// from the moment the group exists (test results only carry it after a first run).
+pub fn registration_route(school_year: i64, unit_code: &str, instance_code: &str, project_id: i64) -> Option<String> {
+    let ok = |x: &str| !x.is_empty() && x.chars().all(|c| c.is_ascii_alphanumeric() || c == '-');
+    (ok(unit_code) && ok(instance_code)).then(|| format!("/units/{school_year}/{unit_code}/{instance_code}/projects/{project_id}/registrations/me"))
 }
+
+/// `…/registrations/me` answered with the group's id → `…/registrations/<id>/ta`.
+pub fn ta_route(registration_route: &str, body: &str) -> Option<String> {
+    let base = registration_route.strip_suffix("/registrations/me")?;
+    let id = serde_json::from_str::<serde_json::Value>(body).ok()?["id"].as_i64()?;
+    Some(format!("{base}/registrations/{id}/ta"))
+}
+
+/// (id, registration route) of every project listed in an answer of `/units/instances/projects`.
+pub fn project_keys(body: &str) -> Vec<(i64, Option<String>)> {
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(body) else { return vec![] };
+    let list = v.as_array().or_else(|| v["data"].as_array());
+    list.into_iter()
+        .flatten()
+        .filter_map(|p| {
+            let id = p["id"].as_i64()?;
+            let u = &p["unitInstance"];
+            let year = p["schoolYear"].as_i64().or_else(|| u["schoolYear"].as_i64());
+            Some((id, year.and_then(|y| registration_route(y, u["unitCode"].as_str().unwrap_or(""), u["code"].as_str().unwrap_or(""), id))))
+        })
+        .collect()
+}
+
+/// Most recent school year of the projects listed, for the yearly test results.
+pub fn school_year(body: &str) -> Option<i64> {
+    let v: serde_json::Value = serde_json::from_str(body).ok()?;
+    v["data"].as_array()?.iter().filter_map(|p| p["schoolYear"].as_i64()).max()
+}
+
+/// Every routes stored under its own key that is neither in `ROUTES` nor a per-project detail.
+const KEPT_PATTERNS: &[&str] = &["/units/instances/projects/%/%", "/units/%/projects/%/registrations/me", "/units/%/projects/%/registrations/%/ta", "/students/test-results?year=%"];
 
 /// Runs in the MY Epitech window only. Looks for the site's access token in its own
 /// localStorage and passes it through the document title, which TekBoard listens to.
@@ -168,7 +201,7 @@ pub fn entries(conn: &Connection) -> Result<Vec<Entry>> {
     let mut all = Vec::new();
     for row in rows {
         let (route, fetched_at, status, body) = row?;
-        let label = ROUTES.iter().find(|(r, _)| *r == route).map(|(_, l)| l.to_string()).unwrap_or_else(|| if route.ends_with("/my-activities") { "Project activities".into() } else if route.ends_with("/test-results") { "Project test results".into() } else if route.ends_with("/related-resources/files") { "Project documents".into() } else { "No longer synced".into() });
+        let label = ROUTES.iter().find(|(r, _)| *r == route).map(|(_, l)| l.to_string()).unwrap_or_else(|| if route.ends_with("/my-activities") { "Project activities".into() } else if route.ends_with("/registrations/me") { "Project group and repository".into() } else if route.ends_with("/ta") { "Moulinette quota and last delivery".into() } else if route.starts_with("/students/test-results") { "Automated test results of the year".into() } else if route.ends_with("/test-results") { "Project test results (older sync)".into() } else if route.ends_with("/related-resources/files") { "Project documents".into() } else { "No longer synced".into() });
         all.push(Entry { size: body.len(), body: serde_json::from_str(&body).unwrap_or(serde_json::Value::String(body)), route, label, fetched_at, status });
     }
     all.sort_by_key(|e| ROUTES.iter().position(|(r, _)| *r == e.route).unwrap_or(usize::MAX));
@@ -206,6 +239,23 @@ fn get(agent: &ureq::Agent, token: &str, route: &str) -> (i64, String) {
     }
 }
 
+/// Appends the `data` of the next pages to the first answer, following `meta.hasNext`.
+fn read_all_pages(agent: &ureq::Agent, token: &str, first_route: &str, first: String, pause: &dyn Fn()) -> String {
+    let Ok(mut v) = serde_json::from_str::<serde_json::Value>(&first) else { return first };
+    let mut page = 1;
+    while v["meta"]["hasNext"].as_bool() == Some(true) && page < 5 {
+        page += 1;
+        pause();
+        let (status, body) = get(agent, token, &first_route.replacen("page=1&", &format!("page={page}&"), 1));
+        let Some(more) = serde_json::from_str::<serde_json::Value>(&body).ok().filter(|_| status == 200) else { break };
+        if let (Some(all), Some(extra)) = (v["data"].as_array_mut(), more["data"].as_array()) {
+            all.extend(extra.iter().cloned());
+        }
+        v["meta"] = more["meta"].clone();
+    }
+    v.to_string()
+}
+
 fn agent() -> ureq::Agent {
     ureq::Agent::config_builder().http_status_as_error(false).timeout_global(Some(Duration::from_secs(20))).user_agent("TekBoard (personal desktop client, read-only)").max_redirects(0).build().into()
 }
@@ -229,27 +279,49 @@ pub fn fetch_all(token: &str) -> FetchOutcome {
     let today = chrono::Local::now().date_naive();
     let pause = || std::thread::sleep(Duration::from_millis(500));
     let mut out = Vec::new();
-    let mut ids = Vec::new();
+    let mut ids: Vec<(i64, Option<String>)> = Vec::new();
+    let mut year = None;
     for (i, (route, _)) in ROUTES.iter().enumerate() {
         if i > 0 {
             pause();
         }
-        let (status, body) = get(&agent, token, &expand(route, today));
+        let (status, mut body) = get(&agent, token, &expand(route, today));
+        // A paginated list is read to its end (5 pages at most) and stored as one answer.
+        if status == 200 && route.contains("page=1&") {
+            body = read_all_pages(&agent, token, &expand(route, today), body, &pause);
+        }
         if i == 1 && status == 200 {
-            ids = project_ids(&body);
+            ids = project_keys(&body);
+            year = school_year(&body);
         }
         out.push(Fetched { route: route.to_string(), status, body });
         if status == 401 && i == 0 {
             return FetchOutcome { fetched: out, skipped_details: 0 };
         }
     }
+    // Every automated test run of the year in one answer, instead of one call per project.
+    if let Some(y) = year {
+        pause();
+        let route = format!("/students/test-results?year={y}");
+        let (status, body) = get(&agent, token, &route);
+        out.push(Fetched { route, status, body });
+    }
     let skipped_details = ids.len().saturating_sub(MAX_PROJECT_DETAILS);
-    for id in ids.into_iter().take(MAX_PROJECT_DETAILS) {
-        for tail in ["my-activities", "test-results", "related-resources/files"] {
+    for (id, registration) in ids.into_iter().take(MAX_PROJECT_DETAILS) {
+        let mut routes: Vec<String> = ["my-activities", "related-resources/files"].iter().map(|t| format!("/units/instances/projects/{id}/{t}")).collect();
+        // A project without a group answers an error here; it is listed in the sync report like any other.
+        routes.extend(registration);
+        for route in routes {
             pause();
-            let route = format!("/units/instances/projects/{id}/{tail}");
             let (status, body) = get(&agent, token, &route);
+            // The group's moulinette quota and last delivery hang off its registration id.
+            let ta = (status == 200).then(|| ta_route(&route, &body)).flatten();
             out.push(Fetched { route, status, body });
+            if let Some(ta) = ta {
+                pause();
+                let (status, body) = get(&agent, token, &ta);
+                out.push(Fetched { route: ta, status, body });
+            }
         }
     }
     FetchOutcome { fetched: out, skipped_details }
@@ -287,7 +359,8 @@ pub fn store(conn: &Connection, fetched: &[Fetched], skipped_details: usize, now
     if !unauthorized {
         // Answers of routes this version no longer reads are dropped.
         let known: Vec<String> = ROUTES.iter().map(|(r, _)| format!("'{}'", r.replace('\'', "''"))).collect();
-        conn.execute(&format!("DELETE FROM my_cache WHERE route NOT IN ({}) AND route NOT LIKE '/units/instances/projects/%/%'", known.join(",")), [])?;
+        let kept: Vec<String> = KEPT_PATTERNS.iter().map(|p| format!("AND route NOT LIKE '{p}'")).collect();
+        conn.execute(&format!("DELETE FROM my_cache WHERE route NOT IN ({}) {}", known.join(","), kept.join(" ")), [])?;
     }
     let skipped = ROUTES.len().saturating_sub(fetched.len());
     let mut detail = problems.join("; ");
@@ -332,11 +405,6 @@ mod tests {
         assert!(ROUTES.iter().all(|(r, _)| r.starts_with('/') && !r.contains("token") && !r.contains("..") && !r.contains("students/{")));
         let day = chrono::NaiveDate::from_ymd_opt(2026, 11, 10).unwrap();
         assert_eq!(expand("/events?startDate={from}&endDate={to}", day), "/events?startDate=2026-11-03T00:00:00.000Z&endDate=2026-12-17T00:00:00.000Z");
-        assert_eq!(project_ids("[{\"id\":4138},{\"id\":7},{\"name\":\"x\"}]"), vec![4138, 7]);
-        assert_eq!(project_ids("{\"data\":[{\"id\":3}],\"total\":1}"), vec![3]);
-        let many = format!("[{}]", (1..=20).map(|i| format!("{{\"id\":{i}}}")).collect::<Vec<_>>().join(","));
-        assert_eq!(project_ids(&many).len(), 20, "the list is not cut here: the sync reports what it skipped");
-        assert!(project_ids("{\"message\":\"no\"}").is_empty());
     }
 
     #[test]
@@ -360,6 +428,28 @@ mod tests {
         assert!(h[0].detail.contains("/students/exams → 500"));
         assert!(h[0].detail.contains("details of 2 ongoing project(s) not read"), "nothing is dropped silently");
         assert_eq!(get("/units/instances/projects/9/test-results").status, 200, "details of a finished project are kept");
+    }
+
+    #[test]
+    fn project_details_routes_come_from_the_listed_projects() {
+        let body = r#"{"data":[{"id":4255,"schoolYear":2026,"unitInstance":{"unitCode":"G-MUL-100","code":"LYN-1"}},{"id":5644,"schoolYear":2026,"unitInstance":{"unitCode":"S-EPI-000","code":"../x"}},{"id":3793,"unitInstance":{"schoolYear":2025,"unitCode":"G-CPE-110","code":"LYN-1"}}],"meta":{"hasNext":false}}"#;
+        assert_eq!(project_keys(body), vec![(4255, Some("/units/2026/G-MUL-100/LYN-1/projects/4255/registrations/me".into())), (5644, None), (3793, Some("/units/2025/G-CPE-110/LYN-1/projects/3793/registrations/me".into()))]);
+        assert_eq!(school_year(body), Some(2026));
+        assert_eq!(ta_route("/units/2026/G-MUL-100/LYN-1/projects/4255/registrations/me", "{\"id\":73078}").as_deref(), Some("/units/2026/G-MUL-100/LYN-1/projects/4255/registrations/73078/ta"));
+        assert_eq!(ta_route("/units/2026/G-MUL-100/LYN-1/projects/4255/registrations/me", "{\"message\":\"no\"}"), None);
+        assert_eq!(school_year("[]"), None);
+    }
+
+    #[test]
+    fn registrations_and_yearly_results_survive_the_cleanup_and_old_routes_do_not() {
+        let conn = db::open_in_memory().unwrap();
+        for route in ["/units/2026/G-MUL-100/LYN-1/projects/4255/registrations/me", "/students/test-results?year=2026", "/units/instances/projects/9/test-results", "/students/something-old"] {
+            conn.execute("INSERT INTO my_cache (route, fetched_at, status, body) VALUES (?1, 1, 200, '{}')", [route]).unwrap();
+        }
+        store(&conn, &[Fetched { route: "/auth/verify".into(), status: 200, body: "{}".into() }], 0, 2).unwrap();
+        let left: Vec<String> = entries(&conn).unwrap().into_iter().map(|e| e.route).collect();
+        assert!(left.contains(&"/students/test-results?year=2026".to_string()) && left.contains(&"/units/2026/G-MUL-100/LYN-1/projects/4255/registrations/me".to_string()) && left.contains(&"/units/instances/projects/9/test-results".to_string()));
+        assert!(!left.contains(&"/students/something-old".to_string()));
     }
 
     #[test]

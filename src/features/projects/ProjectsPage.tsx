@@ -3,11 +3,11 @@ import { ArrowDownUp, FolderGit2, GraduationCap, Play, Plus, RefreshCw, Search }
 import { useMemo, useState } from "react";
 import { Menu, MenuChoice, MenuLabel } from "../../components/Menu";
 import { Select } from "../../components/Select";
-import { Badge, Button, Card, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
+import { Button, Card, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner, Tag } from "../../components/ui";
 import { asAppError, type RepoInfo } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { keys, useNow, usePref, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
-import { displayName, filterRepos, lastActivity, moduleOf, modulesOf, SORTS, sortRepos, type RepoFilter, type SortKey } from "../../lib/repos";
+import { attention, displayName, filterRepos, lastActivity, moduleOf, modulesOf, SORTS, sortRepos, type RepoFilter, type SortKey } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { BranchLabel, DueBadge, FavoriteButton, ProgressPicker, RepoMenu, StatusChips } from "./RepoBits";
 
@@ -77,10 +77,10 @@ export function ProjectsPage() {
         <ErrorNote title="Could not scan your projects">{asAppError(repos.error).message}</ErrorNote>
       ) : (
         <>
-          <div className="mb-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
             <div className="relative w-56">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
-              <Input autoFocus className="pl-8" placeholder="Name, module, branch…" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <Input autoFocus className="pl-8" aria-label="Search by name, module or branch" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
             <div className="flex items-center gap-0.5" role="tablist" aria-label="Status filter">
               {FILTERS.map((f) => (
@@ -91,10 +91,10 @@ export function ProjectsPage() {
                   title={f.title}
                   aria-selected={filter === f.id}
                   onClick={() => setFilter(f.id)}
-                  className={cn("flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs transition-colors", filter === f.id ? "bg-raised font-medium text-fg" : "text-muted hover:bg-hover hover:text-fg")}
+                  className={cn("flex h-8 items-center gap-2 rounded-md px-2.5 text-[13px] transition-colors duration-150", filter === f.id ? "bg-raised text-fg" : "text-muted hover:text-fg")}
                 >
                   {f.label}
-                  <span className="text-faint">{counts[f.id]}</span>
+                  <span className="font-mono text-[11px] text-faint">{counts[f.id]}</span>
                 </button>
               ))}
             </div>
@@ -105,7 +105,7 @@ export function ProjectsPage() {
                 aria-checked={epitechOnly}
                 title="Hide personal repositories and anything unrelated to the curriculum. A repository's classification can be corrected from its ⋯ menu."
                 onClick={() => setEpitechOnly(!epitechOnly)}
-                className={cn("flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors", epitechOnly ? "border-accent/40 bg-accent-soft text-accent-strong" : "border-white/8 text-muted hover:border-line-strong hover:text-fg")}
+                className={cn("flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors duration-150", epitechOnly ? "border-transparent bg-accent-soft text-accent-strong" : "border-white/8 text-muted hover:border-line-strong hover:text-fg")}
               >
                 <GraduationCap className="size-3.5" />
                 Epitech only
@@ -123,7 +123,7 @@ export function ProjectsPage() {
               )}
               <Menu
                 trigger={
-                  <button type="button" title="Sort order" className="flex h-7 items-center gap-1.5 rounded-md border border-white/8 px-2.5 text-xs text-muted transition-colors hover:border-line-strong hover:text-fg">
+                  <button type="button" title="Sort order" className="flex h-7 items-center gap-1.5 rounded-md border border-white/8 px-2.5 text-xs text-muted transition-colors duration-150 hover:border-line-strong hover:text-fg">
                     <ArrowDownUp className="size-3.5" />
                     {sortLabel}
                   </button>
@@ -146,7 +146,7 @@ export function ProjectsPage() {
             ) : (
               <ul>
                 {shown.map((repo) => (
-                  <RepoRow key={repo.path} repo={repo} now={now} />
+                  <RepoRow key={repo.path} repo={repo} now={now} showStatus={filter !== "todo" && filter !== "in_progress" && filter !== "done"} />
                 ))}
               </ul>
             )}
@@ -157,39 +157,35 @@ export function ProjectsPage() {
   );
 }
 
-function RepoRow({ repo, now }: { repo: RepoInfo; now: Date }) {
+/** One line per repository. Only what differs from row to row is written out: the default branch, a clean tree and the status the list is already filtered on stay silent. */
+function RepoRow({ repo, now, showStatus }: { repo: RepoInfo; now: Date; showStatus: boolean }) {
   const act = useProjectActions();
   const openSheet = useUi((s) => s.openSheet);
   const mod = moduleOf(repo);
   const active = lastActivity(repo);
+  const clean = !repo.error && attention(repo).length === 0;
   return (
-    <li className={cn("group flex h-11 items-center gap-2 border-b border-white/6 pr-1.5 pl-1.5 last:border-b-0 row-hover", repo.progress === "done" && "text-muted")}>
+    <li className={cn("group row-hover flex h-11 items-center gap-3 border-b border-white/6 pr-2 pl-2 last:border-b-0", repo.progress === "done" && "text-muted")}>
       <FavoriteButton repo={repo} />
-      <button type="button" onClick={() => openSheet(repo.path)} className="flex min-w-0 flex-[2.2] items-center gap-2 text-left" title={`${repo.path}\n${repo.kind === "epitech" ? "Epitech" : "Personal"}: ${repo.kindReason}`}>
+      <button type="button" onClick={() => openSheet(repo.path)} className="flex min-w-0 flex-[2] items-baseline gap-2.5 text-left" title={`${repo.path}\n${repo.kind === "epitech" ? "Epitech" : "Personal"}: ${repo.kindReason}${repo.status?.branch ? `\nBranch ${repo.status.branch}` : ""}`}>
         <span className="truncate text-[13px] font-medium">{displayName(repo)}</span>
-        {mod ? (
-          <Badge tone={repo.kind === "epitech" ? "accent" : "neutral"} mono title={repo.my?.unitName ?? undefined}>
-            {mod}
-          </Badge>
-        ) : (
-          repo.group && <span className="shrink-0 text-xs text-faint">{repo.group}</span>
-        )}
-        <DueBadge repo={repo} now={now} />
+        {mod ? <Tag title={repo.my?.unitName ?? undefined}>{mod}</Tag> : repo.group && <span className="shrink-0 text-xs text-faint">{repo.group}</span>}
       </button>
-      <span className="flex w-[104px] shrink-0">
-        <ProgressPicker repo={repo} />
+      <span className="flex w-32 shrink-0">
+        <DueBadge repo={repo} now={now} />
       </span>
-      <span className="hidden min-w-0 flex-1 md:block">
-        <BranchLabel repo={repo} />
+      <span className="flex min-w-0 flex-[1.6] items-center gap-3">
+        <BranchLabel repo={repo} quiet />
+        {!clean && <StatusChips repo={repo} max={2} />}
       </span>
-      <span className="flex min-w-0 flex-[1.3] justify-start">
-        <StatusChips repo={repo} max={2} />
+      <span className={cn("flex shrink-0", showStatus ? "w-28" : "w-6")}>
+        <ProgressPicker repo={repo} compact={!showStatus} />
       </span>
       <span className="hidden w-24 shrink-0 text-right text-xs text-faint lg:block" title={repo.lastCommit?.subject}>
         {active > 0 ? timeAgo(Math.floor(active / 1000)) : "no commit"}
       </span>
       <span className="flex shrink-0 items-center">
-        <IconButton label="Open workspace (IDE + terminal)" className="text-accent opacity-60 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-accent-strong" onClick={() => act.workspace.mutate(repo)}>
+        <IconButton label="Open workspace (IDE + terminal)" className="hover:text-accent-strong" onClick={() => act.workspace.mutate(repo)}>
           <Play className="size-4" />
         </IconButton>
         <RepoMenu repo={repo} />

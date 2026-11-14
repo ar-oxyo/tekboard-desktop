@@ -3,7 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { Check, FolderPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Select } from "../../components/Select";
-import { Badge, Button, Card, CardTitle, Code, ErrorNote, Field, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
+import { Button, Card, CardTitle, Code, ErrorNote, Field, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
 import { api, asAppError, type Settings } from "../../lib/api";
 import { tildify } from "../../lib/format";
 import { keys, useEnv, useHome, usePref, useRepos, useSettings, useTemplates } from "../../lib/hooks";
@@ -90,9 +90,9 @@ export function SettingsPage() {
         </div>
       )}
 
-      <div className="mb-4 flex items-center gap-1 border-b border-white/6" role="tablist" aria-label="Settings sections">
+      <div className="mb-6 flex items-center gap-5 border-b border-white/6" role="tablist" aria-label="Settings sections">
         {TABS.map(([id, label]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`-mb-px h-9 border-b-2 px-3.5 text-[13px] transition-colors ${tab === id ? "border-accent font-medium text-fg" : "border-transparent text-muted hover:text-fg"}`}>
+          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`-mb-px h-9 border-b-2 px-1 text-[13px] transition-colors duration-150 ${tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg"}`}>
             {label}
           </button>
         ))}
@@ -130,7 +130,7 @@ export function SettingsPage() {
             </div>
             <div className="border-t border-white/6 px-4 py-3">
               <div className="mb-1 flex items-center justify-between">
-                <span className="text-xs font-medium text-muted">School folders</span>
+                <span className="text-xs text-muted">School folders</span>
                 <Button size="sm" variant="ghost" icon={<FolderPlus className="size-3.5" />} onClick={() => void addSchoolDir()}>
                   Add
                 </Button>
@@ -266,8 +266,8 @@ export function SettingsPage() {
 
 // Swatches are fixed colours on purpose: each tile previews its own design, whatever the active one is.
 const THEMES: Array<{ id: string; name: string; tagline: string; bg: string; card: string; accent: string; text: string; radius: number }> = [
-  { id: "aurora", name: "Aurora", tagline: "Colour halos, lit surfaces", bg: "radial-gradient(120px 70px at 10% 0%, #7c6ef266, transparent 70%), radial-gradient(110px 70px at 100% 100%, #3fbed644, transparent 70%), #080910", card: "#151829", accent: "linear-gradient(135deg,#b9aeff,#6f8dff)", text: "#eceef6", radius: 8 },
-  { id: "flat", name: "Flat", tagline: "Solid and quiet", bg: "#0c0d11", card: "#15181e", accent: "#8f83f7", text: "#e8eaf0", radius: 5 },
+  { id: "aurora", name: "Aurora", tagline: "Graphite, one violet accent", bg: "#141415", card: "#1e1e21", accent: "#9486ff", text: "#ededed", radius: 8 },
+  { id: "flat", name: "Flat", tagline: "Blue-grey, square and solid", bg: "#0c0d11", card: "#15181e", accent: "#8f83f7", text: "#e8eaf0", radius: 5 },
   { id: "neon", name: "Neon", tagline: "Magenta, cyan and a grid", bg: "radial-gradient(120px 70px at 5% 0%, #ff50d277, transparent 70%), radial-gradient(120px 80px at 100% 100%, #28dcff66, transparent 70%), #07050f", card: "#1a1030", accent: "linear-gradient(120deg,#ff7ad9,#b46bff,#46dcff)", text: "#f4eeff", radius: 7 },
   { id: "cozy", name: "Cozy", tagline: "Warm pastels, round corners", bg: "radial-gradient(120px 70px at 10% 0%, #cba6f755, transparent 70%), radial-gradient(110px 70px at 100% 100%, #fab38744, transparent 70%), #14141f", card: "#25253a", accent: "linear-gradient(135deg,#cba6f7,#f5c2e7)", text: "#cdd6f4", radius: 11 },
   { id: "terminal", name: "Terminal", tagline: "Phosphor green, monospace", bg: "repeating-linear-gradient(180deg,#5cff8f14 0 1px,transparent 1px 3px), #040704", card: "#080d08", accent: "#5cff8f", text: "#cdf7c8", radius: 2 },
@@ -281,7 +281,7 @@ function ThemePicker({ current, onPick }: { current: string; onPick: (id: string
         return (
           <button key={t.id} type="button" role="radio" aria-checked={active} onClick={() => !active && onPick(t.id)} className="group text-left">
             <span
-              className={`block h-[84px] overflow-hidden border p-2.5 transition-transform group-hover:-translate-y-0.5 ${active ? "border-accent ring-2 ring-accent/30" : "border-white/10"}`}
+              className={`block h-[84px] overflow-hidden border p-2.5 transition-colors duration-150 ${active ? "border-accent" : "border-white/10 group-hover:border-white/25"}`}
               style={{ background: t.bg, borderRadius: t.radius + 4 }}
             >
               <span className="block h-full p-2" style={{ background: t.card, borderRadius: t.radius, border: "1px solid rgb(255 255 255 / 0.08)" }}>
@@ -331,7 +331,7 @@ function EnvironmentCard() {
                 <span className={`size-1.5 shrink-0 rounded-full ${t.path ? "bg-ok" : t.required ? "bg-danger" : "bg-faint"}`} />
                 <span className="w-20 shrink-0 font-mono text-xs">{t.name}</span>
                 <span className="min-w-0 flex-1 truncate text-xs text-muted">{t.path ? (t.version ?? t.path) : t.purpose}</span>
-                {!t.path && <Badge tone={t.required ? "danger" : "neutral"}>{t.required ? "missing" : "not installed"}</Badge>}
+                {!t.path && <span className={`shrink-0 text-xs ${t.required ? "text-danger" : "text-faint"}`}>{t.required ? "missing" : "not installed"}</span>}
               </li>
             ))}
           </ul>

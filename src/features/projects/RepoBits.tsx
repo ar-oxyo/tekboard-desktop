@@ -2,15 +2,17 @@
 import { CircleCheck, CircleDashed, CircleDot, Code2, Copy, FlaskConical, FolderOpen, GitBranch, Globe, GraduationCap, LayoutTemplate, NotebookPen, Rocket, Star, SquareTerminal, User, Wand2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Menu, MenuChoice, MenuItem, MenuLabel, MenuSeparator, SubMenu } from "../../components/Menu";
-import { Badge, cn, IconButton } from "../../components/ui";
+import { cn, Dot, IconButton } from "../../components/ui";
 import type { Progress, RepoInfo } from "../../lib/api";
 import { useProjectActions } from "../../lib/hooks";
 import { attention, dueOf } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 
-export function BranchLabel({ repo }: { repo: RepoInfo }) {
+/** `quiet` hides the default branch: on a list, "main" forty times says nothing. */
+export function BranchLabel({ repo, quiet }: { repo: RepoInfo; quiet?: boolean }) {
   const s = repo.status;
   if (!s) return null;
+  if (quiet && (s.branch === "main" || s.branch === "master")) return null;
   return (
     <span className="inline-flex min-w-0 items-center gap-1 font-mono text-xs text-muted" title={s.upstream ? `Tracks ${s.upstream}` : "No upstream"}>
       <GitBranch className="size-3 shrink-0 text-faint" />
@@ -23,39 +25,54 @@ export function StatusChips({ repo, max = 3 }: { repo: RepoInfo; max?: number })
   const items = attention(repo);
   if (repo.error) {
     return (
-      <Badge tone="danger" title={repo.error}>
+      <Dot tone="danger" ink title={repo.error}>
         Unreadable
-      </Badge>
+      </Dot>
     );
   }
   if (items.length === 0) return <span className="text-xs text-faint">Clean</span>;
+  const rest = items.slice(max);
   return (
-    <span className="flex items-center gap-1">
+    <span className="flex min-w-0 items-center gap-3">
       {items.slice(0, max).map((a) => (
-        <Badge key={a.label} tone={a.level}>
+        <Dot key={a.label} tone={a.level} ink={a.level === "danger"}>
           {a.label}
-        </Badge>
+        </Dot>
       ))}
+      {rest.length > 0 && (
+        <span className="text-xs text-faint" title={rest.map((a) => a.label).join("\n")}>
+          +{rest.length}
+        </span>
+      )}
     </span>
   );
 }
 
-/** Hand-in badge: "in 9 days", "today 19:42", "3 h late". Nothing when no date is known. */
+/** The hand-in countdown, written the same way on every screen: a dot that goes from neutral to amber to red, and monospace figures. */
+export function Countdown({ tone, children, title }: { tone: "neutral" | "warn" | "danger"; children: ReactNode; title?: string }) {
+  return (
+    <Dot tone={tone} ink mono title={title}>
+      {children}
+    </Dot>
+  );
+}
+
+/** Hand-in countdown of a repository: "in 9 days", "today 19:42", "3 h late". Nothing when no date is known. */
 export function DueBadge({ repo, now }: { repo: RepoInfo; now?: Date }) {
   if (repo.progress === "done" || !repo.meta.deadline) return null;
   const d = dueOf(repo, now);
   if (d.state === "unknown") return null;
   const origin = repo.meta.deadlineSource === "my" ? "from MY Epitech" : repo.meta.deadlineSource === "manual" ? "typed by you" : "saved earlier";
   return (
-    <Badge tone={d.tone} title={`Hand-in ${repo.meta.deadline}${d.time ? ` at ${d.time}` : ""} (${origin})`}>
+    <Countdown tone={d.tone} title={`Hand-in ${repo.meta.deadline}${d.time ? ` at ${d.time}` : ""} (${origin})`}>
       {d.label}
-    </Badge>
+    </Countdown>
   );
 }
 
 export const PROGRESS: Array<{ id: Progress; label: string; icon: ReactNode; tone: string }> = [
   { id: "todo", label: "To do", icon: <CircleDashed className="size-3.5" />, tone: "text-muted" },
-  { id: "in_progress", label: "In progress", icon: <CircleDot className="size-3.5" />, tone: "text-info" },
+  { id: "in_progress", label: "In progress", icon: <CircleDot className="size-3.5" />, tone: "text-accent-strong" },
   { id: "done", label: "Done", icon: <CircleCheck className="size-3.5" />, tone: "text-ok" },
 ];
 
@@ -73,13 +90,12 @@ export function ProgressPicker({ repo, compact }: { repo: RepoInfo; compact?: bo
           title={title}
           aria-label={`Status: ${cur.label}. Change`}
           className={cn(
-            "inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full border px-2 text-xs transition-colors hover:border-line-strong hover:bg-hover focus-visible:border-accent focus-visible:outline-none",
-            repo.progressInferred ? "border-dashed border-white/12" : "border-white/12",
+            "-mx-1.5 inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-xs transition-colors duration-150 hover:bg-hover",
             cur.tone,
           )}
         >
           {cur.icon}
-          {!compact && <span className={repo.progressInferred ? "opacity-80" : ""}>{cur.label}</span>}
+          {!compact && <span className={repo.progressInferred ? "text-muted" : ""}>{cur.label}</span>}
         </button>
       }
     >

@@ -5,6 +5,7 @@ pub mod commands;
 pub mod commands_dev;
 pub mod commands_lib;
 pub mod commands_my;
+pub mod commands_plan;
 pub mod cozy;
 pub mod cparse;
 pub mod db;
@@ -23,6 +24,7 @@ pub mod myepitech;
 pub mod myres;
 pub mod myview;
 pub mod packager;
+pub mod planner;
 pub mod projects;
 pub mod prompts;
 pub mod readme;
@@ -160,6 +162,16 @@ pub fn run() {
             commands_my::my_documents,
             commands_my::my_import_subjects,
             commands_my::my_academic,
+            commands_my::my_free_slots,
+            commands_plan::plan_state,
+            commands_plan::plan_task_save,
+            commands_plan::plan_task_delete,
+            commands_plan::plan_event_save,
+            commands_plan::plan_event_delete,
+            commands_plan::plan_project_set,
+            commands_plan::plan_log_add,
+            commands_plan::plan_apply,
+            commands_plan::assistant_start,
             commands_dev::project_config_get,
             commands_dev::project_config_set,
             commands_dev::job_get,

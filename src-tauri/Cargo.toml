@@ -1,6 +1,6 @@
 [package]
 name = "tekboard"
-version = "0.3.0"
+version = "0.4.2"
 description = "TekBoard — Epitech developer command center"
 edition = "2021"
 

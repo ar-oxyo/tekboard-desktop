@@ -103,6 +103,12 @@ export interface MyLink {
   matchedBy: string;
   testsPassed: number | null;
   testsTotal: number | null;
+  /** Moulinette runs of the group: [total, remaining], when the project has a quota. */
+  quota: [number, number] | null;
+  /** Last revision the group pushed: what a moulinette run would test. */
+  delivery: { commit: string; branch: string | null; pushedAt: string | null } | null;
+  tooManyAbsences: boolean;
+  nonCompliant: boolean;
 }
 
 export interface RepoInfo {
@@ -531,7 +537,7 @@ export interface JobStep {
   detail: string | null;
   durationMs: number | null;
 }
-export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "gen_tests" | "readme" | "build" | "command" | "analysis";
+export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant";
 /** Kind-specific facts; see the Rust module that produces each kind. */
 export type RunSummary = Record<string, unknown> & { steps?: JobStep[] };
 export interface JobView {
@@ -746,12 +752,18 @@ export interface AgendaItem {
   exam: boolean;
   repoPath: string | null;
   until: string | null;
+  /** Your attendance: `registered`, `not_registered`, `absent`, `present`… */
+  status: string | null;
+  /** MY Epitech session id. */
+  eventId: number | null;
 }
 export interface Agenda {
   items: AgendaItem[];
   syncedAt: number | null;
   modules: string[];
   notes: string[];
+  /** Peer evaluations assigned to you, not submitted yet. */
+  peerTodo: string[];
 }
 export interface Academic {
   syncedAt: number | null;
@@ -761,6 +773,7 @@ export interface Academic {
   units: Array<{ title: string; grade: string | null; credits: number | null; validated: number; total: number; countsInGpa: boolean | null; alert: string | null; outcomes: Array<{ title: string; validated: boolean; mandatory: boolean; points: number | null; total: number | null }> }>;
   competencies: Array<{ name: string; available: number | null; secure: number | null; reachable: number | null; alert: string | null }>;
   exams: Array<{ label: string; best: number | null; required: number | null; max: number | null }>;
+  marks: Array<{ date: string | null; title: string; mark: number | null; evaluator: string | null; comment: string | null }>;
   logtime: Array<{ date: string; mine: number; promo: number | null }>;
   tests: Array<{ project: string; module: string; date: string | null; passed: number; total: number; runs: number; styleMajor: number; styleMinor: number }>;
   graph: Array<[string, string, number]>;
@@ -783,7 +796,88 @@ export interface MySyncReport {
   subjectsImported: number;
 }
 
+// ───────────────────────────── planning ─────────────────────────────
+
+/** A task of the user. `project` is a repository path, or `my:<id>` for a MY Epitech project not cloned yet. */
+export interface PlanTask {
+  id: number;
+  title: string;
+  notes: string;
+  project: string | null;
+  parentId: number | null;
+  kind: "task" | "idea";
+  /** 0 none, 1 low, 2 medium, 3 high. */
+  priority: number;
+  estimateMin: number | null;
+  dueDay: string | null;
+  doneAt: number | null;
+  createdAt: number;
+}
+export type PlanEventKind = "session" | "task" | "event" | "reminder";
+/** A personal calendar entry. Instants are unix seconds. */
+export interface PlanEvent {
+  id: number;
+  kind: PlanEventKind;
+  title: string;
+  start: number;
+  end: number;
+  allDay: boolean;
+  project: string | null;
+  taskId: number | null;
+  color: string | null;
+  notes: string;
+  origin: "me" | "auto" | "claude";
+  done: boolean;
+}
+export interface ProjectPlan {
+  key: string;
+  priority: number;
+  /** Work still to do, in minutes. */
+  estimateMin: number | null;
+  color: string | null;
+}
+export interface WorkLog {
+  id: number;
+  project: string | null;
+  taskId: number | null;
+  title: string;
+  startedAt: number;
+  seconds: number;
+}
+export interface PlanState {
+  tasks: PlanTask[];
+  events: PlanEvent[];
+  projects: ProjectPlan[];
+  log: WorkLog[];
+}
+/** One change of a proposed plan; local times `YYYY-MM-DDTHH:MM`. Applied only after review. */
+export type ScheduleAction =
+  | { type: "create_session"; project: string | null; title: string; start: string; end: string; taskId?: number | null; kind?: PlanEventKind | null }
+  | { type: "move_event"; id: number; start: string; end: string }
+  | { type: "delete_event"; id: number }
+  | { type: "create_task"; project: string | null; title: string; estimateMin?: number | null; priority?: number | null; dueDay?: string | null; subtasks?: string[] }
+  | { type: "set_priority"; project: string; priority: number }
+  | { type: "set_estimate"; project: string; estimateMin: number };
+export interface PlanApplied {
+  created: number;
+  moved: number;
+  deleted: number;
+  tasks: number;
+  projects: number;
+}
+
 export const api = {
+  planState: () => invoke<PlanState>("plan_state"),
+  myFreeSlots: (eventId: number) => invoke<Array<{ start: string; end: string }>>("my_free_slots", { eventId }),
+  planTaskSave: (task: Partial<PlanTask> & { title: string }) => invoke<PlanTask>("plan_task_save", { task }),
+  planTaskDelete: (id: number) => invoke<void>("plan_task_delete", { id }),
+  planEventSave: (event: Partial<PlanEvent> & { title: string; kind: PlanEventKind; start: number; end: number }) => invoke<PlanEvent>("plan_event_save", { event }),
+  planEventDelete: (id: number) => invoke<void>("plan_event_delete", { id }),
+  planProjectSet: (key: string, patch: { priority?: number; estimateMin?: number | null; color?: string | null }) => invoke<ProjectPlan>("plan_project_set", { key, patch }),
+  planLogAdd: (project: string | null, taskId: number | null, title: string, startedAt: number, seconds: number) => invoke<WorkLog>("plan_log_add", { project, taskId, title, startedAt, seconds }),
+  planApply: (actions: ScheduleAction[], origin: "auto" | "claude") => invoke<PlanApplied>("plan_apply", { actions, origin }),
+  assistantStart: (question: string, context: string, subjectOf: string | null) => invoke<number>("assistant_start", { question, context, subjectOf }),
+
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),
   suggestRoots: () => invoke<RootSuggestion[]>("suggest_roots"),

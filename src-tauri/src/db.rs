@@ -118,6 +118,53 @@ const MIGRATIONS: &[&str] = &[
         ts INTEGER NOT NULL,
         PRIMARY KEY (repo_path, command)
      );",
+    // v6: planning. `project` is a repository path, or `my:<id>` for a MY Epitech project
+    // that is not cloned. Instants are unix seconds. Nothing here comes from MY Epitech:
+    // a sync never touches these tables.
+    "CREATE TABLE plan_projects (
+        key TEXT PRIMARY KEY,
+        priority INTEGER NOT NULL DEFAULT 0,
+        estimate_min INTEGER,
+        color TEXT
+     );
+     CREATE TABLE tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        notes TEXT NOT NULL DEFAULT '',
+        project TEXT,
+        parent_id INTEGER,
+        kind TEXT NOT NULL DEFAULT 'task',
+        priority INTEGER NOT NULL DEFAULT 0,
+        estimate_min INTEGER,
+        due_day TEXT,
+        done_at INTEGER,
+        created_at INTEGER NOT NULL
+     );
+     CREATE TABLE plan_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        kind TEXT NOT NULL,
+        title TEXT NOT NULL,
+        start_at INTEGER NOT NULL,
+        end_at INTEGER NOT NULL,
+        all_day INTEGER NOT NULL DEFAULT 0,
+        project TEXT,
+        task_id INTEGER,
+        color TEXT,
+        notes TEXT NOT NULL DEFAULT '',
+        origin TEXT NOT NULL DEFAULT 'me',
+        done INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+     );
+     CREATE INDEX plan_events_start ON plan_events(start_at);
+     CREATE TABLE work_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project TEXT,
+        task_id INTEGER,
+        title TEXT NOT NULL,
+        started_at INTEGER NOT NULL,
+        seconds INTEGER NOT NULL
+     );
+     CREATE INDEX work_log_start ON work_log(started_at);",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

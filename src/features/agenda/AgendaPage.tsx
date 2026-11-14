@@ -3,7 +3,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Flag, GraduationCap, PartyPopper, RefreshCw, Rocket, Search, Users } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
-import { Badge, Button, Card, cn, EmptyState, ErrorNote, Input, PageHeader, Spinner } from "../../components/ui";
+import { Button, Card, cn, Dot, EmptyState, ErrorNote, Input, PageHeader, Spinner, Tag } from "../../components/ui";
+import { Countdown } from "../projects/RepoBits";
 import { api, asAppError, type AgendaItem } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { useNow, usePref } from "../../lib/hooks";
@@ -13,11 +14,11 @@ import { useUi } from "../../lib/store";
 type Scope = "mine" | "all";
 
 const ICON: Record<AgendaItem["kind"], ReactNode> = {
-  deadline: <Flag className="size-3.5" />,
-  start: <Rocket className="size-3.5" />,
-  activity: <GraduationCap className="size-3.5" />,
-  event: <Users className="size-3.5" />,
-  holiday: <PartyPopper className="size-3.5" />,
+  deadline: <Flag className="size-4" />,
+  start: <Rocket className="size-4" />,
+  activity: <GraduationCap className="size-4" />,
+  event: <Users className="size-4" />,
+  holiday: <PartyPopper className="size-4" />,
 };
 const KIND: Record<AgendaItem["kind"], string> = { deadline: "Hand-in", start: "Project start", activity: "Your session", event: "Session", holiday: "Holiday" };
 
@@ -64,19 +65,19 @@ export function AgendaPage() {
           </Button>
         }
       />
-      <div className="mb-3 flex flex-wrap items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-4">
         <div className="relative w-56">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
-          <Input className="pl-8" placeholder="Title, module, room…" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <Input className="pl-8" aria-label="Search by title, module or room" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
         <div className="flex items-center gap-0.5" role="tablist" aria-label="What to show">
           {([["mine", "Mine", "Your hand-ins, your projects' sessions, and sessions of the modules you are registered in"], ["all", "Whole campus", "Every session MY Epitech lists for the synced window"]] as const).map(([id, label, title]) => (
-            <button key={id} type="button" role="tab" aria-selected={scope === id} title={title} onClick={() => setScope(id)} className={cn("flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs transition-colors", scope === id ? "bg-raised font-medium text-fg" : "text-muted hover:bg-hover hover:text-fg")}>
-              {label} <span className="text-faint">{counts[id]}</span>
+            <button key={id} type="button" role="tab" aria-selected={scope === id} title={title} onClick={() => setScope(id)} className={cn("flex h-8 items-center gap-2 rounded-md px-2.5 text-[13px] transition-colors duration-150", scope === id ? "bg-raised text-fg" : "text-muted hover:text-fg")}>
+              {label} <span className="font-mono text-[11px] text-faint">{counts[id]}</span>
             </button>
           ))}
         </div>
-        <button type="button" role="switch" aria-checked={past} onClick={() => setPast(!past)} className={cn("ml-auto flex h-7 items-center rounded-md border px-2.5 text-xs transition-colors", past ? "border-accent/40 bg-accent-soft text-accent-strong" : "border-white/8 text-muted hover:text-fg")}>
+        <button type="button" role="switch" aria-checked={past} onClick={() => setPast(!past)} className={cn("ml-auto flex h-7 items-center rounded-md border px-2.5 text-xs transition-colors duration-150", past ? "border-transparent bg-accent-soft text-accent-strong" : "border-white/8 text-muted hover:text-fg")}>
           Past
         </button>
       </div>
@@ -93,13 +94,13 @@ export function AgendaPage() {
           </EmptyState>
         </Card>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           {days.map(([day, list]) => {
             const n = daysLeft(day, now) ?? 0;
             return (
-              <section key={day} className="grid grid-cols-[148px_minmax(0,1fr)] gap-3">
-                <header className="pt-2.5">
-                  <p className={cn("text-[13px] font-medium capitalize", n === 0 && "text-accent-strong")}>{dayTitle(day)}</p>
+              <section key={day} className="grid grid-cols-[160px_minmax(0,1fr)] gap-4">
+                <header className="pt-3">
+                  <p className={cn("text-[13px] capitalize", n === 0 ? "font-medium text-accent-strong" : "text-fg")}>{dayTitle(day)}</p>
                   <p className="text-xs text-faint">{relative(n)}</p>
                 </header>
                 <Card>
@@ -109,7 +110,7 @@ export function AgendaPage() {
                       const span = i.until ? `until ${dayDate(i.until).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : [time(i.start), time(i.end)].filter(Boolean).join(" – ");
                       const body = (
                         <>
-                          <span className={cn("flex size-6 shrink-0 items-center justify-center rounded-md", i.kind === "deadline" ? "bg-accent-soft text-accent-strong" : "bg-white/5 text-muted")} title={KIND[i.kind]}>
+                          <span className={cn("flex w-4 shrink-0 justify-center", i.kind === "deadline" ? "text-accent-strong" : "text-faint")} title={KIND[i.kind]}>
                             {ICON[i.kind]}
                           </span>
                           <span className="w-[104px] shrink-0 font-mono text-xs whitespace-nowrap text-muted">{span || "all day"}</span>
@@ -117,20 +118,20 @@ export function AgendaPage() {
                             <span className={cn("block truncate text-[13px]", i.kind === "deadline" && "font-medium")}>{i.title}</span>
                             {i.detail && <span className="block truncate text-xs text-faint">{i.detail}</span>}
                           </span>
-                          {i.module && <Badge tone={i.mine ? "accent" : "neutral"} mono>{i.module}</Badge>}
-                          {i.exam && <Badge tone="warn">exam</Badge>}
-                          {i.mandatory && i.kind === "activity" && <Badge tone="warn">mandatory</Badge>}
-                          {d && d.state !== "unknown" && <Badge tone={d.tone}>{d.label}</Badge>}
+                          {i.exam && <Dot tone="warn">exam</Dot>}
+                          {i.mandatory && i.kind === "activity" && <Dot tone="warn">mandatory</Dot>}
+                          {d && d.state !== "unknown" && <Countdown tone={d.tone}>{d.label}</Countdown>}
+                          <span className="flex w-20 shrink-0 justify-end">{i.module && <Tag>{i.module}</Tag>}</span>
                         </>
                       );
                       return (
                         <li key={`${i.kind}-${i.title}-${i.start ?? ""}-${k}`} className="border-b border-white/6 last:border-b-0">
                           {i.repoPath ? (
-                            <button type="button" onClick={() => openSheet(i.repoPath!)} className="row-hover flex min-h-10 w-full items-center gap-2.5 px-3 py-1.5 text-left">
+                            <button type="button" onClick={() => openSheet(i.repoPath!)} className="row-hover flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left">
                               {body}
                             </button>
                           ) : (
-                            <div className="flex min-h-10 items-center gap-2.5 px-3 py-1.5">{body}</div>
+                            <div className="flex min-h-11 items-center gap-3 px-4 py-2">{body}</div>
                           )}
                         </li>
                       );

@@ -117,7 +117,7 @@ export function Stat({ label, value, note }: { label: string; value: string; not
   return (
     <Card className="px-4 py-4">
       <p className="text-xs text-muted">{label}</p>
-      <p className="display number-gradient mt-1 text-[30px] leading-tight font-semibold">{value}</p>
+      <p className="display number-gradient mt-1 text-[30px] leading-tight font-medium">{value}</p>
       {note && <p className="mt-0.5 truncate text-xs text-faint">{note}</p>}
     </Card>
   );

@@ -28,7 +28,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
         >
           <header className="flex items-start justify-between gap-4 px-5 pt-4 pb-3">
             <div className="min-w-0">
-              <Dialog.Title className="display truncate text-lg font-semibold">{title}</Dialog.Title>
+              <Dialog.Title className="display truncate text-lg font-medium">{title}</Dialog.Title>
               {description ? (
                 <Dialog.Description className="mt-0.5 text-[13px] text-muted">{description}</Dialog.Description>
               ) : (

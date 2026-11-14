@@ -33,7 +33,7 @@ export function AcademicSection() {
     <>
       <div id="academic" className="mt-2 flex scroll-mt-4 items-end justify-between gap-3">
         <div>
-          <h2 className="display text-lg font-semibold">Academic</h2>
+          <h2 className="display text-lg font-medium">Academic</h2>
           <p className="text-xs text-muted">{empty ? "From MY Epitech — nothing synced yet." : `As reported by MY Epitech, synced ${timeAgo(a.syncedAt!)}${a.semester !== null ? ` · semester ${a.semester}` : ""}.`}</p>
         </div>
         <Button size="sm" variant="ghost" onClick={() => setPage("myepitech")}>
@@ -130,6 +130,20 @@ function Filled({ a }: { a: Academic }) {
                     <span className="min-w-0 flex-1 truncate">{e.label}</span>
                     <span className="text-xs text-muted">{e.best ?? "—"}{e.required !== null ? ` · required ${e.required}` : ""}{e.max !== null ? ` / ${e.max}` : ""}</span>
                     {e.best !== null && e.required !== null && <Badge tone={e.best >= e.required ? "ok" : "warn"}>{e.best >= e.required ? "reached" : "below"}</Badge>}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+          {(a.marks?.length ?? 0) > 0 && (
+            <Card>
+              <CardTitle>Marks</CardTitle>
+              <ul className="py-1">
+                {a.marks.slice(0, 12).map((m, i) => (
+                  <li key={`${m.title}-${m.date ?? i}`} title={[m.evaluator && `By ${m.evaluator}`, m.comment].filter(Boolean).join("\n") || undefined} className="flex min-h-9 items-center gap-2.5 px-4 text-[13px]">
+                    <span className="min-w-0 flex-1 truncate">{m.title}</span>
+                    {m.date && <span className="shrink-0 text-xs text-faint">{new Date(m.date).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</span>}
+                    <span className="w-10 shrink-0 text-right font-mono text-xs">{m.mark ?? "—"}</span>
                   </li>
                 ))}
               </ul>

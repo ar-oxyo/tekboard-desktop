@@ -98,7 +98,7 @@ export function SubjectsPage() {
         <>
           <div className="relative mb-3 w-64">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
-            <Input className="pl-8" placeholder="Filter by name or project…" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <Input className="pl-8" aria-label="Filter by name or project" placeholder="Filter" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
           <Card>
             {shown.length === 0 ? (

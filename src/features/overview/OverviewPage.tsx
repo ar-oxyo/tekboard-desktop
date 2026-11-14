@@ -1,13 +1,14 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, CalendarClock, ChevronDown, ChevronRight, CloudDownload, FolderGit2, GitCommitHorizontal, Play, Plus, RefreshCw } from "lucide-react";
+import { ArrowRight, CalendarClock, ChevronDown, ChevronRight, CloudDownload, FolderGit2, GitCommitHorizontal, Play, RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { Badge, Button, Card, CardTitle, Code, EmptyState, ErrorNote, PageHeader, Spinner } from "../../components/ui";
+import { Button, Card, CardTitle, Code, Dot, EmptyState, ErrorNote, PageHeader, SectionLabel, Spinner, Tag } from "../../components/ui";
 import { asAppError, type Activity, type BoardItem, type Candidate, type RepoInfo } from "../../lib/api";
-import { greeting, timeAgo, tildify } from "../../lib/format";
-import { keys, useActivity, useBoard, useCandidates, useEnv, useHome, useNow, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
+import { timeAgo, tildify } from "../../lib/format";
+import { keys, useActivity, useBoard, useCandidates, useEnv, useHome, useNow, usePref, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
+import { QuickActionsCard, TodayCard, WorkloadCard } from "./Today";
 import { attention, currentFocus, displayName, due } from "../../lib/repos";
 import { useUi } from "../../lib/store";
-import { BranchLabel, DueBadge, ProgressPicker, RepoMenu, StatusChips } from "../projects/RepoBits";
+import { BranchLabel, Countdown, DueBadge, ProgressPicker, RepoMenu, StatusChips } from "../projects/RepoBits";
 import { Onboarding } from "../settings/Onboarding";
 
 export function OverviewPage() {
@@ -15,7 +16,6 @@ export function OverviewPage() {
   const hasRoots = (settings.data?.roots.length ?? 0) > 0;
   const repos = useRepos(hasRoots);
   const qc = useQueryClient();
-  const openLauncher = useUi((s) => s.openLauncher);
 
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
 
@@ -25,8 +25,7 @@ export function OverviewPage() {
   return (
     <>
       <PageHeader
-        title={greeting()}
-        subtitle={today}
+        title={today.charAt(0).toUpperCase() + today.slice(1)}
         actions={
           hasRoots && (
             <>
@@ -41,9 +40,7 @@ export function OverviewPage() {
               >
                 Refresh
               </Button>
-              <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => openLauncher({ mode: "new" })}>
-                New project
-              </Button>
+
             </>
           )
         }
@@ -56,19 +53,46 @@ export function OverviewPage() {
       ) : repos.error ? (
         <ErrorNote title="Could not scan your projects">{asAppError(repos.error).message}</ErrorNote>
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-          <div className="flex min-w-0 flex-col gap-4">
-            <FocusCard repo={currentFocus(repos.data ?? [])} />
-            <AttentionCard repos={repos.data ?? []} />
+        <>
+          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+            <div className="flex min-w-0 flex-col gap-4">
+              <TodayCard />
+              <WorkloadCard />
+            </div>
+            <div className="flex min-w-0 flex-col gap-4">
+              <DeadlinesCard />
+              <QuickActionsCard />
+            </div>
           </div>
+          <MoreSection repos={repos.data ?? []} />
+        </>
+      )}
+    </>
+  );
+}
+
+/** Repositories, recent activity and new projects: useful, but not what the day is about. Folded by default. */
+function MoreSection({ repos }: { repos: RepoInfo[] }) {
+  const [open, setOpen] = usePref("overview.more", false);
+  const flagged = repos.filter((r) => r.progress !== "done" && attention(r).length > 0).length;
+  return (
+    <section className="mt-6">
+      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="mb-3 flex items-center gap-1.5 text-[13px] text-muted hover:text-fg">
+        {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+        Repositories and activity
+        {flagged > 0 && <span className="text-xs text-faint">· {flagged} need attention</span>}
+      </button>
+      {open && (
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+          <FocusCard repo={currentFocus(repos)} />
+          <AttentionCard repos={repos} />
           <div className="flex min-w-0 flex-col gap-4">
-            <DeadlinesCard />
             <NextProjectCard />
-            <ActivityCard repos={repos.data ?? []} />
+            <ActivityCard repos={repos} />
           </div>
         </div>
       )}
-    </>
+    </section>
   );
 }
 
@@ -96,37 +120,34 @@ function FocusCard({ repo }: { repo: RepoInfo | null }) {
   }
   return (
     <Card hero>
-      <CardTitle right={repo.meta.lastOpenedAt ? <span className="text-xs text-faint">opened {timeAgo(repo.meta.lastOpenedAt)}</span> : <span className="text-xs text-faint">most recent commit</span>}>
-        Current focus
-      </CardTitle>
-      <div className="px-5 pt-5 pb-5">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <h3 className="display selectable truncate text-[26px] leading-tight font-semibold">{displayName(repo)}</h3>
-          {(repo.my?.unitCode ?? repo.epitech?.module) && (
-            <Badge tone="accent" mono>
-              {repo.my?.unitCode ?? repo.epitech?.module}
-            </Badge>
-          )}
-          <DueBadge repo={repo} />
+      <div className="p-6">
+        <div className="flex items-center justify-between gap-3 text-xs text-faint">
+          <span>Last opened</span>
+          <span>{repo.meta.lastOpenedAt ? `opened ${timeAgo(repo.meta.lastOpenedAt)}` : "most recent commit"}</span>
         </div>
-        <p className="selectable mt-0.5 truncate font-mono text-xs text-faint">{tildify(repo.path, home)}</p>
+        <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h3 className="display selectable truncate text-[20px] leading-[1.15] font-medium">{displayName(repo)}</h3>
+          {(repo.my?.unitCode ?? repo.epitech?.module) && <Tag>{repo.my?.unitCode ?? repo.epitech?.module}</Tag>}
+        </div>
+        <p className="selectable mt-1 truncate font-mono text-xs text-faint">{tildify(repo.path, home)}</p>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <DueBadge repo={repo} />
           <BranchLabel repo={repo} />
           <StatusChips repo={repo} max={4} />
         </div>
 
         {repo.lastCommit ? (
-          <p className="mt-3 flex min-w-0 items-center gap-1.5 text-[13px] text-muted">
-            <GitCommitHorizontal className="size-3.5 shrink-0 text-faint" />
+          <p className="mt-3 flex min-w-0 items-center gap-2 text-[13px] text-muted">
+            <GitCommitHorizontal className="size-4 shrink-0 text-faint" />
             <span className="selectable truncate">{repo.lastCommit.subject}</span>
-            <span className="shrink-0 text-faint">· {timeAgo(repo.lastCommit.date)}</span>
+            <span className="shrink-0 text-faint">{timeAgo(repo.lastCommit.date)}</span>
           </p>
         ) : (
           <p className="mt-3 text-[13px] text-faint">No commit yet</p>
         )}
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-6 flex flex-wrap items-center gap-2">
           <Button variant="primary" icon={<Play className="size-3.5" />} busy={act.workspace.isPending} onClick={() => act.workspace.mutate(repo)}>
             Continue working
           </Button>
@@ -163,8 +184,8 @@ function AttentionCard({ repos }: { repos: RepoInfo[] }) {
       ) : (
         <ul>
           {shown.map((repo) => (
-            <li key={repo.path} className="group flex h-11 items-center gap-3 border-b border-white/6 px-4 last:border-b-0 row-hover">
-              <button type="button" onClick={() => openSheet(repo.path)} className="min-w-0 flex-1 truncate text-left text-[13px] font-medium hover:text-accent-strong">
+            <li key={repo.path} className="group row-hover flex h-10 items-center gap-3 border-b border-white/6 pr-2 pl-4 last:border-b-0">
+              <button type="button" onClick={() => openSheet(repo.path)} className="min-w-0 flex-1 truncate text-left text-[13px]">
                 {displayName(repo)}
               </button>
               <StatusChips repo={repo} max={2} />
@@ -206,11 +227,11 @@ function DeadlinesCard() {
         type="button"
         onClick={() => (i.repoPath ? openSheet(i.repoPath) : i.repoExpected ? openLauncher({ mode: "new" }) : setPage("myepitech"))}
         title={i.repoPath ? `${i.repoPath}\n${i.source === "my" ? "Date from MY Epitech" : i.source === "manual" ? "Date typed by you" : "Date saved earlier"}${i.myDay ? `\nMY Epitech says ${i.myDay}` : ""}` : i.repoExpected ? "Listed by MY Epitech, no local repository yet. Click to clone it." : "Listed by MY Epitech. No repository is expected for it."}
-        className="flex min-h-9 w-full items-center gap-2 px-4 py-1 text-left text-[13px] row-hover"
+        className="row-hover flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left text-[13px]"
       >
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5">
-            <span className="truncate font-medium">{i.title}</span>
+          <span className="flex items-center gap-2">
+            <span className="truncate">{i.title}</span>
             {!i.cloned && i.repoExpected && (
               <span className="flex shrink-0 items-center gap-1 text-[11px] text-info">
                 <CloudDownload className="size-3" /> not cloned
@@ -220,7 +241,11 @@ function DeadlinesCard() {
           {i.module && <span className="block truncate font-mono text-[11px] text-faint">{i.module}{i.starts ? ` · starts ${dayText(i.starts.slice(0, 10))}` : ""}</span>}
         </span>
         {i.day && <span className="shrink-0 text-xs text-faint">{dayText(i.day)}</span>}
-        {d.state !== "unknown" && <Badge tone={d.tone}>{d.label}</Badge>}
+        {d.state !== "unknown" && (
+          <span className="flex w-24 shrink-0 justify-end">
+            <Countdown tone={d.tone}>{d.label}</Countdown>
+          </span>
+        )}
       </button>
     </li>
   );
@@ -250,13 +275,13 @@ function DeadlinesCard() {
         <div className="py-1">
           {overdue.length > 0 && (
             <>
-              <p className="px-4 pt-1.5 pb-0.5 text-[10px] font-semibold tracking-[0.12em] text-danger uppercase">Late</p>
+              <SectionLabel className="px-4 pt-2 pb-1">Late</SectionLabel>
               <ul>{overdue.map(row)}</ul>
             </>
           )}
           {coming.length > 0 && (
             <>
-              {overdue.length > 0 && <p className="px-4 pt-2 pb-0.5 text-[10px] font-semibold tracking-[0.12em] text-faint uppercase">To come</p>}
+              {overdue.length > 0 && <SectionLabel className="px-4 pt-3 pb-1">To come</SectionLabel>}
               <ul>{shownComing.map(row)}</ul>
               {coming.length > shownComing.length && (
                 <button type="button" onClick={() => setShowAll(true)} className="flex h-8 w-full items-center gap-1 px-4 text-xs text-muted hover:text-fg">
@@ -289,6 +314,7 @@ function NextProjectCard() {
   const candidates = useCandidates(gh?.state === "ready");
   const openLauncher = useUi((s) => s.openLauncher);
   const top: Candidate | undefined = candidates.data?.[0];
+  const [why, setWhy] = useState(false);
 
   let body;
   if (!gh) {
@@ -325,26 +351,23 @@ function NextProjectCard() {
     body = (
       <div className="px-4 py-4">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="display selectable truncate text-lg font-semibold">{top.epitech?.project ?? top.repo.name}</h3>
-          {top.epitech && (
-            <Badge tone="accent" mono>
-              {top.epitech.module}
-            </Badge>
-          )}
+          <h3 className="display selectable truncate text-base font-medium">{top.epitech?.project ?? top.repo.name}</h3>
+          {top.epitech && <Tag>{top.epitech.module}</Tag>}
         </div>
         <p className="selectable mt-0.5 truncate font-mono text-xs text-faint">{top.repo.fullName}</p>
-        <div className="mt-2.5">
-          <Badge tone={confidenceTone[top.confidence]} title={`Score ${top.score}/100`}>
-            {confidenceLabel[top.confidence]}
-          </Badge>
-        </div>
-        <ul className="mt-2 space-y-0.5 text-xs text-muted">
-          {top.reasons.slice(0, 3).map((r) => (
-            <li key={r}>· {r}</li>
-          ))}
-        </ul>
-        <div className="mt-3.5 flex items-center gap-2">
-          <Button variant="primary" icon={<Play className="size-3.5" />} onClick={() => openLauncher({ mode: "new", url: top.repo.sshUrl })}>
+        <button type="button" aria-expanded={why} onClick={() => setWhy(!why)} title={`Score ${top.score}/100. Click to see why`} className="mt-3 flex items-center gap-1.5 text-left hover:text-fg">
+          <Dot tone={confidenceTone[top.confidence]}>{confidenceLabel[top.confidence]}</Dot>
+          {why ? <ChevronDown className="size-3.5 text-faint" /> : <ChevronRight className="size-3.5 text-faint" />}
+        </button>
+        {why && (
+          <ul className="mt-2 flex flex-col gap-1 text-xs text-muted">
+            {top.reasons.slice(0, 3).map((r) => (
+              <li key={r}>{r}</li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-4 flex items-center gap-2">
+          <Button icon={<Play className="size-3.5" />} onClick={() => openLauncher({ mode: "new", url: top.repo.sshUrl })}>
             Initialize
           </Button>
           {(candidates.data?.length ?? 0) > 1 && (
@@ -383,6 +406,7 @@ const ACTIVITY_LABEL: Record<string, string> = {
 
 function ActivityCard({ repos }: { repos: RepoInfo[] }) {
   const activity = useActivity();
+  const [all, setAll] = useState(false);
   const byPath = new Map(repos.map((r) => [r.path, r]));
   const label = (a: Activity) => {
     const repo = a.repoPath ? byPath.get(a.repoPath) : undefined;
@@ -399,17 +423,24 @@ function ActivityCard({ repos }: { repos: RepoInfo[] }) {
       ) : (activity.data?.length ?? 0) === 0 ? (
         <p className="px-4 py-5 text-[13px] text-muted">What you do from TekBoard will show up here.</p>
       ) : (
-        <ul className="py-1.5">
-          {activity.data!.map((a) => {
+        <ul className="py-1">
+          {(all ? activity.data! : activity.data!.slice(0, 5)).map((a) => {
             const { verb, name } = label(a);
             return (
               <li key={a.id} className="flex h-8 items-center gap-2 px-4 text-[13px]">
                 <span className="shrink-0 text-muted">{verb}</span>
-                <span className="selectable min-w-0 flex-1 truncate font-medium">{name}</span>
+                <span className="selectable min-w-0 flex-1 truncate">{name}</span>
                 <span className="shrink-0 text-xs text-faint">{timeAgo(a.ts)}</span>
               </li>
             );
           })}
+          {!all && activity.data!.length > 5 && (
+            <li>
+              <button type="button" onClick={() => setAll(true)} className="flex h-8 w-full items-center gap-1 px-4 text-xs text-muted hover:text-fg">
+                <ChevronRight className="size-3.5" /> {activity.data!.length - 5} more
+              </button>
+            </li>
+          )}
         </ul>
       )}
     </Card>

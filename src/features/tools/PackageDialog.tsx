@@ -78,7 +78,7 @@ export function PackageDialog({ repo }: { repo: string }) {
           </p>
         )}
         <div className="flex items-center gap-2">
-          <Input className="h-7 text-xs" placeholder="Filter files…" value={filter} onChange={(e) => setFilter(e.target.value)} />
+          <Input className="h-7 text-xs" placeholder="Filter files" value={filter} onChange={(e) => setFilter(e.target.value)} />
           <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted"><input type="checkbox" className="accent-(--color-accent)" checked={onlyOut} onChange={(e) => setOnlyOut(e.target.checked)} />Only what is left out</label>
           {preview.isFetching && <Spinner />}
         </div>

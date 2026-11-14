@@ -92,6 +92,30 @@ pub fn build_argv(prompt: &str, write_dirs: &[&str]) -> Vec<String> {
     argv
 }
 
+/// A question answered from the text given in the prompt alone: no tool at all, so Claude
+/// can neither read a file nor run anything. Used by the planning assistant.
+pub fn build_argv_chat(prompt: &str) -> Vec<String> {
+    let mut argv: Vec<String> = ["claude", "-p", "--output-format", "json", "--no-session-persistence", "--strict-mcp-config", "--tools", "", "--"].iter().map(|s| s.to_string()).collect();
+    argv.push(prompt.to_string());
+    argv
+}
+
+/// Runs a tool-less question in `dir` (an empty folder) as part of a job.
+pub fn run_chat(job: &Job, dir: &Path, prompt: &str, timeout: Duration) -> Result<(Outcome, Result<Answer>)> {
+    let mut argv = build_argv_chat(prompt);
+    argv[0] = executable()?;
+    job.log(&format!("Instructions given to Claude Code (no tool allowed):\n{prompt}\n"));
+    let o = job.run(&argv, dir, timeout, &[])?;
+    let answer = if o.cancelled {
+        Err(AppError::new("cancelled", "Cancelled"))
+    } else if o.timed_out {
+        Err(AppError::new("claude_failed", "Claude Code did not finish in time"))
+    } else {
+        parse_answer(&o.output)
+    };
+    Ok((o, answer))
+}
+
 pub fn plan(write_dirs: &[&str]) -> Plan {
     let info = detect();
     let mut argv = build_argv("<instructions>", write_dirs);
@@ -196,6 +220,15 @@ mod tests {
         assert!(!argv.iter().any(|a| a.contains("Bash") || a.starts_with("Write") || a.starts_with("Edit")));
         assert!(argv.contains(&"Read(./.env)".to_string()) && argv.contains(&"--strict-mcp-config".to_string()));
         assert_eq!(argv[argv.len() - 2..], ["--", "hello"]);
+    }
+
+    #[test]
+    fn a_chat_run_has_no_tool_at_all() {
+        let argv = build_argv_chat("plan my week");
+        let at = argv.iter().position(|a| a == "--tools").unwrap();
+        assert_eq!(argv[at + 1], "", "an empty list disables every built-in tool");
+        assert_eq!(argv[argv.len() - 2..], ["--", "plan my week"]);
+        assert!(argv.contains(&"--strict-mcp-config".to_string()) && !argv.iter().any(|a| a.contains("allowedTools")));
     }
 
     #[test]

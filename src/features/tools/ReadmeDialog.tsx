@@ -1,7 +1,7 @@
 // README generator: a proposal built from the repository, editable, compared with the
 // current file, written only when you say so.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Sparkles } from "lucide-react";
+import { Bot } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DiffView } from "../../components/DiffView";
 import { Modal } from "../../components/Modal";
@@ -83,7 +83,7 @@ export function ReadmeDialog({ repo }: { repo: string }) {
                 <input type="checkbox" className="accent-(--color-accent)" checked={disclosure} onChange={(e) => setDisclosure(e.target.checked)} />
                 Include AI assistance disclosure
               </label>
-              <Button size="sm" icon={<Sparkles className="size-3.5" />} busy={running || startAi.isPending} onClick={() => setBrief(true)}>{running ? "Claude is reading…" : "Enrich with Claude…"}</Button>
+              <Button size="sm" icon={<Bot className="size-3.5" />} busy={running || startAi.isPending} onClick={() => setBrief(true)}>{running ? "Claude is reading…" : "Enrich with Claude…"}</Button>
             </div>
             {source === "facts" && (draft.data?.missing.length ?? 0) > 0 && <p className="text-xs text-muted">Built only from facts found in the repository. Left for you as <code className="font-mono">TODO</code> comments: {draft.data!.missing.join("; ")}.</p>}
             {source === "claude" && <p className="text-xs text-muted">Written by Claude Code from the files it read. Check it against your code before writing: it can be wrong.</p>}

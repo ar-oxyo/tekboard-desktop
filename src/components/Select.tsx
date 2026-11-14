@@ -74,7 +74,7 @@ function PlainSelect<T extends string>({ value, onChange, options, placeholder, 
     <RSelect.Root value={value === null ? undefined : enc(value)} onValueChange={(v) => onChange(dec(v) as T)} disabled={disabled}>
       <RSelect.Trigger aria-label={label} className={triggerClass(size, mono, className)}>
         <span className="min-w-0 flex-1 truncate">
-          <RSelect.Value placeholder={<span className="text-faint">{placeholder ?? "Choose…"}</span>} />
+          <RSelect.Value placeholder={<span className="text-faint">{placeholder ?? "Choose"}</span>} />
         </span>
         <RSelect.Icon>
           <ChevronDown className="size-3.5 shrink-0 text-faint transition-transform group-data-[state=open]:rotate-180" />
@@ -112,7 +112,7 @@ function SearchSelect<T extends string>({ value, onChange, options, placeholder,
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild disabled={disabled}>
         <button type="button" role="combobox" aria-expanded={open} aria-label={label} className={triggerClass(size, mono, className)}>
-          <span className={cn("min-w-0 flex-1 truncate", !current && "text-faint")}>{current?.label ?? placeholder ?? "Choose…"}</span>
+          <span className={cn("min-w-0 flex-1 truncate", !current && "text-faint")}>{current?.label ?? placeholder ?? "Choose"}</span>
           <ChevronsUpDown className="size-3.5 shrink-0 text-faint" />
         </button>
       </Popover.Trigger>
@@ -121,7 +121,7 @@ function SearchSelect<T extends string>({ value, onChange, options, placeholder,
           <Command loop>
             <div className="flex items-center gap-2 border-b border-white/8 px-2.5">
               <Search className="size-3.5 shrink-0 text-faint" />
-              <Command.Input autoFocus placeholder="Search…" className="h-8 min-w-0 flex-1 bg-transparent text-[13px] text-fg placeholder:text-faint focus:outline-none" />
+              <Command.Input autoFocus placeholder="Search" className="h-8 min-w-0 flex-1 bg-transparent text-[13px] text-fg placeholder:text-faint focus:outline-none" />
             </div>
             <Command.List className="max-h-72 overflow-y-auto p-1">
               <Command.Empty className="px-2.5 py-3 text-xs text-muted">{empty ?? "Nothing matches."}</Command.Empty>

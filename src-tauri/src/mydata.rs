@@ -11,9 +11,11 @@ use chrono::{DateTime, Local, NaiveDate};
 use rusqlite::Connection;
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 pub const EVENTS: &str = "/events?startDate={from}&endDate={to}";
+/// Sessions the student is registered to (to the session itself or to one of its slots).
+pub const MY_EVENTS: &str = "/events?startDate={from}&endDate={to}&registered=me";
 
 /// A cached answer, or why there is none (`never synced`, `HTTP 403`…).
 fn cached(conn: &Connection, route: &str) -> std::result::Result<Value, String> {
@@ -58,6 +60,18 @@ pub struct AgendaItem {
     pub repo_path: Option<String>,
     /// Last day, for a period (holidays).
     pub until: Option<String>,
+    /// Your attendance to a session, as MY Epitech words it (`registered`, `not_registered`, `absent`…).
+    pub status: Option<String>,
+    /// MY Epitech session id, to look up its free slots on demand.
+    pub event_id: Option<i64>,
+}
+
+/// `not_registered` → `not registered`.
+fn status_text(status: &str) -> &str {
+    match status {
+        "not_registered" => "not registered",
+        other => other,
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -69,6 +83,8 @@ pub struct Agenda {
     pub modules: Vec<String>,
     /// What could not be shown and why.
     pub notes: Vec<String>,
+    /// Peer evaluations assigned to you and not submitted yet (activity names).
+    pub peer_todo: Vec<String>,
 }
 
 fn sort_key(i: &AgendaItem) -> (String, u8, i64, String) {
@@ -94,26 +110,72 @@ pub fn agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Ag
             Some("manual") => "hand-in, typed by you",
             _ => "hand-in",
         };
-        a.items.push(AgendaItem { kind: "deadline", title: b.title.clone(), day: day.clone(), start: b.at.clone(), end: None, module: b.module.clone(), detail: Some(if b.cloned { origin.to_string() } else { format!("{origin} · not cloned") }), mine: true, mandatory: true, exam: false, repo_path: b.repo_path.clone(), until: None });
+        a.items.push(AgendaItem { kind: "deadline", title: b.title.clone(), day: day.clone(), start: b.at.clone(), end: None, module: b.module.clone(), detail: Some(if b.cloned { origin.to_string() } else { format!("{origin} · not cloned") }), mine: true, mandatory: true, exam: false, repo_path: b.repo_path.clone(), until: None, status: None, event_id: None });
     }
     // Projects that open later.
     for p in overview.projects.iter().filter(|p| p.upcoming) {
         if let Some(due) = p.start.as_deref().and_then(deadlines::from_instant) {
-            a.items.push(AgendaItem { kind: "start", title: format!("{} opens", p.name), day: due.day, start: due.at, end: None, module: Some(p.unit_code.clone()).filter(|u| !u.is_empty()), detail: p.unit_name.clone(), mine: true, mandatory: false, exam: false, repo_path: p.repo_path.clone(), until: None });
+            a.items.push(AgendaItem { kind: "start", title: format!("{} opens", p.name), day: due.day, start: due.at, end: None, module: Some(p.unit_code.clone()).filter(|u| !u.is_empty()), detail: p.unit_name.clone(), mine: true, mandatory: false, exam: false, repo_path: p.repo_path.clone(), until: None, status: None, event_id: None });
         }
     }
-    // Sessions of your own projects (with your attendance), remembered so the campus list does not repeat them.
-    let mut seen_events: HashSet<i64> = HashSet::new();
+    // Your attendance per session, from the activities of your projects: `registered`,
+    // `not_registered`, `absent`, `present`…, and whether the session is mandatory.
+    let mut attendance: HashMap<i64, (Option<String>, bool)> = HashMap::new();
+    let mut activities: Vec<(&crate::myview::Project, Value)> = Vec::new();
     for p in &overview.projects {
         let Ok(v) = cached(conn, &format!("/units/instances/projects/{}/my-activities", p.id)) else { continue };
         for x in v.as_array().into_iter().flatten() {
-            let (Some(start), Some(title)) = (s(&x["startDate"]), s(&x["name"])) else { continue };
-            let Some(day) = local_day(&start) else { continue };
             if let Some(id) = x["eventId"].as_i64() {
-                seen_events.insert(id);
+                attendance.insert(id, (s(&x["status"]), x["mandatory"].as_bool().unwrap_or(false)));
             }
-            a.items.push(AgendaItem { kind: "activity", title, day, start: Some(start), end: s(&x["endDate"]), module: Some(p.unit_code.clone()).filter(|u| !u.is_empty()), detail: s(&x["status"]), mine: true, mandatory: x["mandatory"].as_bool().unwrap_or(false), exam: false, repo_path: p.repo_path.clone(), until: None });
+            activities.push((p, x.clone()));
         }
+    }
+    let mut seen_events: HashSet<i64> = HashSet::new();
+    // 1. Your timetable: the sessions you are registered to, at the hours of your own slot
+    //    when you hold one inside a longer session (a review, a defence).
+    if let Ok(v) = cached(conn, MY_EVENTS) {
+        for e in v.as_array().into_iter().flatten() {
+            let id = e["id"].as_i64();
+            if id.is_some_and(|id| !seen_events.insert(id)) {
+                continue;
+            }
+            let slot = s(&e["mySlotStartDate"]);
+            let Some(start) = slot.clone().or_else(|| s(&e["startDate"])) else { continue };
+            let Some(day) = local_day(&start) else { continue };
+            let end = if slot.is_some() { s(&e["mySlotEndDate"]).filter(|x| *x != start).or_else(|| s(&e["endDate"])) } else { s(&e["endDate"]) };
+            let project = e["projectInstanceId"].as_i64().and_then(|pid| overview.projects.iter().find(|p| p.id == pid));
+            let (status, mandatory) = id.and_then(|i| attendance.get(&i).cloned()).unwrap_or((Some("registered".into()), false));
+            let status = status.or(Some("registered".into()));
+            let detail = [s(&e["unitName"]), slot.is_some().then(|| "your slot".to_string()), status.as_deref().map(|x| status_text(x).to_string())].into_iter().flatten().collect::<Vec<_>>().join(" · ");
+            a.items.push(AgendaItem {
+                kind: "activity",
+                title: s(&e["fullTitle"]).or_else(|| s(&e["title"])).or_else(|| s(&e["activityName"])).unwrap_or_else(|| "Session".into()),
+                day,
+                start: Some(start),
+                end,
+                module: s(&e["unitCode"]),
+                detail: Some(detail),
+                mine: true,
+                mandatory,
+                exam: e["isExam"].as_bool().unwrap_or(false),
+                repo_path: project.and_then(|p| p.repo_path.clone()),
+                until: None,
+                status,
+                event_id: id,
+            });
+        }
+    }
+    // 2. Sessions of your projects that are not in your timetable: mostly the ones you are
+    //    not registered to yet, which is worth knowing.
+    for (p, x) in activities {
+        let (Some(start), Some(title)) = (s(&x["startDate"]), s(&x["name"])) else { continue };
+        let Some(day) = local_day(&start) else { continue };
+        if x["eventId"].as_i64().is_some_and(|id| !seen_events.insert(id)) {
+            continue;
+        }
+        let status = s(&x["status"]);
+        a.items.push(AgendaItem { kind: "activity", title, day, start: Some(start), end: s(&x["endDate"]), module: Some(p.unit_code.clone()).filter(|u| !u.is_empty()), detail: status.as_deref().map(status_text).map(str::to_string), mine: true, mandatory: x["mandatory"].as_bool().unwrap_or(false), exam: false, repo_path: p.repo_path.clone(), until: None, status, event_id: x["eventId"].as_i64() });
     }
     // Sessions listed for the campus in the synced window.
     match cached(conn, EVENTS) {
@@ -142,6 +204,8 @@ pub fn agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Ag
                     exam: e["isExam"].as_bool().unwrap_or(false),
                     repo_path: None,
                     until: None,
+                    status: None,
+                    event_id: e["id"].as_i64(),
                 });
             }
         }
@@ -155,9 +219,12 @@ pub fn agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Ag
                 if NaiveDate::parse_from_str(&from, "%Y-%m-%d").is_err() {
                     continue;
                 }
-                a.items.push(AgendaItem { kind: "holiday", title: s(&x["name"]).unwrap_or_else(|| "Public holiday".into()), day: from.clone(), start: None, end: None, module: None, detail: None, mine: true, mandatory: false, exam: false, repo_path: None, until: Some(to).filter(|t| *t != from) });
+                a.items.push(AgendaItem { kind: "holiday", title: s(&x["name"]).unwrap_or_else(|| "Public holiday".into()), day: from.clone(), start: None, end: None, module: None, detail: None, mine: true, mandatory: false, exam: false, repo_path: None, until: Some(to).filter(|t| *t != from), status: None, event_id: None });
             }
         }
+    }
+    if let Ok(v) = cached(conn, "/peer-evaluations/assignments/me") {
+        a.peer_todo = v.as_array().into_iter().flatten().filter(|x| x["status"].as_str().is_some_and(|st| st != "submitted") && x["submittedAt"].is_null()).filter_map(|x| s(&x["activityName"])).collect();
     }
     a.items.sort_by_key(sort_key);
     a.modules = modules;
@@ -211,6 +278,16 @@ pub struct LogDay {
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+pub struct Mark {
+    pub date: Option<String>,
+    pub title: String,
+    pub mark: Option<f64>,
+    pub evaluator: Option<String>,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct TestPoint {
     pub project: String,
     pub module: String,
@@ -234,6 +311,8 @@ pub struct Academic {
     pub exams: Vec<crate::myview::Exam>,
     pub logtime: Vec<LogDay>,
     pub tests: Vec<TestPoint>,
+    /// Marks given on sessions (reviews, defences…), most recent first.
+    pub marks: Vec<Mark>,
     /// Nodes of the validation graph by kind and status: (kind, status, count).
     pub graph: Vec<(String, String, usize)>,
     /// MY Epitech's own warning levels (`green`, `orange`, `red`…), as it words them.
@@ -305,6 +384,10 @@ pub fn academic(conn: &Connection, overview: &Overview) -> Academic {
         a.level = v["level"].as_i64();
         a.xp = v["totalXp"].as_i64();
         a.xp_to_next = v["xpToNext"].as_i64();
+    }
+    if let Ok(v) = cached(conn, "/students/evaluations/marks") {
+        a.marks = v.as_array().into_iter().flatten().filter_map(|m| Some(Mark { date: s(&m["date"]), title: s(&m["activityTitle"]).or_else(|| s(&m["eventTitle"]))?, mark: m["mark"].as_f64(), evaluator: s(&m["evaluator"]), comment: s(&m["comment"]) })).collect();
+        a.marks.sort_by(|x, y| y.date.cmp(&x.date));
     }
     match cached(conn, "/students/logtime") {
         Err(why) => a.notes.push(format!("Log time: {why}.")),
@@ -390,7 +473,45 @@ mod tests {
         assert!(a.items[1].mandatory && a.items[1].detail.as_deref() == Some("registered"));
         assert_eq!(a.items.last().unwrap().until.as_deref(), Some("2027-01-01"));
         assert_eq!(a.modules, vec!["G-CPE-110", "G-PSU-100"]);
+        assert!(a.peer_todo.is_empty());
+        put(&conn, "/peer-evaluations/assignments/me", 200, r#"[{"activityName":"Pitch","status":"submitted","submittedAt":"2026-11-09T13:52:18Z"},{"activityName":"E-mail","status":"pending","submittedAt":null}]"#);
+        assert_eq!(agenda(&conn, &o, &board).peer_todo, vec!["E-mail"]);
         assert!(a.notes.is_empty());
+    }
+
+    #[test]
+    fn sessions_you_are_registered_to_are_yours_at_the_hours_of_your_slot() {
+        let conn = db::open_in_memory().unwrap();
+        let o = school(&conn);
+        put(&conn, MY_EVENTS, 200, r#"[
+            {"id":77,"fullTitle":"Review - Setting Up","startDate":"2026-11-12T13:00:00.000Z","endDate":"2026-11-12T13:30:00.000Z","unitCode":"G-CPE-110"},
+            {"id":90,"fullTitle":"Defence - SettingUp","startDate":"2026-11-17T08:00:00.000Z","endDate":"2026-11-17T17:00:00.000Z","mySlotStartDate":"2026-11-17T10:20:00.000Z","mySlotEndDate":"2026-11-17T10:40:00.000Z","unitCode":"G-CPE-110","unitName":"Elementary programming","projectInstanceId":2,"isExam":true},
+            {"id":91,"title":"Conference","startDate":"2026-11-18T09:00:00.000Z","endDate":"2026-11-18T10:00:00.000Z","unitCode":"X-OTH-000"}]"#);
+        put(&conn, EVENTS, 200, r#"[{"id":90,"title":"Defence","startDate":"2026-11-17T08:00:00.000Z","endDate":"2026-11-17T17:00:00.000Z","unitCode":"G-CPE-110","rooms":[]},
+            {"id":91,"title":"Conference","startDate":"2026-11-18T09:00:00.000Z","endDate":"2026-11-18T10:00:00.000Z","unitCode":"X-OTH-000","rooms":[]}]"#);
+        put(&conn, "/cursus/me/attendance-plan", 200, "[]");
+        let a = agenda(&conn, &o, &[]);
+        let sessions: Vec<_> = a.items.iter().filter(|i| i.kind == "activity" || i.kind == "event").collect();
+        assert_eq!(sessions.iter().map(|i| (i.kind, i.title.as_str())).collect::<Vec<_>>(), vec![("activity", "Review - Setting Up"), ("activity", "Defence - SettingUp"), ("activity", "Conference")], "nothing repeated, and a registered session of another module is still yours");
+        let defence = sessions[1];
+        assert_eq!((defence.start.as_deref(), defence.end.as_deref(), defence.exam, defence.mine), (Some("2026-11-17T10:20:00.000Z"), Some("2026-11-17T10:40:00.000Z"), true, true));
+        assert_eq!(defence.detail.as_deref(), Some("Elementary programming · your slot · registered"));
+    }
+
+    #[test]
+    fn your_slot_wins_over_the_whole_session_and_unregistered_sessions_are_flagged() {
+        let conn = db::open_in_memory().unwrap();
+        school(&conn);
+        put(&conn, "/units/instances/projects/5/my-activities", 200, r#"[{"name":"Defense - my_sudo","startDate":"2026-11-17T08:00:00.000Z","endDate":"2026-11-17T11:00:00.000Z","mandatory":true,"eventId":90,"status":"registered"},
+            {"name":"Final defense - my_sudo","startDate":"2026-12-05T08:00:00.000Z","endDate":"2026-12-05T11:00:00.000Z","mandatory":true,"eventId":91,"status":"not_registered"}]"#);
+        let o = myview::overview_at(&conn, &[], now());
+        put(&conn, MY_EVENTS, 200, r#"[{"id":90,"fullTitle":"Defense - my_sudo","startDate":"2026-11-17T08:00:00.000Z","endDate":"2026-11-17T11:00:00.000Z","mySlotStartDate":"2026-11-17T08:00:00.000Z","mySlotEndDate":"2026-11-17T09:00:00.000Z","unitCode":"G-PSU-100","projectInstanceId":5}]"#);
+        let a = agenda(&conn, &o, &[]);
+        let defence = a.items.iter().filter(|i| i.title == "Defense - my_sudo").collect::<Vec<_>>();
+        assert_eq!(defence.len(), 1, "listed once");
+        assert_eq!((defence[0].end.as_deref(), defence[0].mandatory, defence[0].status.as_deref()), (Some("2026-11-17T09:00:00.000Z"), true, Some("registered")));
+        let fin = a.items.iter().find(|i| i.title == "Final defense - my_sudo").unwrap();
+        assert_eq!((fin.status.as_deref(), fin.detail.as_deref(), fin.mandatory), (Some("not_registered"), Some("not registered"), true));
     }
 
     #[test]

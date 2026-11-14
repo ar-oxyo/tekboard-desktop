@@ -173,7 +173,7 @@ function PromptEditor({ def }: { def: PromptDef }) {
       <div className="flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="display text-lg font-semibold">{def.title}</h2>
+            <h2 className="display text-lg font-medium">{def.title}</h2>
             <p className="text-xs text-muted">{def.access} Expected answer: {def.expects}</p>
           </div>
           <Select className="w-52" label="Version shown" value={preset} onChange={setPreset} options={options} search={false} />

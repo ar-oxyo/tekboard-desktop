@@ -85,6 +85,21 @@ pub struct Project {
     pub repo_deadline_source: Option<String>,
     pub activities: Vec<Activity>,
     pub last_test: Option<TestRun>,
+    /// Moulinette runs of the group: (total, remaining), when the project has a quota.
+    pub quota: Option<(i64, i64)>,
+    /// Last revision the group pushed, the one a run would test.
+    pub delivery: Option<Delivery>,
+    /// MY Epitech's own flags on the group: too many absences, non compliant.
+    pub too_many_absences: bool,
+    pub non_compliant: bool,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Delivery {
+    pub commit: String,
+    pub branch: Option<String>,
+    pub pushed_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -174,22 +189,43 @@ pub fn match_repo<'a>(repos: &'a [RepoInfo], id: i64, unit_code: &str, name: &st
     (hits.len() == 1 && !wanted.is_empty()).then(|| (hits[0], "module and name"))
 }
 
-/// Organisations (lowercased) that host the repositories MY Epitech tested for this account.
+/// Organisations (lowercased) that host this account's school repositories: from the
+/// registrations (group repositories) and from the automated test results.
 pub fn known_orgs(conn: &Connection) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
-    let Ok(mut st) = conn.prepare("SELECT body FROM my_cache WHERE route LIKE '/units/instances/projects/%/test-results' AND status BETWEEN 200 AND 299") else { return out };
+    let Ok(mut st) = conn.prepare("SELECT body FROM my_cache WHERE (route LIKE '%test-results%' OR route LIKE '%/registrations/me') AND status BETWEEN 200 AND 299") else { return out };
     let Ok(rows) = st.query_map([], |r| r.get::<_, String>(0)) else { return out };
     for body in rows.flatten() {
         let Ok(v) = serde_json::from_str::<Value>(&body) else { continue };
-        for r in v["results"].as_array().into_iter().flatten() {
-            if let Some((owner, _)) = r["repoLink"].as_str().and_then(owner_name) {
-                if !out.contains(&owner) {
-                    out.push(owner);
-                }
+        let links = v["results"].as_array().map(|a| a.iter().filter_map(|r| r["repoLink"].as_str()).collect::<Vec<_>>()).unwrap_or_else(|| v["repoLink"].as_str().into_iter().collect());
+        for owner in links.into_iter().filter_map(owner_name).map(|(o, _)| o) {
+            if !out.contains(&owner) {
+                out.push(owner);
             }
         }
     }
     out
+}
+
+/// Every test run of `/students/test-results?year=…` answers (all synced years).
+fn yearly_results(conn: &Connection) -> Vec<Value> {
+    let Ok(mut st) = conn.prepare("SELECT body FROM my_cache WHERE route LIKE '/students/test-results?year=%' AND status BETWEEN 200 AND 299") else { return vec![] };
+    let Ok(rows) = st.query_map([], |r| r.get::<_, String>(0)) else { return vec![] };
+    rows.flatten().filter_map(|b| serde_json::from_str::<Value>(&b).ok()).flat_map(|v| v["results"].as_array().cloned().unwrap_or_default()).collect()
+}
+
+/// The runs of one project among the yearly results: same repository when its link is
+/// known, otherwise same module and same project name.
+fn runs_of(all: &[Value], unit_code: &str, name: &str, repo_link: Option<&str>) -> Vec<Value> {
+    let link = repo_link.and_then(owner_name);
+    let wanted = norm(name);
+    all.iter()
+        .filter(|r| match (&link, r["repoLink"].as_str().and_then(owner_name)) {
+            (Some(a), Some(b)) => *a == b,
+            _ => r["context"]["unitCode"].as_str() == Some(unit_code) && !wanted.is_empty() && [&r["context"]["projectCode"], &r["context"]["title"]].iter().any(|x| x.as_str().is_some_and(|t| norm(t) == wanted)),
+        })
+        .cloned()
+        .collect()
 }
 
 fn instant(iso: Option<&str>) -> Option<DateTime<Utc>> {
@@ -209,14 +245,28 @@ pub fn overview_at(conn: &Connection, repos: &[RepoInfo], now: DateTime<Utc>) ->
     o.account = cached(conn, "/auth/verify").and_then(|v| s(&v["login"]));
     let ongoing_ids: Vec<i64> = cached(conn, ONGOING).and_then(|v| v["data"].as_array().map(|a| a.iter().filter_map(|p| p["id"].as_i64()).collect())).unwrap_or_default();
     let list = cached(conn, ALL).or_else(|| cached(conn, ONGOING));
+    let yearly = yearly_results(conn);
     for p in list.as_ref().and_then(|v| v["data"].as_array()).into_iter().flatten() {
         let Some(id) = p["id"].as_i64() else { continue };
         let name = s(&p["name"]).unwrap_or_default();
         let unit_code = s(&p["unitInstance"]["unitCode"]).unwrap_or_default();
         let end = s(&p["endDate"]);
-        let last_test = cached(conn, &format!("/units/instances/projects/{id}/test-results")).as_ref().and_then(test_run);
+        let year = p["schoolYear"].as_i64().or_else(|| p["unitInstance"]["schoolYear"].as_i64()).unwrap_or(0);
+        let registration = crate::myepitech::registration_route(year, &unit_code, p["unitInstance"]["code"].as_str().unwrap_or(""), id).and_then(|r| cached(conn, &r));
+        let reg_link = registration.as_ref().and_then(|r| s(&r["repoLink"]));
+        let ta = registration.as_ref().and_then(|r| {
+            let route = crate::myepitech::registration_route(year, &unit_code, p["unitInstance"]["code"].as_str().unwrap_or(""), id)?;
+            crate::myepitech::ta_route(&route, &r.to_string()).and_then(|t| cached(conn, &t))
+        });
+        let quota = ta.as_ref().and_then(|t| Some((t["quota"]["total"].as_i64()?, t["quota"]["remaining"].as_i64()?))).filter(|(total, _)| *total > 0);
+        let delivery = ta.as_ref().and_then(|t| Some(Delivery { commit: s(&t["lastDelivery"]["commit"])?, branch: s(&t["lastDelivery"]["branch"]), pushed_at: s(&t["lastDelivery"]["pushedAt"]) }));
+        let flag = |k: &str| registration.as_ref().is_some_and(|r| r[k].as_bool() == Some(true));
+        let (too_many_absences, non_compliant) = (flag("tooManyAbsences"), flag("nonCompliant"));
+        let runs = runs_of(&yearly, &unit_code, &name, reg_link.as_deref());
+        // Older syncs stored the results per project: still read when the yearly answer has nothing.
+        let last_test = if runs.is_empty() { cached(conn, &format!("/units/instances/projects/{id}/test-results")).as_ref().and_then(test_run) } else { test_run(&serde_json::json!({ "results": runs })) };
         let activities = cached(conn, &format!("/units/instances/projects/{id}/my-activities")).and_then(|v| v.as_array().map(|a| a.iter().map(|x| Activity { name: s(&x["name"]).unwrap_or_default(), start: s(&x["startDate"]), end: s(&x["endDate"]), mandatory: x["mandatory"].as_bool().unwrap_or(false), status: s(&x["status"]) }).collect())).unwrap_or_default();
-        let hit = match_repo(repos, id, &unit_code, &name, last_test.as_ref().and_then(|t| t.repo_link.as_deref()));
+        let hit = match_repo(repos, id, &unit_code, &name, reg_link.as_deref().or_else(|| last_test.as_ref().and_then(|t| t.repo_link.as_deref())));
         let start = s(&p["startDate"]);
         // "Ongoing" is a fact about now. The list MY Epitech gave at sync time is only used when a date is missing.
         let (ongoing, upcoming) = match (instant(start.as_deref()), instant(end.as_deref())) {
@@ -225,7 +275,7 @@ pub fn overview_at(conn: &Connection, repos: &[RepoInfo], now: DateTime<Utc>) ->
             _ => (ongoing_ids.contains(&id), false),
         };
         let due = end.as_deref().and_then(crate::deadlines::from_instant);
-        let reg = p["registrations"].as_array().and_then(|a| a.first());
+        let reg = registration.as_ref().or_else(|| p["registrations"].as_array().and_then(|a| a.first()));
         o.projects.push(Project {
             id,
             deadline: due.as_ref().map(|d| d.day.clone()).or_else(|| end.as_deref().and_then(local_day)),
@@ -246,6 +296,10 @@ pub fn overview_at(conn: &Connection, repos: &[RepoInfo], now: DateTime<Utc>) ->
             repo_deadline_source: hit.and_then(|(r, _)| r.meta.deadline_source.clone()),
             activities,
             last_test,
+            quota,
+            delivery,
+            too_many_absences,
+            non_compliant,
             name,
             unit_code,
         });
@@ -279,6 +333,33 @@ mod tests {
 
     fn put(conn: &Connection, route: &str, body: &str) {
         conn.execute("INSERT INTO my_cache (route, fetched_at, status, body) VALUES (?1, 500, 200, ?2)", rusqlite::params![route, body]).unwrap();
+    }
+
+    #[test]
+    fn the_registration_ties_a_project_to_its_repository_before_any_test_run() {
+        let conn = db::open_in_memory().unwrap();
+        put(&conn, ALL, r#"{"data":[{"id":4255,"name":"MyHunter","schoolYear":2026,"endDate":"2026-11-20T18:42:00.000Z","unitInstance":{"unitCode":"G-MUL-100","code":"LYN-1"},"registrations":[{"groupName":"old","members":[]}]},
+            {"id":4295,"name":"102architect","schoolYear":2026,"endDate":"2026-11-20T18:42:00.000Z","unitInstance":{"unitCode":"G-MAT-100","code":"LYN-1"}}]}"#);
+        put(&conn, "/units/2026/G-MUL-100/LYN-1/projects/4255/registrations/me", r#"{"groupName":"Solo","members":[{"login":"me@epitech.eu"}],"repoLink":"https://github.com/EpitechPGE1-2026/G-MUL-100-LYN-1-1-myhunter-13"}"#);
+        put(&conn, "/students/test-results?year=2026", r#"{"results":[
+            {"context":{"unitCode":"G-MAT-100","projectCode":"102architect"},"properties":{"date":"2026-11-10T10:00:00Z"},"achievementSummary":{"passed":3,"total":10},"repoLink":"https://github.com/Other/G-MAT-100-LYN-1-1-102architect-19"},
+            {"context":{"unitCode":"G-MAT-100","projectCode":"102architect"},"properties":{"date":"2026-11-12T10:00:00Z"},"achievementSummary":{"passed":9,"total":10},"repoLink":"https://github.com/Other/G-MAT-100-LYN-1-1-102architect-19"},
+            {"context":{"unitCode":"G-CPE-110","projectCode":"settingup"},"properties":{"date":"2026-11-12T10:00:00Z"},"achievementSummary":{"passed":1,"total":1}}]}"#);
+        conn.execute("UPDATE my_cache SET body = ?1 WHERE route = '/units/2026/G-MUL-100/LYN-1/projects/4255/registrations/me'", [r#"{"id":73078,"groupName":"Solo","members":[{"login":"me@epitech.eu"}],"repoLink":"https://github.com/EpitechPGE1-2026/G-MUL-100-LYN-1-1-myhunter-13","tooManyAbsences":true,"nonCompliant":false}"#]).unwrap();
+        put(&conn, "/units/2026/G-MUL-100/LYN-1/projects/4255/registrations/73078/ta", r#"{"runs":[],"quota":{"total":5,"consumed":2,"remaining":3},"lastDelivery":{"commit":"357f70a8","branch":"main","pushedAt":"2026-11-12T08:53:22.896Z"}}"#);
+        let repos = vec![repo("/r/hunter-renamed", Some("git@github.com:EpitechPGE1-2026/G-MUL-100-LYN-1-1-myhunter-13.git")), repo("/r/G-MAT-100-LYN-1-1-102architect-19", None)];
+        let o = overview_at(&conn, &repos, DateTime::parse_from_rfc3339("2026-11-14T12:00:00Z").unwrap().with_timezone(&Utc));
+        let hunter = o.projects.iter().find(|p| p.id == 4255).unwrap();
+        assert_eq!((hunter.repo_path.as_deref(), hunter.matched_by), (Some("/r/hunter-renamed"), Some("repository link")), "matched although the folder name says nothing");
+        assert_eq!((hunter.group_name.as_deref(), hunter.group.len(), hunter.last_test.is_none()), (Some("Solo"), 1, true));
+        assert_eq!((hunter.quota, hunter.delivery.as_ref().map(|d| d.commit.as_str()), hunter.too_many_absences, hunter.non_compliant), (Some((5, 3)), Some("357f70a8"), true, false));
+        assert_eq!(o.projects.iter().find(|p| p.id == 4295).unwrap().quota, None, "no registration, no quota");
+        let arch = o.projects.iter().find(|p| p.id == 4295).unwrap();
+        let t = arch.last_test.as_ref().unwrap();
+        assert_eq!((t.passed, t.runs, arch.matched_by), (Some(9), 2, Some("module and name")), "runs of that project only, latest first; no remote here");
+        let mut orgs = known_orgs(&conn);
+        orgs.sort();
+        assert_eq!(orgs, vec!["epitechpge1-2026".to_string(), "other".to_string()]);
     }
 
     #[test]

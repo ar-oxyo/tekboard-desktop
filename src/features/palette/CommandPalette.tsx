@@ -2,7 +2,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { CalendarDays, PenLine, ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, PawPrint, Plus, RefreshCw, ScrollText, Settings } from "lucide-react";
+import { CalendarCheck, CalendarDays, PenLine, Sparkles, ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, PawPrint, Plus, RefreshCw, ScrollText, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge } from "../../components/ui";
 import { api } from "../../lib/api";
@@ -12,7 +12,7 @@ import { useUi, type Page } from "../../lib/store";
 
 const itemClass =
   "flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-[13px] text-muted data-[selected=true]:bg-accent-soft data-[selected=true]:text-fg";
-const groupClass = "[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:tracking-[0.08em] [&_[cmdk-group-heading]]:text-faint [&_[cmdk-group-heading]]:uppercase";
+const groupClass = "[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-normal [&_[cmdk-group-heading]]:text-faint ";
 
 const ic = "size-4";
 const GO: Array<[Page, string, ReactNode]> = [
@@ -27,7 +27,7 @@ const GO: Array<[Page, string, ReactNode]> = [
   ["myepitech", "MY Epitech", <GraduationCap className={ic} />],
   ["cozy", "Cozy Fox", <PawPrint className={ic} />],
   ["settings", "Settings", <Settings className={ic} />],
-  ["agenda", "Agenda", <CalendarDays className={ic} />],
+  ["agenda", "Planning", <CalendarDays className={ic} />],
   ["prompts", "Prompts", <PenLine className={ic} />],
 ];
 type ToolId = "testing" | "library" | "package" | "readme";
@@ -74,13 +74,25 @@ export function CommandPalette() {
         >
           <Dialog.Title className="sr-only">Command palette</Dialog.Title>
           <Command loop label="Command palette">
-            <Command.Input autoFocus placeholder="Search projects, templates, actions…" className="h-12 w-full border-b border-white/6 bg-transparent px-4 text-sm text-fg placeholder:text-faint focus:outline-none" />
+            <Command.Input autoFocus aria-label="Search projects, templates and actions" placeholder="Search" className="h-12 w-full border-b border-white/6 bg-transparent px-4 text-sm text-fg placeholder:text-faint focus:outline-none" />
             <Command.List className="max-h-[380px] overflow-y-auto p-1.5">
               <Command.Empty className="px-3 py-6 text-center text-[13px] text-muted">Nothing matches.</Command.Empty>
 
               <Command.Group heading="Actions" className={groupClass}>
                 <Item icon={<Plus className="size-4" />} onSelect={run(() => openLauncher({ mode: "new" }))} hint="Ctrl N">
                   New project — clone and initialize
+                </Item>
+                <Item icon={<PenLine className="size-4" />} onSelect={run(() => useUi.getState().setCaptureOpen(true))} hint="Ctrl I">
+                  Quick capture — a task or an idea
+                </Item>
+                <Item icon={<Sparkles className="size-4" />} onSelect={run(() => useUi.getState().openAssistant())}>
+                  Ask the planning assistant
+                </Item>
+                <Item icon={<CalendarCheck className="size-4" />} onSelect={run(() => useUi.getState().openAssistant({ text: "#day" }))}>
+                  Plan my day
+                </Item>
+                <Item icon={<CalendarCheck className="size-4" />} onSelect={run(() => useUi.getState().openAssistant({ text: "#week" }))}>
+                  Plan my week
                 </Item>
                 <Item
                   icon={<RefreshCw className="size-4" />}

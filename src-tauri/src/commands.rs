@@ -137,6 +137,9 @@ pub(crate) fn load_repos(state: &AppState) -> Result<(Vec<RepoInfo>, crate::myvi
         overview = crate::myview::overview_at(&conn, &repos, now);
     }
     crate::projects::enrich(&mut repos, &overview, &crate::myview::known_orgs(&conn), &s.epitech_dirs, now);
+    // What was planned for a MY Epitech project before it was cloned follows the repository.
+    let links: Vec<(i64, String)> = repos.iter().filter_map(|r| r.my.as_ref().map(|m| (m.id, r.path.clone()))).collect();
+    crate::planner::rekey(&conn, &links)?;
     Ok((repos, overview))
 }
 

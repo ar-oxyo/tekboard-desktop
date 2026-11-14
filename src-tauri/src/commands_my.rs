@@ -414,3 +414,52 @@ mod tests {
         assert!(!sync_due(60, Some(5_000), 5_000 + 30));
     }
 }
+
+#[derive(serde::Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FreeSlot {
+    pub start: String,
+    pub end: String,
+}
+
+/// Slots of a session nobody holds yet and that are still ahead, from `/events/{id}/slots`.
+pub fn free_slots(body: &str, now: chrono::DateTime<chrono::Utc>) -> Option<Vec<FreeSlot>> {
+    let v: serde_json::Value = serde_json::from_str(body).ok()?;
+    let mut out: Vec<FreeSlot> = v
+        .as_array()?
+        .iter()
+        .filter(|x| x["registration"].is_null())
+        .filter_map(|x| Some(FreeSlot { start: x["startDate"].as_str()?.to_string(), end: x["endDate"].as_str()?.to_string() }))
+        .filter(|f| chrono::DateTime::parse_from_rfc3339(&f.start).is_ok_and(|t| t > now))
+        .collect();
+    out.sort_by(|a, b| a.start.cmp(&b.start));
+    Some(out)
+}
+
+/// Asked when the student wants to see them, never during a sync: one GET with the session in memory.
+#[tauri::command(async)]
+pub fn my_free_slots(state: State<'_, AppState>, event_id: i64) -> Result<Vec<FreeSlot>> {
+    let token = valid_token(&state).ok_or_else(myepitech::not_connected)?;
+    let (status, body) = myepitech::get_once(&token, &format!("/events/{event_id}/slots"));
+    if status != 200 {
+        return Err(AppError::new("my_failed", format!("MY Epitech answered {status} for this session's slots")));
+    }
+    free_slots(&body, chrono::Utc::now()).ok_or_else(|| AppError::new("my_failed", "Unreadable list of slots"))
+}
+
+#[cfg(test)]
+mod slot_tests {
+    use super::*;
+
+    #[test]
+    fn only_slots_nobody_holds_and_still_ahead_are_offered() {
+        let now = chrono::DateTime::parse_from_rfc3339("2026-11-20T00:00:00Z").unwrap().with_timezone(&chrono::Utc);
+        let body = r#"[{"startDate":"2026-11-26T08:40:00.000Z","endDate":"2026-11-26T09:00:00.000Z","registration":null},
+            {"startDate":"2026-11-26T08:00:00.000Z","endDate":"2026-11-26T08:20:00.000Z","registration":null},
+            {"startDate":"2026-11-26T08:20:00.000Z","endDate":"2026-11-26T08:40:00.000Z","registration":{"id":1}},
+            {"startDate":"2026-11-19T08:00:00.000Z","endDate":"2026-11-19T08:20:00.000Z","registration":null}]"#;
+        let got = free_slots(body, now).unwrap();
+        assert_eq!(got.iter().map(|f| f.start.as_str()).collect::<Vec<_>>(), vec!["2026-11-26T08:00:00.000Z", "2026-11-26T08:40:00.000Z"]);
+        assert!(free_slots("{\"message\":\"no\"}", now).is_none());
+    }
+}

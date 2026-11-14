@@ -3,7 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, FolderGit2 } from "lucide-react";
 import { useState } from "react";
-import { Badge, Button, cn, ErrorNote, Spinner } from "../../components/ui";
+import { Button, cn, Dot, ErrorNote, Spinner, Tag } from "../../components/ui";
+import { Countdown } from "../projects/RepoBits";
 import { api, asAppError, type MyProject } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { daysLeft, deadlineLabel } from "../../lib/repos";
@@ -49,22 +50,29 @@ function ProjectRow({ p }: { p: MyProject }) {
   const upcoming = p.activities.filter((a) => a.end && new Date(a.end).getTime() > Date.now());
   return (
     <li className="border-b border-white/6 last:border-b-0">
-      <div className="flex items-center gap-2.5 px-4 py-2">
+      <div className="flex min-h-12 items-center gap-4 px-4 py-2">
         <button type="button" onClick={() => setOpen(!open)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
           {open ? <ChevronDown className="size-3.5 shrink-0 text-faint" /> : <ChevronRight className="size-3.5 shrink-0 text-faint" />}
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-2">
               <span className="truncate text-[13px] font-medium">{p.name}</span>
-              <Badge mono>{p.unitCode}</Badge>
-              {t && t.total !== null && <Badge tone={t.passed === t.total ? "ok" : (t.passed ?? 0) === 0 ? "danger" : "warn"} title={`Latest automated test run${t.date ? `, ${new Date(t.date).toLocaleString()}` : ""}`}>{t.passed}/{t.total} tests</Badge>}
+              <Tag>{p.unitCode}</Tag>
             </span>
-            <span className="block truncate text-xs text-muted">Hand-in {day(p.end)}{p.ongoing && left !== null && <span className={cn("ml-1.5", left < 0 ? "text-danger" : left <= 2 ? "text-warn" : "")}>· {deadlineLabel(left)}</span>}</span>
+            <span className="block truncate text-xs text-muted">Hand-in {day(p.end)}</span>
           </span>
         </button>
+        {t && t.total !== null && (
+          <Dot mono tone={t.passed === t.total ? "ok" : (t.passed ?? 0) === 0 ? "danger" : "warn"} title={`Latest automated test run${t.date ? `, ${new Date(t.date).toLocaleString()}` : ""}`}>
+            {t.passed}/{t.total} tests
+          </Dot>
+        )}
+        <span className="flex w-24 shrink-0 justify-end">{p.ongoing && left !== null && <Countdown tone={left < 0 ? "danger" : left <= 2 ? "warn" : "neutral"}>{deadlineLabel(left)}</Countdown>}</span>
         {p.repoPath ? (
-          <Button size="sm" variant="ghost" icon={<FolderGit2 className="size-3.5" />} title={`Matched by ${p.matchedBy}: ${p.repoPath}`} onClick={() => openSheet(p.repoPath!)}>Project sheet</Button>
+          <span className="flex w-32 shrink-0 justify-end">
+            <Button size="sm" variant="ghost" icon={<FolderGit2 className="size-3.5" />} title={`Matched by ${p.matchedBy}: ${p.repoPath}`} onClick={() => openSheet(p.repoPath!)}>Project sheet</Button>
+          </span>
         ) : (
-          <span className="text-xs text-faint" title="No local repository matches this project for certain (none cloned, or several copies).">no local repository</span>
+          <span className="w-32 shrink-0 text-right text-xs text-faint" title="No local repository matches this project for certain (none cloned, or several copies).">no local repository</span>
         )}
       </div>
       {open && (
@@ -85,7 +93,7 @@ function ProjectRow({ p }: { p: MyProject }) {
                 <li key={`${a.name}${a.start}`} className="flex items-baseline gap-2 py-0.5">
                   <span className="w-40 shrink-0 text-muted">{day(a.start)}</span>
                   <span className="min-w-0 flex-1 truncate">{a.name}</span>
-                  {a.mandatory && <Badge tone="warn">mandatory</Badge>}
+                  {a.mandatory && <Dot tone="warn">mandatory</Dot>}
                   {a.status && <span className="text-faint">{a.status}</span>}
                 </li>
               ))}
@@ -117,7 +125,7 @@ export function MyProgress() {
               <span className="min-w-0 flex-1 truncate">{b.title}</span>
               <span className="text-xs text-muted">{b.validated}/{b.total} outcomes</span>
               {b.credits !== null && <span className="w-16 text-right text-xs text-faint">{b.credits} credit{b.credits === 1 ? "" : "s"}</span>}
-              {b.grade && <Badge tone={b.grade === "in progress" ? "neutral" : "accent"}>{b.grade}</Badge>}
+              {b.grade && <span className={cn("w-20 shrink-0 text-right text-xs", b.grade === "in progress" ? "text-faint" : "text-fg")}>{b.grade}</span>}
             </li>
           ))}
         </ul>
@@ -130,8 +138,8 @@ export function MyProgress() {
 function Tile({ label, value, hint, tone }: { label: string; value: number | string; hint?: string; tone?: "ok" | "warn" }) {
   return (
     <div className="min-w-28 rounded-lg border border-line bg-bg px-3 py-2">
-      <p className="text-[11px] tracking-wide text-muted uppercase">{label}</p>
-      <p className={cn("display text-xl font-semibold", tone === "ok" && "text-ok", tone === "warn" && "text-warn")}>{value}</p>
+      <p className="text-xs text-muted">{label}</p>
+      <p className={cn("display mt-1 text-xl font-medium", tone === "ok" && "text-ok", tone === "warn" && "text-warn")}>{value}</p>
       {hint && <p className="text-[11px] text-faint">{hint}</p>}
     </div>
   );

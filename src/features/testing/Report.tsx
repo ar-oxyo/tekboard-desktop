@@ -19,7 +19,7 @@ export interface ReportData {
 
 export const STATUS_LABEL: Record<JobStatus, string> = { running: "Running", success: "Success", warning: "Warning", failed: "Failed", cancelled: "Cancelled" };
 export const STATUS_TONE: Record<JobStatus, "info" | "ok" | "warn" | "danger" | "neutral"> = { running: "info", success: "ok", warning: "warn", failed: "danger", cancelled: "neutral" };
-export const KIND_LABEL: Record<RunKind, string> = { tests: "Unit tests", testrepo: "TestRepo", banana: "Banana", moulinette: "Claude Moulinette", gen_tests: "Generated tests", readme: "README", build: "Build", command: "Command", analysis: "Repository analysis" };
+export const KIND_LABEL: Record<RunKind, string> = { tests: "Unit tests", testrepo: "TestRepo", banana: "Banana", moulinette: "Claude Moulinette", gen_tests: "Generated tests", readme: "README", build: "Build", command: "Command", analysis: "Repository analysis", assistant: "Planning assistant" };
 
 export function duration(ms: number): string {
   if (ms < 1000) return `${ms} ms`;
@@ -75,8 +75,8 @@ export function Stepper({ steps }: { steps: JobStep[] }) {
 function Stat({ label, value, tone }: { label: string; value: ReactNode; tone?: "ok" | "danger" | "warn" }) {
   return (
     <div className="min-w-20 rounded-lg border border-line bg-bg px-3 py-2">
-      <p className="text-[11px] tracking-wide text-muted uppercase">{label}</p>
-      <p className={cn("display text-xl font-semibold", tone === "ok" && "text-ok", tone === "danger" && "text-danger", tone === "warn" && "text-warn")}>{value}</p>
+      <p className="text-xs text-muted">{label}</p>
+      <p className={cn("display text-xl font-medium", tone === "ok" && "text-ok", tone === "danger" && "text-danger", tone === "warn" && "text-warn")}>{value}</p>
     </div>
   );
 }
@@ -139,7 +139,7 @@ function TestRepo({ s, steps, envActions }: { s: RunSummary; steps: JobStep[]; e
   const commit = str(s.commit);
   return (
     <div className="flex flex-col gap-3">
-      {str(s.verdict) && <p className="display text-[15px] font-semibold">{str(s.verdict)}</p>}
+      {str(s.verdict) && <p className="display text-[15px] font-medium">{str(s.verdict)}</p>}
       <div className="rounded-lg border border-line bg-bg px-3 py-1.5">
         <Row label="Source">{s.mode === "remote" ? "Remote clone" : "Local Git snapshot"}{str(s.source) && <span className="text-muted"> · {str(s.source)}</span>}</Row>
         <Row label="Branch">{str(s.branch) ?? "detached"}</Row>
@@ -238,8 +238,8 @@ function Moulinette({ s }: { s: RunSummary }) {
     <div className="flex flex-col gap-3">
       {str(s.overall) && (
         <div>
-          <p className="text-[11px] tracking-wide text-muted uppercase">Overall</p>
-          <p className="display text-lg font-semibold">{str(s.overall)}</p>
+          <p className="text-xs text-muted">Overall</p>
+          <p className="display text-lg font-medium">{str(s.overall)}</p>
         </div>
       )}
       <ul className="rounded-lg border border-line bg-bg py-1">
@@ -343,7 +343,7 @@ export function Report({ data, onCancel, envActions, onClear }: { data: ReportDa
       {data.kind === "build" && <p className="selectable text-[13px] text-muted"><span className="font-mono text-fg">{str(s.command)}</span> · exit {String(s.exitCode ?? "?")} · {num(s.warnings) ?? 0} warning(s){str(s.commit) && <> · commit <span className="font-mono">{str(s.commit)}</span></>}</p>}
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <p className="text-[11px] font-semibold tracking-wide text-muted uppercase">Log</p>
+          <p className="text-xs text-muted">Log</p>
           <span className="flex items-center gap-3">
             {lines.length > 300 && <button type="button" className="text-xs text-muted hover:text-fg" onClick={() => setFull(!full)}>{full ? "Show the end only" : `Show all ${lines.length} lines`}</button>}
             {onClear && <button type="button" className="text-xs text-muted hover:text-fg" onClick={onClear} title="Empties this view. The full log stays in the history.">Clear</button>}

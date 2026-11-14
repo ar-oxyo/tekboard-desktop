@@ -95,7 +95,7 @@ function TemplateCard({ template, active, onSelect }: { template: TemplateSummar
       className="card card-interactive w-full px-3.5 py-3 text-left"
     >
       <span className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{template.name}</span>
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{template.name}</span>
         {isDefault && <Star className="size-3.5 text-accent" fill="currentColor" aria-label="Default template" />}
       </span>
       <span className="mt-1 flex items-center gap-1.5">
@@ -154,7 +154,7 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
     <Card className="min-w-0">
       <div className="border-b border-white/6 px-4 py-3.5">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-[15px] font-semibold">{template.name}</h2>
+          <h2 className="text-[15px] font-medium">{template.name}</h2>
           {template.variables.map((v) => (
             <Badge key={v} mono title="Variable replaced when the template is applied">
               {`{{${v}}}`}
@@ -163,7 +163,7 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
         </div>
         {template.description && <p className="selectable mt-1 text-[13px] text-muted">{template.description}</p>}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Select className="w-56" value={null} label="Apply to a project" placeholder="Apply to a project…" search onChange={(path) => path && openLauncher({ mode: "existing", path, templateId: template.id })} options={repoOptions(repos.data ?? [])} />
+          <Select className="w-56" value={null} label="Apply to a project" placeholder="Apply to a project" search onChange={(path) => path && openLauncher({ mode: "existing", path, templateId: template.id })} options={repoOptions(repos.data ?? [])} />
           <Button size="sm" variant="ghost" icon={<Star className="size-3.5" fill={isDefault ? "currentColor" : "none"} />} onClick={() => setDefault.mutate()}>
             {isDefault ? "Default for new projects" : "Set as default"}
           </Button>

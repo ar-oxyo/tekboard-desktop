@@ -18,7 +18,10 @@ import { CozyPage } from "../features/cozy/CozyPage";
 import { GitPage } from "../features/git/GitPage";
 import { LibraryPage } from "../features/library/LibraryPage";
 import { MyEpitechPage } from "../features/myepitech/MyEpitechPage";
-import { AgendaPage } from "../features/agenda/AgendaPage";
+import { PlanningPage } from "../features/planning/PlanningPage";
+import { EventDialog, QuickCapture, TaskDialog, useCaptureShortcut } from "../features/planning/Dialogs";
+import { FocusBar } from "../features/planning/Focus";
+import { AssistantPanel } from "../features/assistant/AssistantPanel";
 import { PromptsPage } from "../features/prompts/PromptsPage";
 import { TestingPage } from "../features/testing/TestingPage";
 import { PackageDialog } from "../features/tools/PackageDialog";
@@ -54,6 +57,7 @@ export function App() {
   const sheetPath = useUi((s) => s.sheetPath);
   const tool = useUi((s) => s.tool);
   const settings = useSettings();
+  useCaptureShortcut();
 
   // Glass only when the user keeps it on and the system does not ask for less transparency.
   const themeOverride = useUi((s) => s.themeOverride);
@@ -91,6 +95,13 @@ export function App() {
           // `tekboard --run claude-check`: opens Settings → Tools and sends the test prompt.
           useUi.setState({ claudeAutoCheck: true });
           setPage("settings");
+        } else if (s.run === "plan-week" || s.run === "plan-day") {
+          // `tekboard --run plan-week`: opens the assistant with the local plan for the week (nothing is applied).
+          useUi.getState().openAssistant({ text: s.run === "plan-week" ? "#week" : "#day" });
+        } else if (s.run === "capture") {
+          useUi.getState().setCaptureOpen(true);
+        } else if (s.run === "new-task") {
+          useUi.getState().editTask({});
         } else if (s.run === "my-connect") {
           setPage("myepitech");
           void api.myConnect().catch(() => undefined);
@@ -104,7 +115,7 @@ export function App() {
   const qc = useQueryClient();
   useEffect(() => {
     const off = listen<{ ok: number; failed: number; unauthorized: boolean; detail: string }>("my-synced", (e) => {
-      for (const key of [["repos"], ["my-data"], ["my-overview"], ["my-status"], ["my-academic"], ["subjects"]]) void qc.invalidateQueries({ queryKey: key });
+      for (const key of [["repos"], ["my-data"], ["my-overview"], ["my-status"], ["my-academic"], ["subjects"], ["plan"]]) void qc.invalidateQueries({ queryKey: key });
       if (e.payload.unauthorized) useUi.getState().toast({ kind: "error", title: "MY Epitech refused the session", detail: "Automatic sync stopped. Open MY Epitech and sign in again." });
     });
     return () => void off.then((f) => f());
@@ -145,7 +156,12 @@ export function App() {
       <div className="app-bg" aria-hidden />
       <Sidebar />
       <main className="relative z-[1] min-w-0 flex-1 overflow-y-auto">
-        <div key={page} className={`anim-rise mx-auto px-7 py-6 ${page === "library" || page === "testing" || page === "prompts" ? "max-w-[1480px]" : "max-w-[1180px]"}`}>
+        {page === "agenda" ? (
+          <div key={page} className="anim-rise h-full">
+            <PlanningPage />
+          </div>
+        ) : (
+        <div key={page} className="anim-rise mx-auto max-w-[1440px] px-8 pt-7 pb-10">
           {page === "overview" && <OverviewPage />}
           {page === "projects" && <ProjectsPage />}
           {page === "git" && <GitPage />}
@@ -158,14 +174,19 @@ export function App() {
           {page === "templates" && <TemplatesPage />}
           {page === "settings" && <SettingsPage />}
           {page === "prompts" && <PromptsPage />}
-          {page === "agenda" && <AgendaPage />}
         </div>
+        )}
       </main>
       <CommandPalette />
       {sheetPath && <ProjectSheetDialog key={sheetPath} path={sheetPath} />}
       {launch && <LauncherDialog key={JSON.stringify(launch)} request={launch} />}
       {tool?.kind === "package" && <PackageDialog key={tool.repo} repo={tool.repo} />}
       {tool?.kind === "readme" && <ReadmeDialog key={tool.repo} repo={tool.repo} />}
+      <EventDialog />
+      <TaskDialog />
+      <QuickCapture />
+      <AssistantPanel />
+      <FocusBar />
       <Toaster />
     </div>
   );

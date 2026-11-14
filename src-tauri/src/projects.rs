@@ -33,6 +33,11 @@ pub struct MyLink {
     /// Latest automated test run: passed, total.
     pub tests_passed: Option<i64>,
     pub tests_total: Option<i64>,
+    /// Moulinette runs: (total, remaining), when the project has a quota.
+    pub quota: Option<(i64, i64)>,
+    pub delivery: Option<crate::myview::Delivery>,
+    pub too_many_absences: bool,
+    pub non_compliant: bool,
 }
 
 fn link(p: &Project) -> MyLink {
@@ -51,6 +56,10 @@ fn link(p: &Project) -> MyLink {
         matched_by: p.matched_by.unwrap_or_default().to_string(),
         tests_passed: p.last_test.as_ref().and_then(|t| t.passed),
         tests_total: p.last_test.as_ref().and_then(|t| t.total),
+        quota: p.quota,
+        delivery: p.delivery.clone(),
+        too_many_absences: p.too_many_absences,
+        non_compliant: p.non_compliant,
     }
 }
 
