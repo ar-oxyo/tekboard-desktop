@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { api, asAppError, type ScheduleAction, type PlanEvent, type PlanState, type PlanTask } from "../../lib/api";
 import { useBoard, usePref, useRepos } from "../../lib/hooks";
-import { busySpans, calItems, DEFAULT_PREFS, planProjects, projectLoad, type Load, type PlanPrefs } from "../../lib/plan";
+import { busySpans, calItems, DEFAULT_PREFS, withMode, planProjects, projectLoad, type Load, type PlanPrefs } from "../../lib/plan";
 import { useUi } from "../../lib/store";
 
 export const planKey = ["plan"] as const;
@@ -11,7 +11,8 @@ const EMPTY: PlanState = { tasks: [], events: [], projects: [], log: [] };
 
 export function usePlanPrefs(): [PlanPrefs, (p: PlanPrefs) => void] {
   const [stored, set] = usePref<Partial<PlanPrefs>>("plan.prefs", DEFAULT_PREFS);
-  return [useMemo(() => ({ ...DEFAULT_PREFS, ...stored }), [stored]), set];
+  // Preferences saved before the rhythms had no mode: their ceiling was the user's own.
+  return [useMemo(() => withMode({ ...DEFAULT_PREFS, ...(stored && Object.keys(stored).length && !("mode" in stored) ? { mode: "custom" as const } : {}), ...stored }), [stored]), set];
 }
 
 export function usePlanData() {

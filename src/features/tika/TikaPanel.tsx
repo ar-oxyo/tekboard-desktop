@@ -7,13 +7,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { cn, IconButton } from "../../components/ui";
 import { api, asAppError, type AiAction, type AiMessage, type AiProposal, type AiStep, type JobEvent } from "../../lib/api";
 import { useJob } from "../../lib/jobs";
-import { fmtDur, freeSlots, addDays, startOfDay, hhmm, reorganize, schedule } from "../../lib/plan";
+import { freeSlots, addDays, startOfDay, hhmm } from "../../lib/plan";
 import { useUi } from "../../lib/store";
-import { usePlanActions, usePlanData } from "../planning/usePlan";
+import { usePlanData } from "../planning/usePlan";
 import { Markdown } from "./Markdown";
 import { MemoryView } from "./MemoryView";
 import { Orb, type OrbState } from "./Orb";
 import { ProposalCard } from "./ProposalCard";
+import { suggestPlan } from "./suggest";
 import { projectName, suggestionsFor, useScreen } from "./useScreen";
 
 export function TikaPanel() {
@@ -37,7 +38,6 @@ function Panel() {
   const jobId = useUi((s) => s.tikaJob);
   const setTika = useUi((s) => s.setTika);
   const ask = useUi((s) => s.assistantAsk);
-  const localProposal = useUi((s) => s.proposal);
   const toast = useUi((s) => s.toast);
   const [view, setView] = useState<View>("chat");
   const [text, setText] = useState("");
@@ -84,20 +84,13 @@ function Panel() {
 
   // Requests handed over by other screens. `#…` are TekBoard's own instant computations.
   const data = usePlanData();
-  const act = usePlanActions();
   useEffect(() => {
     if (!ask || data.loading) return;
     useUi.setState({ assistantAsk: null });
     const now = Date.now();
-    if (ask.text === "#day" || ask.text === "#week") {
-      const r = schedule(data.projects, data.state.events, data.busy, data.prefs, now, { horizonDays: ask.text === "#day" ? 1 : 7 });
-      if (!r.actions.length) toast({ kind: "info", title: "Rien à placer", detail: r.unplaced.length ? `Pas assez de temps libre pour ${r.unplaced.map((u) => u.title).join(", ")}.` : "Tout ce qui est estimé est déjà planifié. Donne une estimation à tes projets ou demande à Tika de les décomposer." });
-      else useUi.getState().propose({ title: ask.text === "#day" ? "Plan pour aujourd'hui" : "Plan pour la semaine", origin: "auto", actions: r.actions, note: r.unplaced.length ? `Pas assez de temps pour : ${r.unplaced.map((u) => `${u.title} (${fmtDur(u.minutes)})`).join(", ")}.` : null });
-    } else if (ask.text === "#reorganize") {
-      const r = reorganize(data.state.events, data.projects, data.busy, data.prefs, now);
-      if (!r.actions.length) toast({ kind: "info", title: "Rien à déplacer", detail: r.unplaced.length ? "Aucun temps libre pour replacer ce qui n'a pas été fait." : "Toutes les sessions passées sont marquées faites." });
-      else useUi.getState().propose({ title: "Replacer ce qui n'a pas été fait", origin: "auto", actions: r.actions, note: null });
-    } else if (ask.text === "#free") {
+    if (ask.text === "#day" || ask.text === "#week") void suggestPlan(ask.text === "#day" ? "day" : "week");
+    else if (ask.text === "#reorganize") void suggestPlan("reorganize");
+else if (ask.text === "#free") {
       const slots = freeSlots(data.busy, data.prefs, now, addDays(startOfDay(now), 3), 60).slice(0, 6);
       setText(slots.length ? `Planifie une session dans un de ces créneaux : ${slots.map((s) => `${new Date(s.start).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" })} ${hhmm(s.start)}–${hhmm(s.end)}`).join(", ")}` : "Je n'ai aucun créneau d'une heure ces trois jours : que puis-je alléger ?");
       input.current?.focus();
@@ -108,7 +101,7 @@ function Panel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ask, data.loading]);
 
-  useEffect(() => end.current?.scrollIntoView({ block: "end" }), [messages.data, job.data?.events.length, job.data?.summary.partial, pendingText, localProposal]);
+  useEffect(() => end.current?.scrollIntoView({ block: "end" }), [messages.data, job.data?.events.length, job.data?.summary.partial, pendingText] );
   useEffect(() => input.current?.focus(), []);
 
   const byProposal = useMemo(() => new Map((proposals.data ?? []).map((p) => [p.id, p])), [proposals.data]);
@@ -116,10 +109,10 @@ function Panel() {
   const pendingElsewhere = (proposals.data ?? []).filter((p) => p.status === "pending" && p.threadId !== thread);
 
   const liveTool = job.data?.events.filter((e) => e.kind === "tool" && e.status === "running").at(-1);
-  const orb: OrbState = running ? (liveTool ? "acting" : "thinking") : send.isPending ? "thinking" : (proposals.data ?? []).some((p) => p.status === "pending") || localProposal ? "attention" : "idle";
+  const orb: OrbState = running ? (liveTool ? "acting" : "thinking") : send.isPending ? "thinking" : (proposals.data ?? []).some((p) => p.status === "pending") ? "attention" : "idle";
   const status = running ? (liveTool ? `${String(liveTool.label)}…` : "réfléchit…") : orb === "attention" ? "une proposition t'attend" : "à ton écoute";
   const msgs = messages.data ?? [];
-  const empty = msgs.length === 0 && !pendingText && !localProposal;
+  const empty = msgs.length === 0 && !pendingText;
   const suggestions = suggestionsFor(screen, new Date().getHours());
 
   return (
@@ -181,20 +174,6 @@ function Panel() {
               )}
               {(running || send.isPending) && <Live events={job.data?.events ?? []} partial={typeof job.data?.summary.partial === "string" ? job.data.summary.partial : ""} onStop={() => jobId !== null && void api.jobCancel(jobId)} />}
             </ul>
-            {localProposal && (
-              <ProposalCard
-                title={localProposal.title}
-                rationale={localProposal.note}
-                actions={localProposal.actions}
-                origin={localProposal.origin}
-                status="pending"
-                busy={act.apply.isPending}
-                onDecide={(accept, keep) => {
-                  if (!accept) return useUi.getState().propose(null);
-                  act.apply.mutate({ actions: localProposal.actions.filter((_, i) => keep.includes(i)), origin: localProposal.origin }, { onSuccess: () => useUi.getState().propose(null) });
-                }}
-              />
-            )}
             <div ref={end} />
           </div>
 

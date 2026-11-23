@@ -18,9 +18,33 @@ export interface PlanPrefs {
   breakMinutes: number;
   /** Offer a plan for the day on the dashboard when nothing is planned yet. */
   morningPlan: boolean;
+  /** `calm`, `balanced`, `intense` (they set the ceiling and the free time) or `custom`. Same meaning as `schedule.rs`. */
+  mode: RhythmMode;
+  longBreakMinutes: number;
+  blocksBeforeLongBreak: number;
+  /** Free time kept every working day. */
+  flexMinutes: number;
+  /** Protected spans, minutes from midnight (lunch…). */
+  protected: [number, number][];
+  /** Work for a project ends this many days before its hand-in. */
+  bufferDays: number;
 }
 
-export const DEFAULT_PREFS: PlanPrefs = { dayStart: 9 * 60, dayEnd: 20 * 60, workDays: [0, 1, 2, 3, 4, 5, 6], maxMinutesPerDay: 240, sessionMinutes: 90, breakMinutes: 15, morningPlan: true };
+export type RhythmMode = "calm" | "balanced" | "intense" | "custom";
+/** Ceiling and free time of each preset, as in schedule.rs. */
+export const RHYTHMS: Record<Exclude<RhythmMode, "custom">, { label: string; hint: string; max: number; flex: number }> = {
+  calm: { label: "Tranquille", hint: "2 h 30 de travail max, 2 h de temps libre gardées", max: 150, flex: 120 },
+  balanced: { label: "Équilibré", hint: "4 h de travail max, 1 h de temps libre gardée", max: 240, flex: 60 },
+  intense: { label: "Intensif", hint: "6 h de travail max, 45 min de temps libre gardées", max: 360, flex: 45 },
+};
+
+export const DEFAULT_PREFS: PlanPrefs = { dayStart: 9 * 60, dayEnd: 20 * 60, workDays: [1, 2, 3, 4, 5, 6], maxMinutesPerDay: 240, sessionMinutes: 75, breakMinutes: 15, morningPlan: true, mode: "balanced", longBreakMinutes: 45, blocksBeforeLongBreak: 2, flexMinutes: 60, protected: [[750, 810]], bufferDays: 1 };
+
+/** The effective rhythm: a preset sets the ceiling and the free time. */
+export function withMode(p: PlanPrefs): PlanPrefs {
+  const r = p.mode !== "custom" ? RHYTHMS[p.mode] : null;
+  return r ? { ...p, maxMinutesPerDay: r.max, flexMinutes: r.flex } : p;
+}
 
 // ── Dates
 
@@ -136,13 +160,13 @@ export interface CalItem {
   agenda?: AgendaItem;
 }
 
-export const KIND_LABEL: Record<CalKind, string> = { session: "Work session", task: "Task", event: "Event", reminder: "Reminder", deadline: "Hand-in", activity: "Your session", campus: "Campus session", holiday: "Holiday", start: "Project opens" };
+export const KIND_LABEL: Record<CalKind, string> = { session: "Session de travail", task: "Tâche", event: "Événement", reminder: "Rappel", block: "Indisponible", deadline: "Rendu", activity: "Ta séance", campus: "Séance du campus", holiday: "Vacances", start: "Ouverture du projet" };
 /** Neutral colours of entries that belong to no project. */
-export const KIND_COLOR: Record<CalKind, string> = { session: "#8b7cf6", task: "#8b7cf6", event: "#5fb4e8", reminder: "#e2a93b", deadline: "#e5646a", activity: "#7f8aa3", campus: "#6b7280", holiday: "#4cc38a", start: "#5fb4e8" };
+export const KIND_COLOR: Record<CalKind, string> = { session: "#8b7cf6", task: "#8b7cf6", event: "#5fb4e8", reminder: "#e2a93b", block: "#6b7280", deadline: "#e5646a", activity: "#7f8aa3", campus: "#6b7280", holiday: "#4cc38a", start: "#5fb4e8" };
 
 export type Filters = Record<"work" | "personal" | "handins" | "school" | "campus" | "holidays", boolean>;
 export const DEFAULT_FILTERS: Filters = { work: true, personal: true, handins: true, school: true, campus: false, holidays: true };
-const FILTER_OF: Record<CalKind, keyof Filters> = { session: "work", task: "work", event: "personal", reminder: "personal", deadline: "handins", start: "handins", activity: "school", campus: "campus", holiday: "holidays" };
+const FILTER_OF: Record<CalKind, keyof Filters> = { session: "work", task: "work", event: "personal", reminder: "personal", block: "personal", deadline: "handins", start: "handins", activity: "school", campus: "campus", holiday: "holidays" };
 export const visible = (i: CalItem, f: Filters) => f[FILTER_OF[i.kind]];
 
 export function calItems(state: PlanState | undefined, agenda: AgendaItem[], projects: PlanProject[]): CalItem[] {
@@ -263,93 +287,9 @@ export function projectLoad(p: PlanProject, events: PlanEvent[], busy: Span[], p
   return { remaining: p.estimateMin, planned, unplanned, next, risk, why };
 }
 
-// ── Smart scheduling
-
-export interface Scheduled {
-  actions: ScheduleAction[];
-  /** Work that found no room before its hand-in (or inside the horizon). */
-  unplaced: Array<{ key: string; title: string; minutes: number }>;
-}
-
-/**
- * Spreads the unplanned work of each project over the free time before its hand-in: most
- * urgent first, a fair share per day rather than everything on the first one, never more
- * than the daily maximum, with a break between sessions.
- */
-export function schedule(projects: PlanProject[], events: PlanEvent[], busy: Span[], prefs: PlanPrefs, now: number, opts: { horizonDays?: number; only?: string[] } = {}): Scheduled {
-  const horizon = addDays(now, opts.horizonDays ?? 14);
-  // A break follows everything already in the calendar too, not only the new sessions.
-  const taken: Span[] = busy.map((b) => ({ start: b.start, end: b.end + prefs.breakMinutes * MIN }));
-  const used = new Map<string, number>();
-  for (const e of events) if (isWork(e) && e.end * 1000 > now) used.set(dayKey(e.start * 1000), (used.get(dayKey(e.start * 1000)) ?? 0) + (e.end - e.start) / 60);
-  const todo = projects
-    .filter((p) => p.status !== "done" && p.estimateMin !== null && (p.dueMs === null || p.dueMs > now) && (!opts.only || opts.only.includes(p.key)))
-    .map((p) => ({ p, need: Math.ceil(Math.max(0, p.estimateMin! - plannedMinutes(events, p.key, now)) / 15) * 15, limit: Math.min(p.dueMs ?? horizon, horizon) }))
-    .filter((x) => x.need > 0)
-    .sort((a, b) => (a.p.dueMs ?? Infinity) - (b.p.dueMs ?? Infinity) || b.p.priority - a.p.priority);
-  const actions: ScheduleAction[] = [];
-  const workDaysUntil = (from: number, to: number) => {
-    let n = 0;
-    for (let d = startOfDay(from); d < to; d = addDays(d, 1)) if (prefs.workDays.includes(new Date(d).getDay())) n++;
-    return Math.max(1, n);
-  };
-  const first = ceil15(now + 10 * MIN);
-  // First pass: a fair share per day. Second pass: whatever is left, wherever it fits.
-  for (const pass of ["share", "fill"] as const) {
-    for (let day = startOfDay(now); day < horizon; day = addDays(day, 1)) {
-      const key = dayKey(day);
-      for (const t of todo) {
-        if (t.need <= 0 || day >= t.limit) continue;
-        const share = pass === "fill" ? t.need : Math.min(t.need, Math.max(Math.min(prefs.sessionMinutes, t.need), Math.ceil(t.need / workDaysUntil(Math.max(day, now), t.limit) / 15) * 15));
-        let left = share;
-        while (left > 0) {
-          const cap = prefs.maxMinutesPerDay - (used.get(key) ?? 0);
-          // No crumbs: a session lasts at least 45 minutes unless less than that is left.
-          const want = Math.min(Math.max(left, Math.min(45, t.need)), prefs.sessionMinutes, cap);
-          if (want < Math.min(30, t.need)) break;
-          const slot = freeSlots(taken, prefs, Math.max(day, first), Math.min(addDays(day, 1), t.limit), Math.min(30, want))[0];
-          if (!slot) break;
-          const minutes = Math.floor(Math.min(want, (slot.end - slot.start) / MIN) / 15) * 15;
-          if (minutes < Math.min(30, t.need)) break;
-          const end = slot.start + minutes * MIN;
-          actions.push({ type: "create_session", project: t.p.key, title: t.p.title, start: toLocalIso(slot.start), end: toLocalIso(end) });
-          taken.push({ start: slot.start, end: end + prefs.breakMinutes * MIN });
-          used.set(key, (used.get(key) ?? 0) + minutes);
-          t.need -= minutes;
-          left -= minutes;
-        }
-      }
-    }
-  }
-  actions.sort((a, b) => (a.type === "create_session" && b.type === "create_session" ? a.start.localeCompare(b.start) : 0));
-  return { actions, unplaced: todo.filter((t) => t.need > 0).map((t) => ({ key: t.p.key, title: t.p.title, minutes: t.need })) };
-}
-
 /** Work sessions that ended without being marked done, in the last `days` days. */
 export function missed(events: PlanEvent[], now: number, days = 7): PlanEvent[] {
   return events.filter((e) => isWork(e) && !e.done && e.end * 1000 <= now && e.end * 1000 > now - days * DAY);
-}
-
-/** Moves what was not done to the next free time, keeping each duration, before the project's hand-in when there is room. */
-export function reorganize(events: PlanEvent[], projects: PlanProject[], busy: Span[], prefs: PlanPrefs, now: number): Scheduled {
-  const taken = [...busy];
-  const actions: ScheduleAction[] = [];
-  const unplaced: Scheduled["unplaced"] = [];
-  const due = new Map(projects.map((p) => [p.key, p.dueMs]));
-  const list = missed(events, now).sort((a, b) => (due.get(a.project ?? "") ?? Infinity) - (due.get(b.project ?? "") ?? Infinity) || a.start - b.start);
-  for (const e of list) {
-    const minutes = Math.max(30, Math.round((e.end - e.start) / 60));
-    const limit = Math.min((e.project ? due.get(e.project) : null) ?? Infinity, addDays(now, 14));
-    const slot = freeSlots(taken, prefs, ceil15(now + 10 * MIN), limit, minutes)[0];
-    if (!slot) {
-      unplaced.push({ key: e.project ?? "", title: e.title, minutes });
-      continue;
-    }
-    const end = slot.start + minutes * MIN;
-    actions.push({ type: "move_event", id: e.id, start: toLocalIso(slot.start), end: toLocalIso(end) });
-    taken.push({ start: slot.start, end: end + prefs.breakMinutes * MIN });
-  }
-  return { actions, unplaced };
 }
 
 // ── Workload

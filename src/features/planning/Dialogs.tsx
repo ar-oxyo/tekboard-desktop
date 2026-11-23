@@ -7,7 +7,7 @@ import { Select } from "../../components/Select";
 import { Button, cn, Dot, Field, IconButton, Input, SectionLabel } from "../../components/ui";
 import type { PlanEvent, PlanEventKind, PlanTask } from "../../lib/api";
 import { useNow } from "../../lib/hooks";
-import { addDays, dayKey, dayStartOf, durInput, fmtDur, freeSlots, hhmm, hhmmOf, KIND_LABEL, MIN, minutesOf, missed, parseDur, PRIORITY, startOfWeek, type PlanPrefs, type PlanProject } from "../../lib/plan";
+import { addDays, dayKey, dayStartOf, durInput, fmtDur, freeSlots, hhmm, hhmmOf, KIND_LABEL, MIN, minutesOf, missed, parseDur, PRIORITY, startOfWeek, type PlanPrefs, type RhythmMode, RHYTHMS, withMode, type PlanProject } from "../../lib/plan";
 import { useUi } from "../../lib/store";
 import { usePlanActions, usePlanData, usePlanPrefs } from "./usePlan";
 
@@ -32,7 +32,7 @@ function Segmented<T extends string>({ value, onChange, options, label }: { valu
 
 // ───────────────────────────── calendar entry ─────────────────────────────
 
-const KINDS: Array<[PlanEventKind, string]> = [["session", "Work session"], ["event", "Event"], ["reminder", "Reminder"]];
+const KINDS: Array<[PlanEventKind, string]> = [["session", "Session"], ["event", "Événement"], ["block", "Indisponible"], ["reminder", "Rappel"]];
 
 export function EventDialog() {
   const draft = useUi((s) => s.eventEdit);
@@ -375,75 +375,106 @@ function CaptureForm() {
 
 const WEEK = [1, 2, 3, 4, 5, 6, 0];
 
+/** The rhythm: how much of a day TekBoard and Tika may fill, and how. */
 export function PrefsDialog({ onClose }: { onClose: () => void }) {
   const [prefs, setPrefs] = usePlanPrefs();
   const [p, setP] = useState<PlanPrefs>(prefs);
   const [error, setError] = useState<string | null>(null);
-  const num = (label: string, value: number, key: "maxMinutesPerDay" | "sessionMinutes" | "breakMinutes", hint: string) => (
-    <Field label={label} hint={hint}>
+  const num = (label: string, value: number, key: "maxMinutesPerDay" | "sessionMinutes" | "breakMinutes" | "longBreakMinutes" | "flexMinutes", hint: string, disabled = false) => (
+    <Field label={label} hint={disabled ? "fixé par le rythme choisi" : hint}>
       <Input
+        key={`${key}-${value}`}
+        disabled={disabled}
         defaultValue={durInput(value)}
         onBlur={(e) => {
           const m = parseDur(e.target.value, "min");
           if (m !== null) setP((x) => ({ ...x, [key]: m }));
+          else setError(`« ${e.target.value} » : écris 45, 45m, 1h30…`);
         }}
       />
     </Field>
   );
+  const lunch = p.protected[0] ?? null;
   const save = () => {
-    if (p.dayEnd - p.dayStart < 60) return setError("Working hours must span at least an hour.");
-    if (p.sessionMinutes < 30 || p.maxMinutesPerDay < 30) return setError("A session and the daily maximum are at least 30 minutes.");
-    if (p.workDays.length === 0) return setError("Pick at least one day.");
+    if (p.dayEnd - p.dayStart < 60) return setError("Les horaires de travail couvrent au moins une heure.");
+    if (p.sessionMinutes < 15 || p.sessionMinutes > 180) return setError("Une session dure entre 15 min et 3 h.");
+    if (p.maxMinutesPerDay < 30 || p.maxMinutesPerDay > 720) return setError("Le plafond quotidien est entre 30 min et 12 h.");
+    if (p.workDays.length === 0) return setError("Choisis au moins un jour.");
     setPrefs(p);
     onClose();
   };
+  const preset = (mode: RhythmMode) => setP((x) => withMode({ ...x, mode }));
   return (
     <Modal
       open
       onClose={onClose}
-      title="Planning preferences"
-      description="Used when TekBoard or Claude looks for free time. Your own entries can go anywhere."
-      width="w-[520px]"
+      title="Ton rythme"
+      description="Ce que TekBoard et Tika peuvent remplir dans une journée. Tes propres entrées vont où tu veux."
+      width="w-[560px]"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            Annuler
           </Button>
           <Button variant="primary" onClick={save}>
-            Save
+            Enregistrer
           </Button>
         </>
       }
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3.5">
+        <div className="grid grid-cols-4 gap-1.5">
+          {(["calm", "balanced", "intense", "custom"] as RhythmMode[]).map((m) => (
+            <button key={m} type="button" aria-pressed={p.mode === m} onClick={() => preset(m)} className={cn("flex flex-col items-start gap-0.5 rounded-lg border px-2.5 py-2 text-left transition-colors duration-150", p.mode === m ? "border-accent/50 bg-accent-soft" : "border-white/8 hover:border-white/15")}>
+              <span className="text-[13px] font-medium">{m === "custom" ? "Sur mesure" : RHYTHMS[m].label}</span>
+              <span className="text-[11px] leading-snug text-faint">{m === "custom" ? "tu fixes tout" : RHYTHMS[m].hint}</span>
+            </button>
+          ))}
+        </div>
         <div className="grid grid-cols-2 gap-2">
-          <Field label="Work from">
+          <Field label="Travail à partir de">
             <Input type="time" step={900} value={hhmmOf(p.dayStart)} onChange={(e) => setP({ ...p, dayStart: minutesOf(e.target.value) ?? p.dayStart })} />
           </Field>
-          <Field label="Until">
+          <Field label="Jusqu'à">
             <Input type="time" step={900} value={hhmmOf(p.dayEnd)} onChange={(e) => setP({ ...p, dayEnd: minutesOf(e.target.value) ?? p.dayEnd })} />
           </Field>
         </div>
-        <Field label="Days work can be planned on">
+        <Field label="Jours travaillés">
           <div className="flex gap-1">
             {WEEK.map((d) => {
               const on = p.workDays.includes(d);
               return (
                 <button key={d} type="button" aria-pressed={on} onClick={() => setP({ ...p, workDays: on ? p.workDays.filter((x) => x !== d) : [...p.workDays, d] })} className={cn("h-8 flex-1 rounded-md border text-xs capitalize transition-colors duration-150", on ? "border-transparent bg-accent-soft text-accent-strong" : "border-white/8 text-muted hover:text-fg")}>
-                  {new Date(2024, 0, d === 0 ? 7 : d).toLocaleDateString(undefined, { weekday: "short" })}
+                  {new Date(2024, 0, d === 0 ? 7 : d).toLocaleDateString("fr-FR", { weekday: "short" })}
                 </button>
               );
             })}
           </div>
         </Field>
         <div className="grid grid-cols-3 gap-2">
-          {num("Most work per day", p.maxMinutesPerDay, "maxMinutesPerDay", "4h, 5h30…")}
-          {num("Session length", p.sessionMinutes, "sessionMinutes", "1h30, 2h…")}
-          {num("Break between", p.breakMinutes, "breakMinutes", "15m, 30m…")}
+          {num("Plafond par jour", p.maxMinutesPerDay, "maxMinutesPerDay", "240, 4h…", p.mode !== "custom")}
+          {num("Session", p.sessionMinutes, "sessionMinutes", "50, 1h15…")}
+          {num("Pause entre deux", p.breakMinutes, "breakMinutes", "10, 15…")}
+          {num("Pause longue", p.longBreakMinutes, "longBreakMinutes", "45, 1h…")}
+          {num("Temps libre gardé", p.flexMinutes, "flexMinutes", "60, 2h…", p.mode !== "custom")}
+          <Field label="Marge avant rendu" hint="jours">
+            <Input type="number" min={0} max={7} value={p.bufferDays} onChange={(e) => setP({ ...p, bufferDays: Math.max(0, Math.min(7, Number(e.target.value) || 0)) })} />
+          </Field>
+        </div>
+        <div className="flex items-center gap-2 text-[13px] text-muted">
+          <input type="checkbox" className="accent-(--color-accent)" checked={lunch !== null} onChange={(e) => setP({ ...p, protected: e.target.checked ? [[750, 810]] : [] })} />
+          Protéger le déjeuner
+          {lunch && (
+            <>
+              <Input type="time" step={900} className="h-7 w-24" value={hhmmOf(lunch[0])} onChange={(e) => setP({ ...p, protected: [[minutesOf(e.target.value) ?? lunch[0], lunch[1]]] })} />–
+              <Input type="time" step={900} className="h-7 w-24" value={hhmmOf(lunch[1])} onChange={(e) => setP({ ...p, protected: [[lunch[0], minutesOf(e.target.value) ?? lunch[1]]] })} />
+            </>
+          )}
         </div>
         <label className="flex items-center gap-2 text-[13px] text-muted">
-          <input type="checkbox" className="accent-(--color-accent)" checked={p.morningPlan} onChange={(e) => setP({ ...p, morningPlan: e.target.checked })} /> Offer a plan for the day on the dashboard when nothing is planned yet (computed here, no Claude)
+          <input type="checkbox" className="accent-(--color-accent)" checked={p.morningPlan} onChange={(e) => setP({ ...p, morningPlan: e.target.checked })} /> Proposer un plan pour la journée sur Aujourd'hui quand rien n'est prévu
         </label>
+        <p className="text-xs text-faint">Après {p.blocksBeforeLongBreak} blocs presque d'affilée, une pause longue est imposée. Une pause est gardée avant et après chaque cours ou entrée.</p>
         {error && <p className="text-xs text-danger">{error}</p>}
       </div>
     </Modal>

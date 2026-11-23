@@ -6,10 +6,11 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { api, asAppError } from "../../lib/api";
 import { Button, Card, CardTitle, cn, Dot, Spinner, Tag } from "../../components/ui";
 import { useNow } from "../../lib/hooks";
-import { addDays, fmtDur, hhmm, MIN, nextUp, schedule, startOfDay, toRegister, workload, type CalItem } from "../../lib/plan";
+import { addDays, fmtDur, hhmm, MIN, nextUp, startOfDay, toRegister, workload, type CalItem } from "../../lib/plan";
 import { due } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { ReviewDialog } from "../planning/Dialogs";
+import { suggestPlan } from "../tika/suggest";
 import { startFocus } from "../planning/Focus";
 import { useLoads, usePlanData } from "../planning/usePlan";
 import { Countdown } from "../projects/RepoBits";
@@ -27,7 +28,8 @@ export function TodayCard() {
   const peerTodo = data.agenda?.peerTodo ?? [];
   const workToday = today.filter((i) => i.kind === "session" || i.kind === "task");
   // The "morning plan": offered (never applied) when nothing is planned and there is work to place.
-  const suggestion = useMemo(() => (data.prefs.morningPlan && workToday.length === 0 ? schedule(data.projects, data.state.events, data.busy, data.prefs, now, { horizonDays: 1 }) : null), [data.prefs, workToday.length, data.projects, data.state.events, data.busy, now]);
+  const hasWorkLeft = data.projects.some((p) => (p.estimateMin ?? 0) > 0 && p.status !== "done");
+  const suggestion = data.prefs.morningPlan && workToday.length === 0 && hasWorkLeft;
   const greeting = new Date(now).getHours() < 12 ? "Good morning" : new Date(now).getHours() < 18 ? "Good afternoon" : "Good evening";
 
   let hero: ReactNode;
@@ -120,14 +122,12 @@ export function TodayCard() {
           </span>
         </div>
       )}
-      {suggestion && suggestion.actions.length > 0 && (
+      {suggestion && (
         <div className="flex items-center gap-3 border-t border-white/6 px-6 py-3 text-[13px]">
           <Sun className="size-4 shrink-0 text-accent" />
-          <span className="min-w-0 flex-1 text-muted">
-            Nothing planned today. {suggestion.actions.length} session{suggestion.actions.length > 1 ? "s" : ""} would fit ({fmtDur(suggestion.actions.reduce((s, a) => s + (a.type === "create_session" ? (Date.parse(a.end) - Date.parse(a.start)) / MIN : 0), 0))}).
-          </span>
-          <Button size="sm" onClick={() => ui().propose({ title: "Plan for today", origin: "auto", actions: suggestion.actions, note: null })}>
-            Review
+          <span className="min-w-0 flex-1 text-muted">Rien de prévu aujourd'hui. TekBoard peut te proposer une journée réaliste, avec pauses et temps libre.</span>
+          <Button size="sm" onClick={() => void suggestPlan("day")}>
+            Proposer
           </Button>
         </div>
       )}

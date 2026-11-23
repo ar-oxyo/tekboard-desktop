@@ -6,7 +6,8 @@ import { Button, cn, Dot, IconButton, Input, SectionLabel } from "../../componen
 import type { RepoInfo } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { useNow, useProjectActions } from "../../lib/hooks";
-import { durInput, fmtDur, hhmm, parseDur, PRIORITY, schedule, taskProgress } from "../../lib/plan";
+import { durInput, fmtDur, hhmm, parseDur, PRIORITY, taskProgress } from "../../lib/plan";
+import { suggestPlan } from "../tika/suggest";
 import { useUi } from "../../lib/store";
 import { startFocus } from "../planning/Focus";
 import { useLoads, usePlanActions, usePlanData } from "../planning/usePlan";
@@ -43,10 +44,8 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
   };
   const planSessions = () => {
     if (!project) return;
-    const r = schedule(data.projects, data.state.events, data.busy, data.prefs, now, { only: [key], horizonDays: 14 });
-    if (!r.actions.length) return useUi.getState().toast({ kind: "info", title: project.estimateMin === null ? "Set the work left first" : r.unplaced.length ? "No free time before the hand-in" : "All the work left is already planned" });
-    useUi.getState().closeSheet();
-    useUi.getState().propose({ title: `Sessions for ${project.title}`, origin: "auto", actions: r.actions, note: r.unplaced.length ? `${fmtDur(r.unplaced[0].minutes)} do not fit before the hand-in.` : null });
+    if (project.estimateMin === null) return useUi.getState().toast({ kind: "info", title: "Indique d'abord le travail restant" });
+    void suggestPlan("two_weeks", key);
   };
 
   return (

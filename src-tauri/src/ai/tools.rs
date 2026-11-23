@@ -83,6 +83,7 @@ pub const SPECS: &[Spec] = &[
     Spec { name: "start_focus", label: "Démarrage d'une session", risk: Risk::Reversible, description: "Démarre une session de concentration chronométrée (une seule à la fois). Durées usuelles : 25, 45, 50, 90 min. Une session mixte enchaîne ensuite sur autre chose (thenTitle, thenMinutes). La session s'arrête d'elle-même si personne ne répond après la fin prévue.", schema: || obj(json!({"title": s("Ce sur quoi on travaille"), "project": s("Clé du projet"), "minutes": n("Durée prévue, 5 à 240"), "taskId": n("Tâche liée"), "eventId": n("Entrée du calendrier liée"), "thenTitle": s("Activité suivante (session mixte)"), "thenMinutes": n("Durée de l'activité suivante")}), &["title", "minutes"]) },
     Spec { name: "extend_focus", label: "Prolongation de la session", risk: Risk::Read, description: "Ajoute du temps à la session en cours.", schema: || obj(json!({"minutes": n("Minutes à ajouter, 5 à 120")}), &["minutes"]) },
     Spec { name: "stop_focus", label: "Fin de la session", risk: Risk::Read, description: "Termine la session en cours ; done=true marque aussi sa tâche et son entrée du calendrier comme faites.", schema: || obj(json!({"done": b("Travail terminé")}), &[]) },
+    Spec { name: "suggest_plan", label: "Calcul d'un planning", risk: Risk::Approval, description: "Calcule avec le moteur de TekBoard un planning réaliste (pauses, plafond, temps libre, marge et bloc de tests avant chaque rendu) à partir des estimations des projets, et le propose à l'utilisateur. scope : day, week, two_weeks, reorganize (replacer les sessions passées non faites). Plus fiable que de placer les sessions toi-même : utilise-le, puis ajuste avec propose_schedule si besoin.", schema: || obj(json!({"scope": s("day | week | two_weeks | reorganize"), "project": s("Limiter à un projet (clé)")}), &["scope"]) },
     Spec { name: "navigate", label: "Navigation", risk: Risk::Read, description: "Ouvre un écran de TekBoard pour l'utilisateur : today, projects, planning, school, stats, resources, settings ; avec un projet, ouvre sa page (onglet : overview, plan, checks, git, libraries, notes).", schema: || obj(json!({"page": s("Écran"), "project": s("Clé du projet"), "tab": s("Onglet de la page projet")}), &["page"]) },
     Spec { name: "list_runs", label: "Historique des vérifications", risk: Risk::Read, description: "Dernières exécutions (tests, Banana, TestRepo, moulinette, analyses) avec leur statut et leur résumé.", schema: || obj(json!({"project": s("Clé du projet"), "kind": s("Type d'exécution"), "limit": n("1 à 20")}), &[]) },
     Spec { name: "get_report", label: "Lecture d'un rapport", risk: Risk::Read, description: "Le rapport complet d'une exécution (id donné par list_runs), avec la fin de son journal.", schema: || obj(json!({"id": n("Id de l'exécution")}), &["id"]) },
@@ -487,6 +488,16 @@ fn run(state: &AppState, caller: &Caller, name: &str, a: &Value) -> Result<Out> 
             crate::notify::changed(&["focus", "plan"]);
             read(json!({"status": "stopped", "minutes": f.seconds.unwrap_or(0) / 60}))
         }
+        "suggest_plan" => {
+            let scope = need(a, "scope")?;
+            let only = arg(a, "project");
+            let (title, sug) = suggest(state, scope, only)?;
+            if sug.actions.is_empty() {
+                return read(json!({"status": "nothing", "message": if sug.unplaced.is_empty() { "Rien à placer : les projets estimés sont déjà planifiés, ou aucun n'a d'estimation (set_project_plan)." } else { "Aucun créneau ne convient." }, "nonPlace": sug.unplaced, "notes": sug.notes}));
+            }
+            let pid = propose(state, caller, "schedule", &title, &sug.notes.join(" "), &json!({"actions": sug.actions, "warnings": sug.unplaced.iter().map(|u| format!("Sans créneau : {} ({})", u.title, schedule::dur(u.minutes))).collect::<Vec<_>>(), "origin": "auto"}))?;
+            read(json!({"status": "proposed", "proposalId": pid, "changements": sug.actions.len(), "nonPlace": sug.unplaced, "notes": sug.notes}))
+        }
         "navigate" => {
             let page = need(a, "page")?;
             if !["today", "projects", "planning", "school", "stats", "resources", "settings"].contains(&page) {
@@ -529,6 +540,49 @@ fn summary_text(v: &Value) -> String {
     }
     let steps: Vec<String> = v.get("steps").and_then(Value::as_array).into_iter().flatten().map(|s| format!("{} : {}", s["label"].as_str().unwrap_or(""), s["status"].as_str().unwrap_or(""))).collect();
     steps.join(" · ")
+}
+
+/// Hand-in instant of a board item.
+fn due_of(b: &crate::projects::BoardItem) -> Option<i64> {
+    b.at.as_deref().and_then(|t| chrono::DateTime::parse_from_rfc3339(t).ok()).map(|d| d.timestamp()).or_else(|| b.day.as_deref().and_then(|d| crate::planner::parse_local(&format!("{d}T23:59")).ok()))
+}
+
+/// A plan computed by the engine for `scope` (`day`, `week`, `two_weeks`, `reorganize`).
+pub fn suggest(state: &AppState, scope: &str, only: Option<&str>) -> Result<(String, schedule::Suggestion)> {
+    let w = world(state)?;
+    let t = now();
+    let due_by_key = |k: &str| w.board.iter().find(|b| b.repo_path.as_deref() == Some(k) || b.my_id.map(|i| format!("my:{i}")).as_deref() == Some(k)).and_then(due_of);
+    if scope == "reorganize" {
+        return Ok(("Replacer ce qui n'a pas été fait".into(), schedule::reorganize(&w.plan.events, &due_by_key, &w.busy, &w.rhythm, t)));
+    }
+    let days = match scope {
+        "day" => 1,
+        "week" => 7,
+        "two_weeks" => 14,
+        _ => return Err(AppError::new("invalid_args", "scope : day, week, two_weeks ou reorganize")),
+    };
+    let mut needs = Vec::new();
+    for p in &w.plan.projects {
+        let Some(est) = p.estimate_min else { continue };
+        if only.is_some_and(|o| o != p.key) {
+            continue;
+        }
+        let done = w.board.iter().any(|b| (b.repo_path.as_deref() == Some(&p.key)) && b.status == "done") || w.repos.iter().any(|r| r.path == p.key && r.progress == "done");
+        if done {
+            continue;
+        }
+        let left = est - planned_minutes(&w, &p.key, t);
+        if left > 0 {
+            needs.push(schedule::Need { key: p.key.clone(), title: project_title(&w, &p.key), minutes: left, due: due_by_key(&p.key), priority: p.priority });
+        }
+    }
+    let title = match (scope, only) {
+        (_, Some(k)) => format!("Sessions pour {}", project_title(&w, k)),
+        ("day", _) => "Plan pour aujourd'hui".into(),
+        ("week", _) => "Plan pour la semaine".into(),
+        _ => "Plan pour deux semaines".into(),
+    };
+    Ok((title, schedule::suggest(&needs, &w.busy, &w.rhythm, t, days)))
 }
 
 /// Checks proposed actions with the planning engine.

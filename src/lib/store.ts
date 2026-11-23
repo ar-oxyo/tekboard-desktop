@@ -1,36 +1,5 @@
 import { create } from "zustand";
-import type { ScheduleAction, PlanEvent, PlanTask } from "./api";
-
-/** A plan waiting for review: computed locally or proposed by Claude. Nothing is saved before "Apply plan". */
-export interface Proposal {
-  title: string;
-  /** What the student should know (Claude's words, or what the local scheduler could not place). */
-  note: string | null;
-  actions: ScheduleAction[];
-  origin: "auto" | "claude";
-  costUsd?: number | null;
-}
-
-/** Work being timed. Survives a reload of the window. */
-export interface Focus {
-  title: string;
-  project: string | null;
-  taskId: number | null;
-  eventId: number | null;
-  /** ms */
-  startedAt: number;
-  plannedMin: number | null;
-}
-
-const FOCUS_KEY = "tekboard.focus";
-function storedFocus(): Focus | null {
-  try {
-    const raw = localStorage.getItem(FOCUS_KEY);
-    return raw ? (JSON.parse(raw) as Focus) : null;
-  } catch {
-    return null;
-  }
-}
+import type { PlanEvent, PlanTask } from "./api";
 
 export type Page = "overview" | "projects" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "myepitech" | "cozy" | "settings" | "prompts" | "agenda";
 
@@ -90,8 +59,6 @@ interface UiState {
   assistantAsk: { text: string; project?: string | null } | null;
   openAssistant: (ask?: { text: string; project?: string | null }) => void;
   closeAssistant: () => void;
-  proposal: Proposal | null;
-  propose: (p: Proposal | null) => void;
   /** Conversation shown in Tika's panel, and the turn being answered. */
   tikaThread: number | null;
   tikaJob: number | null;
@@ -103,8 +70,6 @@ interface UiState {
   editTask: (t: Partial<PlanTask> | null) => void;
   captureOpen: boolean;
   setCaptureOpen: (open: boolean) => void;
-  focus: Focus | null;
-  setFocus: (f: Focus | null) => void;
   /** Day the Planning screen should show next time it opens (ms). */
   planDate: number | null;
   openPlanning: (date?: number) => void;
@@ -161,24 +126,12 @@ export const useUi = create<UiState>((set, get) => ({
       }
       return { tikaThread: thread, tikaJob: t.job !== undefined ? t.job : s.tikaJob };
     }),
-  proposal: null,
-  propose: (proposal) => set(proposal ? { proposal, assistantOpen: true } : { proposal }),
   eventEdit: null,
   editEvent: (eventEdit) => set({ eventEdit }),
   taskEdit: null,
   editTask: (taskEdit) => set({ taskEdit }),
   captureOpen: false,
   setCaptureOpen: (captureOpen) => set({ captureOpen, paletteOpen: false }),
-  focus: storedFocus(),
-  setFocus: (focus) => {
-    try {
-      if (focus) localStorage.setItem(FOCUS_KEY, JSON.stringify(focus));
-      else localStorage.removeItem(FOCUS_KEY);
-    } catch {
-      /* the timer still runs for this window */
-    }
-    set({ focus });
-  },
   planDate: null,
   openPlanning: (date) => set({ page: "agenda", planDate: date ?? null, sheetPath: null, paletteOpen: false }),
   toasts: [],

@@ -842,7 +842,8 @@ export interface PlanTask {
   doneAt: number | null;
   createdAt: number;
 }
-export type PlanEventKind = "session" | "task" | "event" | "reminder";
+/** `block`: time you are not available; nothing is planned over it. */
+export type PlanEventKind = "session" | "task" | "event" | "reminder" | "block";
 /** A personal calendar entry. Instants are unix seconds. */
 export interface PlanEvent {
   id: number;

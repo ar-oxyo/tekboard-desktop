@@ -142,8 +142,11 @@ pub fn exec(work: &Path, command: &str, l: &Limits) -> Result<Exec> {
     use std::io::{Read, Seek, SeekFrom};
     let bwrap = crate::toolenv::which("bwrap").ok_or_else(|| AppError::new("sandbox_missing", "bubblewrap (bwrap) n'est pas installé : `sudo apt install bubblewrap`."))?;
     let argv = bwrap_argv(&bwrap, work, command, l);
-    let path = std::env::temp_dir().join(format!("tekboard-exec-{}-{}", std::process::id(), Instant::now().elapsed().as_nanos() ^ (work.as_os_str().len() as u128)));
-    let mut file = std::fs::OpenOptions::new().read(true).write(true).create(true).truncate(true).open(&path)?;
+    // One file per command: several commands may run at the same time.
+    static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let n = SEQ.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    let path = std::env::temp_dir().join(format!("tekboard-exec-{}-{n}", std::process::id()));
+    let mut file = std::fs::OpenOptions::new().read(true).write(true).create_new(true).open(&path)?;
     let _ = std::fs::remove_file(&path);
     let started = Instant::now();
     let mut child = Command::new(&argv[0]).args(&argv[1..]).stdin(Stdio::null()).stdout(Stdio::from(file.try_clone()?)).stderr(Stdio::from(file.try_clone()?)).process_group(0).spawn()?;

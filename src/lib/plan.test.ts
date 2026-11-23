@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { PlanEvent, ScheduleAction } from "./api";
-import { DEFAULT_PREFS, MIN, type PlanProject, type Span, addDays, busySpans, calItems, durInput, fmtDur, freeSlots, fromLocalIso, layoutDay, nextUp, parseDur, projectLoad, reorganize, schedule, startOfWeek, toRegister, toLocalIso, workload } from "./plan";
+import type { PlanEvent } from "./api";
+import { DEFAULT_PREFS, type PlanProject, type Span, addDays, busySpans, calItems, durInput, fmtDur, freeSlots, fromLocalIso, layoutDay, nextUp, parseDur, projectLoad, startOfWeek, toRegister, toLocalIso, workload } from "./plan";
 
 // Monday 16 November 2026, local time.
 const at = (day: number, h: number, m = 0) => new Date(2026, 10, day, h, m).getTime();
 const prefs = { ...DEFAULT_PREFS, dayStart: 9 * 60, dayEnd: 19 * 60, maxMinutesPerDay: 240, sessionMinutes: 90, breakMinutes: 15 };
 const project = (over: Partial<PlanProject> = {}): PlanProject => ({ key: "/p/rpg", title: "MyRPG", module: "G-MUL-200", repoPath: "/p/rpg", day: null, at: null, dueMs: at(20, 19, 42), status: "in_progress", priority: 0, estimateMin: 720, color: "#fff", ...over });
 const event = (id: number, start: number, end: number, over: Partial<PlanEvent> = {}): PlanEvent => ({ id, kind: "session", title: "s", start: start / 1000, end: end / 1000, allDay: false, project: "/p/rpg", taskId: null, color: null, notes: "", origin: "me", done: false, ...over });
-const span = (a: ScheduleAction) => (a.type === "create_session" || a.type === "move_event" ? (fromLocalIso(a.end) - fromLocalIso(a.start)) / MIN : 0);
 
 describe("dates", () => {
   it("writes and reads local times, and finds Monday", () => {
@@ -35,55 +34,7 @@ describe("freeSlots", () => {
   });
 });
 
-describe("schedule", () => {
-  it("spreads 12 hours before the hand-in without exceeding the daily maximum or touching busy time", () => {
-    const busy: Span[] = [16, 17, 18, 19, 20].map((d) => ({ start: at(d, 9), end: at(d, 12) }));
-    const { actions, unplaced } = schedule([project()], [], busy, prefs, at(16, 8));
-    expect(unplaced).toEqual([]);
-    expect(actions.reduce((s, a) => s + span(a), 0)).toBe(720);
-    const perDay = new Map<string, number>();
-    for (const a of actions) {
-      if (a.type !== "create_session") throw new Error("only sessions are created");
-      perDay.set(a.start.slice(0, 10), (perDay.get(a.start.slice(0, 10)) ?? 0) + span(a));
-      expect(span(a)).toBeLessThanOrEqual(90);
-      expect(fromLocalIso(a.end)).toBeLessThanOrEqual(at(20, 19, 42));
-      expect(busy.some((b) => fromLocalIso(a.start) < b.end && fromLocalIso(a.end) > b.start)).toBe(false);
-    }
-    expect([...perDay.values()].every((m) => m <= 240)).toBe(true);
-    expect(perDay.size).toBeGreaterThanOrEqual(3); // not everything on the first days
-  });
-  it("counts what is already planned and says what does not fit", () => {
-    const planned = [event(1, at(16, 14), at(16, 16))];
-    const fits = schedule([project({ estimateMin: 180 })], planned, busySpans(calItems({ tasks: [], events: planned, projects: [], log: [] }, [], [])), prefs, at(16, 8));
-    expect(fits.actions.reduce((s, a) => s + span(a), 0)).toBe(60);
-    const tight = schedule([project({ estimateMin: 600, dueMs: at(16, 19) })], [], [], prefs, at(16, 8));
-    expect(tight.actions.reduce((s, a) => s + span(a), 0)).toBe(240);
-    expect(tight.unplaced).toEqual([{ key: "/p/rpg", title: "MyRPG", minutes: 360 }]);
-  });
-  it("keeps a break after what is already planned and cuts no session under 45 minutes", () => {
-    const { actions } = schedule([project({ estimateMin: 225 })], [], [{ start: at(16, 9), end: at(16, 10) }], prefs, at(16, 8));
-    const first = actions[0];
-    expect(first.type === "create_session" && first.start).toBe("2026-11-16T10:15");
-    expect(actions.every((a) => span(a) >= 45)).toBe(true);
-  });
-  it("serves the nearest hand-in first and leaves a break between sessions", () => {
-    const a = project({ key: "/p/a", title: "A", estimateMin: 180, dueMs: at(17, 12) });
-    const b = project({ key: "/p/b", title: "B", estimateMin: 180, dueMs: at(27, 12) });
-    const { actions } = schedule([b, a], [], [], prefs, at(16, 8));
-    const first = actions[0];
-    expect(first.type === "create_session" && first.project).toBe("/p/a");
-    const sorted = actions.filter((x) => x.type === "create_session").map((x) => [fromLocalIso(x.start), fromLocalIso(x.end)]).sort((x, y) => x[0] - y[0]);
-    for (let i = 1; i < sorted.length; i++) expect(sorted[i][0] - sorted[i - 1][1]).toBeGreaterThanOrEqual(15 * MIN);
-  });
-});
-
-describe("reorganize", () => {
-  it("moves the sessions that were not done to the next free time", () => {
-    const events = [event(1, at(16, 9), at(16, 10, 30)), event(2, at(16, 11), at(16, 12), { done: true }), event(3, at(17, 9), at(17, 10))];
-    const { actions } = reorganize(events, [project()], [{ start: at(16, 14), end: at(16, 16) }], prefs, at(16, 15));
-    expect(actions).toEqual([{ type: "move_event", id: 1, start: "2026-11-16T16:00", end: "2026-11-16T17:30" }]);
-  });
-});
+// The automatic planner moved to the Rust engine: see src-tauri/src/schedule.rs (suggest_tests).
 
 describe("load and next step", () => {
   it("flags a project whose work does not fit before the hand-in", () => {

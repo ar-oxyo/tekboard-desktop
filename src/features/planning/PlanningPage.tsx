@@ -8,8 +8,9 @@ import { Button, cn, Dot, ErrorNote, IconButton, Spinner, Tag } from "../../comp
 import type { PlanTask } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { useNow, usePref } from "../../lib/hooks";
-import { addDays, DEFAULT_FILTERS, fmtDur, MIN, reorganize, schedule, startOfDay, startOfWeek, unplanned, visible, type CalItem, type Filters, type Load, type PlanProject } from "../../lib/plan";
+import { addDays, DEFAULT_FILTERS, fmtDur, MIN, startOfDay, startOfWeek, unplanned, visible, type CalItem, type Filters, type Load, type PlanProject } from "../../lib/plan";
 import { invalidate } from "../../lib/sync";
+import { suggestPlan } from "../tika/suggest";
 import { useUi } from "../../lib/store";
 import { Countdown } from "../projects/RepoBits";
 import { PrefsDialog, ReviewDialog } from "./Dialogs";
@@ -40,7 +41,6 @@ export function PlanningPage() {
   }, []);
   const [ghost, setGhost] = useState<{ start: number; end: number; title: string } | null>(null);
   const [dialog, setDialog] = useState<"prefs" | "review" | null>(null);
-  const propose = useUi((s) => s.propose);
   const toast = useUi((s) => s.toast);
   const f = { ...DEFAULT_FILTERS, ...filters };
 
@@ -104,18 +104,8 @@ export function PlanningPage() {
     window.addEventListener("pointerup", up);
   };
 
-  const autoPlan = (scope: "week" | "day") => {
-    const r = schedule(data.projects, data.state.events, data.busy, data.prefs, now, { horizonDays: scope === "day" ? 1 : 7 });
-    if (r.actions.length === 0 && r.unplaced.length === 0) {
-      return toast({ kind: "info", title: "Nothing to plan", detail: "Give a project an estimate of the work left (Projects tab on the right) and TekBoard will spread it before the hand-in." });
-    }
-    propose({ title: scope === "day" ? "Plan for today" : "Plan for the week", origin: "auto", actions: r.actions, note: r.unplaced.length ? `Not enough free time for: ${r.unplaced.map((u) => `${u.title} (${fmtDur(u.minutes)})`).join(", ")}.` : null });
-  };
-  const reorg = () => {
-    const r = reorganize(data.state.events, data.projects, data.busy, data.prefs, now);
-    if (r.actions.length === 0) return toast({ kind: "info", title: "Nothing to move", detail: r.unplaced.length ? "No free time found for what was not done." : "Every past session is marked done." });
-    propose({ title: "Move what was not done", origin: "auto", actions: r.actions, note: r.unplaced.length ? `No room before the hand-in for: ${r.unplaced.map((u) => u.title).join(", ")}.` : null });
-  };
+  const autoPlan = (scope: "week" | "day") => void suggestPlan(scope);
+  const reorg = () => void suggestPlan("reorganize");
 
   return (
     <div className="flex h-full min-h-0 flex-col">
