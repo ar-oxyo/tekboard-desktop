@@ -201,6 +201,8 @@ pub fn run() {
             commands_ai::ai_proposals,
             commands_ai::ai_proposal_decide,
             commands_ai::ai_tool,
+            commands_ai::subject_analyze,
+            commands_ai::subject_briefs,
             commands_ai::insights_list,
             commands_ai::insight_set,
             commands_ai::insights_refresh,

@@ -116,6 +116,13 @@ pub(crate) fn sync_now(state: &AppState) -> Result<SyncReport> {
             report.detail = if report.detail.is_empty() { note } else { format!("{}; {note}", report.detail) };
         }
     }
+    // New subjects are read at once when the user asked for it (Settings → AI).
+    if report.subjects_imported > 0 && crate::ai::chat::AiSettings::load(&state.conn()).auto_analyze {
+        let fresh: Vec<i64> = state.conn().prepare("SELECT s.id FROM subjects s WHERE s.added_at > ?1 AND s.repo_path IS NOT NULL AND NOT EXISTS (SELECT 1 FROM project_briefs b WHERE b.subject_id = s.id)").and_then(|mut st| st.query_map([now() - 3600], |r| r.get(0)).and_then(|r| r.collect())).unwrap_or_default();
+        for id in fresh.into_iter().take(3) {
+            let _ = crate::ai::subject::analyze(state, id);
+        }
+    }
     // Manual or automatic: every screen fed by MY Epitech re-reads it (planning included).
     crate::notify::changed(&["my"]);
     Ok(report)
@@ -171,7 +178,14 @@ pub(crate) fn import_subjects(state: &AppState, token: &str) -> (usize, Vec<Stri
                 crate::subjects::import(&state.conn(), &state.subjects(), &tmp, repo.as_deref(), now())
             });
             let _ = std::fs::remove_file(&tmp);
-            Ok(!result?.duplicate)
+            let r = result?;
+            if !r.duplicate {
+                // A new version of a project's subject: what was read from the old one is out of date.
+                if let Some(rp) = &repo {
+                    let _ = state.conn().execute("UPDATE project_briefs SET stale = 1 WHERE project = ?1", [rp]);
+                }
+            }
+            Ok(!r.duplicate)
         })();
         match outcome {
             Ok(true) => imported += 1,

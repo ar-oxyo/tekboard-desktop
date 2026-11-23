@@ -122,6 +122,26 @@ pub fn ai_tool(state: State<'_, AppState>, name: String, args: Value) -> Result<
     tools::call(&state, &caller, &name, &args)
 }
 
+// ───────────────────────────── subjects ─────────────────────────────
+
+#[tauri::command(async)]
+pub fn subject_analyze(state: State<'_, AppState>, id: i64) -> Result<u64> {
+    crate::ai::subject::analyze(&state, id)
+}
+
+/// Digests of every analysed subject: `{subjectId: {stale, updatedAt}}`.
+#[tauri::command(async)]
+pub fn subject_briefs(state: State<'_, AppState>) -> Result<Value> {
+    let conn = state.conn();
+    let mut st = conn.prepare("SELECT subject_id, stale, updated_at, brief FROM project_briefs WHERE subject_id IS NOT NULL")?;
+    let mut out = serde_json::Map::new();
+    for r in st.query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?, r.get::<_, String>(3)?)))? {
+        let (id, stale, at, brief) = r?;
+        out.insert(id.to_string(), json!({"stale": stale != 0, "updatedAt": at, "brief": serde_json::from_str::<Value>(&brief).unwrap_or(Value::Null)}));
+    }
+    Ok(Value::Object(out))
+}
+
 // ───────────────────────────── suggestions ─────────────────────────────
 
 #[tauri::command(async)]

@@ -87,6 +87,8 @@ pub const SPECS: &[Spec] = &[
     Spec { name: "start_moulinette", label: "Lancement de la moulinette", risk: Risk::Read, description: "Lance la moulinette de Tika (agent évaluateur dans un bac à sable, sur une copie du projet ; quelques minutes). Renvoie l'id de la tâche : attends-la avec wait_job puis explique les problèmes à partir du rapport.", schema: || obj(json!({"project": s("Clé du projet (dépôt local)")}), &["project"]) },
     Spec { name: "generate_tests", label: "Génération de tests", risk: Risk::Read, description: "Lance la génération de tests unitaires sur une copie du projet (rien n'est écrit dans le projet : l'utilisateur valide le diff). Renvoie l'id de la tâche, à attendre avec wait_job.", schema: || obj(json!({"project": s("Clé du projet (dépôt local)")}), &["project"]) },
     Spec { name: "wait_job", label: "Attente d'une tâche", risk: Risk::Read, description: "Attend qu'une tâche (moulinette, tests) se termine, au plus 240 s, et renvoie son résultat : vérifications, verdict, rapport. Rappelle-le si elle tourne encore.", schema: || obj(json!({"id": n("Id de la tâche"), "seconds": n("Attente maximale, 10 à 240")}), &["id"]) },
+    Spec { name: "analyze_subject", label: "Lecture du sujet", risk: Risk::Read, description: "Lit le sujet PDF lié à un projet une fois pour toutes et en garde un résumé structuré (exigences, binaire, fonctions autorisées, fonctionnalités estimées, idées de tests). À faire avant de décomposer un projet dont le sujet n'a pas de résumé. Renvoie un id de tâche à attendre avec wait_job.", schema: || obj(json!({"project": s("Clé du projet")}), &["project"]) },
+    Spec { name: "sync_my_epitech", label: "Synchronisation MY Epitech", risk: Risk::Read, description: "Relit MY Epitech (projets, rendus, agenda) et télécharge les nouveaux sujets PDF des projets en cours, rattachés aux dépôts correspondants. Nécessite une session MY Epitech ouverte.", schema: none },
     Spec { name: "navigate", label: "Navigation", risk: Risk::Read, description: "Ouvre un écran de TekBoard pour l'utilisateur : today, projects, planning, school, stats, resources, settings ; avec un projet, ouvre sa page (onglet : overview, plan, checks, git, libraries, notes).", schema: || obj(json!({"page": s("Écran"), "project": s("Clé du projet"), "tab": s("Onglet de la page projet")}), &["page"]) },
     Spec { name: "list_runs", label: "Historique des vérifications", risk: Risk::Read, description: "Dernières exécutions (tests, Banana, TestRepo, moulinette, analyses) avec leur statut et leur résumé.", schema: || obj(json!({"project": s("Clé du projet"), "kind": s("Type d'exécution"), "limit": n("1 à 20")}), &[]) },
     Spec { name: "get_report", label: "Lecture d'un rapport", risk: Risk::Read, description: "Le rapport complet d'une exécution (id donné par list_runs), avec la fin de son journal.", schema: || obj(json!({"id": n("Id de l'exécution")}), &["id"]) },
@@ -519,6 +521,16 @@ fn run(state: &AppState, caller: &Caller, name: &str, a: &Value) -> Result<Out> 
                 }
                 std::thread::sleep(std::time::Duration::from_secs(2));
             }
+        }
+        "analyze_subject" => {
+            let p = need(a, "project")?;
+            let id = super::subject::subject_of(state, p)?.ok_or_else(|| AppError::new("not_found", "Aucun sujet n'est lié à ce projet : importe-le (École → Sujets ou sync_my_epitech) ou lie-le."))?;
+            let job = super::subject::analyze(state, id)?;
+            read(json!({"status": "started", "jobId": job}))
+        }
+        "sync_my_epitech" => {
+            let r = crate::commands_my::sync_now(state)?;
+            read(json!({"routesLues": r.ok, "echecs": r.failed, "refuse": r.unauthorized, "sujetsImportes": r.subjects_imported, "detail": r.detail}))
         }
         "navigate" => {
             let page = need(a, "page")?;

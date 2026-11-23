@@ -16,7 +16,7 @@ export const DOMAIN_KEYS: Record<Domain, QueryKey[]> = {
   memory: [["memory"]],
   insights: [["insights"], ["today"]],
   runs: [["runs"], ["job-active"], ["today"]],
-  subjects: [["subjects"], ["briefs"]],
+  subjects: [["subjects"], ["briefs"], ["subject-briefs"]],
   my: [["my-status"], ["my-data"], ["my-overview"], ["my-academic"], ["repos"], ["plan"], ["subjects"]],
   libraries: [["libraries"], ["lib-status"], ["lib-catalog"], ["lib-presets"], ["lib-suggestions"]],
   settings: [["settings"], ["ui-prefs"], ["claude-info"]],

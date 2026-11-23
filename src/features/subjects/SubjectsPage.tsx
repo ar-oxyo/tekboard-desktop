@@ -133,6 +133,9 @@ function SubjectRow({ subject, repos }: { subject: Subject; repos: RepoInfo[] })
   const link = useMutation({ mutationFn: (path: string | null) => api.subjectLink(subject.id, path), onSuccess: refresh, onError: fail("Could not link") });
   const remove = useMutation({ mutationFn: () => api.subjectRemove(subject.id), onSuccess: refresh, onError: fail("Could not remove") });
   const missing = subject.repoPath !== null && !repos.some((r) => r.path === subject.repoPath);
+  const briefs = useQuery({ queryKey: ["subject-briefs"], queryFn: api.subjectBriefs });
+  const brief = briefs.data?.[String(subject.id)];
+  const analyze = useMutation({ mutationFn: () => api.subjectAnalyze(subject.id), onSuccess: () => toast({ kind: "info", title: "Tika lit le sujet", detail: "Le résumé sera gardé : le PDF ne sera plus relu." }), onError: fail("Sujet non analysé") });
 
   return (
     <li className="group flex h-12 items-center gap-3 border-b border-white/6 pr-2 pl-4 last:border-b-0 row-hover">
@@ -141,6 +144,16 @@ function SubjectRow({ subject, repos }: { subject: Subject; repos: RepoInfo[] })
         {subject.name}
       </button>
       {missing && <Badge tone="warn" title="The linked repository is no longer in your projects folders">project missing</Badge>}
+      {brief ? (
+        <Badge tone={brief.stale ? "warn" : "ok"} title={brief.brief.summary ?? ""}>
+          {brief.stale ? "résumé périmé" : `lu${brief.brief.estimateTotalMin ? ` · ~${Math.round(brief.brief.estimateTotalMin / 60)} h` : ""}`}
+        </Badge>
+      ) : null}
+      {(!brief || brief.stale) && (
+        <Button size="sm" variant="ghost" busy={analyze.isPending} onClick={() => analyze.mutate()} title="Tika lit le sujet une fois et en garde les exigences et une estimation">
+          Analyser
+        </Button>
+      )}
       <ProjectSelect className="w-52 shrink-0" value={missing ? null : subject.repoPath} repos={repos} onChange={(p) => link.mutate(p)} />
       <span className="hidden w-16 shrink-0 text-right text-xs text-faint md:block">{formatBytes(subject.size)}</span>
       <span className="hidden w-24 shrink-0 text-right text-xs text-faint lg:block">{timeAgo(subject.addedAt)}</span>

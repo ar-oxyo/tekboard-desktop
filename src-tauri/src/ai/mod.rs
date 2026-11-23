@@ -15,5 +15,6 @@ pub mod memory;
 pub mod runner;
 pub mod sandbox;
 pub mod stream;
+pub mod subject;
 pub mod tools;
 pub mod workcopy;
