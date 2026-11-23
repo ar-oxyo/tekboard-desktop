@@ -65,6 +65,22 @@ Command line: `tekboard --page testing --repo <path> --run banana|tests|testrepo
 - **MY Epitech, connected to the rest:** Agenda (hand-ins, sessions, holidays), Academic analytics (credits, units and learning outcomes, skills, log time, automated tests), modules as filters, launcher that prefers the projects the school lists, optional periodic sync. What the site does not give is reported as unavailable.
 - **Interface:** one drop-down component in the five designs (keyboard, search for long lists), secondary actions in menus, foldable sections, Settings in tabs.
 
+## Tika, ton environnement de travail (v0.5)
+
+TekBoard est maintenant organisé autour de **Tika**, une assistante intégrée (panneau à droite, `Ctrl+J`) qui voit tes projets, ton planning, tes sessions, tes tests et sa mémoire, et qui **agit réellement** par des outils contrôlés.
+
+- **Tika** : conversation en français, contexte de l'écran ouvert, actions visibles en direct, cartes « Appliquer / Refuser » pour tout changement important, bouton « Annuler » sur ce qu'elle a fait. Elle ne dit jamais qu'une chose est faite sans qu'un outil l'ait confirmé.
+- **Mémoire** : préférences, décisions, difficultés, prochaines étapes et rapports gardés d'une conversation à l'autre (recherche plein texte, jamais de secret), consultables et modifiables (« Ce que je sais »). Chaque message ne reçoit qu'une petite carte de contexte ; le reste est lu à la demande.
+- **Suggestions** : rendu proche sans session, projet qui n'avance plus, journée trop chargée, sessions manquées, rendu sans tests, nouveau sujet — calculées sans IA, avec des actions directes, au plus un rappel toutes les 30 minutes.
+- **Planning réaliste** : un moteur unique (Rust) garde des pauses avant et après chaque bloc, une pause longue après plusieurs blocs, le déjeuner, du temps libre chaque jour, une marge et un bloc « Tests et rendu » avant chaque rendu, et un plafond quotidien qui compte l'école. Rythmes Tranquille, Équilibré, Intensif ou Sur mesure. Les plans de Tika sont vérifiés par ce moteur avant de t'être montrés. Le calendrier se met à jour seul.
+- **Sessions de travail** : gérées par le backend, elles ne restent jamais ouvertes par accident (fermeture à l'heure prévue si personne ne répond, pause pendant la veille, 4 h maximum) ; sessions mixtes (« 25 min projet puis 10 min autre chose »).
+- **Moulinette de Tika** : un agent évaluateur lit le sujet et le code, décide de ses tests, compile, teste les arguments et les cas limites, passe valgrind, creuse ce qui casse et rend un rapport par gravité avec commandes de reproduction et corrections. Il travaille sur une copie de ton projet et chaque commande tourne dans **bubblewrap** (pas de réseau, dossier personnel masqué). Tu suis chaque vérification en direct. C'est une simulation, pas la moulinette officielle.
+- **Tests générés** : même bac à sable ; Tika écrit, compile et lance des tests Criterion, puis te montre un diff que tu appliques (avec sauvegarde) ou non.
+- **Sujets** : lus une fois par version (résumé structuré : exigences, binaire, fonctions autorisées, fonctionnalités estimées, idées de tests), réutilisés partout ; analyse automatique optionnelle après une synchronisation MY Epitech.
+- **Navigation** : sept entrées (Aujourd'hui, Projets, Planning, École, Stats, Modèles, Réglages) avec onglets ; palette `Ctrl+K` qui envoie tout texte libre à Tika. Les listes ne sont plus jamais grisées sans explication ; bibliothèques statiques ou dynamiques (`.so`).
+
+Prérequis en plus : `bubblewrap` (`sudo apt install bubblewrap`) pour la moulinette et la génération de tests ; Claude Code installé et connecté. Les modèles, la durée et le budget des agents se règlent dans Réglages → Tika (IA).
+
 ## Install
 
 On Ubuntu or Debian, from a clone of this repository:

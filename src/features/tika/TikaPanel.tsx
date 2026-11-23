@@ -211,7 +211,7 @@ else if (ask.text === "#free") {
                 }}
                 placeholder={running ? "Tika répond…" : "Demande à Tika…"}
                 aria-label="Message pour Tika"
-                className="max-h-40 min-h-8 flex-1 resize-none bg-transparent px-1.5 py-1.5 text-[13px] text-fg placeholder:text-faint focus:outline-none"
+                className="max-h-40 min-h-8 flex-1 resize-none bg-transparent px-1.5 py-1.5 text-[13px] text-fg placeholder:text-faint focus:outline-none focus-visible:outline-none"
               />
               {running ? (
                 <IconButton label="Interrompre" className="size-8" onClick={() => jobId !== null && void api.jobCancel(jobId)}>

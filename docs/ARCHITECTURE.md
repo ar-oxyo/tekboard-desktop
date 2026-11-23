@@ -113,6 +113,27 @@ Database migration v5 adds `status`, `deadline_at`, `deadline_source`, `kind_ove
 
 **MY Epitech background work** (`commands_my::start_background`): optional hidden reopening of the stored session at startup, and a sync every N minutes while a valid token is in memory. A failed sync is logged and not retried before the next interval; a refused session stops it and is reported.
 
+## Added in 0.5 — Tika
+
+| Module | Role |
+|---|---|
+| `ai/runner.rs` | The one way Claude Code runs: `--restricted` (no user/project settings, hooks or plugins), `--strict-mcp-config`, `--permission-mode dontAsk --permission-prompts none`, `--output-format stream-json`. Built-in tools are Read/Glob/Grep, plus Edit limited to given globs; Bash is never given. |
+| `ai/stream.rs` | Reads stream-json (init, text deltas, tool calls and results, final result) into job activity entries. |
+| `ai/sandbox.rs` | Agent commands run in bubblewrap: read-only system, tmpfs home (only PATH folders under home bound read-only), working copy writable, no network, own PID/IPC/UTS namespaces, user runtime folder / D-Bus / Docker socket hidden, CPU and file-size limits, wall-clock kill. No unsandboxed fallback. (Claude Code's own sandbox fails on Ubuntu 24.04's AppArmor user-namespace restriction, hence this.) |
+| `ai/ipc.rs`, `ai/mcp.rs` | `tekboard mcp --socket …` is the MCP server Claude Code starts; it relays `tools/list` / `tools/call` over a 0600 Unix socket to the running app with a per-run token, revoked when the run ends. |
+| `ai/tools.rs` | Tool registry with a risk level each: read, reversible (journaled in `ai_actions` with its undo), approval (a proposal in `ai_proposals`). `propose_schedule` is checked by `schedule.rs` and returned to Tika when it breaks the rhythm. |
+| `ai/agent_tools.rs` | `exec` (sandboxed command in the job's working copy) and the moulinette's reporting tools (`phase`, `plan_check`, `check_result`, `finish_report`). |
+| `ai/memory.rs` | Durable memory with FTS5 search, near-duplicate detection, secret refusal, expiry of next steps, archiving of finished projects, bounded context lines. |
+| `ai/chat.rs` | Conversations: Claude Code session continued with `--session-id`/`--resume`; each turn starts with a small context card (screen, day, hand-ins, session, memories, user decisions since the last turn). |
+| `ai/insights.rs` | Rule-based suggestions with stable keys, withdrawn when their cause disappears. |
+| `ai/workcopy.rs`, `ai/agents.rs` | Working copy of a project (work in progress included, ignored files and secrets excluded); Tika's moulinette and test generation; generated files come back as a diff applied with backups. |
+| `ai/subject.rs` | Subject digest via `--json-schema`, once per subject version. |
+| `schedule.rs` | Planning engine: rhythm, busy time, free slots with breaks, day load, plan validation, automatic planning and reorganisation. |
+| `focus.rs` | Work sessions kept by the backend with a 30 s clock (planned end, grace, sleep detection, 4 h ceiling, close at last seen on start-up). |
+| `notify.rs` | `data-changed` (domains) and `job-progress` events; the window maps domains to queries in `src/lib/sync.ts`. |
+
+Migrations v7 (assistant tables, FTS5) and v8 (`focus_sessions`, `plan_events.dedupe_key`, `work_log.event_id`) are additive.
+
 ## Roadmap
 
 1. ~~Foundations, Project Launcher, Templates~~

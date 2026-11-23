@@ -74,7 +74,7 @@ export function Onboarding() {
                   <label className="flex h-9 items-center gap-3 px-3 hover:bg-raised">
                     <input type="checkbox" className="accent-(--color-accent)" checked={picked?.has(s.path) ?? false} onChange={() => toggle(s.path)} />
                     <span className="selectable min-w-0 flex-1 truncate font-mono text-xs">{tildify(s.path, home)}</span>
-                    {s.recommended && <Badge tone="accent">suggested</Badge>}
+                    {s.recommended && <Badge tone="accent">suggéré</Badge>}
                     <span className="w-16 shrink-0 text-right text-xs text-faint">{s.repoCount} repos</span>
                   </label>
                 </li>
@@ -103,7 +103,7 @@ export function Onboarding() {
             Choisir un autre dossier…
           </Button>
           <Button variant="primary" disabled={chosen.length === 0} busy={saving} onClick={() => void save()}>
-            Use {chosen.length === 1 ? "this folder" : `these ${chosen.length || ""} folders`}
+            {chosen.length === 1 ? "Utiliser ce dossier" : `Utiliser ces ${chosen.length || ""} dossiers`}
           </Button>
         </div>
       </div>
