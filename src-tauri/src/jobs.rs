@@ -11,11 +11,15 @@ use std::collections::HashMap;
 use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, AtomicI64, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 const LOG_CAP: usize = 600 * 1024;
+/// Activity entries kept per job (agent steps, tool calls).
+const EVENTS_CAP: usize = 4000;
+/// At most one progress event every this many milliseconds (steps and the end are always sent).
+const EMIT_EVERY_MS: u128 = 200;
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -42,8 +46,39 @@ pub struct JobView {
     pub started_at: i64,
     pub duration_ms: u64,
     pub summary: Map<String, Value>,
-    /// Row in the history once the job is over.
+    /// Row in the history (written when the job starts, completed when it ends).
     pub run_id: Option<i64>,
+    /// Structured activity: what an agent did (commands, files read, tools), checks, phases.
+    pub events: Vec<Value>,
+    /// Bytes ever appended to the log; with `log_from` a client only fetches what is new.
+    pub log_total: usize,
+    /// In a delta answer: the log was trimmed past what the client had, `log` is the whole log.
+    pub log_reset: bool,
+    /// In a delta answer: index of the first entry of `events`.
+    pub events_from: usize,
+}
+
+impl JobView {
+    /// Everything but the log and the activity entries.
+    fn clone_meta(&self) -> JobView {
+        JobView {
+            id: self.id,
+            kind: self.kind.clone(),
+            repo: self.repo.clone(),
+            title: self.title.clone(),
+            status: self.status.clone(),
+            steps: self.steps.clone(),
+            log: String::new(),
+            started_at: self.started_at,
+            duration_ms: self.duration_ms,
+            summary: self.summary.clone(),
+            run_id: self.run_id,
+            events: Vec::new(),
+            log_total: self.log_total,
+            log_reset: false,
+            events_from: 0,
+        }
+    }
 }
 
 pub struct Job {
@@ -54,6 +89,8 @@ pub struct Job {
     on_kill: Mutex<Option<Vec<String>>>,
     started: Instant,
     step_started: Mutex<HashMap<String, Instant>>,
+    last_emit: Mutex<Option<Instant>>,
+    run_row: AtomicI64,
 }
 
 #[derive(Debug, Clone)]
@@ -85,16 +122,62 @@ impl Job {
     }
 
     pub fn log(&self, text: &str) {
-        let mut v = self.lock();
-        v.log.push_str(text);
-        if !text.ends_with('\n') {
-            v.log.push('\n');
+        {
+            let mut v = self.lock();
+            let before = v.log.len();
+            v.log.push_str(text);
+            if !text.ends_with('\n') {
+                v.log.push('\n');
+            }
+            v.log_total += v.log.len() - before;
+            trim_log(&mut v);
         }
-        if v.log.len() > LOG_CAP {
-            let cut = v.log.len() - LOG_CAP * 3 / 4;
-            let cut = (cut..v.log.len()).find(|i| v.log.is_char_boundary(*i)).unwrap_or(0);
-            v.log = format!("… (beginning of the log dropped)\n{}", &v.log[cut..]);
+        self.touch(false);
+    }
+
+    /// Appends raw program output to the log (no newline added).
+    fn log_raw(&self, text: &str) {
+        {
+            let mut v = self.lock();
+            v.log.push_str(text);
+            v.log_total += text.len();
+            trim_log(&mut v);
         }
+        self.touch(false);
+    }
+
+    /// Records a structured activity entry (agent tool call, check, phase…).
+    pub fn event(&self, event: Value) {
+        {
+            let mut v = self.lock();
+            if v.events.len() < EVENTS_CAP {
+                v.events.push(event);
+            }
+        }
+        self.touch(false);
+    }
+
+    /// Updates the last activity entry whose `id` field equals `id` (a tool call getting its result).
+    pub fn update_event(&self, id: &str, patch: impl FnOnce(&mut Value)) {
+        {
+            let mut v = self.lock();
+            if let Some(e) = v.events.iter_mut().rev().find(|e| e.get("id").and_then(Value::as_str) == Some(id)) {
+                patch(e);
+            }
+        }
+        self.touch(false);
+    }
+
+    /// Tells the window that this job changed. Throttled unless `force`.
+    fn touch(&self, force: bool) {
+        let mut last = self.last_emit.lock().unwrap_or_else(|e| e.into_inner());
+        if !force && last.is_some_and(|t| t.elapsed().as_millis() < EMIT_EVERY_MS) {
+            return;
+        }
+        *last = Some(Instant::now());
+        drop(last);
+        let id = self.id();
+        crate::notify::emit("job-progress", id);
     }
 
     pub fn start(&self, id: &str) {
@@ -106,6 +189,7 @@ impl Job {
             drop(v);
             self.log(&format!("\n── {label}"));
         }
+        self.touch(true);
     }
 
     pub fn end(&self, id: &str, status: &str, detail: impl Into<Option<String>>) {
@@ -116,6 +200,18 @@ impl Job {
             s.detail = detail.into();
             s.duration_ms = took;
         }
+        drop(v);
+        self.touch(true);
+    }
+
+    /// Adds a step while the job runs (an agent that decides its own checks).
+    pub fn add_step(&self, id: &str, label: &str) {
+        let mut v = self.lock();
+        if !v.steps.iter().any(|s| s.id == id) {
+            v.steps.push(Step { id: id.to_string(), label: label.to_string(), status: "pending".into(), detail: None, duration_ms: None });
+        }
+        drop(v);
+        self.touch(true);
     }
 
     pub fn skip(&self, id: &str, why: &str) {
@@ -135,32 +231,38 @@ impl Job {
     /// Runs a command to its end, streaming what it prints into the job log.
     /// Stops it (whole process group) on cancel or after `timeout`.
     pub fn run(&self, argv: &[String], cwd: &Path, timeout: Duration, envs: &[(&str, &str)]) -> Result<Outcome> {
+        self.run_lines(argv, cwd, timeout, envs, true, &mut |_| {})
+    }
+
+    /// Like `run`, and hands every complete line of output to `on_line` as it arrives.
+    /// `log_output: false` keeps the raw output out of the log (machine-readable streams:
+    /// the caller logs a readable version itself).
+    pub fn run_lines(&self, argv: &[String], cwd: &Path, timeout: Duration, envs: &[(&str, &str)], log_output: bool, on_line: &mut dyn FnMut(&str)) -> Result<Outcome> {
         use std::io::{Read, Seek, SeekFrom};
         if argv.is_empty() {
-            return Err(AppError::new("not_configured", "No command to run"));
+            return Err(AppError::new("not_configured", "Aucune commande à lancer"));
         }
         if self.cancelled() {
             return Ok(Outcome { code: None, output: String::new(), timed_out: false, cancelled: true, duration_ms: 0 });
         }
-        self.log(&format!("$ {}", argv.join(" ")));
+        if log_output {
+            self.log(&format!("$ {}", argv.join(" ")));
+        }
         let path = std::env::temp_dir().join(format!("tekboard-job-{}-{}", std::process::id(), self.started.elapsed().as_nanos()));
         let mut file = std::fs::OpenOptions::new().read(true).write(true).create_new(true).open(&path)?;
         let _ = std::fs::remove_file(&path);
         let started = Instant::now();
-        let mut child = crate::toolenv::command(&argv[0])
-            .args(&argv[1..])
-            .envs(envs.iter().copied())
-            .current_dir(cwd)
-            .stdin(Stdio::null())
-            .stdout(Stdio::from(file.try_clone()?))
-            .stderr(Stdio::from(file.try_clone()?))
-            .process_group(0)
+        let mut cmd = crate::toolenv::command(&argv[0]);
+        cmd.args(&argv[1..]).envs(envs.iter().copied()).current_dir(cwd).stdin(Stdio::null()).stdout(Stdio::from(file.try_clone()?)).stderr(Stdio::from(file.try_clone()?)).process_group(0);
+        crate::toolenv::scrub_env(&mut cmd);
+        let mut child = cmd
             .spawn()
-            .map_err(|e| if e.kind() == std::io::ErrorKind::NotFound { AppError::new("command_missing", format!("“{}” was not found", argv[0])) } else { AppError::Io(e) })?;
+            .map_err(|e| if e.kind() == std::io::ErrorKind::NotFound { AppError::new("command_missing", format!("« {} » est introuvable", argv[0])) } else { AppError::Io(e) })?;
         self.pgid.store(child.id() as i32, Ordering::SeqCst);
         let mut output = String::new();
         let mut pos = 0u64;
-        let mut pump = |file: &mut std::fs::File, output: &mut String| {
+        let mut carry = String::new();
+        let mut pump = |file: &mut std::fs::File, output: &mut String, carry: &mut String, last: bool| {
             let mut buf = Vec::new();
             if file.seek(SeekFrom::Start(pos)).is_ok() && file.read_to_end(&mut buf).is_ok() && !buf.is_empty() {
                 pos += buf.len() as u64;
@@ -168,13 +270,23 @@ impl Job {
                 if output.len() < LOG_CAP {
                     output.push_str(&text);
                 }
-                let mut v = self.lock();
-                v.log.push_str(&text);
+                if log_output {
+                    self.log_raw(&text);
+                }
+                carry.push_str(&text);
+            }
+            while let Some(nl) = carry.find('\n') {
+                let line: String = carry.drain(..=nl).collect();
+                on_line(line.trim_end_matches(['\n', '\r']));
+            }
+            if last && !carry.is_empty() {
+                let line = std::mem::take(carry);
+                on_line(line.trim_end());
             }
         };
         let (mut timed_out, mut cancelled) = (false, false);
         let status = loop {
-            pump(&mut file, &mut output);
+            pump(&mut file, &mut output, &mut carry, false);
             if let Some(status) = child.try_wait()? {
                 break status;
             }
@@ -188,7 +300,7 @@ impl Job {
             }
             std::thread::sleep(Duration::from_millis(80));
         };
-        pump(&mut file, &mut output);
+        pump(&mut file, &mut output, &mut carry, true);
         // `cancel()` may have killed the group before this loop noticed the flag.
         cancelled = cancelled || (!timed_out && self.cancelled());
         self.pgid.store(0, Ordering::SeqCst);
@@ -196,7 +308,7 @@ impl Job {
             self.log("");
         }
         if timed_out {
-            self.log(&format!("(stopped after {} s: time limit)", timeout.as_secs()));
+            self.log(&format!("(arrêté après {} s : limite de temps)", timeout.as_secs()));
         }
         Ok(Outcome { code: if timed_out || cancelled { None } else { status.code() }, output, timed_out, cancelled, duration_ms: started.elapsed().as_millis() as u64 })
     }
@@ -206,6 +318,14 @@ impl Job {
         if let Some(argv) = self.on_kill.lock().unwrap_or_else(|e| e.into_inner()).clone() {
             let _ = Command::new(&argv[0]).args(&argv[1..]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status();
         }
+    }
+}
+
+fn trim_log(v: &mut JobView) {
+    if v.log.len() > LOG_CAP {
+        let cut = v.log.len() - LOG_CAP * 3 / 4;
+        let cut = (cut..v.log.len()).find(|i| v.log.is_char_boundary(*i)).unwrap_or(0);
+        v.log = format!("… (début du journal supprimé)\n{}", &v.log[cut..]);
     }
 }
 
@@ -237,6 +357,39 @@ impl Jobs {
         Some(view)
     }
 
+    /// What changed in a job since the client last saw it: the log after `log_from` bytes
+    /// and the activity entries from index `events_from`.
+    pub fn get_since(&self, id: u64, log_from: usize, events_from: usize) -> Option<JobView> {
+        let job = self.map().get(&id).cloned()?;
+        let v = job.lock();
+        let mut view = JobView { log: String::new(), events: Vec::new(), ..v.clone_meta() };
+        let dropped = v.log_total.saturating_sub(v.log.len());
+        if log_from < dropped || log_from > v.log_total {
+            view.log = v.log.clone();
+            view.log_reset = true;
+        } else {
+            let start = log_from - dropped;
+            let start = (start..=v.log.len()).find(|i| v.log.is_char_boundary(*i)).unwrap_or(v.log.len());
+            view.log = v.log[start..].to_string();
+        }
+        let from = events_from.min(v.events.len());
+        view.events = v.events[from..].to_vec();
+        view.events_from = from;
+        drop(v);
+        if view.status == "running" {
+            view.duration_ms = job.started.elapsed().as_millis() as u64;
+        }
+        Some(view)
+    }
+
+    /// Stops every running job (the app is closing): nothing keeps running orphaned.
+    pub fn cancel_all(&self) {
+        let ids: Vec<u64> = self.map().iter().filter(|(_, j)| j.lock().status == "running").map(|(k, _)| *k).collect();
+        for id in ids {
+            self.cancel(id);
+        }
+    }
+
     pub fn cancel(&self, id: u64) {
         if let Some(job) = self.map().get(&id).cloned() {
             job.cancel.store(true, Ordering::SeqCst);
@@ -265,8 +418,21 @@ impl Jobs {
             duration_ms: 0,
             summary: Map::new(),
             run_id: None,
+            events: Vec::new(),
+            log_total: 0,
+            log_reset: false,
+            events_from: 0,
         };
-        let job = Arc::new(Job { view: Mutex::new(view), cancel: AtomicBool::new(false), pgid: AtomicI32::new(0), on_kill: Mutex::new(None), started: Instant::now(), step_started: Mutex::new(HashMap::new()) });
+        // The history row exists from the start: a run cut short by a crash or by closing
+        // the app shows up as interrupted instead of vanishing.
+        let row = {
+            let conn = db.lock().unwrap_or_else(|e| e.into_inner());
+            db::insert_run(&conn, &view.kind, view.repo.as_deref(), view.started_at, 0, "running", &view.title, "{}", "").ok()
+        };
+        let mut view = view;
+        view.run_id = row;
+        let job = Arc::new(Job { view: Mutex::new(view), cancel: AtomicBool::new(false), pgid: AtomicI32::new(0), on_kill: Mutex::new(None), started: Instant::now(), step_started: Mutex::new(HashMap::new()), last_emit: Mutex::new(None), run_row: AtomicI64::new(row.unwrap_or(0)) });
+        crate::notify::changed(&["runs"]);
         {
             // Keep the table small: forget finished jobs beyond the most recent ones.
             let mut map = self.map();
@@ -288,7 +454,8 @@ impl Jobs {
                 (Err(_), _) => "failed",
             };
             if let Err(e) = &result {
-                job.log(&format!("\nError: {e}"));
+                job.log(&format!("\nErreur : {e}"));
+                job.lock().summary.entry("error").or_insert_with(|| Value::String(e.to_string()));
             }
             let snapshot = {
                 let mut v = job.lock();
@@ -306,11 +473,19 @@ impl Jobs {
                 v.clone()
             };
             let conn = db.lock().unwrap_or_else(|e| e.into_inner());
-            let saved = db::insert_run(&conn, &snapshot.kind, snapshot.repo.as_deref(), snapshot.started_at, snapshot.duration_ms as i64, &snapshot.status, &snapshot.title, &Value::Object(snapshot.summary.clone()).to_string(), &snapshot.log);
+            let summary = Value::Object(snapshot.summary.clone()).to_string();
+            let row = job.run_row.load(Ordering::SeqCst);
+            let saved = if row > 0 {
+                db::finish_run(&conn, row, snapshot.duration_ms as i64, &snapshot.status, &summary, &snapshot.log).map(|_| row)
+            } else {
+                db::insert_run(&conn, &snapshot.kind, snapshot.repo.as_deref(), snapshot.started_at, snapshot.duration_ms as i64, &snapshot.status, &snapshot.title, &summary, &snapshot.log)
+            };
             drop(conn);
             if let Ok(run_id) = saved {
                 job.lock().run_id = Some(run_id);
             }
+            job.touch(true);
+            crate::notify::changed(&["runs"]);
         });
         id
     }
@@ -504,7 +679,7 @@ mod tests {
         });
         let v = wait(&jobs, id);
         assert_eq!(v.status, "failed");
-        assert!(v.log.contains("time limit") && v.log.contains("was not found"));
+        assert!(v.log.contains("limite de temps") && v.log.contains("est introuvable"), "{}", v.log);
     }
 
     #[test]

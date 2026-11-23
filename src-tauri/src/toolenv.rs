@@ -189,7 +189,19 @@ pub fn command(program: &str) -> Command {
     let resolved = if program.contains('/') { PathBuf::from(program) } else { which(program).unwrap_or_else(|| PathBuf::from(program)) };
     let mut cmd = Command::new(resolved);
     cmd.env("PATH", child_path());
+    scrub_env(&mut cmd);
     cmd
+}
+
+/// Variables a child must not inherit. When TekBoard itself was started from a Claude Code
+/// session (a terminal inside it, `npm run app:dev` from its shell), these would make the
+/// `claude` started by TekBoard believe it is nested in that session.
+const SCRUBBED: &[&str] = &["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "CLAUDE_CODE_SESSION_ID", "CLAUDE_AGENT_SDK_VERSION", "CLAUDE_CODE_SIMPLE", "CLAUDE_CODE_SAFE_MODE"];
+
+pub fn scrub_env(cmd: &mut Command) {
+    for k in SCRUBBED {
+        cmd.env_remove(k);
+    }
 }
 
 /// First line a program prints for `args`, within `timeout`. `Err` says why there is none.

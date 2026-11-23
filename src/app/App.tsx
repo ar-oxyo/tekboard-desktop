@@ -12,6 +12,7 @@ import { SubjectsPage } from "../features/subjects/SubjectsPage";
 import { TemplatesPage } from "../features/templates/TemplatesPage";
 import { useSettings } from "../lib/hooks";
 import { api, asAppError } from "../lib/api";
+import { listenJobs } from "../lib/jobs";
 import { PAGES, useUi, type Page } from "../lib/store";
 import { AnalyticsPage } from "../features/analytics/AnalyticsPage";
 import { CozyPage } from "../features/cozy/CozyPage";
@@ -57,6 +58,7 @@ export function App() {
   const sheetPath = useUi((s) => s.sheetPath);
   const tool = useUi((s) => s.tool);
   const settings = useSettings();
+  const qc = useQueryClient();
   useCaptureShortcut();
 
   // Glass only when the user keeps it on and the system does not ask for less transparency.
@@ -111,8 +113,12 @@ export function App() {
     );
   }, [setPage]);
 
+  // Jobs report their progress as events (see lib/jobs.ts).
+  useEffect(() => {
+    const off = listenJobs(qc);
+    return () => void off.then((f) => f());
+  }, [qc]);
   // An automatic MY Epitech sync ended: every screen fed by it re-reads its data.
-  const qc = useQueryClient();
   useEffect(() => {
     const off = listen<{ ok: number; failed: number; unauthorized: boolean; detail: string }>("my-synced", (e) => {
       for (const key of [["repos"], ["my-data"], ["my-overview"], ["my-status"], ["my-academic"], ["subjects"], ["plan"]]) void qc.invalidateQueries({ queryKey: key });

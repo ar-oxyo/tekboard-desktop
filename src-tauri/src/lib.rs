@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod analytics;
 pub mod checker;
 pub mod claude;
@@ -23,6 +24,7 @@ pub mod mydata;
 pub mod myepitech;
 pub mod myres;
 pub mod myview;
+pub mod notify;
 pub mod packager;
 pub mod planner;
 pub mod projects;
@@ -49,6 +51,9 @@ pub fn run() {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
             let conn = db::open(&data_dir.join("tekboard.db"))?;
+            // Runs left open by a crash or by closing the app during a task.
+            let _ = db::mark_interrupted(&conn);
+            notify::init(app.handle().clone());
             // Programs are looked up like the user's terminal would: see `toolenv`.
             toolenv::set_override("claude", settings::load(&conn).ok().and_then(|s| s.claude_path).as_deref());
             toolenv::warm_up();
@@ -196,6 +201,14 @@ pub fn run() {
             commands_dev::readme_write,
             commands_dev::readme_ai_start,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running TekBoard");
+        .build(tauri::generate_context!())
+        .expect("error while building TekBoard")
+        .run(|app, event| {
+            // Closing the app stops what it started: no `claude` or `make` left running orphaned.
+            if let tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit = event {
+                if let Some(state) = app.try_state::<AppState>() {
+                    state.jobs.cancel_all();
+                }
+            }
+        });
 }

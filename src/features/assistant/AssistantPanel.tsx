@@ -1,11 +1,11 @@
 // Planning assistant: a side panel over any screen. Quick actions are computed here (free,
 // instant); free-form requests go to Claude Code with the planning as context and no tool.
 // Whatever is proposed is previewed and saved only on "Apply plan".
-import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CalendarCheck, CalendarSearch, Check, ListTree, RefreshCw, Send, Sparkles, Square, Sun, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Select } from "../../components/Select";
 import { Button, cn, IconButton, Spinner } from "../../components/ui";
+import { useJob } from "../../lib/jobs";
 import { api, asAppError, type ScheduleAction } from "../../lib/api";
 import { addDays, buildContext, describeAction, fmtDur, freeSlots, fromLocalIso, hhmm, MIN, reorganize, schedule, startOfDay, type Span } from "../../lib/plan";
 import { useUi, type Proposal } from "../../lib/store";
@@ -41,7 +41,7 @@ function Panel() {
   const say = (m: Omit<Msg, "id">) => setMsgs((l) => [...l, { ...m, id: nextMsg++ }]);
   const propose = (p: Proposal | null) => useUi.getState().propose(p);
 
-  const job = useQuery({ queryKey: ["job", jobId], queryFn: () => api.jobGet(jobId!), enabled: jobId !== null, refetchInterval: (q) => (q.state.data && q.state.data.status !== "running" ? false : 1000), staleTime: 0, retry: false });
+  const job = useJob(jobId);
   useEffect(() => {
     const j = job.data;
     if (!j || j.status === "running" || jobId === null) return;

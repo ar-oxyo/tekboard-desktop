@@ -6,6 +6,7 @@ import { Menu, MenuItem, MenuLabel, MenuSeparator } from "../../components/Menu"
 import { useEffect, useState, type ReactNode } from "react";
 import { Select } from "../../components/Select";
 import { Button, Card, CardTitle, cn, Dot, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
+import { useJob } from "../../lib/jobs";
 import { api, asAppError, type RunKind, type TestingInfo } from "../../lib/api";
 import { formatBytes, timeAgo } from "../../lib/format";
 import { usePref, useRepos } from "../../lib/hooks";
@@ -30,14 +31,7 @@ export function TestingPage() {
   const runs = useQuery({ queryKey: ["runs", repoPath, kind], queryFn: () => api.runsList(repoPath, kind === "all" ? null : kind, 40), enabled: repoPath !== null, staleTime: 0 });
   const envs = useQuery({ queryKey: ["testrepo-envs"], queryFn: api.testrepoEnvs, staleTime: 0 });
 
-  const job = useQuery({
-    queryKey: ["job", jobId],
-    queryFn: () => api.jobGet(jobId!),
-    enabled: jobId !== null && runId === null,
-    refetchInterval: (q) => (q.state.data && q.state.data.status !== "running" && q.state.data.runId !== null ? false : 600),
-    staleTime: 0,
-    retry: false,
-  });
+  const job = useJob(runId === null ? jobId : null);
   const run = useQuery({ queryKey: ["run", runId], queryFn: () => api.runGet(runId!), enabled: runId !== null });
   const finished = job.data && job.data.status !== "running" ? job.data.runId : null;
   useEffect(() => {

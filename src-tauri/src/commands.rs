@@ -83,6 +83,7 @@ pub fn get_settings(state: State<'_, AppState>) -> Result<Settings> {
 pub fn save_settings(state: State<'_, AppState>, settings: Settings) -> Result<Settings> {
     let saved = settings::save(&state.conn(), &settings)?;
     crate::toolenv::set_override("claude", saved.claude_path.as_deref());
+    crate::claude::forget();
     Ok(saved)
 }
 

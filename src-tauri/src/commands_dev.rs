@@ -63,8 +63,12 @@ pub fn project_config_set(state: State<'_, AppState>, repo: String, config: Proj
 // ───────────────────────────── jobs and history ─────────────────────────────
 
 #[tauri::command(async)]
-pub fn job_get(state: State<'_, AppState>, id: u64) -> Result<JobView> {
-    state.jobs.get(id).ok_or_else(|| AppError::new("unknown_job", "This task is no longer in memory; see the history."))
+pub fn job_get(state: State<'_, AppState>, id: u64, log_from: Option<usize>, events_from: Option<usize>) -> Result<JobView> {
+    let view = match (log_from, events_from) {
+        (None, None) => state.jobs.get(id),
+        (l, e) => state.jobs.get_since(id, l.unwrap_or(0), e.unwrap_or(0)),
+    };
+    view.ok_or_else(|| AppError::new("unknown_job", "Cette tâche n'est plus en mémoire : consulte l'historique."))
 }
 
 #[tauri::command(async)]
@@ -199,18 +203,21 @@ pub struct ClaudeCheck {
 /// program found is logged in and answers. Counts toward the user's Claude usage.
 #[tauri::command(async)]
 pub fn claude_check(state: State<'_, AppState>) -> Result<ClaudeCheck> {
+    claude::forget();
     let exe = claude::executable()?;
     let dir = state.cache_dir.join("claude-check");
     std::fs::create_dir_all(&dir)?;
-    let mut argv = claude::build_argv("Reply with exactly one word: ready", &[]);
-    argv[0] = exe;
+    // Same command line as every real run (isolated, restricted), so this proves they work.
+    let argv = crate::ai::runner::argv(&exe, &crate::ai::runner::Request::new("Réponds exactement par un mot : prêt", crate::ai::runner::Tools::None, Duration::from_secs(120)));
     let report = workspace::run_argv_captured(&argv, &dir, Duration::from_secs(120), &[])?;
     let (answer, error, cost_usd) = if report.timed_out {
-        (None, Some("Claude Code did not answer within 2 minutes".to_string()), None)
+        (None, Some("Claude Code n'a pas répondu en 2 minutes".to_string()), None)
     } else {
-        match claude::parse_answer(&report.output) {
-            Ok(a) => (Some(a.text.trim().chars().take(200).collect()), None, a.cost_usd),
-            Err(e) => (None, Some(e.to_string()), None),
+        let events: Vec<_> = report.output.lines().flat_map(crate::ai::stream::parse_line).collect();
+        match events.iter().rev().find_map(|e| if let crate::ai::stream::Event::Result(f) = e { Some(f.clone()) } else { None }) {
+            Some(f) if f.ok => (Some(f.text.trim().chars().take(200).collect()), None, f.cost_usd),
+            Some(f) => (None, Some(crate::ai::stream::explain(&f)), None),
+            None => (None, Some(events.iter().rev().find_map(|e| if let crate::ai::stream::Event::Raw(l) = e { Some(crate::ai::stream::explain_raw(l)) } else { None }).unwrap_or_else(|| "Claude Code s'est arrêté sans réponse".into())), None),
         }
     };
     Ok(ClaudeCheck { ok: error.is_none(), answer, error, cost_usd, duration_ms: report.duration_ms })

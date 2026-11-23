@@ -595,6 +595,17 @@ pub fn insert_run(conn: &Connection, kind: &str, repo_path: Option<&str>, starte
     Ok(conn.last_insert_rowid())
 }
 
+/// Completes the row written when the job started.
+pub fn finish_run(conn: &Connection, id: i64, duration_ms: i64, status: &str, summary: &str, log: &str) -> Result<()> {
+    conn.execute("UPDATE runs SET duration_ms = ?2, status = ?3, summary = ?4, log = ?5 WHERE id = ?1", params![id, duration_ms, status, summary, log])?;
+    Ok(())
+}
+
+/// Runs still marked `running` when the app starts were cut short (crash, app closed).
+pub fn mark_interrupted(conn: &Connection) -> Result<usize> {
+    Ok(conn.execute("UPDATE runs SET status = 'interrupted' WHERE status = 'running'", [])?)
+}
+
 fn run_row(r: &rusqlite::Row, with_log: bool) -> rusqlite::Result<Run> {
     let summary: String = r.get(7)?;
     Ok(Run {

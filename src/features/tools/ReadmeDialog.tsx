@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { DiffView } from "../../components/DiffView";
 import { Modal } from "../../components/Modal";
 import { Button, cn, ErrorNote, Spinner } from "../../components/ui";
+import { useJob } from "../../lib/jobs";
 import { api, asAppError } from "../../lib/api";
 import { useUi } from "../../lib/store";
 import { ClaudeBriefDialog } from "./ClaudeBrief";
@@ -27,7 +28,7 @@ export function ReadmeDialog({ repo }: { repo: string }) {
     if (draft.data && source === "facts") setText(draft.data.proposed);
   }, [draft.data, source]);
 
-  const job = useQuery({ queryKey: ["job", jobId], queryFn: () => api.jobGet(jobId!), enabled: jobId !== null, refetchInterval: (q) => (q.state.data && q.state.data.status !== "running" ? false : 700), staleTime: 0 });
+  const job = useJob(jobId);
   const proposal = job.data?.status === "success" && typeof job.data.summary.readme === "string" ? job.data.summary.readme : null;
   useEffect(() => {
     if (proposal) {

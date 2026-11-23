@@ -119,8 +119,9 @@ pub fn assistant_start(state: State<'_, AppState>, question: String, context: St
     if context.len() > MAX_CONTEXT || serde_json::from_str::<serde_json::Value>(&context).is_err() {
         return Err(AppError::new("invalid_context", "The planning context is too large or unreadable"));
     }
-    if let Some(id) = state.jobs.active("assistant", None) {
-        return Ok(id);
+    // A second question must never receive the answer to the first one.
+    if state.jobs.active("assistant", None).is_some() {
+        return Err(AppError::new("busy", "Une réponse est déjà en cours : attends-la ou annule-la."));
     }
     claude::executable()?;
     let subject = subject_of.and_then(|repo| {

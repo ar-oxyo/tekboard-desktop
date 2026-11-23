@@ -17,8 +17,8 @@ export interface ReportData {
   startedAt: number;
 }
 
-export const STATUS_LABEL: Record<JobStatus, string> = { running: "Running", success: "Success", warning: "Warning", failed: "Failed", cancelled: "Cancelled" };
-export const STATUS_TONE: Record<JobStatus, "info" | "ok" | "warn" | "danger" | "neutral"> = { running: "info", success: "ok", warning: "warn", failed: "danger", cancelled: "neutral" };
+export const STATUS_LABEL: Record<JobStatus, string> = { running: "En cours", success: "Réussi", warning: "Avertissement", failed: "Échec", cancelled: "Annulé", interrupted: "Interrompu" };
+export const STATUS_TONE: Record<JobStatus, "info" | "ok" | "warn" | "danger" | "neutral"> = { running: "info", success: "ok", warning: "warn", failed: "danger", cancelled: "neutral", interrupted: "neutral" };
 export const KIND_LABEL: Record<RunKind, string> = { tests: "Unit tests", testrepo: "TestRepo", banana: "Banana", moulinette: "Claude Moulinette", gen_tests: "Generated tests", readme: "README", build: "Build", command: "Command", analysis: "Repository analysis", assistant: "Planning assistant" };
 
 export function duration(ms: number): string {

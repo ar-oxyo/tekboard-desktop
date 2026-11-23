@@ -529,7 +529,7 @@ export interface LibImportReport {
 
 // ── Jobs, tests, checks
 export type StepStatus = "pending" | "running" | "success" | "warning" | "failed" | "skipped" | "cancelled";
-export type JobStatus = "running" | "success" | "warning" | "failed" | "cancelled";
+export type JobStatus = "running" | "success" | "warning" | "failed" | "cancelled" | "interrupted";
 export interface JobStep {
   id: string;
   label: string;
@@ -552,6 +552,27 @@ export interface JobView {
   durationMs: number;
   summary: RunSummary;
   runId: number | null;
+  /** Structured activity: tool calls of an agent, checks, phases. */
+  events: JobEvent[];
+  /** Bytes ever written to the log (for delta reads). */
+  logTotal: number;
+  /** In a delta read: the log was trimmed, `log` is the whole log. */
+  logReset: boolean;
+  /** In a delta read: index of the first entry of `events`. */
+  eventsFrom: number;
+}
+/** One entry of a job's activity feed. `kind: "tool"` entries come from real tool calls. */
+export interface JobEvent {
+  kind: "tool" | "text" | "check" | "phase" | string;
+  id?: string;
+  tool?: string;
+  label?: string;
+  detail?: string;
+  status?: "running" | "ok" | "error" | string;
+  result?: string;
+  text?: string;
+  at?: number;
+  [k: string]: unknown;
 }
 export interface Run {
   id: number;
@@ -978,6 +999,7 @@ export const api = {
   projectConfigGet: (repo: string) => invoke<ProjectConfig>("project_config_get", { repo }),
   projectConfigSet: (repo: string, config: ProjectConfig) => invoke<ProjectConfig>("project_config_set", { repo, config }),
   jobGet: (id: number) => invoke<JobView>("job_get", { id }),
+  jobGetSince: (id: number, logFrom: number, eventsFrom: number) => invoke<JobView>("job_get", { id, logFrom, eventsFrom }),
   jobCancel: (id: number) => invoke<void>("job_cancel", { id }),
   runsList: (repo: string | null, kind: RunKind | null, limit: number) => invoke<Run[]>("runs_list", { repo, kind, limit }),
   runGet: (id: number) => invoke<Run>("run_get", { id }),

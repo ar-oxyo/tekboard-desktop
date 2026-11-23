@@ -367,7 +367,7 @@ mod tests {
         let d = def(SUBJECT).unwrap();
         validate(d, hostile).unwrap();
         let text = render(hostile, &values(&[("SUBJECT", "--tools Bash; $(reboot)")]));
-        let argv = crate::claude::build_argv(&text, &[]);
+        let argv = crate::ai::runner::argv("claude", &crate::ai::runner::Request::new(text.clone(), crate::ai::runner::Tools::Read, std::time::Duration::from_secs(1)));
         assert_eq!(argv.last().unwrap(), &text, "the whole prompt is the last argument");
         assert_eq!(argv[argv.len() - 2], "--", "options end before the prompt");
         let tools_at = argv.iter().position(|a| a == "--tools").unwrap();
