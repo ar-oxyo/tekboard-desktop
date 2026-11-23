@@ -454,7 +454,7 @@ export function unplanned(tasks: PlanTask[], events: PlanEvent[], now: number): 
   const held = new Set(events.filter((e) => e.taskId !== null && e.end * 1000 > now && !e.done).map((e) => e.taskId));
   return openTasks(tasks).filter((t) => !held.has(t.id) && t.kind === "task");
 }
-export const PRIORITY = ["No priority", "Low", "Medium", "High"];
+export const PRIORITY = ["Aucune priorité", "Basse", "Moyenne", "Haute"];
 
 /** Done / total of a project's tasks (sub-tasks count), or `null` when it has none. */
 export function taskProgress(tasks: PlanTask[], key: string): { done: number; total: number } | null {
@@ -496,33 +496,38 @@ export function describeAction(a: ScheduleAction, projects: PlanProject[], event
   const name = (key: string | null) => (key ? (projects.find((p) => p.key === key)?.title ?? key.split("/").pop() ?? key) : null);
   const span = (start: string, end: string) => {
     const [s, e] = [fromLocalIso(start), fromLocalIso(end)];
-    return `${new Date(s).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })} · ${hhmm(s)} – ${hhmm(e)}`;
+    return `${new Date(s).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })} · ${hhmm(s)} – ${hhmm(e)}`;
   };
   switch (a.type) {
     case "create_session":
-      return { verb: "Add", text: a.title || name(a.project) || "Work session", when: span(a.start, a.end) };
+      return { verb: "Ajouter", text: a.title || name(a.project) || "Session de travail", when: span(a.start, a.end) };
     case "move_event":
-      return { verb: "Move", text: events.find((e) => e.id === a.id)?.title ?? `entry ${a.id}`, when: span(a.start, a.end) };
+      return { verb: "Déplacer", text: events.find((e) => e.id === a.id)?.title ?? `entrée ${a.id}`, when: span(a.start, a.end) };
     case "delete_event":
-      return { verb: "Remove", text: events.find((e) => e.id === a.id)?.title ?? `entry ${a.id}`, when: null };
+      return { verb: "Retirer", text: events.find((e) => e.id === a.id)?.title ?? `entrée ${a.id}`, when: null };
     case "create_task":
-      return { verb: "Task", text: `${a.title}${a.subtasks?.length ? ` (+${a.subtasks.length} sub-tasks)` : ""}`, when: [name(a.project), a.estimateMin ? fmtDur(a.estimateMin) : null].filter(Boolean).join(" · ") || null };
+      return { verb: "Tâche", text: `${a.title}${a.subtasks?.length ? ` (+${a.subtasks.length} sous-tâches)` : ""}`, when: [name(a.project), a.estimateMin ? fmtDur(a.estimateMin) : null].filter(Boolean).join(" · ") || null };
     case "set_priority":
-      return { verb: "Priority", text: name(a.project) ?? "", when: PRIORITY[a.priority] ?? String(a.priority) };
+      return { verb: "Priorité", text: name(a.project) ?? "", when: PRIORITY[a.priority] ?? String(a.priority) };
     case "set_estimate":
-      return { verb: "Estimate", text: name(a.project) ?? "", when: `${fmtDur(a.estimateMin)} left` };
+      return { verb: "Estimation", text: name(a.project) ?? "", when: `reste ${fmtDur(a.estimateMin)}` };
   }
 }
 
-/** Minutes of a typed duration: `12` and `1.5` are hours, `1h30`, `45m` and `90 min` are what they say. */
-export function parseDur(text: string): number | null {
+/**
+ * Minutes of a typed duration. `1h30`, `45m` and `90 min` are what they say; a bare number is
+ * read in `bare` units: hours for the work left on a project (`12`), minutes for a session,
+ * a break or a daily ceiling (`240`), so "240" never becomes 240 hours.
+ */
+export function parseDur(text: string, bare: "h" | "min" = "h"): number | null {
   const t = text.trim().toLowerCase().replace(",", ".");
   let m = /^(\d+(?:\.\d+)?)\s*h(?:\s*(\d{1,2})\s*(?:m|min)?)?$/.exec(t);
   if (m) return Math.round(Number(m[1]) * 60 + Number(m[2] ?? 0));
   m = /^(\d+)\s*(?:m|min)$/.exec(t);
   if (m) return Number(m[1]);
   m = /^(\d+(?:\.\d+)?)$/.exec(t);
-  return m ? Math.round(Number(m[1]) * 60) : null;
+  if (!m) return null;
+  return bare === "min" && !m[1].includes(".") ? Number(m[1]) : Math.round(Number(m[1]) * 60);
 }
 /** A duration as it can be typed back: `1h30`, `45m`, `12h`. */
 export const durInput = (minutes: number | null) => (minutes === null ? "" : minutes < 60 ? `${minutes}m` : minutes % 60 === 0 ? `${minutes / 60}h` : `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, "0")}`);

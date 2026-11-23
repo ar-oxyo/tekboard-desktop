@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import lib from "../../src-tauri/src/lib.rs?raw";
 import { describe, expect, it } from "vitest";
 import { COMMAND_DOMAINS, keysFor } from "./sync";
 
@@ -17,7 +17,6 @@ describe("data-changed → queries", () => {
     expect(keysFor(["nope"])).toEqual([]);
   });
   it("every writing command named in the table exists in the backend", () => {
-    const lib = readFileSync(new URL("../../src-tauri/src/lib.rs", import.meta.url), "utf8");
     const registered = new Set([...lib.matchAll(/commands\w*::(\w+)/g)].map((m) => m[1]));
     for (const c of Object.keys(COMMAND_DOMAINS)) expect(registered, c).toContain(c);
   });

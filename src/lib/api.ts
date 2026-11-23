@@ -895,6 +895,114 @@ export interface PlanApplied {
   projects: number;
 }
 
+// ── Tika (assistant), memory, work sessions
+export interface Screen {
+  page: string;
+  project?: string | null;
+  tab?: string | null;
+  detail?: string | null;
+}
+export interface AiThread {
+  id: number;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messages: number;
+}
+export interface AiStep {
+  label: string;
+  detail: string;
+  status: string;
+  tool: string;
+}
+export interface AiMessage {
+  id: number;
+  role: "user" | "assistant" | "system";
+  text: string;
+  meta: { steps?: AiStep[]; proposals?: number[]; actions?: number[]; costUsd?: number | null; error?: boolean; screen?: Screen };
+  createdAt: number;
+}
+export interface AiSettings {
+  chatModel: string;
+  agentModel: string;
+  agentBudgetUsd: number;
+  agentMinutes: number;
+  autoAnalyze: boolean;
+}
+export interface AiProposal {
+  id: number;
+  threadId: number | null;
+  kind: string;
+  title: string;
+  rationale: string;
+  payload: { actions: ScheduleAction[]; warnings?: string[] };
+  status: "pending" | "accepted" | "rejected";
+  outcome: { accepted: boolean; kept?: number; of?: number } | null;
+  at: number;
+}
+export interface AiAction {
+  id: number;
+  threadId: number | null;
+  tool: string;
+  summary: string;
+  status: "done" | "undone";
+  at: number;
+}
+export type MemoryKind = "preference" | "goal" | "constraint" | "decision" | "difficulty" | "next_step" | "fact" | "test_report";
+export interface Memory {
+  id: number;
+  scope: string;
+  kind: MemoryKind;
+  content: string;
+  source: string;
+  pinned: boolean;
+  createdAt: number;
+  updatedAt: number;
+  lastUsedAt: number | null;
+  expiresAt: number | null;
+  archived: boolean;
+}
+export interface FocusSession {
+  id: number;
+  title: string;
+  project: string | null;
+  taskId: number | null;
+  eventId: number | null;
+  startedAt: number;
+  plannedMin: number;
+  pausedAt: number | null;
+  pausedTotalS: number;
+  lastSeenAt: number;
+  dueNotified: boolean;
+  thenTitle: string | null;
+  thenMin: number | null;
+  endedAt: number | null;
+  endReason: string | null;
+  seconds: number | null;
+}
+export interface FocusStart {
+  title: string;
+  project?: string | null;
+  taskId?: number | null;
+  eventId?: number | null;
+  minutes: number;
+  thenTitle?: string | null;
+  thenMin?: number | null;
+}
+export type FocusNotice =
+  | { kind: "due"; id: number; title: string; thenTitle: string | null }
+  | { kind: "closed"; id: number; title: string; reason: string; minutes: number }
+  | { kind: "paused"; id: number; title: string }
+  | { kind: "break"; id: number; minutes: number };
+export interface FocusStats {
+  totalMin: number;
+  sessions: number;
+  autoClosed: number;
+  byProject: [string | null, number][];
+  byDay: [string, number][];
+  longestMin: number;
+}
+
 export const api = {
   planState: () => invoke<PlanState>("plan_state"),
   myFreeSlots: (eventId: number) => invoke<Array<{ start: string; end: string }>>("my_free_slots", { eventId }),
@@ -1046,6 +1154,32 @@ export const api = {
   myAcademic: () => invoke<Academic>("my_academic"),
   myOverview: () => invoke<MyOverview>("my_overview"),
   myApplyDeadlines: (projectIds: number[]) => invoke<number>("my_apply_deadlines", { projectIds }),
+
+
+  aiSend: (thread: number | null, text: string, screen: Screen) => invoke<{ threadId: number; jobId: number }>("ai_send", { thread, text, screen }),
+  aiThreads: () => invoke<AiThread[]>("ai_threads"),
+  aiThread: (id: number) => invoke<AiMessage[]>("ai_thread", { id }),
+  aiThreadDelete: (id: number) => invoke<void>("ai_thread_delete", { id }),
+  aiContextPreview: (screen: Screen) => invoke<string>("ai_context_preview", { screen }),
+  aiSettingsGet: () => invoke<AiSettings>("ai_settings_get"),
+  aiSettingsSet: (settings: AiSettings) => invoke<AiSettings>("ai_settings_set", { settings }),
+  aiUndo: (id: number) => invoke<string>("ai_undo", { id }),
+  aiActions: (limit?: number) => invoke<AiAction[]>("ai_actions", { limit: limit ?? null }),
+  aiProposals: (status?: string | null) => invoke<AiProposal[]>("ai_proposals", { status: status ?? null }),
+  aiProposalDecide: (id: number, accept: boolean, keep: number[] | null) => invoke<unknown>("ai_proposal_decide", { id, accept, keep }),
+  aiTool: (name: string, args: Record<string, unknown>) => invoke<Record<string, unknown>>("ai_tool", { name, args }),
+  memoryList: (scope?: string | null, archived?: boolean) => invoke<Memory[]>("memory_list", { scope: scope ?? null, archived: archived ?? false }),
+  memoryAdd: (scope: string, kind: MemoryKind, content: string, pinned: boolean) => invoke<Memory>("memory_add", { scope, kind, content, pinned }),
+  memoryUpdate: (id: number, patch: { content?: string; kind?: MemoryKind; pinned?: boolean; archived?: boolean }) => invoke<Memory>("memory_update", { id, patch }),
+  memoryDelete: (id: number) => invoke<void>("memory_delete", { id }),
+  focusGet: () => invoke<FocusSession | null>("focus_get"),
+  focusStart: (start: FocusStart) => invoke<FocusSession>("focus_start", { start }),
+  focusPause: () => invoke<FocusSession>("focus_pause"),
+  focusResume: () => invoke<FocusSession>("focus_resume"),
+  focusExtend: (minutes: number) => invoke<FocusSession>("focus_extend", { minutes }),
+  focusStop: (done: boolean) => invoke<FocusSession>("focus_stop", { done }),
+  focusDiscard: () => invoke<void>("focus_discard"),
+  focusStats: (from: number, to: number) => invoke<FocusStats>("focus_stats", { from, to }),
 
   startup: () => invoke<{ page: string | null; sheet: string | null; theme: string | null; repo: string | null; pick: string | null; tool: string | null; run: string | null; report: number | null; anchor: string | null }>("startup"),
 };

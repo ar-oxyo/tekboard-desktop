@@ -16,7 +16,9 @@ describe("dates", () => {
     expect(startOfWeek(at(19, 15))).toBe(at(16, 0));
     expect(startOfWeek(at(22, 23))).toBe(at(16, 0)); // a Sunday belongs to the week that started on Monday
     expect([fmtDur(45), fmtDur(120), fmtDur(95)]).toEqual(["45 min", "2 h", "1 h 35"]);
-    expect(["12", "1.5", "1h30", "45m", "90 min", "2 h", "soon"].map(parseDur)).toEqual([720, 90, 90, 45, 90, 120, null]);
+    expect(["12", "1.5", "1h30", "45m", "90 min", "2 h", "soon"].map((t) => parseDur(t))).toEqual([720, 90, 90, 45, 90, 120, null]);
+    // Sessions, breaks and daily ceilings: a bare number is minutes (it used to give 240 hours).
+    expect(["240", "15", "1.5", "1h"].map((t) => parseDur(t, "min"))).toEqual([240, 15, 90, 60]);
     expect([720, 90, 45, null].map(durInput)).toEqual(["12h", "1h30", "45m", ""]);
   });
 });

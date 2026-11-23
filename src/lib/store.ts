@@ -92,6 +92,10 @@ interface UiState {
   closeAssistant: () => void;
   proposal: Proposal | null;
   propose: (p: Proposal | null) => void;
+  /** Conversation shown in Tika's panel, and the turn being answered. */
+  tikaThread: number | null;
+  tikaJob: number | null;
+  setTika: (t: { thread?: number | null; job?: number | null }) => void;
   /** Calendar entry being created or edited (`id` absent = new). */
   eventEdit: Partial<PlanEvent> | null;
   editEvent: (e: Partial<PlanEvent> | null) => void;
@@ -141,6 +145,22 @@ export const useUi = create<UiState>((set, get) => ({
   assistantAsk: null,
   openAssistant: (ask) => set({ assistantOpen: true, assistantAsk: ask ?? null, paletteOpen: false }),
   closeAssistant: () => set({ assistantOpen: false, assistantAsk: null }),
+  tikaThread: (() => {
+    const v = Number(localStorage.getItem("tekboard.tikaThread"));
+    return Number.isFinite(v) && v > 0 ? v : null;
+  })(),
+  tikaJob: null,
+  setTika: (t) =>
+    set((s) => {
+      const thread = t.thread !== undefined ? t.thread : s.tikaThread;
+      try {
+        if (thread) localStorage.setItem("tekboard.tikaThread", String(thread));
+        else localStorage.removeItem("tekboard.tikaThread");
+      } catch {
+        /* kept for this window */
+      }
+      return { tikaThread: thread, tikaJob: t.job !== undefined ? t.job : s.tikaJob };
+    }),
   proposal: null,
   propose: (proposal) => set(proposal ? { proposal, assistantOpen: true } : { proposal }),
   eventEdit: null,

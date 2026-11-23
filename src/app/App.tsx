@@ -23,7 +23,7 @@ import { MyEpitechPage } from "../features/myepitech/MyEpitechPage";
 import { PlanningPage } from "../features/planning/PlanningPage";
 import { EventDialog, QuickCapture, TaskDialog, useCaptureShortcut } from "../features/planning/Dialogs";
 import { FocusBar } from "../features/planning/Focus";
-import { AssistantPanel } from "../features/assistant/AssistantPanel";
+import { TikaPanel } from "../features/tika/TikaPanel";
 import { PromptsPage } from "../features/prompts/PromptsPage";
 import { TestingPage } from "../features/testing/TestingPage";
 import { PackageDialog } from "../features/tools/PackageDialog";
@@ -150,7 +150,13 @@ export function App() {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
       const key = e.key.toLowerCase();
-      if (key === "k") {
+      if (key === "j") {
+        e.preventDefault();
+        const ui = useUi.getState();
+        if (e.shiftKey) ui.setTika({ thread: null, job: null });
+        if (ui.assistantOpen && !e.shiftKey) ui.closeAssistant();
+        else ui.openAssistant();
+      } else if (key === "k") {
         e.preventDefault();
         setPaletteOpen(!useUi.getState().paletteOpen);
       } else if (key === "n" && !e.shiftKey) {
@@ -191,6 +197,7 @@ export function App() {
         </div>
         )}
       </main>
+      <TikaPanel />
       <CommandPalette />
       {sheetPath && <ProjectSheetDialog key={sheetPath} path={sheetPath} />}
       {launch && <LauncherDialog key={JSON.stringify(launch)} request={launch} />}
@@ -199,7 +206,6 @@ export function App() {
       <EventDialog />
       <TaskDialog />
       <QuickCapture />
-      <AssistantPanel />
       <FocusBar />
       <Toaster />
     </div>

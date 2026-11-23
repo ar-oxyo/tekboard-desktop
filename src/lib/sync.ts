@@ -22,7 +22,7 @@ export const DOMAIN_KEYS: Record<Domain, QueryKey[]> = {
   settings: [["settings"], ["ui-prefs"], ["claude-info"]],
   prompts: [["prompts"]],
   templates: [["templates"]],
-  ai: [["ai-threads"], ["ai-thread"], ["ai-proposals"], ["ai-actions"]],
+  ai: [["ai-threads"], ["ai-thread"], ["ai-proposals"], ["ai-actions"], ["focus"]],
   activity: [["activity"]],
 };
 
@@ -78,6 +78,21 @@ export const COMMAND_DOMAINS: Record<string, Domain[]> = {
   prompt_delete: ["prompts"],
   prompt_activate: ["prompts"],
   readme_write: ["repos"],
+  ai_send: ["ai"],
+  ai_thread_delete: ["ai"],
+  ai_settings_set: ["settings"],
+  ai_undo: ["ai", "plan", "memory", "focus"],
+  ai_proposal_decide: ["ai", "plan", "insights"],
+  ai_tool: ["ai", "plan", "memory", "focus"],
+  memory_add: ["memory"],
+  memory_update: ["memory"],
+  memory_delete: ["memory"],
+  focus_start: ["focus"],
+  focus_pause: ["focus"],
+  focus_resume: ["focus"],
+  focus_extend: ["focus"],
+  focus_stop: ["focus", "plan"],
+  focus_discard: ["focus"],
 };
 
 let client: QueryClient | null = null;

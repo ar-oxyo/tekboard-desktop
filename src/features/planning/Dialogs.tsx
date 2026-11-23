@@ -384,7 +384,7 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
       <Input
         defaultValue={durInput(value)}
         onBlur={(e) => {
-          const m = parseDur(e.target.value);
+          const m = parseDur(e.target.value, "min");
           if (m !== null) setP((x) => ({ ...x, [key]: m }));
         }}
       />
