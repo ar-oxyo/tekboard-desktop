@@ -165,6 +165,117 @@ const MIGRATIONS: &[&str] = &[
         seconds INTEGER NOT NULL
      );
      CREATE INDEX work_log_start ON work_log(started_at);",
+    // v7: the assistant. Durable memory (searched with FTS5), subject digests, conversations
+    // (temporary history), the journal of what it did, what it proposed, and suggestions.
+    // Secrets are refused before anything is written here (`ai::memory`).
+    "CREATE TABLE ai_memories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        scope TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        content TEXT NOT NULL,
+        source TEXT NOT NULL DEFAULT 'assistant',
+        pinned INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        last_used_at INTEGER,
+        expires_at INTEGER,
+        archived INTEGER NOT NULL DEFAULT 0
+     );
+     CREATE INDEX ai_memories_scope ON ai_memories(scope, archived);
+     CREATE VIRTUAL TABLE ai_memories_fts USING fts5(content, content='ai_memories', content_rowid='id', tokenize='unicode61 remove_diacritics 2');
+     CREATE TRIGGER ai_memories_ai AFTER INSERT ON ai_memories BEGIN
+        INSERT INTO ai_memories_fts(rowid, content) VALUES (new.id, new.content);
+     END;
+     CREATE TRIGGER ai_memories_ad AFTER DELETE ON ai_memories BEGIN
+        INSERT INTO ai_memories_fts(ai_memories_fts, rowid, content) VALUES ('delete', old.id, old.content);
+     END;
+     CREATE TRIGGER ai_memories_au AFTER UPDATE OF content ON ai_memories BEGIN
+        INSERT INTO ai_memories_fts(ai_memories_fts, rowid, content) VALUES ('delete', old.id, old.content);
+        INSERT INTO ai_memories_fts(rowid, content) VALUES (new.id, new.content);
+     END;
+     CREATE TABLE project_briefs (
+        project TEXT PRIMARY KEY,
+        subject_id INTEGER,
+        subject_hash TEXT,
+        brief TEXT NOT NULL,
+        stale INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL
+     );
+     CREATE TABLE ai_threads (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        session_id TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+     );
+     CREATE TABLE ai_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        thread_id INTEGER NOT NULL,
+        role TEXT NOT NULL,
+        text TEXT NOT NULL,
+        meta TEXT NOT NULL DEFAULT '{}',
+        created_at INTEGER NOT NULL
+     );
+     CREATE INDEX ai_messages_thread ON ai_messages(thread_id, id);
+     CREATE TABLE ai_actions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        thread_id INTEGER,
+        tool TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        args TEXT NOT NULL,
+        result TEXT NOT NULL,
+        undo TEXT,
+        status TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+     );
+     CREATE TABLE ai_proposals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        thread_id INTEGER,
+        kind TEXT NOT NULL,
+        title TEXT NOT NULL,
+        rationale TEXT NOT NULL DEFAULT '',
+        payload TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        outcome TEXT,
+        created_at INTEGER NOT NULL,
+        decided_at INTEGER
+     );
+     CREATE TABLE ai_insights (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        key TEXT NOT NULL UNIQUE,
+        kind TEXT NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        actions TEXT NOT NULL DEFAULT '[]',
+        status TEXT NOT NULL DEFAULT 'new',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        snooze_until INTEGER
+     );",
+    // v8: work sessions kept by the backend (never left running by accident), plan entries
+    // that cannot be duplicated, and time logged per calendar entry (done once, never twice).
+    "CREATE TABLE focus_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        project TEXT,
+        task_id INTEGER,
+        event_id INTEGER,
+        started_at INTEGER NOT NULL,
+        planned_min INTEGER NOT NULL,
+        paused_at INTEGER,
+        paused_total_s INTEGER NOT NULL DEFAULT 0,
+        last_seen_at INTEGER NOT NULL,
+        due_notified INTEGER NOT NULL DEFAULT 0,
+        then_title TEXT,
+        then_min INTEGER,
+        ended_at INTEGER,
+        end_reason TEXT,
+        seconds INTEGER
+     );
+     CREATE INDEX focus_sessions_start ON focus_sessions(started_at);
+     ALTER TABLE plan_events ADD COLUMN dedupe_key TEXT;
+     CREATE UNIQUE INDEX plan_events_dedupe ON plan_events(dedupe_key) WHERE dedupe_key IS NOT NULL;
+     ALTER TABLE work_log ADD COLUMN event_id INTEGER;",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

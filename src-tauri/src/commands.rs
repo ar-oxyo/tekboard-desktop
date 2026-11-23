@@ -33,7 +33,14 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub(crate) fn conn(&self) -> MutexGuard<'_, Connection> {
+    /// A state without a window (end-to-end checks).
+    pub fn for_tests(db: std::sync::Arc<Mutex<Connection>>, data_dir: PathBuf, cache_dir: PathBuf) -> Self {
+        let _ = std::fs::create_dir_all(&data_dir);
+        let _ = std::fs::create_dir_all(&cache_dir);
+        AppState { db, data_dir, cache_dir, jobs: crate::jobs::Jobs::default(), my: Mutex::new(crate::myepitech::Session::default()), my_syncing: Mutex::new(false) }
+    }
+
+    pub fn conn(&self) -> MutexGuard<'_, Connection> {
         self.db.lock().unwrap_or_else(|e| e.into_inner())
     }
     pub(crate) fn templates(&self) -> PathBuf {

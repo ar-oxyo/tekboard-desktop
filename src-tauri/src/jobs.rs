@@ -157,6 +157,11 @@ impl Job {
         self.touch(false);
     }
 
+    /// A copy of the activity entries so far.
+    pub fn events(&self) -> Vec<Value> {
+        self.lock().events.clone()
+    }
+
     /// Updates the last activity entry whose `id` field equals `id` (a tool call getting its result).
     pub fn update_event(&self, id: &str, patch: impl FnOnce(&mut Value)) {
         {
@@ -346,6 +351,11 @@ impl Jobs {
             let v = j.lock();
             (v.status == "running" && v.kind == kind && v.repo.as_deref() == repo).then_some(v.id)
         })
+    }
+
+    /// The job itself, for tools that write into its activity feed.
+    pub fn handle(&self, id: u64) -> Option<Arc<Job>> {
+        self.map().get(&id).cloned()
     }
 
     pub fn get(&self, id: u64) -> Option<JobView> {

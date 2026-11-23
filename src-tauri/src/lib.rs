@@ -3,6 +3,7 @@ pub mod analytics;
 pub mod checker;
 pub mod claude;
 pub mod commands;
+pub mod commands_ai;
 pub mod commands_dev;
 pub mod commands_lib;
 pub mod commands_my;
@@ -13,6 +14,7 @@ pub mod db;
 pub mod deadlines;
 pub mod doctor;
 pub mod epitech;
+pub mod focus;
 pub mod error;
 pub mod git;
 pub mod github;
@@ -32,6 +34,7 @@ pub mod prompts;
 pub mod readme;
 pub mod runner;
 pub mod scanner;
+pub mod schedule;
 pub mod settings;
 pub mod subjects;
 pub mod templates;
@@ -62,6 +65,11 @@ pub fn run() {
             std::fs::create_dir_all(&cache_dir)?;
             app.manage(AppState { db: std::sync::Arc::new(Mutex::new(conn)), data_dir, cache_dir, jobs: jobs::Jobs::default(), my: Mutex::new(myepitech::Session::default()), my_syncing: Mutex::new(false) });
             commands_my::start_background(app.handle().clone());
+            commands_ai::start_background(app.handle().clone());
+            // Tika's tools, reachable by the Claude Code runs TekBoard starts (see ai::ipc).
+            if let Err(e) = ai::ipc::serve(app.handle().clone()) {
+                eprintln!("TekBoard: tools channel not opened: {e}");
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -177,6 +185,30 @@ pub fn run() {
             commands_plan::plan_log_add,
             commands_plan::plan_apply,
             commands_plan::assistant_start,
+            commands_ai::ai_send,
+            commands_ai::ai_threads,
+            commands_ai::ai_thread,
+            commands_ai::ai_thread_delete,
+            commands_ai::ai_context_preview,
+            commands_ai::ai_settings_get,
+            commands_ai::ai_settings_set,
+            commands_ai::memory_list,
+            commands_ai::memory_add,
+            commands_ai::memory_update,
+            commands_ai::memory_delete,
+            commands_ai::ai_undo,
+            commands_ai::ai_actions,
+            commands_ai::ai_proposals,
+            commands_ai::ai_proposal_decide,
+            commands_ai::ai_tool,
+            commands_ai::focus_get,
+            commands_ai::focus_start,
+            commands_ai::focus_pause,
+            commands_ai::focus_resume,
+            commands_ai::focus_extend,
+            commands_ai::focus_stop,
+            commands_ai::focus_discard,
+            commands_ai::focus_stats,
             commands_dev::project_config_get,
             commands_dev::project_config_set,
             commands_dev::job_get,

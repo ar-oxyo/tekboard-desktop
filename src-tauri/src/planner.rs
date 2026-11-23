@@ -13,7 +13,8 @@ use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-pub const EVENT_KINDS: &[&str] = &["session", "event", "reminder", "task"];
+/// `block`: time the user is not available (nothing is planned over it).
+pub const EVENT_KINDS: &[&str] = &["session", "event", "reminder", "task", "block"];
 pub const TASK_KINDS: &[&str] = &["task", "idea"];
 const MAX_SPAN: i64 = 14 * 86_400;
 const MAX_ESTIMATE: i64 = 2_000 * 60;
