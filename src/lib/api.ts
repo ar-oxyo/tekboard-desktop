@@ -1,5 +1,13 @@
 // Typed access to the Rust backend. This file is the only place that calls `invoke`.
-import { invoke } from "@tauri-apps/api/core";
+import { invoke as tauriInvoke } from "@tauri-apps/api/core";
+import { afterCommand } from "./sync";
+
+/** Every call goes through here: a write that succeeded refreshes what depends on it. */
+async function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  const r = await tauriInvoke<T>(command, args);
+  afterCommand(command);
+  return r;
+}
 
 export interface AppError {
   code: string;

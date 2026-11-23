@@ -48,7 +48,16 @@ interface Props {
 
 export function TimeGrid({ days, items, now, prefs, ghost, onCreate, onOpen, onMove, onPickDay }: Props) {
   const scroller = useRef<HTMLDivElement>(null);
-  const [drag, setDrag] = useState<{ id: string; start: number; end: number } | null>(null);
+  const [drag, setDrag] = useState<{ id: string; start: number; end: number; dropped?: boolean } | null>(null);
+  // A dropped block is held where it was dropped until the entry itself is there (the
+  // optimistic update lands a moment later), then the plain entry takes over.
+  useEffect(() => {
+    if (!drag?.dropped) return;
+    const it = items.find((i) => i.id === drag.id);
+    if (!it || (it.start === drag.start && it.end === drag.end)) setDrag(null);
+    const safety = window.setTimeout(() => setDrag(null), 2000);
+    return () => window.clearTimeout(safety);
+  }, [items, drag]);
   const today = startOfDay(now);
 
   // Opens on the working hours, not on midnight.
@@ -100,8 +109,7 @@ export function TimeGrid({ days, items, now, prefs, ghost, onCreate, onOpen, onM
           onOpen(item);
         } else if (cur.start !== item.start || cur.end !== item.end) {
           onMove(item, cur.start, cur.end);
-          // The saved position arrives a moment later: hold the block where it was dropped until then.
-          window.setTimeout(() => setDrag(null), 150);
+          setDrag({ id: item.id, ...cur, dropped: true });
           return;
         }
         setDrag(null);

@@ -123,6 +123,7 @@ pub fn library_plan(state: State<'_, AppState>, repo: String, id: i64, request: 
 /// the project looks like now, not what it looked like when the preview was drawn.
 #[tauri::command(async)]
 pub fn library_apply(state: State<'_, AppState>, repo: String, id: i64, request: PlanRequest, confirmed: Vec<String>) -> Result<ApplyReport> {
+    crate::commands::forget_scan();
     let dir = project_dir(&state, &repo)?;
     let conn = state.conn();
     let lib = library::get(&conn, id)?;
@@ -150,6 +151,7 @@ pub fn library_backups(state: State<'_, AppState>, repo: String, path: String) -
 
 #[tauri::command(async)]
 pub fn library_restore(state: State<'_, AppState>, repo: String, path: String, stamp: String) -> Result<()> {
+    crate::commands::forget_scan();
     let dir = project_dir(&state, &repo)?;
     library::restore_backup(&dir, &state.backups(), &path, &stamp)
 }

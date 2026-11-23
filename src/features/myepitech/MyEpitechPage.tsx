@@ -35,12 +35,6 @@ export function MyEpitechPage() {
     mutationFn: api.mySync,
     onSuccess: (r) => {
       toast({ kind: r.unauthorized ? "error" : r.failed > 0 ? "info" : "ok", title: r.unauthorized ? "MY Epitech refused the session" : `Synced: ${r.ok} route(s) read${r.failed ? `, ${r.failed} not available` : ""}${r.subjectsImported ? `, ${r.subjectsImported} subject${r.subjectsImported > 1 ? "s" : ""} added` : ""}`, detail: r.unauthorized ? "Open the sign-in window and sign in again." : r.detail || undefined });
-      void qc.invalidateQueries({ queryKey: ["my-data"] });
-      void qc.invalidateQueries({ queryKey: ["my-overview"] });
-      void qc.invalidateQueries({ queryKey: ["my-status"] });
-      void qc.invalidateQueries({ queryKey: ["repos"] });
-      void qc.invalidateQueries({ queryKey: ["my-academic"] });
-      void qc.invalidateQueries({ queryKey: ["subjects"] });
     },
     onError: fail("Not synced"),
   });

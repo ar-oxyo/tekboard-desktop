@@ -13,6 +13,7 @@ import { TemplatesPage } from "../features/templates/TemplatesPage";
 import { useSettings } from "../lib/hooks";
 import { api, asAppError } from "../lib/api";
 import { listenJobs } from "../lib/jobs";
+import { invalidate, listenData, setQueryClient } from "../lib/sync";
 import { PAGES, useUi, type Page } from "../lib/store";
 import { AnalyticsPage } from "../features/analytics/AnalyticsPage";
 import { CozyPage } from "../features/cozy/CozyPage";
@@ -118,13 +119,18 @@ export function App() {
     const off = listenJobs(qc);
     return () => void off.then((f) => f());
   }, [qc]);
-  // An automatic MY Epitech sync ended: every screen fed by it re-reads its data.
+  // Backend changes (jobs, syncs, Tika's actions, timers) and writes made here refresh
+  // every screen that shows them (see lib/sync.ts).
   useEffect(() => {
-    const off = listen<{ ok: number; failed: number; unauthorized: boolean; detail: string }>("my-synced", (e) => {
-      for (const key of [["repos"], ["my-data"], ["my-overview"], ["my-status"], ["my-academic"], ["subjects"], ["plan"]]) void qc.invalidateQueries({ queryKey: key });
-      if (e.payload.unauthorized) useUi.getState().toast({ kind: "error", title: "MY Epitech refused the session", detail: "Automatic sync stopped. Open MY Epitech and sign in again." });
+    setQueryClient(qc);
+    const off = listenData(qc);
+    const unauth = listen<{ unauthorized: boolean }>("my-synced", (e) => {
+      if (e.payload.unauthorized) useUi.getState().toast({ kind: "error", title: "MY Epitech a refusé la session", detail: "La synchronisation automatique est arrêtée. Ouvre École → MY Epitech et reconnecte-toi." });
     });
-    return () => void off.then((f) => f());
+    return () => {
+      void off.then((f) => f());
+      void unauth.then((f) => f());
+    };
   }, [qc]);
   // The day changed while the window stayed open: hand-in states are recomputed.
   useEffect(() => {
@@ -133,7 +139,9 @@ export function App() {
       const d = new Date().toDateString();
       if (d !== day) {
         day = d;
-        void qc.invalidateQueries({ queryKey: ["repos"] });
+        // Hand-in states, "today" and the planning's current day are recomputed.
+        invalidate(qc, ["repos", "plan"]);
+        window.dispatchEvent(new CustomEvent("tekboard:day-changed"));
       }
     }, 60_000);
     return () => window.clearInterval(id);

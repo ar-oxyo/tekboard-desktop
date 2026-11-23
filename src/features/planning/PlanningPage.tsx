@@ -9,6 +9,7 @@ import type { PlanTask } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { useNow, usePref } from "../../lib/hooks";
 import { addDays, DEFAULT_FILTERS, fmtDur, MIN, reorganize, schedule, startOfDay, startOfWeek, unplanned, visible, type CalItem, type Filters, type Load, type PlanProject } from "../../lib/plan";
+import { invalidate } from "../../lib/sync";
 import { useUi } from "../../lib/store";
 import { Countdown } from "../projects/RepoBits";
 import { PrefsDialog, ReviewDialog } from "./Dialogs";
@@ -31,6 +32,12 @@ export function PlanningPage() {
   const [filters, setFilters] = usePref<Filters>("plan.filters", DEFAULT_FILTERS);
   const [side, setSide] = usePref<"inbox" | "projects">("plan.side", "inbox");
   const [date, setDate] = useState(() => useUi.getState().planDate ?? now);
+  // Left open overnight on "today": follow the new day.
+  useEffect(() => {
+    const onDay = () => setDate((d) => (startOfDay(d) === startOfDay(Date.now() - 86_400_000) ? Date.now() : d));
+    window.addEventListener("tekboard:day-changed", onDay);
+    return () => window.removeEventListener("tekboard:day-changed", onDay);
+  }, []);
   const [ghost, setGhost] = useState<{ start: number; end: number; title: string } | null>(null);
   const [dialog, setDialog] = useState<"prefs" | "review" | null>(null);
   const propose = useUi((s) => s.propose);
@@ -212,7 +219,7 @@ export function PlanningPage() {
           </div>
           <p className="shrink-0 border-t border-white/6 px-4 py-2 text-[11px] text-faint">
             {data.agenda?.syncedAt ? `MY Epitech synced ${timeAgo(data.agenda.syncedAt)} · its entries are read-only` : "MY Epitech not synced: only your own entries are shown."}{" "}
-            <button type="button" className="hover:text-fg" onClick={() => void qc.invalidateQueries({ queryKey: ["repos"] })}>
+            <button type="button" className="hover:text-fg" onClick={() => invalidate(qc, ["plan", "repos", "my"])}>
               Refresh
             </button>
           </p>

@@ -116,6 +116,8 @@ pub(crate) fn sync_now(state: &AppState) -> Result<SyncReport> {
             report.detail = if report.detail.is_empty() { note } else { format!("{}; {note}", report.detail) };
         }
     }
+    // Manual or automatic: every screen fed by MY Epitech re-reads it (planning included).
+    crate::notify::changed(&["my"]);
     Ok(report)
 }
 

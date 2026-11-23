@@ -38,49 +38,61 @@ export function usePlanActions() {
   const qc = useQueryClient();
   const toast = useUi((s) => s.toast);
   const refresh = () => void qc.invalidateQueries({ queryKey: planKey });
-  const fail = (title: string) => (e: unknown) => {
+  /**
+   * Optimistic change: reads in flight are cancelled (an older answer must not overwrite the
+   * change), the previous state is kept, and put back if the backend refuses. A successful
+   * write refreshes the plan by itself (lib/sync.ts).
+   */
+  const optimistic = async (fn: (s: PlanState) => PlanState) => {
+    await qc.cancelQueries({ queryKey: planKey });
+    const before = qc.getQueryData<PlanState>(planKey);
+    if (before) qc.setQueryData<PlanState>(planKey, fn(before));
+    return { before };
+  };
+  const fail = (title: string) => (e: unknown, _v: unknown, ctx?: { before?: PlanState }) => {
+    if (ctx?.before) qc.setQueryData(planKey, ctx.before);
     toast({ kind: "error", title, detail: asAppError(e).message });
     refresh();
   };
-  const patch = (fn: (s: PlanState) => PlanState) => qc.setQueryData<PlanState>(planKey, (old) => (old ? fn(old) : old));
+  let temp = -1;
 
   const saveEvent = useMutation({
     mutationFn: (e: Parameters<typeof api.planEventSave>[0]) => api.planEventSave(e),
-    // A dragged entry stays where it was dropped while the save is on its way.
-    onMutate: (e) => {
-      if (e.id) patch((s) => ({ ...s, events: s.events.map((x) => (x.id === e.id ? ({ ...x, ...e } as PlanEvent) : x)) }));
-    },
-    onSuccess: refresh,
-    onError: fail("Entry not saved"),
+    // A dragged entry stays where it was dropped; a new one shows at once.
+    onMutate: (e) =>
+      optimistic((s) =>
+        e.id
+          ? { ...s, events: s.events.map((x) => (x.id === e.id ? ({ ...x, ...e } as PlanEvent) : x)) }
+          : { ...s, events: [...s.events, { allDay: false, project: null, taskId: null, color: null, notes: "", origin: "me", done: false, ...e, id: temp-- } as PlanEvent] },
+      ),
+    onError: fail("Élément non enregistré"),
   });
   const removeEvent = useMutation({
     mutationFn: (id: number) => api.planEventDelete(id),
-    onMutate: (id) => patch((s) => ({ ...s, events: s.events.filter((x) => x.id !== id) })),
-    onSuccess: refresh,
-    onError: fail("Entry not removed"),
+    onMutate: (id) => optimistic((s) => ({ ...s, events: s.events.filter((x) => x.id !== id) })),
+    onError: fail("Élément non supprimé"),
   });
   const saveTask = useMutation({
     mutationFn: (t: Parameters<typeof api.planTaskSave>[0]) => api.planTaskSave(t),
-    onMutate: (t) => {
-      if (t.id) patch((s) => ({ ...s, tasks: s.tasks.map((x) => (x.id === t.id ? ({ ...x, ...t } as PlanTask) : x)) }));
-    },
-    onSuccess: refresh,
-    onError: fail("Task not saved"),
+    onMutate: (t) => optimistic((s) => (t.id ? { ...s, tasks: s.tasks.map((x) => (x.id === t.id ? ({ ...x, ...t } as PlanTask) : x)) } : s)),
+    onError: fail("Tâche non enregistrée"),
   });
-  const removeTask = useMutation({ mutationFn: (id: number) => api.planTaskDelete(id), onSuccess: refresh, onError: fail("Task not removed") });
+  const removeTask = useMutation({
+    mutationFn: (id: number) => api.planTaskDelete(id),
+    onMutate: (id) => optimistic((s) => ({ ...s, tasks: s.tasks.filter((x) => x.id !== id) })),
+    onError: fail("Tâche non supprimée"),
+  });
   const setProject = useMutation({
     mutationFn: ({ key, ...p }: { key: string; priority?: number; estimateMin?: number | null; color?: string | null }) => api.planProjectSet(key, p),
-    onSuccess: refresh,
-    onError: fail("Project not updated"),
+    onError: fail("Projet non mis à jour"),
   });
   const apply = useMutation({
     mutationFn: ({ actions, origin }: { actions: ScheduleAction[]; origin: "auto" | "claude" }) => api.planApply(actions, origin),
     onSuccess: (r) => {
-      refresh();
-      const parts = [r.created && `${r.created} added`, r.moved && `${r.moved} moved`, r.deleted && `${r.deleted} removed`, r.tasks && `${r.tasks} task${r.tasks > 1 ? "s" : ""}`, r.projects && `${r.projects} project setting${r.projects > 1 ? "s" : ""}`].filter(Boolean);
-      toast({ kind: "ok", title: "Plan applied", detail: parts.join(" · ") });
+      const parts = [r.created && `${r.created} ajouté${r.created > 1 ? "s" : ""}`, r.moved && `${r.moved} déplacé${r.moved > 1 ? "s" : ""}`, r.deleted && `${r.deleted} supprimé${r.deleted > 1 ? "s" : ""}`, r.tasks && `${r.tasks} tâche${r.tasks > 1 ? "s" : ""}`, r.projects && `${r.projects} réglage${r.projects > 1 ? "s" : ""} de projet`].filter(Boolean);
+      toast({ kind: "ok", title: "Plan appliqué", detail: parts.join(" · ") });
     },
-    onError: fail("Plan not applied — nothing was changed"),
+    onError: fail("Plan non appliqué : rien n'a été modifié"),
   });
   const toggleTask = (t: PlanTask) => saveTask.mutate({ ...t, doneAt: t.doneAt === null ? Math.floor(Date.now() / 1000) : null });
   return { saveEvent, removeEvent, saveTask, removeTask, setProject, apply, toggleTask, refresh };

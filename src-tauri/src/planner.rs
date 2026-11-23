@@ -275,21 +275,23 @@ pub fn log_work(conn: &Connection, project: Option<&str>, task_id: Option<i64>, 
 }
 
 /// A MY Epitech project that was planned before being cloned keeps its plan under the repository path.
-pub fn rekey(conn: &Connection, links: &[(i64, String)]) -> Result<()> {
+/// Returns how many rows moved (the window re-reads the plan when some did).
+pub fn rekey(conn: &Connection, links: &[(i64, String)]) -> Result<usize> {
     let pending: i64 = conn.query_row("SELECT (SELECT COUNT(*) FROM tasks WHERE project LIKE 'my:%') + (SELECT COUNT(*) FROM plan_events WHERE project LIKE 'my:%') + (SELECT COUNT(*) FROM plan_projects WHERE key LIKE 'my:%') + (SELECT COUNT(*) FROM work_log WHERE project LIKE 'my:%')", [], |r| r.get(0))?;
     if pending == 0 {
-        return Ok(());
+        return Ok(0);
     }
+    let mut moved = 0;
     for (id, path) in links {
         let old = format!("my:{id}");
         for table in ["tasks", "plan_events", "work_log"] {
-            conn.execute(&format!("UPDATE {table} SET project = ?2 WHERE project = ?1"), params![old, path])?;
+            moved += conn.execute(&format!("UPDATE {table} SET project = ?2 WHERE project = ?1"), params![old, path])?;
         }
         // The repository's own row wins when both exist.
-        conn.execute("UPDATE OR IGNORE plan_projects SET key = ?2 WHERE key = ?1", params![old, path])?;
+        moved += conn.execute("UPDATE OR IGNORE plan_projects SET key = ?2 WHERE key = ?1", params![old, path])?;
         conn.execute("DELETE FROM plan_projects WHERE key = ?1", [&old])?;
     }
-    Ok(())
+    Ok(moved)
 }
 
 // ───────────────────────────── plans (previewed, then applied) ─────────────────────────────

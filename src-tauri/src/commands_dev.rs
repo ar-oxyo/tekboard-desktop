@@ -599,6 +599,7 @@ pub fn readme_diff(state: State<'_, AppState>, repo: String, text: String) -> Re
 /// Writes README.md after the user validated the text. Returns where the previous version was saved.
 #[tauri::command(async)]
 pub fn readme_write(state: State<'_, AppState>, repo: String, content: String, expected_hash: Option<String>) -> Result<Option<String>> {
+    crate::commands::forget_scan();
     let dir = repo_dir(&state, &repo)?;
     let saved = readme::write(&dir, &content, expected_hash.as_deref(), &state.backups())?;
     db::log_activity(&state.conn(), crate::commands::now(), "readme", Some(&dir.to_string_lossy()), None)?;

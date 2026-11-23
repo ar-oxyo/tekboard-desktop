@@ -121,12 +121,39 @@ pub fn test_github_ssh() -> SshCheck {
 
 /// Every repository with what TekBoard knows about it, and the MY Epitech view it was matched against.
 /// Hand-in dates reported by MY Epitech are saved on the way, so every screen reads the same date.
+/// Last scan of the repositories. The dashboard, the deadline board and the agenda all ask
+/// for it at the same moment after a change: one scan serves them (a caller that arrives
+/// while a scan runs waits for it), then the result is reused for a very short while.
+static SCAN: Mutex<Option<(std::time::Instant, Vec<String>, Vec<RepoInfo>)>> = Mutex::new(None);
+const SCAN_REUSE: std::time::Duration = std::time::Duration::from_millis(900);
+
+/// Forgets the last scan: the next reader sees the disk as it is now.
+pub(crate) fn forget_scan() {
+    *SCAN.lock().unwrap_or_else(|e| e.into_inner()) = None;
+}
+
+fn scan_shared(roots: &[String], meta: &std::collections::HashMap<String, db::RepoMeta>) -> Vec<RepoInfo> {
+    let mut last = SCAN.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((at, r, repos)) = last.as_ref() {
+        if at.elapsed() < SCAN_REUSE && r == roots {
+            // Same git state; the stored metadata (favorite, status, notes…) is read fresh.
+            return repos.iter().cloned().map(|mut x| {
+                x.meta = meta.get(&x.path).cloned().unwrap_or_default();
+                x
+            }).collect();
+        }
+    }
+    let repos = scanner::scan(roots, meta);
+    *last = Some((std::time::Instant::now(), roots.to_vec(), repos.clone()));
+    repos
+}
+
 pub(crate) fn load_repos(state: &AppState) -> Result<(Vec<RepoInfo>, crate::myview::Overview)> {
     let (s, meta) = {
         let conn = state.conn();
         (settings::load(&conn)?, db::all_meta(&conn)?)
     };
-    let mut repos = scanner::scan(&s.roots, &meta);
+    let mut repos = scan_shared(&s.roots, &meta);
     let now = chrono::Utc::now();
     let conn = state.conn();
     let mut overview = crate::myview::overview_at(&conn, &repos, now);
@@ -140,7 +167,9 @@ pub(crate) fn load_repos(state: &AppState) -> Result<(Vec<RepoInfo>, crate::myvi
     crate::projects::enrich(&mut repos, &overview, &crate::myview::known_orgs(&conn), &s.epitech_dirs, now);
     // What was planned for a MY Epitech project before it was cloned follows the repository.
     let links: Vec<(i64, String)> = repos.iter().filter_map(|r| r.my.as_ref().map(|m| (m.id, r.path.clone()))).collect();
-    crate::planner::rekey(&conn, &links)?;
+    if crate::planner::rekey(&conn, &links)? > 0 {
+        crate::notify::changed(&["plan"]);
+    }
     Ok((repos, overview))
 }
 
@@ -294,6 +323,7 @@ pub fn launch_candidates(state: State<'_, AppState>) -> Result<Vec<Candidate>> {
 
 #[tauri::command(async)]
 pub fn clone_project(state: State<'_, AppState>, url: String, parent: String) -> Result<CloneOutcome> {
+    crate::commands::forget_scan();
     let parent = project_dir(&state, &parent)?;
     let outcome = launcher::clone_into(&url, &parent)?;
     if !outcome.already_present {
@@ -398,6 +428,7 @@ pub fn template_plan(state: State<'_, AppState>, id: String, target: String, var
 
 #[tauri::command(async)]
 pub fn template_apply(state: State<'_, AppState>, id: String, target: String, vars: Vars, selected: Vec<String>, overwrite: Vec<String>) -> Result<ApplyReport> {
+    crate::commands::forget_scan();
     let dir = project_dir(&state, &target)?;
     let report = templates::apply(&state.templates(), &id, &dir, &vars, &selected, &overwrite, &state.backups())?;
     db::log_activity(&state.conn(), now(), "template_apply", Some(&dir.to_string_lossy()), Some(&id))?;
@@ -409,6 +440,7 @@ pub fn template_apply(state: State<'_, AppState>, id: String, target: String, va
 /// Stages exactly the given files. Nothing is committed or pushed.
 #[tauri::command(async)]
 pub fn stage_files(state: State<'_, AppState>, repo: String, files: Vec<String>) -> Result<RepoStatus> {
+    crate::commands::forget_scan();
     let dir = repo_dir(&state, &repo)?;
     for f in &files {
         if templates::safe_rel(f).is_none() {
@@ -422,6 +454,7 @@ pub fn stage_files(state: State<'_, AppState>, repo: String, files: Vec<String>)
 /// Commits what is staged. Never pushes.
 #[tauri::command(async)]
 pub fn commit_staged(state: State<'_, AppState>, repo: String, message: String) -> Result<RepoStatus> {
+    crate::commands::forget_scan();
     let dir = repo_dir(&state, &repo)?;
     if git::config_get(Some(&dir), "user.name").is_none() || git::config_get(Some(&dir), "user.email").is_none() {
         return Err(AppError::new("no_identity", "git user.name / user.email are not configured. Set them with git config before committing."));
@@ -538,6 +571,7 @@ pub fn project_deadline_from_my(state: State<'_, AppState>, path: String) -> Res
 /// Runs the project's build command (default `make`) and returns its output.
 #[tauri::command(async)]
 pub fn project_build(state: State<'_, AppState>, path: String) -> Result<RunReport> {
+    crate::commands::forget_scan();
     let dir = repo_dir(&state, &path)?;
     let cmd = db::get_sheet(&state.conn(), &dir.to_string_lossy())?.build_cmd.unwrap_or_else(|| "make".to_string());
     let report = workspace::run_captured(&cmd, &dir, std::time::Duration::from_secs(300))?;
@@ -730,6 +764,7 @@ pub fn git_diff(state: State<'_, AppState>, repo: String, path: String, staged: 
 
 #[tauri::command(async)]
 pub fn git_unstage(state: State<'_, AppState>, repo: String, files: Vec<String>) -> Result<()> {
+    crate::commands::forget_scan();
     let dir = repo_dir(&state, &repo)?;
     rel_files(&files)?;
     git::unstage(&dir, &files)
@@ -738,6 +773,7 @@ pub fn git_unstage(state: State<'_, AppState>, repo: String, files: Vec<String>)
 /// `op` is `fetch`, `pull` (fast-forward only) or `push` (never forced).
 #[tauri::command(async)]
 pub fn git_sync(state: State<'_, AppState>, repo: String, op: String) -> Result<String> {
+    crate::commands::forget_scan();
     let dir = repo_dir(&state, &repo)?;
     let kind = match op.as_str() {
         "fetch" => git::Sync::Fetch,
@@ -758,6 +794,7 @@ pub fn git_sync(state: State<'_, AppState>, repo: String, op: String) -> Result<
 
 #[tauri::command(async)]
 pub fn git_create_branch(state: State<'_, AppState>, repo: String, name: String) -> Result<()> {
+    crate::commands::forget_scan();
     let dir = repo_dir(&state, &repo)?;
     git::create_branch(&dir, &name)?;
     db::log_activity(&state.conn(), now(), "branch", Some(&dir.to_string_lossy()), Some(name.trim()))
@@ -765,6 +802,7 @@ pub fn git_create_branch(state: State<'_, AppState>, repo: String, name: String)
 
 #[tauri::command(async)]
 pub fn git_switch_branch(state: State<'_, AppState>, repo: String, name: String) -> Result<()> {
+    crate::commands::forget_scan();
     let dir = repo_dir(&state, &repo)?;
     git::switch_branch(&dir, &name)
 }
