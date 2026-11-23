@@ -7,6 +7,7 @@
 
 pub mod agent_tools;
 pub mod chat;
+pub mod insights;
 pub mod ipc;
 pub mod mcp;
 pub mod memory;

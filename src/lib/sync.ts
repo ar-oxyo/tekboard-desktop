@@ -87,6 +87,7 @@ export const COMMAND_DOMAINS: Record<string, Domain[]> = {
   memory_add: ["memory"],
   memory_update: ["memory"],
   memory_delete: ["memory"],
+  insight_set: ["insights"],
   focus_start: ["focus"],
   focus_pause: ["focus"],
   focus_resume: ["focus"],

@@ -122,6 +122,34 @@ pub fn ai_tool(state: State<'_, AppState>, name: String, args: Value) -> Result<
     tools::call(&state, &caller, &name, &args)
 }
 
+// ───────────────────────────── suggestions ─────────────────────────────
+
+#[tauri::command(async)]
+pub fn insights_list(state: State<'_, AppState>) -> Result<Vec<crate::ai::insights::Stored>> {
+    crate::ai::insights::list(&state.conn(), now())
+}
+
+/// `dismiss` (for good), `snooze` (for `hours`), `done` (acted on).
+#[tauri::command(async)]
+pub fn insight_set(state: State<'_, AppState>, id: i64, status: String, hours: Option<i64>) -> Result<()> {
+    let (st, until) = match status.as_str() {
+        "dismiss" => ("dismissed", None),
+        "snooze" => ("snoozed", Some(now() + hours.unwrap_or(3).clamp(1, 72) * 3600)),
+        "done" => ("done", None),
+        _ => return Err(AppError::new("invalid_args", "dismiss, snooze ou done")),
+    };
+    crate::ai::insights::set_status(&state.conn(), id, st, until, now())?;
+    crate::notify::changed(&["insights"]);
+    Ok(())
+}
+
+#[tauri::command(async)]
+pub fn insights_refresh(state: State<'_, AppState>) -> Result<usize> {
+    let n = crate::ai::insights::refresh(&state)?.len();
+    crate::notify::changed(&["insights"]);
+    Ok(n)
+}
+
 // ───────────────────────────── work sessions ─────────────────────────────
 
 #[tauri::command(async)]
@@ -187,6 +215,15 @@ pub fn start_background(app: tauri::AppHandle) {
                 }
                 if !notices.is_empty() {
                     crate::notify::changed(&["focus", "plan"]);
+                }
+                // Suggestions: a minute after start, then every five minutes.
+                if ticks % 10 == 2 {
+                    if let Ok(new) = crate::ai::insights::refresh(&state) {
+                        crate::notify::changed(&["insights"]);
+                        if !new.is_empty() {
+                            crate::notify::emit("insights-new", new);
+                        }
+                    }
                 }
                 if ticks % 120 == 0 {
                     let _ = memory::purge_expired(&state.conn(), now());

@@ -24,6 +24,7 @@ import { PlanningPage } from "../features/planning/PlanningPage";
 import { EventDialog, QuickCapture, TaskDialog, useCaptureShortcut } from "../features/planning/Dialogs";
 import { FocusBar } from "../features/planning/Focus";
 import { TikaPanel } from "../features/tika/TikaPanel";
+import { useNudges } from "../features/tika/Insights";
 import { PromptsPage } from "../features/prompts/PromptsPage";
 import { TestingPage } from "../features/testing/TestingPage";
 import { PackageDialog } from "../features/tools/PackageDialog";
@@ -50,6 +51,19 @@ async function startFromCli(repo: string, what: string) {
   }
 }
 
+/** Opens a screen named the way Tika names it. */
+export function navigateTo(page: string, project: string | null, tab: string | null) {
+  const ui = useUi.getState();
+  if (project && page === "projects") {
+    if (tab === "checks") return ui.openTesting(project);
+    if (tab === "git") return ui.openGit(project);
+    if (tab === "libraries") return ui.openLibrary(project);
+    return ui.openSheet(project);
+  }
+  const map: Record<string, Page> = { today: "overview", projects: "projects", planning: "agenda", school: "myepitech", stats: "analytics", resources: "library", settings: "settings" };
+  ui.setPage(map[page] ?? "overview");
+}
+
 export function App() {
   const page = useUi((s) => s.page);
   const setPage = useUi((s) => s.setPage);
@@ -61,6 +75,7 @@ export function App() {
   const settings = useSettings();
   const qc = useQueryClient();
   useCaptureShortcut();
+  useNudges();
 
   // Glass only when the user keeps it on and the system does not ask for less transparency.
   const themeOverride = useUi((s) => s.themeOverride);
@@ -132,6 +147,11 @@ export function App() {
       void unauth.then((f) => f());
     };
   }, [qc]);
+  // Tika opens a screen for the user (tool `navigate`).
+  useEffect(() => {
+    const off = listen<{ page: string; project: string | null; tab: string | null }>("ui-navigate", (e) => navigateTo(e.payload.page, e.payload.project, e.payload.tab));
+    return () => void off.then((f) => f());
+  }, []);
   // The day changed while the window stayed open: hand-in states are recomputed.
   useEffect(() => {
     let day = new Date().toDateString();

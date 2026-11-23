@@ -1004,6 +1004,22 @@ export interface FocusStats {
   longestMin: number;
 }
 
+export interface InsightAction {
+  label: string;
+  tool?: string;
+  args?: Record<string, unknown>;
+  ask?: string;
+}
+export interface Insight {
+  id: number;
+  key: string;
+  kind: "deadline" | "stalled" | "overload" | "missed" | "tests" | "subject" | string;
+  title: string;
+  body: string;
+  actions: InsightAction[];
+  createdAt: number;
+}
+
 export const api = {
   planState: () => invoke<PlanState>("plan_state"),
   myFreeSlots: (eventId: number) => invoke<Array<{ start: string; end: string }>>("my_free_slots", { eventId }),
@@ -1173,6 +1189,9 @@ export const api = {
   memoryAdd: (scope: string, kind: MemoryKind, content: string, pinned: boolean) => invoke<Memory>("memory_add", { scope, kind, content, pinned }),
   memoryUpdate: (id: number, patch: { content?: string; kind?: MemoryKind; pinned?: boolean; archived?: boolean }) => invoke<Memory>("memory_update", { id, patch }),
   memoryDelete: (id: number) => invoke<void>("memory_delete", { id }),
+  insightsList: () => invoke<Insight[]>("insights_list"),
+  insightSet: (id: number, status: "dismiss" | "snooze" | "done", hours?: number) => invoke<void>("insight_set", { id, status, hours: hours ?? null }),
+  insightsRefresh: () => invoke<number>("insights_refresh"),
   focusGet: () => invoke<FocusSession | null>("focus_get"),
   focusStart: (start: FocusStart) => invoke<FocusSession>("focus_start", { start }),
   focusPause: () => invoke<FocusSession>("focus_pause"),

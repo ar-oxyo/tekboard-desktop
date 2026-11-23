@@ -10,6 +10,7 @@ import { useJob } from "../../lib/jobs";
 import { freeSlots, addDays, startOfDay, hhmm } from "../../lib/plan";
 import { useUi } from "../../lib/store";
 import { usePlanData } from "../planning/usePlan";
+import { InsightList, useInsights } from "./Insights";
 import { Markdown } from "./Markdown";
 import { MemoryView } from "./MemoryView";
 import { Orb, type OrbState } from "./Orb";
@@ -49,6 +50,7 @@ function Panel() {
   const proposals = useQuery({ queryKey: ["ai-proposals"], queryFn: () => api.aiProposals(null) });
   const actions = useQuery({ queryKey: ["ai-actions"], queryFn: () => api.aiActions(100) });
   const job = useJob(jobId);
+  const insights = useInsights();
   const running = job.data?.status === "running";
 
   // The turn ended: the conversation is re-read from the database (it holds the answer).
@@ -109,8 +111,8 @@ else if (ask.text === "#free") {
   const pendingElsewhere = (proposals.data ?? []).filter((p) => p.status === "pending" && p.threadId !== thread);
 
   const liveTool = job.data?.events.filter((e) => e.kind === "tool" && e.status === "running").at(-1);
-  const orb: OrbState = running ? (liveTool ? "acting" : "thinking") : send.isPending ? "thinking" : (proposals.data ?? []).some((p) => p.status === "pending") ? "attention" : "idle";
-  const status = running ? (liveTool ? `${String(liveTool.label)}…` : "réfléchit…") : orb === "attention" ? "une proposition t'attend" : "à ton écoute";
+  const orb: OrbState = running ? (liveTool ? "acting" : "thinking") : send.isPending ? "thinking" : (proposals.data ?? []).some((p) => p.status === "pending") || (insights.data?.length ?? 0) > 0 ? "attention" : "idle";
+  const status = running ? (liveTool ? `${String(liveTool.label)}…` : "réfléchit…") : orb === "attention" ? ((proposals.data ?? []).some((p) => p.status === "pending") ? "une proposition t'attend" : "j'ai remarqué quelque chose") : "à ton écoute";
   const msgs = messages.data ?? [];
   const empty = msgs.length === 0 && !pendingText;
   const suggestions = suggestionsFor(screen, new Date().getHours());
@@ -147,6 +149,7 @@ else if (ask.text === "#free") {
               <div className="flex flex-col gap-3 pt-3">
                 <p className="display text-[17px] font-medium">{greeting()}</p>
                 <p className="text-[13px] text-muted">Je vois tes projets, ton planning, tes sessions et tes tests. Demande-moi en langage normal : je lis, je propose, et je ne change rien d'important sans ton accord.</p>
+                <InsightList compact />
                 <div className="mt-1 flex flex-col gap-1.5">
                   {suggestions.map((s) => (
                     <button key={s} type="button" onClick={() => submit(s)} className="rounded-lg border border-white/7 px-3 py-2 text-left text-[13px] text-muted transition-colors duration-150 hover:border-accent/40 hover:text-fg">
