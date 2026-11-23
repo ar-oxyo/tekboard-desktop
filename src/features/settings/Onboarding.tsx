@@ -25,7 +25,7 @@ export function Onboarding() {
   const chosen = [...(picked ?? []), ...extra];
 
   async function browse() {
-    const dir = await open({ directory: true, multiple: false, title: "Choose a projects folder" });
+    const dir = await open({ directory: true, multiple: false, title: "Choisir un dossier de projets" });
     if (typeof dir === "string" && !chosen.includes(dir)) setExtra([...extra, dir]);
   }
 
@@ -56,17 +56,17 @@ export function Onboarding() {
       <div className="px-6 pt-6 pb-5">
         <div className="mb-1 flex items-center gap-2 text-accent">
           <FolderSearch className="size-5" />
-          <h2 className="display text-lg font-medium text-fg">Where do your projects live?</h2>
+          <h2 className="display text-lg font-medium text-fg">Où sont tes projets ?</h2>
         </div>
-        <p className="text-[13px] text-muted">TekBoard only reads these folders to list your repositories. Nothing is moved or modified.</p>
+        <p className="text-[13px] text-muted">TekBoard lit seulement ces dossiers pour lister tes dépôts. Rien n'est déplacé ni modifié.</p>
 
         <div className="mt-4">
           {suggestions.isLoading ? (
             <p className="flex items-center gap-2 py-4 text-[13px] text-muted">
-              <Spinner /> Looking for repositories in your home folder…
+              <Spinner /> Recherche de dépôts dans ton dossier personnel…
             </p>
           ) : (suggestions.data?.length ?? 0) === 0 && extra.length === 0 ? (
-            <p className="py-3 text-[13px] text-muted">No folder with several repositories was found. Choose one yourself.</p>
+            <p className="py-3 text-[13px] text-muted">Aucun dossier contenant plusieurs dépôts n'a été trouvé. Choisis-en un toi-même.</p>
           ) : (
             <ul className="rounded-lg border border-line bg-bg py-1">
               {(suggestions.data ?? []).map((s) => (
@@ -100,7 +100,7 @@ export function Onboarding() {
 
         <div className="mt-4 flex items-center justify-between">
           <Button variant="ghost" icon={<FolderPlus className="size-3.5" />} onClick={() => void browse()}>
-            Choose another folder…
+            Choisir un autre dossier…
           </Button>
           <Button variant="primary" disabled={chosen.length === 0} busy={saving} onClick={() => void save()}>
             Use {chosen.length === 1 ? "this folder" : `these ${chosen.length || ""} folders`}

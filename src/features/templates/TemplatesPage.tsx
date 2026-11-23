@@ -22,7 +22,7 @@ export function TemplatesPage() {
   const selected = list.find((t) => t.id === selectedId) ?? list[0] ?? null;
 
   async function browse() {
-    const dir = await open({ directory: true, multiple: false, title: "Import a folder as a template" });
+    const dir = await open({ directory: true, multiple: false, title: "Importer un dossier comme modèle" });
     if (typeof dir === "string") setImporting(dir);
   }
 
@@ -33,11 +33,11 @@ export function TemplatesPage() {
   return (
     <>
       <PageHeader
-        title="Templates"
-        subtitle="Reusable project skeletons. Applying one copies files; nothing in a template is ever executed."
+        title="Modèles"
+        subtitle="Des squelettes de projet réutilisables. Appliquer un modèle copie des fichiers ; rien n'y est jamais exécuté."
         actions={
           <Button variant="primary" icon={<FolderInput className="size-4" />} onClick={() => void browse()}>
-            Import folder…
+            Importer un dossier…
           </Button>
         }
       />
@@ -46,24 +46,24 @@ export function TemplatesPage() {
         <div key={dir} className="mb-3 flex items-center gap-3 rounded-lg border border-accent/25 bg-accent-soft px-4 py-2.5">
           <LayoutTemplate className="size-4 shrink-0 text-accent" />
           <p className="min-w-0 flex-1 truncate text-[13px]">
-            Existing skeleton found at <span className="selectable font-mono text-xs">{tildify(dir, home)}</span>
+            Squelette existant trouvé dans <span className="selectable font-mono text-xs">{tildify(dir, home)}</span>
           </p>
           <Button size="sm" onClick={() => setImporting(dir)}>
-            Import as template
+            Importer comme modèle
           </Button>
         </div>
       ))}
 
       {templates.isLoading ? (
         <p className="flex items-center gap-2 py-16 text-muted">
-          <Spinner /> Loading…
+          <Spinner /> Chargement…
         </p>
       ) : templates.error ? (
         <ErrorNote>{asAppError(templates.error).message}</ErrorNote>
       ) : list.length === 0 ? (
         <Card>
-          <EmptyState icon={<LayoutTemplate className="size-6" />} title="No template yet" action={<Button onClick={() => void browse()}>Import folder…</Button>}>
-            Import any folder — a past project, your own skeleton — to reuse it for the next one.
+          <EmptyState icon={<LayoutTemplate className="size-6" />} title="Aucun modèle" action={<Button onClick={() => void browse()}>Importer un dossier…</Button>}>
+            Importe n'importe quel dossier (un ancien projet, ton propre squelette) pour le réutiliser au prochain.
           </EmptyState>
         </Card>
       ) : (
@@ -96,7 +96,7 @@ function TemplateCard({ template, active, onSelect }: { template: TemplateSummar
     >
       <span className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{template.name}</span>
-        {isDefault && <Star className="size-3.5 text-accent" fill="currentColor" aria-label="Default template" />}
+        {isDefault && <Star className="size-3.5 text-accent" fill="currentColor" aria-label="Modèle par défaut" />}
       </span>
       <span className="mt-1 flex items-center gap-1.5">
         <Badge>{template.fileCount} files</Badge>
@@ -156,35 +156,35 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-[15px] font-medium">{template.name}</h2>
           {template.variables.map((v) => (
-            <Badge key={v} mono title="Variable replaced when the template is applied">
+            <Badge key={v} mono title="Variable remplacée quand le modèle est appliqué">
               {`{{${v}}}`}
             </Badge>
           ))}
         </div>
         {template.description && <p className="selectable mt-1 text-[13px] text-muted">{template.description}</p>}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Select className="w-56" value={null} label="Apply to a project" placeholder="Apply to a project" search onChange={(path) => path && openLauncher({ mode: "existing", path, templateId: template.id })} options={repoOptions(repos.data ?? [])} />
+          <Select className="w-56" value={null} label="Appliquer à un projet" placeholder="Appliquer à un projet" search onChange={(path) => path && openLauncher({ mode: "existing", path, templateId: template.id })} options={repoOptions(repos.data ?? [])} />
           <Button size="sm" variant="ghost" icon={<Star className="size-3.5" fill={isDefault ? "currentColor" : "none"} />} onClick={() => setDefault.mutate()}>
             {isDefault ? "Default for new projects" : "Set as default"}
           </Button>
-          <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} title="Opens the template folder in your IDE" onClick={() => edit.mutate()}>
-            Edit files
+          <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} title="Ouvre le dossier du modèle dans ton IDE" onClick={() => edit.mutate()}>
+            Modifier les fichiers
           </Button>
           <Button size="sm" variant="ghost" icon={<Copy className="size-3.5" />} busy={duplicate.isPending} onClick={() => duplicate.mutate()}>
-            Duplicate
+            Dupliquer
           </Button>
           {armed ? (
             <>
               <Button size="sm" variant="danger" busy={remove.isPending} onClick={() => remove.mutate()}>
-                Delete for good
+                Supprimer définitivement
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setArmed(false)}>
-                Keep
+                Garder
               </Button>
             </>
           ) : (
             <Button size="sm" variant="ghost" icon={<Trash2 className="size-3.5" />} onClick={() => setArmed(true)}>
-              Delete
+              Supprimer
             </Button>
           )}
         </div>
@@ -194,7 +194,7 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
         <ul className="overflow-y-auto border-r border-white/6 py-1">
           {files.isLoading && (
             <li className="flex items-center gap-2 px-3 py-2 text-xs text-muted">
-              <Spinner /> Loading…
+              <Spinner /> Chargement…
             </li>
           )}
           {(files.data ?? []).map((f) => (
@@ -216,7 +216,7 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
         <div className="min-w-0 overflow-auto bg-bg">
           {preview.isLoading ? (
             <p className="flex items-center gap-2 p-4 text-xs text-muted">
-              <Spinner /> Loading…
+              <Spinner /> Chargement…
             </p>
           ) : preview.error ? (
             <div className="p-3">
@@ -246,7 +246,7 @@ function ImportDialog({ source, onClose, onImported }: { source: string; onClose
     mutationFn: () => api.templateImport(source, name, description),
     onSuccess: (report) => {
       void qc.invalidateQueries({ queryKey: keys.templates });
-      toast({ kind: "ok", title: `Imported ${report.files} file${report.files === 1 ? "" : "s"}`, detail: report.skipped > 0 ? `${report.skipped} link(s) or special file(s) were left out.` : undefined });
+      toast({ kind: "ok", title: `${report.files} fichier${report.files === 1 ? "" : "s"} importé${report.files === 1 ? "" : "s"}`, detail: report.skipped > 0 ? `${report.skipped} link(s) or special file(s) were left out.` : undefined });
       onImported(report.id);
       onClose();
     },
@@ -255,26 +255,26 @@ function ImportDialog({ source, onClose, onImported }: { source: string; onClose
     <Modal
       open
       onClose={onClose}
-      title="Import as template"
-      description="The folder is copied into TekBoard's library. The original is not modified; .git is left out."
+      title="Importer comme modèle"
+      description="Le dossier est copié dans la bibliothèque de TekBoard. L'original n'est pas modifié ; .git est laissé de côté."
       width="w-[520px]"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            Annuler
           </Button>
           <Button variant="primary" busy={run.isPending} disabled={!name.trim()} onClick={() => run.mutate()}>
-            Import
+            Importer
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-3">
         <p className="selectable truncate rounded-md border border-line bg-bg px-2.5 py-1.5 font-mono text-xs text-muted">{tildify(source, home)}</p>
-        <Field label="Name">
+        <Field label="Nom">
           <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && name.trim() && run.mutate()} />
         </Field>
-        <Field label="Description (optional)">
+        <Field label="Description (facultatif)">
           <Input value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
         {run.error && <ErrorNote>{asAppError(run.error).message}</ErrorNote>}

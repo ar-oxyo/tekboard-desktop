@@ -36,7 +36,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
               )}
             </div>
             <Dialog.Close asChild>
-              <IconButton label="Close">
+              <IconButton label="Fermer">
                 <X className="size-4" />
               </IconButton>
             </Dialog.Close>

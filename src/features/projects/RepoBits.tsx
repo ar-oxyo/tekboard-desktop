@@ -71,9 +71,9 @@ export function DueBadge({ repo, now }: { repo: RepoInfo; now?: Date }) {
 }
 
 export const PROGRESS: Array<{ id: Progress; label: string; icon: ReactNode; tone: string }> = [
-  { id: "todo", label: "To do", icon: <CircleDashed className="size-3.5" />, tone: "text-muted" },
-  { id: "in_progress", label: "In progress", icon: <CircleDot className="size-3.5" />, tone: "text-accent-strong" },
-  { id: "done", label: "Done", icon: <CircleCheck className="size-3.5" />, tone: "text-ok" },
+  { id: "todo", label: "À faire", icon: <CircleDashed className="size-3.5" />, tone: "text-muted" },
+  { id: "in_progress", label: "En cours", icon: <CircleDot className="size-3.5" />, tone: "text-accent-strong" },
+  { id: "done", label: "Terminé", icon: <CircleCheck className="size-3.5" />, tone: "text-ok" },
 ];
 
 /** To do / In progress / Done. Applied at once and reversible from anywhere, a finished project included. */
@@ -99,7 +99,7 @@ export function ProgressPicker({ repo, compact }: { repo: RepoInfo; compact?: bo
         </button>
       }
     >
-      <MenuLabel>Status</MenuLabel>
+      <MenuLabel>Statut</MenuLabel>
       {PROGRESS.map((p) => (
         <MenuChoice key={p.id} checked={p.id === repo.progress && !repo.progressInferred} icon={<span className={p.tone}>{p.icon}</span>} onSelect={() => act.progress.mutate({ repo, status: p.id })} hint={p.id === repo.progress && repo.progressInferred ? "current" : undefined}>
           {p.label}
@@ -121,55 +121,55 @@ export function RepoMenu({ repo, sheet = true }: { repo: RepoInfo; sheet?: boole
     <Menu label={`More actions for ${repo.name}`}>
       {sheet && (
         <MenuItem icon={<NotebookPen className="size-4" />} onSelect={() => openSheet(repo.path)}>
-          Project sheet
+          Fiche du projet
         </MenuItem>
       )}
       <MenuItem icon={<Code2 className="size-4" />} onSelect={() => act.ide.mutate(repo)}>
-        Open in IDE
+        Ouvrir dans l'IDE
       </MenuItem>
       <MenuItem icon={<SquareTerminal className="size-4" />} onSelect={() => act.terminal.mutate(repo)}>
-        Open terminal here
+        Ouvrir un terminal ici
       </MenuItem>
       <MenuItem icon={<FolderOpen className="size-4" />} onSelect={() => act.files.mutate(repo)}>
-        Show in Files
+        Afficher dans Fichiers
       </MenuItem>
-      <MenuItem icon={<Rocket className="size-4" />} onSelect={() => act.launch.mutate(repo)} title="Starts the program this project builds, in a terminal">
-        Launch binary
+      <MenuItem icon={<Rocket className="size-4" />} onSelect={() => act.launch.mutate(repo)} title="Lance le programme que ce projet compile, dans un terminal">
+        Lancer le binaire
       </MenuItem>
       <MenuSeparator />
       <MenuItem icon={<Globe className="size-4" />} disabled={!hasRemote} onSelect={() => act.remote.mutate(repo)} hint={hasRemote ? "Firefox" : "no remote"} title={hasRemote ? (repo.remoteUrl ?? undefined) : "This repository has no remote"}>
-        Open on GitHub
+        Ouvrir sur GitHub
       </MenuItem>
       <MenuItem icon={<Copy className="size-4" />} disabled={!hasRemote} onSelect={() => act.copyUrl(repo)}>
-        Copy remote URL
+        Copier l'URL distante
       </MenuItem>
       <MenuItem icon={<GitBranch className="size-4" />} onSelect={() => openGit(repo.path)}>
         Git
       </MenuItem>
       <MenuItem icon={<FlaskConical className="size-4" />} onSelect={() => openTesting(repo.path)}>
-        Testing
+        Vérifier
       </MenuItem>
       <MenuItem icon={<LayoutTemplate className="size-4" />} onSelect={() => openLauncher({ mode: "existing", path: repo.path })}>
-        Apply a template…
+        Appliquer un modèle…
       </MenuItem>
       <MenuSeparator />
-      <SubMenu icon={<CircleDot className="size-4" />} label="Status">
+      <SubMenu icon={<CircleDot className="size-4" />} label="Statut">
         {PROGRESS.map((p) => (
           <MenuChoice key={p.id} checked={p.id === repo.progress} icon={<span className={p.tone}>{p.icon}</span>} onSelect={() => act.progress.mutate({ repo, status: p.id })}>
             {p.label}
           </MenuChoice>
         ))}
       </SubMenu>
-      <SubMenu icon={repo.kind === "epitech" ? <GraduationCap className="size-4" /> : <User className="size-4" />} label="Classification">
-        <MenuLabel>{repo.kind === "epitech" ? "Epitech" : "Personal"} — {repo.kindReason}</MenuLabel>
+      <SubMenu icon={repo.kind === "epitech" ? <GraduationCap className="size-4" /> : <User className="size-4" />} label="Classement">
+        <MenuLabel>{repo.kind === "epitech" ? "Epitech" : "Personnel"} — {repo.kindReason}</MenuLabel>
         <MenuChoice checked={repo.meta.kindOverride === "epitech"} icon={<GraduationCap className="size-4" />} onSelect={() => act.kind.mutate({ repo, kind: "epitech" })}>
           Epitech
         </MenuChoice>
         <MenuChoice checked={repo.meta.kindOverride === "personal"} icon={<User className="size-4" />} onSelect={() => act.kind.mutate({ repo, kind: "personal" })}>
-          Personal
+          Personnel
         </MenuChoice>
         <MenuChoice checked={repo.meta.kindOverride === null} icon={<Wand2 className="size-4" />} onSelect={() => act.kind.mutate({ repo, kind: null })}>
-          Automatic
+          Automatique
         </MenuChoice>
       </SubMenu>
     </Menu>

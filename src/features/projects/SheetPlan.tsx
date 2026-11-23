@@ -38,7 +38,7 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
   const saveEstimate = () => {
     if (estimate === null) return;
     const m = estimate.trim() === "" ? null : parseDur(estimate);
-    if (estimate.trim() !== "" && m === null) return useUi.getState().toast({ kind: "error", title: "Write the work left as 12h, 1h30 or 45m" });
+    if (estimate.trim() !== "" && m === null) return useUi.getState().toast({ kind: "error", title: "Écris le travail restant comme 12h, 1h30 ou 45m" });
     act.setProject.mutate({ key, estimateMin: m });
     setEstimate(null);
   };
@@ -51,7 +51,7 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
   return (
     <div className="grid grid-cols-2 gap-4">
       <section className="flex flex-col gap-3 rounded-lg border border-white/7 p-4">
-        <SectionLabel>Where you are</SectionLabel>
+        <SectionLabel>Où tu en es</SectionLabel>
         {(my?.tooManyAbsences || my?.nonCompliant) && (
           <p className="-mt-1 rounded-md border border-warn/30 bg-warn/10 px-2.5 py-1.5 text-xs text-warn">
             MY Epitech flags this group: {[my.tooManyAbsences && "too many absences", my.nonCompliant && "non compliant"].filter(Boolean).join(", ")}. Check with the module's staff.
@@ -67,21 +67,21 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
           </span>
         </div>
         <dl className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-x-3 gap-y-2 text-[13px]">
-          <dt className="text-muted">Work left</dt>
+          <dt className="text-muted">Travail restant</dt>
           <dd>
             {estimate === null ? (
-              <button type="button" className="rounded px-1 -mx-1 hover:bg-hover" onClick={() => setEstimate(durInput(project?.estimateMin ?? null))} title="Your own estimate. Time recorded with Focus is taken off it.">
-                {project?.estimateMin != null ? fmtDur(project.estimateMin) : <span className="text-faint">set an estimate</span>}
+              <button type="button" className="rounded px-1 -mx-1 hover:bg-hover" onClick={() => setEstimate(durInput(project?.estimateMin ?? null))} title="Ton estimation. Le temps enregistré en session en est déduit.">
+                {project?.estimateMin != null ? fmtDur(project.estimateMin) : <span className="text-faint">donner une estimation</span>}
               </button>
             ) : (
               <Input autoFocus className="h-7 w-28" placeholder="12h" value={estimate} onChange={(e) => setEstimate(e.target.value)} onBlur={saveEstimate} onKeyDown={(e) => e.key === "Enter" && saveEstimate()} />
             )}
           </dd>
-          <dt className="text-muted">Planned</dt>
+          <dt className="text-muted">Planifié</dt>
           <dd>{fmtDur(load?.planned ?? 0)} in the calendar</dd>
-          <dt className="text-muted">Time spent</dt>
-          <dd>{logged > 0 ? fmtDur(logged) : <span className="text-faint">nothing recorded</span>}</dd>
-          <dt className="text-muted">Priority</dt>
+          <dt className="text-muted">Temps passé</dt>
+          <dd>{logged > 0 ? fmtDur(logged) : <span className="text-faint">rien d'enregistré</span>}</dd>
+          <dt className="text-muted">Priorité</dt>
           <dd className="flex gap-1">
             {PRIORITY.map((label, i) => (
               <button key={label} type="button" aria-pressed={(project?.priority ?? 0) === i} onClick={() => act.setProject.mutate({ key, priority: i })} className={cn("h-6 rounded-md px-2 text-xs transition-colors duration-150", (project?.priority ?? 0) === i ? "bg-raised text-fg" : "text-faint hover:text-fg")}>
@@ -92,21 +92,21 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
           {my?.quota && (
             <>
               <dt className="text-muted">Moulinette</dt>
-              <dd className={cn(my.quota[1] <= 1 && "text-warn")} title="Automated test runs your group can still ask for, according to MY Epitech">
+              <dd className={cn(my.quota[1] <= 1 && "text-warn")} title="Exécutions de tests automatiques que ton groupe peut encore demander, d'après MY Epitech">
                 {my.quota[1]} of {my.quota[0]} runs left
               </dd>
             </>
           )}
           {my?.delivery && (
             <>
-              <dt className="text-muted">Delivered</dt>
-              <dd className="flex min-w-0 items-center gap-2" title="The last revision your group pushed: what the moulinette tests">
+              <dt className="text-muted">Rendu</dt>
+              <dd className="flex min-w-0 items-center gap-2" title="La dernière révision poussée par ton groupe : ce que la moulinette teste">
                 <span className="font-mono text-xs">{my.delivery.commit.slice(0, 7)}</span>
                 <span className="truncate text-xs text-faint">
                   {my.delivery.branch ?? ""}
                   {my.delivery.pushedAt ? ` · ${timeAgo(my.delivery.pushedAt)}` : ""}
                 </span>
-                {undelivered && <Dot tone="warn">your latest commit is not delivered</Dot>}
+                {undelivered && <Dot tone="warn">ton dernier commit n'est pas rendu</Dot>}
               </dd>
             </>
           )}
@@ -126,32 +126,32 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
       </section>
 
       <section className="flex flex-col gap-2 rounded-lg border border-white/7 p-4">
-        <SectionLabel>Next</SectionLabel>
+        <SectionLabel>Ensuite</SectionLabel>
         <div className="flex items-center gap-2 text-[13px]">
           <CalendarClock className="size-4 shrink-0 text-faint" />
           {next ? (
             <>
               <span className="min-w-0 flex-1 truncate">
-                {new Date(next.start * 1000).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" })}, {hhmm(next.start * 1000)} – {hhmm(next.end * 1000)}
+                {new Date(next.start * 1000).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "short" })}, {hhmm(next.start * 1000)} – {hhmm(next.end * 1000)}
               </span>
-              <IconButton label="Start this session now" onClick={() => startFocus({ title: next.title, project: key, taskId: next.taskId, eventId: next.id, plannedMin: Math.round((next.end - next.start) / 60) })}>
+              <IconButton label="Démarrer cette session maintenant" onClick={() => startFocus({ title: next.title, project: key, taskId: next.taskId, eventId: next.id, plannedMin: Math.round((next.end - next.start) / 60) })}>
                 <Play className="size-3.5" />
               </IconButton>
             </>
           ) : (
-            <span className="text-muted">No session planned</span>
+            <span className="text-muted">Aucune session prévue</span>
           )}
         </div>
         <ul className="flex flex-col">
           {open.slice(0, 6).map((t) => (
             <li key={t.id} className="group flex h-8 items-center gap-2 text-[13px]">
-              <input type="checkbox" aria-label="Done" className="accent-(--color-accent)" checked={false} onChange={() => act.toggleTask(t)} />
+              <input type="checkbox" aria-label="Fait" className="accent-(--color-accent)" checked={false} onChange={() => act.toggleTask(t)} />
               <button type="button" className="min-w-0 flex-1 truncate text-left hover:text-accent-strong" onClick={() => useUi.getState().editTask(t)}>
                 {t.title}
               </button>
               {t.estimateMin !== null && <span className="shrink-0 text-xs text-faint">{fmtDur(t.estimateMin)}</span>}
               {tasks.some((s) => s.parentId === t.id) && <span className="shrink-0 text-xs text-faint">{tasks.filter((s) => s.parentId === t.id && s.doneAt !== null).length}/{tasks.filter((s) => s.parentId === t.id).length}</span>}
-              <IconButton label="Delete task" className="opacity-0 group-hover:opacity-100" onClick={() => act.removeTask.mutate(t.id)}>
+              <IconButton label="Supprimer la tâche" className="opacity-0 group-hover:opacity-100" onClick={() => act.removeTask.mutate(t.id)}>
                 <Trash2 className="size-3.5" />
               </IconButton>
             </li>
@@ -159,7 +159,7 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
           {open.length > 6 && <li className="text-xs text-faint">{open.length - 6} more in Planning → Inbox</li>}
         </ul>
         <Input
-          placeholder="Add a task and press Enter"
+          placeholder="Ajoute une tâche puis Entrée"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => {
@@ -169,8 +169,8 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
           }}
         />
         <div className="mt-auto flex flex-wrap gap-2 pt-2">
-          <Button size="sm" icon={<CalendarPlus className="size-3.5" />} onClick={planSessions} title="Spreads the work left over your free time before the hand-in. Previewed before anything is saved.">
-            Plan sessions
+          <Button size="sm" icon={<CalendarPlus className="size-3.5" />} onClick={planSessions} title="Répartit le travail restant sur ton temps libre avant le rendu, avec pauses et marge. À valider avant tout enregistrement.">
+            Planifier des sessions
           </Button>
           <Button
             size="sm"
@@ -180,9 +180,9 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
               useUi.getState().closeSheet();
               useUi.getState().openAssistant({ text: "#breakdown", project: key });
             }}
-            title="Claude proposes tasks and sessions; you review them first"
+            title="Tika propose des tâches et des sessions ; tu valides d'abord"
           >
-            Break down with Claude
+            Décomposer avec Tika
           </Button>
         </div>
       </section>
@@ -214,13 +214,13 @@ export function GitTab({ repo }: { repo: RepoInfo }) {
       )}
       <div className="flex flex-wrap gap-2">
         <Button variant="primary" icon={<GitBranch className="size-3.5" />} onClick={() => openGit(repo.path)}>
-          Stage, commit and sync
+          Indexer, commiter et synchroniser
         </Button>
         <Button icon={<Globe className="size-3.5" />} disabled={!repo.remoteUrl} onClick={() => act.remote.mutate(repo)} title={repo.remoteUrl ?? "This repository has no remote"}>
-          Open on GitHub
+          Ouvrir sur GitHub
         </Button>
         <Button variant="ghost" icon={<Copy className="size-3.5" />} disabled={!repo.remoteUrl} onClick={() => act.copyUrl(repo)}>
-          Copy remote URL
+          Copier l'URL distante
         </Button>
       </div>
     </div>

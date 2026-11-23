@@ -125,7 +125,7 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<(String, u64)>, skipped: &mut Vec
 
 pub fn preview(repo: &Path, opts: &Options) -> Result<Preview> {
     if !matches!(opts.mode.as_str(), "source" | "full" | "context") {
-        return Err(AppError::new("invalid_mode", "Unknown export mode"));
+        return Err(AppError::new("invalid_mode", "Mode d'export inconnu"));
     }
     let source_only = opts.mode != "full";
     let (mut files, mut skipped_dirs) = (Vec::new(), Vec::new());
@@ -286,7 +286,7 @@ pub fn create(repo: &Path, opts: &Options, out_dir: &Path, last_runs: &[(String,
     let p = preview(repo, opts)?;
     let chosen: Vec<&Entry> = p.entries.iter().filter(|e| e.included && !e.sensitive).collect();
     if chosen.is_empty() {
-        return Err(AppError::new("empty_package", "No file is selected"));
+        return Err(AppError::new("empty_package", "Aucun fichier sélectionné"));
     }
     let name: String = repo.file_name().map(|n| n.to_string_lossy().chars().map(|c| if c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.') { c } else { '_' }).collect()).unwrap_or_else(|| "project".into());
     std::fs::create_dir_all(out_dir)?;

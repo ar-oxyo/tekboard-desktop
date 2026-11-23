@@ -80,16 +80,16 @@ pub fn link_from_body(body: &str) -> Option<String> {
 /// Downloads `url` (no credentials are sent: the link carries its own authorisation) into `dest`.
 pub fn download(url: &str, dest: &Path) -> Result<u64> {
     let agent: ureq::Agent = ureq::Agent::config_builder().http_status_as_error(false).timeout_global(Some(Duration::from_secs(60))).user_agent("TekBoard (personal desktop client, read-only)").max_redirects(2).build().into();
-    let mut resp = agent.get(url).call().map_err(|e| AppError::new("download_failed", format!("The document could not be downloaded: {e}")))?;
+    let mut resp = agent.get(url).call().map_err(|e| AppError::new("download_failed", format!("Le document n'a pas pu être téléchargé : {e}")))?;
     if !resp.status().is_success() {
-        return Err(AppError::new("download_failed", format!("The document could not be downloaded (HTTP {})", resp.status().as_u16())));
+        return Err(AppError::new("download_failed", format!("Le document n'a pas pu être téléchargé (HTTP {})", resp.status().as_u16())));
     }
     let mut reader = resp.body_mut().with_config().limit(MAX_DOWNLOAD + 1).reader();
     let mut file = std::fs::File::create(dest)?;
     let mut total = 0u64;
     let mut buf = [0u8; 64 * 1024];
     loop {
-        let n = reader.read(&mut buf).map_err(|e| AppError::new("download_failed", format!("The download was interrupted: {e}")))?;
+        let n = reader.read(&mut buf).map_err(|e| AppError::new("download_failed", format!("Le téléchargement a été interrompu : {e}")))?;
         if n == 0 {
             break;
         }
@@ -97,7 +97,7 @@ pub fn download(url: &str, dest: &Path) -> Result<u64> {
         if total > MAX_DOWNLOAD {
             drop(file);
             let _ = std::fs::remove_file(dest);
-            return Err(AppError::new("download_failed", "The document is larger than 60 MB"));
+            return Err(AppError::new("download_failed", "Le document dépasse 60 Mo"));
         }
         file.write_all(&buf[..n])?;
     }

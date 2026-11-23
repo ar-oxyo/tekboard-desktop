@@ -62,10 +62,10 @@ export function PlanningPage() {
   const step = (n: number) => setDate(view === "month" ? new Date(new Date(date).getFullYear(), new Date(date).getMonth() + n, 1).getTime() : addDays(date, n * (view === "day" ? 1 : 7)));
   const label =
     view === "month"
-      ? new Date(date).toLocaleDateString(undefined, { month: "long", year: "numeric" })
+      ? new Date(date).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
       : view === "day"
-        ? new Date(date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })
-        : `${new Date(days[0]).toLocaleDateString(undefined, { day: "numeric", month: "short" })} – ${new Date(days[6]).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}`;
+        ? new Date(date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })
+        : `${new Date(days[0]).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} – ${new Date(days[6]).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}`;
 
   const open = (i: CalItem) => {
     if (i.source === "plan") useUi.getState().editEvent(i.event!);
@@ -112,18 +112,18 @@ export function PlanningPage() {
       <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/6 px-6 py-3">
         <h1 className="display mr-2 text-[20px] font-medium">Planning</h1>
         <Button size="sm" onClick={() => setDate(now)}>
-          Today
+          Aujourd'hui
         </Button>
-        <IconButton label="Previous" onClick={() => step(-1)}>
+        <IconButton label="Précédent" onClick={() => step(-1)}>
           <ChevronLeft className="size-4" />
         </IconButton>
-        <IconButton label="Next" onClick={() => step(1)}>
+        <IconButton label="Suivant" onClick={() => step(1)}>
           <ChevronRight className="size-4" />
         </IconButton>
         <span className="min-w-0 truncate text-[13px] capitalize">{label}</span>
         {data.fetching && <Spinner />}
         <div className="ml-auto flex items-center gap-1.5">
-          <div role="tablist" aria-label="View" className="flex gap-0.5 rounded-(--btn-radius) border border-white/8 p-0.5">
+          <div role="tablist" aria-label="Vue" className="flex gap-0.5 rounded-(--btn-radius) border border-white/8 p-0.5">
             {(["day", "week", "month"] as View[]).map((v) => (
               <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)} className={cn("h-6 rounded-[calc(var(--btn-radius)-3px)] px-2.5 text-xs capitalize transition-colors duration-150", view === v ? "bg-raised text-fg" : "text-muted hover:text-fg")}>
                 {v}
@@ -131,14 +131,14 @@ export function PlanningPage() {
             ))}
           </div>
           <Menu
-            label="Filters"
+            label="Filtres"
             trigger={
-              <IconButton label="What to show">
+              <IconButton label="Ce qui est affiché">
                 <ListFilter className="size-4" />
               </IconButton>
             }
           >
-            <MenuLabel>Show</MenuLabel>
+            <MenuLabel>Afficher</MenuLabel>
             {FILTER_LABEL.map(([k, text]) => (
               <MenuChoice key={k} checked={f[k]} onSelect={() => setFilters({ ...f, [k]: !f[k] })}>
                 {text}
@@ -146,49 +146,49 @@ export function PlanningPage() {
             ))}
           </Menu>
           <Menu
-            label="Plan"
+            label="Planifier"
             trigger={
               <Button size="sm" icon={<Wand2 className="size-3.5" />}>
-                Plan
+                Planifier
               </Button>
             }
           >
-            <MenuLabel>Computed here, previewed before saving</MenuLabel>
+            <MenuLabel>Calculé par le moteur de TekBoard, à valider avant</MenuLabel>
             <MenuItem icon={<CalendarCheck className="size-4" />} onSelect={() => autoPlan("day")}>
-              Plan my day
+              Planifier ma journée
             </MenuItem>
             <MenuItem icon={<CalendarCheck className="size-4" />} onSelect={() => autoPlan("week")}>
-              Plan my week
+              Planifier ma semaine
             </MenuItem>
             <MenuItem icon={<RefreshCw className="size-4" />} onSelect={reorg}>
-              Reorganize what was not done
+              Replacer ce qui n'a pas été fait
             </MenuItem>
             <MenuSeparator />
             <MenuItem icon={<CalendarCheck className="size-4" />} onSelect={() => setDialog("review")}>
-              Weekly review
+              Bilan de la semaine
             </MenuItem>
             <MenuItem icon={<Settings2 className="size-4" />} onSelect={() => setDialog("prefs")}>
-              Working hours and limits…
+              Mon rythme…
             </MenuItem>
           </Menu>
-          <Button size="sm" icon={<Sparkles className="size-3.5" />} onClick={() => useUi.getState().openAssistant()} title="Ask Claude to organise your planning. Nothing changes before you apply its plan.">
-            Ask Claude
+          <Button size="sm" icon={<Sparkles className="size-3.5" />} onClick={() => useUi.getState().openAssistant()} title="Demande à Tika d'organiser ton planning. Rien ne change avant que tu acceptes sa proposition.">
+            Demander à Tika
           </Button>
           <Button size="sm" variant="primary" icon={<Plus className="size-3.5" />} onClick={() => create(Math.ceil(now / (15 * MIN)) * 15 * MIN, Math.ceil(now / (15 * MIN)) * 15 * MIN + 60 * MIN)}>
-            New
+            Nouveau
           </Button>
         </div>
       </header>
       {data.error && (
         <div className="px-6 pt-3">
-          <ErrorNote title="The planning could not be read">{String((data.error as { message?: string }).message ?? data.error)}</ErrorNote>
+          <ErrorNote title="Le planning n'a pas pu être lu">{String((data.error as { message?: string }).message ?? data.error)}</ErrorNote>
         </div>
       )}
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1">
           {data.loading ? (
             <p className="flex items-center gap-2 p-8 text-muted">
-              <Spinner /> Reading your calendar…
+              <Spinner /> Lecture du calendrier…
             </p>
           ) : view === "month" ? (
             <MonthGrid date={date} items={shown} now={now} onOpen={open} onMove={move} onPickDay={(d) => (setDate(d), setView("day"))} />
@@ -210,7 +210,7 @@ export function PlanningPage() {
           <p className="shrink-0 border-t border-white/6 px-4 py-2 text-[11px] text-faint">
             {data.agenda?.syncedAt ? `MY Epitech synced ${timeAgo(data.agenda.syncedAt)} · its entries are read-only` : "MY Epitech not synced: only your own entries are shown."}{" "}
             <button type="button" className="hover:text-fg" onClick={() => invalidate(qc, ["plan", "repos", "my"])}>
-              Refresh
+              Actualiser
             </button>
           </p>
         </aside>
@@ -232,18 +232,18 @@ function InboxPanel({ data, onDrag, now }: { data: ReturnType<typeof usePlanData
       <div className="flex items-center justify-between px-1 pb-1">
         <span className="text-xs text-faint">{tasks.length === 0 ? "Nothing waiting" : `${tasks.length} to place · drag onto the calendar`}</span>
         <Button size="sm" variant="ghost" icon={<Plus className="size-3.5" />} onClick={() => useUi.getState().editTask({})}>
-          Task
+          Tâche
         </Button>
       </div>
       {tasks.length === 0 && (
         <p className="flex flex-col items-center gap-2 px-4 py-8 text-center text-[13px] text-muted">
           <Inbox className="size-5 text-faint" />
-          Tasks without a time land here. Ctrl+I captures one from any screen.
+          Les tâches sans horaire arrivent ici. Ctrl+I en note une depuis n'importe quel écran.
         </p>
       )}
       {tasks.map((t) => (
         <div key={t.id} onPointerDown={(e) => onDrag(e, t)} className="group row-hover flex cursor-grab items-start gap-2 rounded-md px-2 py-1.5 active:cursor-grabbing" style={{ touchAction: "none" }}>
-          <input type="checkbox" aria-label="Done" className="mt-0.5 accent-(--color-accent)" checked={false} onPointerDown={(e) => e.stopPropagation()} onChange={() => act.toggleTask(t)} />
+          <input type="checkbox" aria-label="Fait" className="mt-0.5 accent-(--color-accent)" checked={false} onPointerDown={(e) => e.stopPropagation()} onChange={() => act.toggleTask(t)} />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13px]">{t.title}</span>
             <span className="flex items-center gap-2 text-[11px] text-faint">
@@ -255,7 +255,7 @@ function InboxPanel({ data, onDrag, now }: { data: ReturnType<typeof usePlanData
               )}
               {t.estimateMin !== null && <span>{fmtDur(t.estimateMin)}</span>}
               {t.priority >= 3 && <span className="text-warn">high</span>}
-              {t.dueDay && <span>due {new Date(`${t.dueDay}T12:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</span>}
+              {t.dueDay && <span>due {new Date(`${t.dueDay}T12:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>}
             </span>
           </span>
         </div>
@@ -263,7 +263,7 @@ function InboxPanel({ data, onDrag, now }: { data: ReturnType<typeof usePlanData
       {ideas.length > 0 && (
         <>
           <p className="mt-3 flex items-center gap-1.5 px-1 text-xs text-faint">
-            <Lightbulb className="size-3.5" /> Ideas
+            <Lightbulb className="size-3.5" /> Idées
           </p>
           {ideas.map((t) => (
             <button key={t.id} type="button" onClick={() => useUi.getState().editTask(t)} className="row-hover truncate rounded-md px-2 py-1 text-left text-[13px] text-muted">
@@ -276,11 +276,11 @@ function InboxPanel({ data, onDrag, now }: { data: ReturnType<typeof usePlanData
   );
 }
 
-const RISK: Record<Load["risk"], { tone: "danger" | "warn" | "ok" | "neutral"; text: string }> = { late: { tone: "danger", text: "late" }, risk: { tone: "warn", text: "at risk" }, ok: { tone: "ok", text: "on track" }, unknown: { tone: "neutral", text: "no estimate" } };
+const RISK: Record<Load["risk"], { tone: "danger" | "warn" | "ok" | "neutral"; text: string }> = { late: { tone: "danger", text: "late" }, risk: { tone: "warn", text: "en danger" }, ok: { tone: "ok", text: "dans les temps" }, unknown: { tone: "neutral", text: "sans estimation" } };
 
 export function ProjectsPanel({ projects, loads, now }: { projects: PlanProject[]; loads: Map<string, Load>; now: Date }) {
   const withDate = projects.filter((p) => p.dueMs !== null || p.estimateMin !== null);
-  if (withDate.length === 0) return <p className="p-6 text-center text-[13px] text-muted">No project with a hand-in date or an estimate yet. Sync MY Epitech, or set a deadline in a project sheet.</p>;
+  if (withDate.length === 0) return <p className="p-6 text-center text-[13px] text-muted">Aucun projet avec date de rendu ou estimation. Synchronise MY Epitech, ou fixe un rendu dans la fiche d'un projet.</p>;
   return (
     <ul className="flex flex-col gap-1 p-3">
       {withDate.map((p) => {

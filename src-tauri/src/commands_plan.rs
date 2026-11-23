@@ -114,10 +114,10 @@ pub fn build_prompt(question: &str, context: &str, subject: Option<&str>) -> Str
 pub fn assistant_start(state: State<'_, AppState>, question: String, context: String, subject_of: Option<String>) -> Result<u64> {
     let question = question.trim().to_string();
     if question.is_empty() || question.len() > 4000 {
-        return Err(AppError::new("invalid_question", "Write a request of at most 4000 characters"));
+        return Err(AppError::new("invalid_question", "Écris une demande de 4000 caractères au plus"));
     }
     if context.len() > MAX_CONTEXT || serde_json::from_str::<serde_json::Value>(&context).is_err() {
-        return Err(AppError::new("invalid_context", "The planning context is too large or unreadable"));
+        return Err(AppError::new("invalid_context", "Le contexte du planning est trop gros ou illisible"));
     }
     // A second question must never receive the answer to the first one.
     if state.jobs.active("assistant", None).is_some() {

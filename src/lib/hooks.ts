@@ -74,18 +74,18 @@ export function useProjectActions() {
     mutationFn: (repo: RepoInfo) => api.openWorkspace(repo.path),
     onSuccess: (report) => {
       const partial = report.ide ?? report.terminal;
-      if (partial) toast({ kind: "error", title: report.ide ? "The IDE did not start" : "The terminal did not start", detail: partial });
+      if (partial) toast({ kind: "error", title: report.ide ? "L'IDE n'a pas démarré" : "Le terminal n'a pas démarré", detail: partial });
       refresh();
     },
-    onError: fail("Could not open the workspace"),
+    onError: fail("Espace de travail non ouvert"),
   });
-  const ide = useMutation({ mutationFn: (repo: RepoInfo) => api.openIde(repo.path), onSuccess: refresh, onError: fail("Could not open the IDE") });
-  const terminal = useMutation({ mutationFn: (repo: RepoInfo) => api.openTerminal(repo.path), onSuccess: refresh, onError: fail("Could not open a terminal") });
-  const files = useMutation({ mutationFn: (repo: RepoInfo) => api.revealInFiles(repo.path), onError: fail("Could not open the folder") });
+  const ide = useMutation({ mutationFn: (repo: RepoInfo) => api.openIde(repo.path), onSuccess: refresh, onError: fail("IDE non ouvert") });
+  const terminal = useMutation({ mutationFn: (repo: RepoInfo) => api.openTerminal(repo.path), onSuccess: refresh, onError: fail("Terminal non ouvert") });
+  const files = useMutation({ mutationFn: (repo: RepoInfo) => api.revealInFiles(repo.path), onError: fail("Dossier non ouvert") });
   const favorite = useMutation({
     mutationFn: (repo: RepoInfo) => api.setFavorite(repo.path, !repo.meta.favorite),
     onSuccess: () => void qc.invalidateQueries({ queryKey: keys.repos }),
-    onError: fail("Could not update the favorite"),
+    onError: fail("Favori non modifié"),
   });
   const progress = useMutation({
     mutationFn: ({ repo, status }: { repo: RepoInfo; status: Progress }) => api.projectSetStatus(repo.path, status),
@@ -94,19 +94,19 @@ export function useProjectActions() {
       qc.setQueryData<RepoInfo[]>(keys.repos, (old) => old?.map((r) => (r.path === repo.path ? { ...r, progress: status, progressInferred: false, meta: { ...r.meta, status, archived: status === "done" } } : r)));
     },
     onSettled: refresh,
-    onError: fail("Status not changed"),
+    onError: fail("Statut non modifié"),
   });
   const kind = useMutation({
     mutationFn: ({ repo, kind }: { repo: RepoInfo; kind: RepoKind | null }) => api.projectSetKind(repo.path, kind),
     onSuccess: refresh,
-    onError: fail("Classification not changed"),
+    onError: fail("Classement non modifié"),
   });
   const remote = useMutation({
     mutationFn: (repo: RepoInfo) => api.openRemote(repo.path),
     onSuccess: (r) => {
-      if (r.browser !== "firefox") toast({ kind: "info", title: "Firefox is not installed", detail: `Opened in your default browser instead: ${r.url}` });
+      if (r.browser !== "firefox") toast({ kind: "info", title: "Firefox n'est pas installé", detail: `Ouvert dans ton navigateur par défaut : ${r.url}` });
     },
-    onError: fail("Could not open the repository page"),
+    onError: fail("Page du dépôt non ouverte"),
   });
   const launch = useMutation({
     mutationFn: (repo: RepoInfo) => api.projectLaunch(repo.path),
@@ -114,13 +114,13 @@ export function useProjectActions() {
       toast({ kind: "ok", title: `${bin} started in a terminal` });
       void qc.invalidateQueries({ queryKey: keys.activity });
     },
-    onError: fail("The program did not start"),
+    onError: fail("Le programme n'a pas démarré"),
   });
   const copyUrl = (repo: RepoInfo) => {
     if (!repo.remoteUrl) return;
     navigator.clipboard.writeText(repo.remoteUrl).then(
       () => toast({ kind: "ok", title: "Remote URL copied" }),
-      fail("Could not copy"),
+      fail("Copie impossible"),
     );
   };
   return { workspace, ide, terminal, files, favorite, copyUrl, progress, kind, remote, launch };

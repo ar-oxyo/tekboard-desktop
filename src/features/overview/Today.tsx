@@ -30,7 +30,7 @@ export function TodayCard() {
   // The "morning plan": offered (never applied) when nothing is planned and there is work to place.
   const hasWorkLeft = data.projects.some((p) => (p.estimateMin ?? 0) > 0 && p.status !== "done");
   const suggestion = data.prefs.morningPlan && workToday.length === 0 && hasWorkLeft;
-  const greeting = new Date(now).getHours() < 12 ? "Good morning" : new Date(now).getHours() < 18 ? "Good afternoon" : "Good evening";
+  const greeting = new Date(now).getHours() < 12 ? "Bonjour" : new Date(now).getHours() < 18 ? "Bon après-midi" : "Bonsoir";
 
   let hero: ReactNode;
   if (next.kind === "now" || next.kind === "soon") {
@@ -42,9 +42,9 @@ export function TodayCard() {
         <p className="mt-1 text-[13px] text-muted">{[i.module, fmtDur((i.end - i.start) / MIN), i.detail].filter(Boolean).join(" · ")}</p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Button variant="primary" icon={<Play className="size-3.5" />} onClick={() => startFocus({ title: i.title, project: i.project, taskId: i.event?.taskId ?? null, eventId: i.event?.id ?? null, plannedMin: Math.round((i.end - Math.max(now, i.start)) / MIN) })}>
-            Start focus
+            Démarrer
           </Button>
-          <Button onClick={() => i.event && ui().editEvent(i.event)}>Edit</Button>
+          <Button onClick={() => i.event && ui().editEvent(i.event)}>Modifier</Button>
         </div>
       </>
     );
@@ -64,24 +64,24 @@ export function TodayCard() {
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Button variant="primary" icon={<Play className="size-3.5" />} onClick={() => startFocus({ title: p.title, project: p.key, taskId: null, eventId: null, plannedMin: data.prefs.sessionMinutes })}>
-            Work on it now
+            Y travailler maintenant
           </Button>
           <Button icon={<Wand2 className="size-3.5" />} onClick={() => ui().openAssistant({ text: "#week" })}>
-            Plan my week
+            Planifier ma semaine
           </Button>
-          {p.repoPath && <Button onClick={() => ui().openSheet(p.repoPath!)}>Project</Button>}
+          {p.repoPath && <Button onClick={() => ui().openSheet(p.repoPath!)}>Projet</Button>}
         </div>
       </>
     );
   } else {
     hero = (
       <>
-        <p className="text-xs text-faint">Nothing urgent</p>
-        <h3 className="display mt-2 text-[28px] leading-[1.15] font-medium">Your day is free</h3>
-        <p className="mt-1 text-[13px] text-muted">No session planned and no hand-in ahead. Capture what you want to do, or pick a project.</p>
+        <p className="text-xs text-faint">Rien d'urgent</p>
+        <h3 className="display mt-2 text-[28px] leading-[1.15] font-medium">Ta journée est libre</h3>
+        <p className="mt-1 text-[13px] text-muted">Aucune session prévue et aucun rendu proche. Note ce que tu veux faire, ou choisis un projet.</p>
         <div className="mt-5 flex gap-2">
           <Button icon={<Plus className="size-3.5" />} onClick={() => ui().setCaptureOpen(true)}>
-            Capture a task
+            Noter une tâche
           </Button>
         </div>
       </>
@@ -106,7 +106,7 @@ export function TodayCard() {
               {register.map((i) => (
                 <li key={i.id} className="flex min-h-7 items-center gap-2">
                   <span className="min-w-0 flex-1 truncate">{i.title}</span>
-                  <span className="shrink-0 text-xs text-faint">{new Date(i.start).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}</span>
+                  <span className="shrink-0 text-xs text-faint">{new Date(i.start).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}</span>
                   {i.agenda?.eventId != null && <FreeSlots eventId={i.agenda.eventId} />}
                 </li>
               ))}
@@ -133,13 +133,13 @@ export function TodayCard() {
       )}
       <div className="border-t border-white/6 px-6 py-3">
         <div className="mb-1 flex items-center justify-between">
-          <span className="text-xs text-faint">Today</span>
+          <span className="text-xs text-faint">Aujourd'hui</span>
           <button type="button" className="flex items-center gap-1 text-xs text-muted hover:text-fg" onClick={() => ui().openPlanning(now)}>
-            <CalendarDays className="size-3.5" /> Open planning
+            <CalendarDays className="size-3.5" /> Ouvrir le planning
           </button>
         </div>
         {today.length === 0 ? (
-          <p className="py-2 text-[13px] text-muted">Nothing on the calendar today.</p>
+          <p className="py-2 text-[13px] text-muted">Rien au calendrier aujourd'hui.</p>
         ) : (
           <ul>
             {today.map((i) => (
@@ -163,7 +163,7 @@ function TodayRow({ i, now }: { i: CalItem; now: number }) {
         <span className="h-4 w-1 shrink-0 rounded-full" style={{ background: i.color } as CSSProperties} />
         <span className={cn("min-w-0 flex-1 truncate", i.done && "line-through", current && "font-medium")}>{i.title}</span>
         {i.kind === "deadline" && <Flag className="size-3.5 shrink-0 text-danger" />}
-        {i.source === "my" && i.kind !== "deadline" && <Lock className="size-3 shrink-0 text-faint" aria-label="From MY Epitech" />}
+        {i.source === "my" && i.kind !== "deadline" && <Lock className="size-3 shrink-0 text-faint" aria-label="Depuis MY Epitech" />}
         {current && <Dot tone="accent">now</Dot>}
       </button>
     </li>
@@ -178,14 +178,14 @@ export function WorkloadCard() {
   const span = data.prefs.dayEnd - data.prefs.dayStart;
   return (
     <Card>
-      <CardTitle right={<span className="text-xs text-faint">max {fmtDur(data.prefs.maxMinutesPerDay)} of work a day</span>}>Coming days</CardTitle>
+      <CardTitle right={<span className="text-xs text-faint">max {fmtDur(data.prefs.maxMinutesPerDay)} of work a day</span>}>Prochains jours</CardTitle>
       <ul className="flex flex-col gap-1.5 px-4 py-3">
         {days.map((d) => {
           const total = d.school + d.work + d.other;
           return (
             <li key={d.day}>
               <button type="button" onClick={() => useUi.getState().openPlanning(d.day)} className="grid w-full grid-cols-[72px_minmax(0,1fr)_64px] items-center gap-3 text-left text-xs" title={`School ${fmtDur(d.school)} · work ${fmtDur(d.work)} · other ${fmtDur(d.other)}${d.handIns.length ? `\nHand-in: ${d.handIns.join(", ")}` : ""}`}>
-                <span className={cn("capitalize", d.day === startOfDay(now) ? "font-medium text-fg" : "text-muted")}>{new Date(d.day).toLocaleDateString(undefined, { weekday: "short", day: "numeric" })}</span>
+                <span className={cn("capitalize", d.day === startOfDay(now) ? "font-medium text-fg" : "text-muted")}>{new Date(d.day).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" })}</span>
                 <span className="relative flex h-2 overflow-hidden rounded-full bg-white/6">
                   <span className="h-full bg-info/70" style={{ width: `${Math.min(100, (d.school / span) * 100)}%` }} />
                   <span className="h-full bg-accent" style={{ width: `${Math.min(100, (d.work / span) * 100)}%` }} />
@@ -227,10 +227,10 @@ export function QuickActionsCard() {
   );
   return (
     <Card>
-      <CardTitle>Quick actions</CardTitle>
+      <CardTitle>Actions rapides</CardTitle>
       <div className="py-1">
         {row(<PenLine className="size-4" />, "Capture a task or an idea", "Ctrl I", () => ui().setCaptureOpen(true))}
-        {row(<CalendarPlus className="size-4" />, "Plan my week", "local", () => ui().openAssistant({ text: "#week" }))}
+        {row(<CalendarPlus className="size-4" />, "Planifier ma semaine", "local", () => ui().openAssistant({ text: "#week" }))}
         {row(<Sparkles className="size-4" />, "Ask Claude", "uses credits", () => ui().openAssistant())}
         {row(<ClipboardCheck className="size-4" />, "Weekly review", "", () => setReview(true))}
         {row(<Plus className="size-4" />, "New project", "Ctrl N", () => ui().openLauncher({ mode: "new" }))}
@@ -246,26 +246,26 @@ function FreeSlots({ eventId }: { eventId: number }) {
   const q = useQuery({ queryKey: ["my-free-slots", eventId], queryFn: () => api.myFreeSlots(eventId), enabled: open, staleTime: 120_000, retry: false });
   const byDay = new Map<string, Array<{ start: string; end: string }>>();
   for (const f of q.data ?? []) {
-    const d = new Date(f.start).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+    const d = new Date(f.start).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
     byDay.set(d, [...(byDay.get(d) ?? []), f]);
   }
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
         <button type="button" className="shrink-0 text-xs text-accent-strong hover:underline">
-          Free slots
+          Créneaux libres
         </button>
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content align="end" sideOffset={6} collisionPadding={8} className="menu anim-pop z-[70] max-h-80 w-72 overflow-y-auto p-3 text-[13px]">
           {q.isLoading ? (
             <p className="flex items-center gap-2 text-muted">
-              <Spinner /> Asking MY Epitech…
+              <Spinner /> Demande à MY Epitech…
             </p>
           ) : q.error ? (
             <p className="text-danger">{asAppError(q.error).message}</p>
           ) : (q.data?.length ?? 0) === 0 ? (
-            <p className="text-muted">No free slot left.</p>
+            <p className="text-muted">Plus aucun créneau libre.</p>
           ) : (
             <>
               <p className="mb-2 text-xs text-faint">{q.data!.length} free slot{q.data!.length > 1 ? "s" : ""}. Registering is done on MY Epitech.</p>

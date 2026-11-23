@@ -46,7 +46,7 @@ function Editor({ value, onChange, known, readOnly, areaRef }: { value: string; 
         value={value}
         readOnly={readOnly}
         spellCheck={false}
-        aria-label="Prompt text"
+        aria-label="Texte du prompt"
         onChange={(e) => onChange?.(e.target.value)}
         onScroll={(e) => {
           if (back.current) back.current.scrollTop = e.currentTarget.scrollTop;
@@ -66,16 +66,16 @@ export function PromptsPage() {
     <>
       <PageHeader
         title="Prompts"
-        subtitle="The instructions TekBoard gives to Claude Code. Edit a copy, keep the default at hand."
+        subtitle="Les instructions que TekBoard donne à Claude Code (Tika, moulinette, tests…). Modifie une copie, garde le texte par défaut sous la main."
         actions={
           <Button variant="ghost" icon={<ArrowLeft className="size-3.5" />} onClick={() => setPage("settings")}>
-            Settings
+            Réglages
           </Button>
         }
       />
       {list.isLoading ? (
         <p className="flex items-center gap-2 py-16 text-muted">
-          <Spinner /> Loading…
+          <Spinner /> Chargement…
         </p>
       ) : list.error || !current ? (
         <ErrorNote>{asAppError(list.error).message}</ErrorNote>
@@ -97,7 +97,7 @@ export function PromptsPage() {
             </ul>
             <p className="flex gap-2 border-t border-white/6 px-4 py-3 text-xs text-faint">
               <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
-              A prompt is only text. What Claude Code may read or write is fixed by TekBoard for each task and cannot be changed from here; it never gets a shell.
+              Un prompt n'est que du texte. Ce que Claude Code peut lire ou écrire est fixé par TekBoard pour chaque tâche et ne se change pas ici ; il n'a jamais de shell.
             </p>
           </Card>
           <PromptEditor key={current.id} def={current} />
@@ -165,7 +165,7 @@ function PromptEditor({ def }: { def: PromptDef }) {
       el.setSelectionRange(caret, caret);
     });
   };
-  const options = [{ value: DEFAULT, label: "Default", hint: def.active === null ? "in use" : "shipped with TekBoard" }, ...def.presets.map((p) => ({ value: p.name, label: p.name, hint: p.problem ? "no longer valid" : def.active === p.name ? "in use" : undefined }))];
+  const options = [{ value: DEFAULT, label: "Par défaut", hint: def.active === null ? "utilisé" : "shipped with TekBoard" }, ...def.presets.map((p) => ({ value: p.name, label: p.name, hint: p.problem ? "no longer valid" : def.active === p.name ? "utilisé" : undefined }))];
   const problem = dirty ? (check.data?.error ?? null) : (def.presets.find((p) => p.name === preset)?.problem ?? null);
   const name = preset === DEFAULT ? newName.trim() : preset;
   return (
@@ -176,19 +176,19 @@ function PromptEditor({ def }: { def: PromptDef }) {
             <h2 className="display text-lg font-medium">{def.title}</h2>
             <p className="text-xs text-muted">{def.access} Expected answer: {def.expects}</p>
           </div>
-          <Select className="w-52" label="Version shown" value={preset} onChange={setPreset} options={options} search={false} />
+          <Select className="w-52" label="Version affichée" value={preset} onChange={setPreset} options={options} search={false} />
           {!inUse && !dirty && (
             <Button variant="primary" icon={<Check className="size-3.5" />} busy={activate.isPending} disabled={problem !== null} onClick={() => activate.mutate(preset === DEFAULT ? null : preset)}>
               {preset === DEFAULT ? "Restore Default" : "Use this preset"}
             </Button>
           )}
-          {inUse && <Badge tone="ok">in use</Badge>}
+          {inUse && <Badge tone="ok">utilisé</Badge>}
         </div>
         <div className="flex items-center gap-1 border-b border-white/6">
           {(["edit", "default", "preview"] as const).map((t) => (
             <button key={t} type="button" onClick={() => setTab(t)} className={cn("-mb-px flex h-8 items-center gap-1.5 border-b-2 px-3 text-[13px] transition-colors", tab === t ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
               {t === "preview" && <Eye className="size-3.5" />}
-              {t === "edit" ? (preset === DEFAULT ? "Text" : "Edit") : t === "default" ? "Default" : "Preview"}
+              {t === "edit" ? (preset === DEFAULT ? "Text" : "Edit") : t === "default" ? "Par défaut" : "Preview"}
             </button>
           ))}
           <span className="ml-auto pb-1 text-xs text-faint">{body.length.toLocaleString()} characters{dirty ? " · modified" : ""}</span>
@@ -198,12 +198,12 @@ function PromptEditor({ def }: { def: PromptDef }) {
         {tab === "preview" && (
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-              <span>Variables resolved for</span>
-              <Select size="sm" className="w-64" label="Project used for the preview" value={repo} onChange={setRepo} options={[{ value: "", label: "sample values" }, ...(repos.data ?? []).map((r) => ({ value: r.path, label: displayName(r), hint: r.my?.unitCode ?? r.epitech?.module }))]} />
+              <span>Variables remplies pour</span>
+              <Select size="sm" className="w-64" label="Projet utilisé pour l'aperçu" value={repo} onChange={setRepo} options={[{ value: "", label: "sample values" }, ...(repos.data ?? []).map((r) => ({ value: r.path, label: displayName(r), hint: r.my?.unitCode ?? r.epitech?.module }))]} />
               {preview.isFetching && <Spinner />}
               {preview.data && (
-                <Button size="sm" variant="ghost" icon={<Copy className="size-3.5" />} onClick={() => void navigator.clipboard.writeText(preview.data!.text).then(() => toast({ kind: "ok", title: "Prompt copied" }))}>
-                  Copy
+                <Button size="sm" variant="ghost" icon={<Copy className="size-3.5" />} onClick={() => void navigator.clipboard.writeText(preview.data!.text).then(() => toast({ kind: "ok", title: "Prompt copié" }))}>
+                  Copier
                 </Button>
               )}
             </div>
@@ -222,7 +222,7 @@ function PromptEditor({ def }: { def: PromptDef }) {
           </div>
         )}
         <div>
-          <p className="mb-1 text-xs font-medium text-muted">Variables — click to insert at the cursor</p>
+          <p className="mb-1 text-xs font-medium text-muted">Variables : clique pour insérer au curseur</p>
           <ul className="flex flex-wrap gap-1.5">
             {def.vars.map((v) => (
               <li key={v.name}>
@@ -239,30 +239,30 @@ function PromptEditor({ def }: { def: PromptDef }) {
         <div className="flex flex-wrap items-center gap-2">
           {preset === DEFAULT ? (
             <>
-              <Input className="w-56" placeholder="Name of a new preset" value={newName} maxLength={40} onChange={(e) => setNewName(e.target.value)} />
-              <Button variant="primary" icon={<Save className="size-3.5" />} disabled={name === "" || problem !== null || check.isFetching} busy={save.isPending} onClick={() => save.mutate({ name, activate: true })} title="Saves this text as your own version and uses it from now on">
-                Save as preset and use
+              <Input className="w-56" placeholder="Nom d'une nouvelle version" value={newName} maxLength={40} onChange={(e) => setNewName(e.target.value)} />
+              <Button variant="primary" icon={<Save className="size-3.5" />} disabled={name === "" || problem !== null || check.isFetching} busy={save.isPending} onClick={() => save.mutate({ name, activate: true })} title="Garde ce texte comme ta version et l'utilise désormais">
+                Enregistrer comme version et l'utiliser
               </Button>
               <Button disabled={name === "" || problem !== null || check.isFetching} busy={save.isPending} onClick={() => save.mutate({ name, activate: false })}>
-                Save only
+                Enregistrer seulement
               </Button>
-              {!dirty && <span className="text-xs text-faint">The default itself is never modified: edit the text, name it, and it becomes a preset.</span>}
+              {!dirty && <span className="text-xs text-faint">Le texte par défaut n'est jamais modifié : modifie le texte, nomme-le, et il devient une version à toi.</span>}
             </>
           ) : (
             <>
               <Button variant="primary" icon={<Save className="size-3.5" />} disabled={!dirty || problem !== null || check.isFetching} busy={save.isPending} onClick={() => save.mutate({ name, activate: inUse })}>
-                Save
+                Enregistrer
               </Button>
               {dirty && (
                 <Button variant="ghost" onClick={() => setBody(stored)}>
-                  Discard changes
+                  Annuler les changements
                 </Button>
               )}
-              <Button variant="ghost" icon={<RotateCcw className="size-3.5" />} onClick={() => setBody(def.default)} title="Puts the default text in the editor; nothing is saved until you click Save">
-                Reset text to default
+              <Button variant="ghost" icon={<RotateCcw className="size-3.5" />} onClick={() => setBody(def.default)} title="Remet le texte par défaut dans l'éditeur ; rien n'est enregistré avant Enregistrer">
+                Revenir au texte par défaut
               </Button>
               <Button className="ml-auto" variant="ghost" icon={<Trash2 className="size-3.5" />} busy={remove.isPending} onClick={() => remove.mutate(preset)} title={inUse ? "Deletes this preset; the default is used again" : "Deletes this preset"}>
-                Delete preset
+                Supprimer la version
               </Button>
             </>
           )}

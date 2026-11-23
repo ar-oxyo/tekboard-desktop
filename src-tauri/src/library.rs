@@ -18,7 +18,7 @@ use std::path::{Component, Path, PathBuf};
 pub fn safe_rel(rel: &str) -> Result<PathBuf> {
     let p = Path::new(rel);
     if rel.is_empty() || rel.contains('\0') || !p.components().all(|c| matches!(c, Component::Normal(_))) {
-        return Err(AppError::new("invalid_path", format!("“{rel}” is not a valid relative path")));
+        return Err(AppError::new("invalid_path", format!("« {rel} » n'est pas un chemin relatif valide")));
     }
     Ok(p.to_path_buf())
 }
@@ -117,13 +117,13 @@ pub fn list(conn: &Connection) -> Result<Vec<Library>> {
 pub fn get(conn: &Connection, id: i64) -> Result<Library> {
     conn.query_row("SELECT id, name, path, created_at FROM libraries WHERE id = ?1", [id], |r| Ok(Library { id: r.get(0)?, name: r.get(1)?, path: r.get(2)?, created_at: r.get(3)? }))
         .optional()?
-        .ok_or_else(|| AppError::new("unknown_library", "This library is no longer registered"))
+        .ok_or_else(|| AppError::new("unknown_library", "Cette bibliothèque n'est plus enregistrée"))
 }
 
 pub fn add(conn: &Connection, name: &str, path: &Path, now: i64) -> Result<Library> {
     let name = name.trim();
     if name.is_empty() || name.len() > 60 {
-        return Err(AppError::new("invalid_name", "Give the library a name (60 characters at most)"));
+        return Err(AppError::new("invalid_name", "Donne un nom à la bibliothèque (60 caractères au plus)"));
     }
     let canon = std::fs::canonicalize(path).map_err(|_| AppError::new("invalid_target", format!("{} does not exist", path.display())))?;
     if !canon.is_dir() {
@@ -132,7 +132,7 @@ pub fn add(conn: &Connection, name: &str, path: &Path, now: i64) -> Result<Libra
     let path_s = canon.to_string_lossy().into_owned();
     let exists: Option<i64> = conn.query_row("SELECT id FROM libraries WHERE name = ?1 OR path = ?2", params![name, path_s], |r| r.get(0)).optional()?;
     if exists.is_some() {
-        return Err(AppError::new("already_exists", "A library with this name or this folder is already registered"));
+        return Err(AppError::new("already_exists", "Une bibliothèque de ce nom ou de ce dossier est déjà enregistrée"));
     }
     conn.execute("INSERT INTO libraries (name, path, created_at) VALUES (?1, ?2, ?3)", params![name, path_s, now])?;
     get(conn, conn.last_insert_rowid())
@@ -154,7 +154,7 @@ pub fn copy_sources(src: &Path, dest: &Path) -> Result<usize> {
     }
     let files = walk(src);
     if files.is_empty() {
-        return Err(AppError::new("empty_library", "No .c or .h file was found in this folder"));
+        return Err(AppError::new("empty_library", "Aucun fichier .c ou .h dans ce dossier"));
     }
     for rel in &files {
         let to = dest.join(rel);
@@ -224,7 +224,7 @@ pub fn presets(conn: &Connection, library_id: i64) -> Result<Vec<Preset>> {
 pub fn save_preset(conn: &Connection, library_id: i64, name: &str, files: &[String]) -> Result<()> {
     let name = name.trim();
     if name.is_empty() || files.is_empty() {
-        return Err(AppError::new("invalid_name", "A preset needs a name and at least one file"));
+        return Err(AppError::new("invalid_name", "Une version a besoin d'un nom et d'au moins un fichier"));
     }
     conn.execute(
         "INSERT INTO lib_presets (library_id, name, files) VALUES (?1, ?2, ?3) ON CONFLICT(library_id, name) DO UPDATE SET files = excluded.files",
@@ -253,7 +253,7 @@ struct Scan {
 
 fn scan(root: &Path) -> Result<Scan> {
     if !root.is_dir() {
-        return Err(AppError::new("library_missing", format!("The library folder {} is gone", root.display())));
+        return Err(AppError::new("library_missing", format!("Le dossier de la bibliothèque {} a disparu", root.display())));
     }
     let mut files = BTreeMap::new();
     let mut makefile = None;
@@ -1219,7 +1219,7 @@ pub fn restore_backup(repo: &Path, backups: &Path, path: &str, stamp: &str) -> R
     let root = backups.join("library").join(repo_key(repo));
     let from = root.join(stamp).join(&rel);
     if !from.is_file() {
-        return Err(AppError::new("unknown_backup", "This saved version no longer exists"));
+        return Err(AppError::new("unknown_backup", "Cette version sauvegardée n'existe plus"));
     }
     let abs = repo.join(&rel);
     ensure_inside(repo, &abs)?;
@@ -1351,7 +1351,7 @@ fn expand_inputs(paths: &[String], scratch: &Path, ignored: &mut Vec<String>) ->
 fn unzip_sources(archive: &Path, dest: &Path) -> Result<()> {
     use std::io::Read;
     let file = std::fs::File::open(archive)?;
-    let mut zip = zip::ZipArchive::new(file).map_err(|e| AppError::new("bad_archive", format!("This archive could not be read: {e}")))?;
+    let mut zip = zip::ZipArchive::new(file).map_err(|e| AppError::new("bad_archive", format!("Cette archive est illisible : {e}")))?;
     for i in 0..zip.len().min(MAX_FILES) {
         let mut entry = zip.by_index(i).map_err(|e| AppError::new("bad_archive", e.to_string()))?;
         let Some(rel) = entry.enclosed_name() else { continue };

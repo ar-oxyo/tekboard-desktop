@@ -54,7 +54,7 @@ pub fn project_config_set(state: State<'_, AppState>, repo: String, config: Proj
         argv_of(cmd)?;
     }
     if config.image.as_deref().is_some_and(|i| !testrepo::valid_image(i)) {
-        return Err(AppError::new("invalid_image", "This container image name is not valid"));
+        return Err(AppError::new("invalid_image", "Ce nom d'image de conteneur n'est pas valide"));
     }
     db::set_setting(&state.conn(), &config_key(&dir), &serde_json::to_string(&config)?)?;
     Ok(config)
@@ -84,7 +84,7 @@ pub fn runs_list(state: State<'_, AppState>, repo: Option<String>, kind: Option<
 
 #[tauri::command(async)]
 pub fn run_get(state: State<'_, AppState>, id: i64) -> Result<Run> {
-    db::get_run(&state.conn(), id)?.ok_or_else(|| AppError::new("unknown_run", "This report no longer exists"))
+    db::get_run(&state.conn(), id)?.ok_or_else(|| AppError::new("unknown_run", "Ce rapport n'existe plus"))
 }
 
 fn title_for(dir: &Path, what: &str) -> String {
@@ -105,11 +105,11 @@ pub fn quick_run(state: State<'_, AppState>, repo: String, command: String) -> R
     let key = dir.to_string_lossy().into_owned();
     let command = command.trim().to_string();
     if command.len() > 2000 {
-        return Err(AppError::new("invalid_command", "This command is too long"));
+        return Err(AppError::new("invalid_command", "Cette commande est trop longue"));
     }
     let argv = crate::jobs::split_command(&command)?;
     if state.jobs.active("command", Some(&key)).is_some() {
-        return Err(AppError::new("busy", "A command is already running in this repository. Stop it first."));
+        return Err(AppError::new("busy", "Une commande tourne déjà dans ce dépôt. Arrête-la d'abord."));
     }
     db::remember_command(&state.conn(), &key, &command, crate::commands::now(), QUICK_HISTORY)?;
     let title = title_for(&dir, &command);
@@ -288,10 +288,10 @@ pub fn tests_run(state: State<'_, AppState>, repo: String, command: String, ackn
     let detection = testing::detect(&dir);
     let saved = load_config(&state, &dir)?.test_cmd;
     match detection.suites.iter().find(|s| s.command == command) {
-        Some(s) if !s.trusted && !acknowledged => return Err(AppError::new("needs_confirmation", "This is a script from the repository: confirm that you read it before running it.")),
+        Some(s) if !s.trusted && !acknowledged => return Err(AppError::new("needs_confirmation", "C'est un script du dépôt : confirme que tu l'as lu avant de le lancer.")),
         Some(_) => {}
         None if saved.as_deref() == Some(command.as_str()) => {}
-        None => return Err(AppError::new("unknown_command", "This command is neither declared by the repository nor saved for this project.")),
+        None => return Err(AppError::new("unknown_command", "Cette commande n'est ni déclarée par le dépôt ni enregistrée pour ce projet.")),
     }
     argv_of(&command)?;
     let title = title_for(&dir, &command);
@@ -393,7 +393,7 @@ pub fn claude_brief(state: State<'_, AppState>, repo: String, task: String, disc
         }
         "subject" => Ok(ClaudeBrief { plan: claude::plan(&[]), prompt: moulinette::subject_prompt(&prompts::template(&state.conn(), prompts::SUBJECT)?, &dir, "<the text of the linked subject PDF>") }),
         "analysis" => Ok(ClaudeBrief { plan: claude::plan(&[]), prompt: prompts::render(&prompts::template(&state.conn(), prompts::ANALYZE)?, &prompts::common_values(&dir)) }),
-        _ => Err(AppError::new("invalid_mode", "Unknown task")),
+        _ => Err(AppError::new("invalid_mode", "Tâche inconnue")),
     }
 }
 

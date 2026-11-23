@@ -62,7 +62,7 @@ export function MonthGrid({ date, items, now, onOpen, onMove, onPickDay }: Props
       <div className="grid shrink-0 grid-cols-7 border-b border-white/6">
         {days.slice(0, 7).map((d) => (
           <div key={d} className="flex h-9 items-center justify-center text-xs text-muted capitalize">
-            {new Date(d).toLocaleDateString(undefined, { weekday: "short" })}
+            {new Date(d).toLocaleDateString("fr-FR", { weekday: "short" })}
           </div>
         ))}
       </div>
@@ -73,7 +73,7 @@ export function MonthGrid({ date, items, now, onOpen, onMove, onPickDay }: Props
           const other = new Date(d).getMonth() !== month;
           return (
             <div key={d} data-day={d} onClick={(e) => e.target === e.currentTarget && onPickDay(d)} className={cn("flex min-h-0 flex-col gap-0.5 overflow-hidden border-t border-l border-white/6 p-1 transition-colors duration-150", other && "opacity-45", drag?.over === d && "bg-accent-soft")}>
-              <button type="button" onClick={() => onPickDay(d)} title="Open this day" className={cn("mb-0.5 flex h-5 min-w-5 items-center justify-center self-end rounded-full px-1 text-xs", d === today ? "bg-accent font-medium text-on-accent" : "text-muted hover:text-fg")}>
+              <button type="button" onClick={() => onPickDay(d)} title="Ouvrir ce jour" className={cn("mb-0.5 flex h-5 min-w-5 items-center justify-center self-end rounded-full px-1 text-xs", d === today ? "bg-accent font-medium text-on-accent" : "text-muted hover:text-fg")}>
                 {new Date(d).getDate()}
               </button>
               {here.slice(0, MAX).map((i) => (

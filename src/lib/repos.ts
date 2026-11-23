@@ -23,15 +23,15 @@ export interface Attention {
 /** Why a repository deserves a look, most pressing first. Empty when all is in order. */
 export function attention(repo: RepoInfo): Attention[] {
   const out: Attention[] = [];
-  if (repo.error) return [{ level: "danger", label: "Unreadable" }];
+  if (repo.error) return [{ level: "danger", label: "Illisible" }];
   const s = repo.status;
   if (!s) return out;
-  if (s.conflicted > 0) out.push({ level: "danger", label: `${s.conflicted} conflict${s.conflicted > 1 ? "s" : ""}` });
+  if (s.conflicted > 0) out.push({ level: "danger", label: `${s.conflicted} conflit${s.conflicted > 1 ? "s" : ""}` });
   const changes = s.staged + s.unstaged + s.untracked;
-  if (changes > 0) out.push({ level: "warn", label: `${changes} uncommitted` });
-  if (s.ahead > 0) out.push({ level: "info", label: `${s.ahead} to push` });
-  if (s.behind > 0) out.push({ level: "info", label: `${s.behind} to pull` });
-  if (repo.remoteUrl && s.branch && !s.upstream && !s.unborn) out.push({ level: "info", label: "Branch not published" });
+  if (changes > 0) out.push({ level: "warn", label: `${changes} non commité${changes > 1 ? "s" : ""}` });
+  if (s.ahead > 0) out.push({ level: "info", label: `${s.ahead} à envoyer` });
+  if (s.behind > 0) out.push({ level: "info", label: `${s.behind} à récupérer` });
+  if (repo.remoteUrl && s.branch && !s.upstream && !s.unborn) out.push({ level: "info", label: "Branche non publiée" });
   return out;
 }
 
@@ -144,7 +144,7 @@ export interface Due {
   time: string | null;
 }
 
-const hhmm = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
+const hhmm = (t: number) => new Date(t).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", hour12: false });
 
 /** State and wording of a hand-in date right now. With an exact hour, "late" starts when it passes, not at midnight. */
 export function due(day: string | null, at: string | null, now: Date = new Date()): Due {
@@ -197,13 +197,13 @@ export function deadlines(repos: RepoInfo[], now: Date = new Date()): Deadline[]
 export type SortKey = "smart" | "deadline" | "added" | "activity" | "name" | "status" | "module";
 
 export const SORTS: Array<{ id: SortKey; label: string; hint: string }> = [
-  { id: "smart", label: "Smart", hint: "Active work with the nearest hand-in first" },
-  { id: "deadline", label: "Deadline", hint: "Nearest hand-in first, undated last" },
-  { id: "activity", label: "Recent activity", hint: "Last commit or last opened" },
-  { id: "added", label: "Date added", hint: "Newest on this computer first" },
-  { id: "name", label: "Name", hint: "A to Z" },
-  { id: "status", label: "Status", hint: "In progress, to do, done" },
-  { id: "module", label: "Module", hint: "By module code" },
+  { id: "smart", label: "Intelligent", hint: "Travail en cours, rendu le plus proche d'abord" },
+  { id: "deadline", label: "Rendu", hint: "Rendu le plus proche d'abord, sans date à la fin" },
+  { id: "activity", label: "Activité récente", hint: "Dernier commit ou dernière ouverture" },
+  { id: "added", label: "Date d'ajout", hint: "Le plus récent sur cet ordinateur d'abord" },
+  { id: "name", label: "Nom", hint: "De A à Z" },
+  { id: "status", label: "Statut", hint: "En cours, à faire, terminé" },
+  { id: "module", label: "Module", hint: "Par code de module" },
 ];
 
 /** Last sign of life, in ms: the latest of the last commit and the last time it was opened here. */

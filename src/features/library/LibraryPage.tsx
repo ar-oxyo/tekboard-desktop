@@ -17,11 +17,11 @@ import { AddLibraryDialog, FileDetailDialog, ImportDialog } from "./LibraryDialo
 import { buildRequest, counts, fileTitle, filterFiles, isEmptyRequest, isPresent, needsAttention, type StateFilter } from "./model";
 
 const STATE_BADGE: Partial<Record<LibFileState, { tone: "ok" | "warn" | "info"; label: string; title: string }>> = {
-  installed: { tone: "ok", label: "in project", title: "Same as the library" },
-  update: { tone: "info", label: "update", title: "The library changed since this file was installed" },
-  modified: { tone: "warn", label: "edited here", title: "You changed this copy in the project" },
-  modified_update: { tone: "warn", label: "edited · update", title: "Changed in the project and in the library" },
-  differs: { tone: "warn", label: "differs", title: "Present in the project, different from the library" },
+  installed: { tone: "ok", label: "dans le projet", title: "Identique à la bibliothèque" },
+  update: { tone: "info", label: "update", title: "La bibliothèque a changé depuis l'installation de ce fichier" },
+  modified: { tone: "warn", label: "modifié ici", title: "Tu as modifié cette copie dans le projet" },
+  modified_update: { tone: "warn", label: "edited · update", title: "Modifié dans le projet et dans la bibliothèque" },
+  differs: { tone: "warn", label: "differs", title: "Présent dans le projet, différent de la bibliothèque" },
 };
 
 const OP_TONE: Record<LibPlanAction["op"], "ok" | "warn" | "info" | "danger" | "neutral"> = { create: "ok", overwrite: "warn", edit: "info", delete: "danger", keep: "neutral" };
@@ -152,12 +152,12 @@ export function LibraryPage() {
       resync();
       void qc.invalidateQueries({ queryKey: ["repos"] });
     },
-    onError: fail("The library was not changed"),
+    onError: fail("La bibliothèque n'a pas été modifiée"),
   });
-  const runBuild = useMutation({ mutationFn: () => api.libraryBuild(repoPath!, libDir), onSuccess: setBuild, onError: fail("Could not run make") });
-  const saveDir = useMutation({ mutationFn: (dir: string) => api.libraryProject(repoPath!, libId!, dir), onSuccess: () => void qc.invalidateQueries({ queryKey: ["lib-status", libId] }), onError: fail("Invalid folder") });
-  const savePreset = useMutation({ mutationFn: (name: string) => api.libraryPresetSave(libId!, name, [...desired].sort()), onSuccess: () => { toast({ kind: "ok", title: "Preset saved" }); void qc.invalidateQueries({ queryKey: ["lib-presets", libId] }); }, onError: fail("Preset not saved") });
-  const dropPreset = useMutation({ mutationFn: (id: number) => api.libraryPresetDelete(id), onSuccess: () => void qc.invalidateQueries({ queryKey: ["lib-presets", libId] }), onError: fail("Preset not deleted") });
+  const runBuild = useMutation({ mutationFn: () => api.libraryBuild(repoPath!, libDir), onSuccess: setBuild, onError: fail("make n'a pas pu être lancé") });
+  const saveDir = useMutation({ mutationFn: (dir: string) => api.libraryProject(repoPath!, libId!, dir), onSuccess: () => void qc.invalidateQueries({ queryKey: ["lib-status", libId] }), onError: fail("Dossier invalide") });
+  const savePreset = useMutation({ mutationFn: (name: string) => api.libraryPresetSave(libId!, name, [...desired].sort()), onSuccess: () => { toast({ kind: "ok", title: "Préréglage enregistré" }); void qc.invalidateQueries({ queryKey: ["lib-presets", libId] }); }, onError: fail("Préréglage non enregistré") });
+  const dropPreset = useMutation({ mutationFn: (id: number) => api.libraryPresetDelete(id), onSuccess: () => void qc.invalidateQueries({ queryKey: ["lib-presets", libId] }), onError: fail("Préréglage non supprimé") });
 
   const toggle = (rel: string) => {
     const next = new Set(desired);
@@ -173,21 +173,21 @@ export function LibraryPage() {
   };
 
   async function browse(directory: boolean) {
-    const picked = await open(directory ? { directory: true, title: "Folder to add to the library" } : { multiple: true, title: "Files to add to the library", filters: [{ name: "C sources, headers, archives", extensions: ["c", "h", "zip", "tar", "gz", "tgz"] }] });
+    const picked = await open(directory ? { directory: true, title: "Dossier à ajouter à la bibliothèque" } : { multiple: true, title: "Fichiers à ajouter à la bibliothèque", filters: [{ name: "C sources, headers, archives", extensions: ["c", "h", "zip", "tar", "gz", "tgz"] }] });
     const paths = picked === null ? [] : Array.isArray(picked) ? picked : [picked];
     if (paths.length > 0) setImporting(paths);
   }
 
-  if (libs.isLoading) return <p className="flex items-center gap-2 py-16 text-muted"><Spinner /> Loading libraries…</p>;
+  if (libs.isLoading) return <p className="flex items-center gap-2 py-16 text-muted"><Spinner /> Chargement des bibliothèques…</p>;
   if (libs.error) return <ErrorNote>{asAppError(libs.error).message}</ErrorNote>;
 
   if ((libs.data?.length ?? 0) === 0 || libId === null) {
     return (
       <>
-        <PageHeader title="Library" subtitle="Your reusable C code, installed function by function." />
+        <PageHeader title="Bibliothèque" subtitle="Ton code C réutilisable, installé fonction par fonction." />
         <Card>
-          <EmptyState icon={<LibraryIcon className="size-6" />} title="No library yet" action={<Button variant="primary" icon={<Plus className="size-3.5" />} onClick={() => setAdding(true)}>Add a library</Button>}>
-            A library is any folder of <code className="font-mono text-xs">.c</code> and <code className="font-mono text-xs">.h</code> files, organised the way you like. TekBoard reads it, lists its functions and their dependencies, and copies into a project only what you tick.
+          <EmptyState icon={<LibraryIcon className="size-6" />} title="Aucune bibliothèque" action={<Button variant="primary" icon={<Plus className="size-3.5" />} onClick={() => setAdding(true)}>Ajouter une bibliothèque</Button>}>
+            Une bibliothèque est n'importe quel dossier de <code className="font-mono text-xs">.c</code> and <code className="font-mono text-xs">.h</code> fichiers, organisé comme tu veux. TekBoard le lit, liste ses fonctions et leurs dépendances, et copie dans un projet seulement ce que tu coches.
           </EmptyState>
         </Card>
         {adding && <AddLibraryDialog onClose={() => setAdding(false)} onAdded={(l) => { setLibId(l.id); void qc.invalidateQueries({ queryKey: ["libraries"] }); }} />}
@@ -207,12 +207,12 @@ export function LibraryPage() {
   return (
     <>
       <PageHeader
-        title="Library"
+        title="Bibliothèque"
         subtitle={<span className="selectable">{tildify(lib.path, home)} · {sources.length} files · {sources.reduce((n, f) => n + f.functions.length, 0)} functions</span>}
         actions={
           <>
-            <Select className="w-44" label="Library" value={String(libId)} onChange={(v) => setLibId(Number(v))} options={libs.data!.map((l) => ({ value: String(l.id), label: l.name }))} />
-            <IconButton label="Open the library folder" onClick={() => api.libraryReveal(libId).catch(fail("Could not open the folder"))}><FolderOpen className="size-4" /></IconButton>
+            <Select className="w-44" label="Bibliothèque" value={String(libId)} onChange={(v) => setLibId(Number(v))} options={libs.data!.map((l) => ({ value: String(l.id), label: l.name }))} />
+            <IconButton label="Ouvrir le dossier de la bibliothèque" onClick={() => api.libraryReveal(libId).catch(fail("Dossier non ouvert"))}><FolderOpen className="size-4" /></IconButton>
             {removing ? (
               <>
                 <Button variant="danger" onClick={() => api.libraryUnregister(libId).then(() => (setRemoving(false), refresh(), void qc.invalidateQueries({ queryKey: ["libraries"] })), fail("Bibliothèque non retirée"))}>Retirer de TekBoard</Button>
@@ -226,21 +226,21 @@ export function LibraryPage() {
         }
       />
 
-      {catalog.error && <div className="mb-4"><ErrorNote title="This library cannot be read">{asAppError(catalog.error).message}</ErrorNote></div>}
+      {catalog.error && <div className="mb-4"><ErrorNote title="Cette bibliothèque est illisible">{asAppError(catalog.error).message}</ErrorNote></div>}
 
       <div className="grid grid-cols-[176px_minmax(0,1fr)_320px] items-start gap-4">
         {/* ── left: filters */}
         <div className="flex flex-col gap-4">
           <Card>
-            <CardTitle>Folders</CardTitle>
+            <CardTitle>Dossiers</CardTitle>
             <ul className="py-1.5">
-              <FilterRow label="Everything" count={sources.length} active={category === null} onClick={() => setCategory(null)} />
+              <FilterRow label="Tout" count={sources.length} active={category === null} onClick={() => setCategory(null)} />
               {cats.map(([c, n]) => <FilterRow key={c} label={c === "" ? "(root)" : c} count={n} active={category === c} onClick={() => setCategory(c)} mono />)}
             </ul>
           </Card>
           {tags.length > 0 && (
             <Card>
-              <CardTitle>Tags</CardTitle>
+              <CardTitle>Étiquettes</CardTitle>
               <div className="flex flex-wrap gap-1.5 p-3">
                 {tags.map(([t, n]) => (
                   <button key={t} type="button" onClick={() => setTag(tag === t ? null : t)} className={cn("h-6 rounded-full border px-2 text-[11px] transition-colors", tag === t ? "border-accent/40 bg-accent-soft text-accent-strong" : "border-line text-muted hover:border-line-strong hover:text-fg")}>
@@ -256,10 +256,10 @@ export function LibraryPage() {
             className={cn("flex flex-col items-center gap-1.5 rounded-xl border border-dashed px-3 py-4 text-center text-xs transition-colors", dropping ? "border-accent bg-accent-soft text-accent-strong" : "border-line-strong text-muted hover:border-accent/50 hover:text-fg")}
           >
             <Upload className="size-4" />
-            <span className="font-medium">Drop files to your library</span>
-            <span className="text-faint">.c, .h, folders, archives — or click to browse</span>
+            <span className="font-medium">Dépose des fichiers dans ta bibliothèque</span>
+            <span className="text-faint">.c, .h, dossiers, archives — ou clique pour parcourir</span>
           </button>
-          <Button size="sm" variant="ghost" icon={<FolderPlus className="size-3.5" />} onClick={() => void browse(true)}>Add a folder…</Button>
+          <Button size="sm" variant="ghost" icon={<FolderPlus className="size-3.5" />} onClick={() => void browse(true)}>Ajouter un dossier…</Button>
         </div>
 
         {/* ── centre: catalog */}
@@ -267,12 +267,12 @@ export function LibraryPage() {
           <div className="flex items-center gap-2 border-b border-white/6 p-2.5">
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
-              <Input autoFocus className="pl-8" aria-label="Search a function, a tag or a file" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <Input autoFocus className="pl-8" aria-label="Chercher une fonction, une étiquette ou un fichier" placeholder="Rechercher" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
-            <Select className="w-44" label="Filter by state" value={stateFilter} onChange={(v) => setStateFilter(v as StateFilter)} disabled={!hasProject} disabledReason={projectState === "none" ? "Choisis un projet à droite pour filtrer selon ce qu'il contient" : projectState === "loading" ? "Lecture du projet…" : "L'état du projet n'a pas pu être lu (voir à droite)"} options={[{ value: "all", label: "Tout" }, { value: "in", label: "Dans le projet" }, { value: "out", label: "Pas installé" }, { value: "attention", label: "À vérifier", hint: attention ? String(attention) : undefined }]} />
+            <Select className="w-44" label="Filtrer par état" value={stateFilter} onChange={(v) => setStateFilter(v as StateFilter)} disabled={!hasProject} disabledReason={projectState === "none" ? "Choisis un projet à droite pour filtrer selon ce qu'il contient" : projectState === "loading" ? "Lecture du projet…" : "L'état du projet n'a pas pu être lu (voir à droite)"} options={[{ value: "all", label: "Tout" }, { value: "in", label: "Dans le projet" }, { value: "out", label: "Pas installé" }, { value: "attention", label: "À vérifier", hint: attention ? String(attention) : undefined }]} />
           </div>
           {catalog.isLoading ? (
-            <p className="flex items-center gap-2 px-4 py-10 text-[13px] text-muted"><Spinner /> Reading the library…</p>
+            <p className="flex items-center gap-2 px-4 py-10 text-[13px] text-muted"><Spinner /> Lecture de la bibliothèque…</p>
           ) : shown.length === 0 ? (
             <EmptyState icon={<Search className="size-5" />} title={sources.length === 0 ? "This library has no source file" : "Nothing matches"}>
               {sources.length === 0 ? "Drop .c files on this window to add some." : "Try fewer words, or clear the folder and tag filters."}
@@ -292,7 +292,7 @@ export function LibraryPage() {
         {/* ── right: project and changes */}
         <div className="flex flex-col gap-4">
           <Card>
-            <CardTitle right={status.isFetching ? <Spinner /> : undefined}>Project</CardTitle>
+            <CardTitle right={status.isFetching ? <Spinner /> : undefined}>Projet</CardTitle>
             <div className="flex flex-col gap-2.5 p-3">
               <ProjectPicker label="Projet cible" value={repoPath} onChange={setRepo} includeNone noneLabel="Aucun projet : consulter seulement" />
               {projectState === "loading" && <p className="flex items-center gap-2 text-xs text-muted"><Spinner /> Lecture de la bibliothèque dans ce projet…</p>}
@@ -312,7 +312,7 @@ export function LibraryPage() {
                       {status.data!.extra.length > 0 && <span title={status.data!.extra.join("\n")}> · {status.data!.extra.length} of your own</span>}
                     </p>
                   ) : (
-                    <p className="text-xs text-muted">This project has no <code className="font-mono">{libDir}</code> yet.</p>
+                    <p className="text-xs text-muted">Ce projet n'a pas encore de <code className="font-mono">{libDir}</code> yet.</p>
                   )}
                   <div className="flex flex-wrap gap-1.5">
                     {!status.data!.hasMakefile && <Button size="sm" variant={init ? "primary" : "secondary"} icon={<PackagePlus className="size-3.5" />} onClick={() => setInit(!init)}>{init ? "Bibliothèque vide : prévue" : "Créer une bibliothèque vide"}</Button>}
@@ -321,8 +321,8 @@ export function LibraryPage() {
                         <input type="checkbox" className="accent-(--color-accent)" checked={shared} onChange={(e) => setShared(e.target.checked)} /> Dynamique (.so)
                       </label>
                     )}
-                    {status.data!.hasMakefile && <Button size="sm" icon={<Hammer className="size-3.5" />} busy={runBuild.isPending} onClick={() => runBuild.mutate()}>Check it compiles</Button>}
-                    {selectedRepo && <Button size="sm" variant="ghost" onClick={() => useUi.getState().openSheet(selectedRepo.path)}>Project sheet</Button>}
+                    {status.data!.hasMakefile && <Button size="sm" icon={<Hammer className="size-3.5" />} busy={runBuild.isPending} onClick={() => runBuild.mutate()}>Vérifier que ça compile</Button>}
+                    {selectedRepo && <Button size="sm" variant="ghost" onClick={() => useUi.getState().openSheet(selectedRepo.path)}>Fiche du projet</Button>}
                   </div>
                   {build && <BuildResult report={build} onClose={() => setBuild(null)} />}
                 </>
@@ -331,18 +331,18 @@ export function LibraryPage() {
           </Card>
 
           <Card>
-            <CardTitle right={plan.isFetching ? <Spinner /> : undefined}>Changes</CardTitle>
+            <CardTitle right={plan.isFetching ? <Spinner /> : undefined}>Changements</CardTitle>
             {!hasProject ? (
               <p className="px-4 py-4 text-[13px] text-muted">{projectState === "none" ? "Choisis un projet pour y installer des fonctions. Sans projet, cocher prépare seulement un préréglage." : projectState === "loading" ? "Lecture du projet…" : "L'état du projet n'a pas pu être lu : voir le message au-dessus."}</p>
             ) : !planOn ? (
-              <p className="px-4 py-4 text-[13px] text-muted">Tick a function to add it, untick one to remove it. Nothing is written before you apply.</p>
+              <p className="px-4 py-4 text-[13px] text-muted">Coche une fonction pour l'ajouter, décoche-la pour la retirer. Rien n'est écrit avant d'appliquer.</p>
             ) : plan.error ? (
               <div className="p-3"><ErrorNote>{asAppError(plan.error).message}</ErrorNote></div>
             ) : plan.data ? (
               <div className="flex flex-col">
                 {plan.data.required.length > 0 && (
                   <div className="border-b border-white/6 px-3 py-2.5">
-                    <p className="mb-1.5 text-xs text-muted">Required</p>
+                    <p className="mb-1.5 text-xs text-muted">Nécessaire</p>
                     {plan.data.required.map((r) => (
                       <label key={r.rel} className="flex min-h-6 items-center gap-2 text-xs" title={`Needed by ${r.neededBy}${r.via.length ? ` (${r.via.join(", ")})` : ""}`}>
                         <input type="checkbox" className="accent-(--color-accent)" checked onChange={() => flip(exclude, setExclude, r.rel)} />
@@ -354,11 +354,11 @@ export function LibraryPage() {
                 )}
                 {exclude.size > 0 && (
                   <div className="border-b border-white/6 px-3 py-2 text-xs text-warn">
-                    Left out: {[...exclude].map((r) => <button key={r} type="button" className="mr-1.5 font-mono underline decoration-dotted" onClick={() => flip(exclude, setExclude, r)} title="Include again">{r}</button>)}
+                    Left out: {[...exclude].map((r) => <button key={r} type="button" className="mr-1.5 font-mono underline decoration-dotted" onClick={() => flip(exclude, setExclude, r)} title="Réinclure">{r}</button>)}
                   </div>
                 )}
                 <ul className="max-h-[38vh] overflow-y-auto py-1">
-                  {real.length === 0 && <li className="px-4 py-3 text-xs text-muted">Nothing to write: the project already has these files.</li>}
+                  {real.length === 0 && <li className="px-4 py-3 text-xs text-muted">Rien à écrire : le projet a déjà ces fichiers.</li>}
                   {real.map((a) => <ActionRow key={a.path} action={a} confirmed={confirmed.has(a.path)} onConfirm={() => flip(confirmed, setConfirmed, a.path)} />)}
                 </ul>
                 {kept.length > 0 && (
@@ -371,22 +371,22 @@ export function LibraryPage() {
                 ))}
                 <div className="flex items-center justify-between gap-2 border-t border-white/6 p-3">
                   <span className="text-xs text-faint">{risky.length > 0 ? `${confirmed.size}/${risky.length} risky change${risky.length > 1 ? "s" : ""} confirmed` : "Existing files are saved first"}</span>
-                  <Button variant="primary" icon={<Check className="size-3.5" />} busy={apply.isPending} disabled={real.length === 0 || plan.isFetching} onClick={() => apply.mutate()}>Apply</Button>
+                  <Button variant="primary" icon={<Check className="size-3.5" />} busy={apply.isPending} disabled={real.length === 0 || plan.isFetching} onClick={() => apply.mutate()}>Appliquer</Button>
                 </div>
               </div>
             ) : (
-              <p className="flex items-center gap-2 px-4 py-4 text-[13px] text-muted"><Spinner /> Working out the changes…</p>
+              <p className="flex items-center gap-2 px-4 py-4 text-[13px] text-muted"><Spinner /> Calcul des changements…</p>
             )}
           </Card>
 
           <Card>
-            <CardTitle>Presets</CardTitle>
+            <CardTitle>Préréglages</CardTitle>
             <div className="flex flex-col gap-1 p-2">
-              {(presets.data ?? []).length === 0 && <p className="px-2 py-1.5 text-xs text-muted">Save the ticked functions as a group to reuse it in another project.</p>}
+              {(presets.data ?? []).length === 0 && <p className="px-2 py-1.5 text-xs text-muted">Garde les fonctions cochées comme un groupe, à réutiliser dans un autre projet.</p>}
               {(presets.data ?? []).map((p) => (
                 <div key={p.id} className="row-hover flex h-8 items-center gap-2 rounded-md pr-1 pl-2">
                   <BookMarked className="size-3.5 text-faint" />
-                  <button type="button" className="min-w-0 flex-1 truncate text-left text-[13px] hover:text-accent-strong" title="Tick these functions (keeps what is already ticked)" onClick={() => setDesired(new Set([...desired, ...p.files.filter((f) => sources.some((s) => s.rel === f))]))}>
+                  <button type="button" className="min-w-0 flex-1 truncate text-left text-[13px] hover:text-accent-strong" title="Cocher ces fonctions (garde ce qui est déjà coché)" onClick={() => setDesired(new Set([...desired, ...p.files.filter((f) => sources.some((s) => s.rel === f))]))}>
                     {p.name} <span className="text-xs text-faint">{p.files.length}</span>
                   </button>
                   <IconButton label={`Delete preset ${p.name}`} onClick={() => dropPreset.mutate(p.id)}><Trash2 className="size-3.5" /></IconButton>
@@ -402,7 +402,7 @@ export function LibraryPage() {
         <div className="pointer-events-none fixed inset-0 z-30 flex items-center justify-center bg-black/55">
           <div className="glass flex flex-col items-center gap-2 border border-accent/50 px-10 py-8 text-center">
             <FilePlus2 className="size-8 text-accent-strong" />
-            <p className="display text-lg font-medium">Drop files to your library</p>
+            <p className="display text-lg font-medium">Dépose des fichiers dans ta bibliothèque</p>
             <p className="text-[13px] text-muted">Added to “{lib.name}” after you review them</p>
           </div>
         </div>
@@ -436,7 +436,7 @@ function FileRow({ file, state, checked, replacing, onToggle, onOpen, onReplace 
           <span className="truncate font-mono text-[13px] font-medium text-fg">{fileTitle(file)}</span>
           {more > 0 && <span className="shrink-0 text-xs text-faint" title={file.functions.slice(1).map((f) => f.name).join(", ")}>+{more}</span>}
           {badge && <Badge tone={badge.tone} title={badge.title}>{badge.label}</Badge>}
-          {replacing && <Badge tone="warn">will be replaced</Badge>}
+          {replacing && <Badge tone="warn">sera remplacé</Badge>}
         </span>
         <span className="mt-0.5 block truncate font-mono text-[11.5px] text-muted">{file.functions[0]?.signature ?? file.rel}</span>
         {file.description && <span className="mt-0.5 block truncate text-xs text-muted">{file.description}</span>}
@@ -444,10 +444,10 @@ function FileRow({ file, state, checked, replacing, onToggle, onOpen, onReplace 
           <span className="font-mono text-[11px] text-faint">{file.rel}</span>
           {file.deps.length > 0 && <Badge title={file.deps.map((d) => `${d.rel}${d.via.length ? ` — ${d.via.join(", ")}` : ""} (${d.kind === "ambiguous" ? "assumed" : d.kind})`).join("\n")}>{file.deps.length} dep{file.deps.length > 1 ? "s" : ""}</Badge>}
           {[...file.tags, ...file.autoTags.filter((t) => !file.tags.includes(t))].slice(0, 3).map((t) => <span key={t} className="text-[11px] text-faint">#{t}</span>)}
-          {file.parseErrors && <span className="text-[11px] text-warn" title="The parser did not understand every line (often a macro taking a type, like va_arg). The functions listed were still found.">partly parsed</span>}
+          {file.parseErrors && <span className="text-[11px] text-warn" title="L'analyseur n'a pas compris toutes les lignes (souvent une macro qui prend un type, comme va_arg). Les fonctions listées ont quand même été trouvées.">partly parsed</span>}
         </span>
       </button>
-      {onReplace && <Button size="sm" variant={replacing ? "secondary" : "ghost"} onClick={onReplace} title="Replace the project's copy with the library's version (asks before overwriting your edits)">{replacing ? "Keep mine" : "Use library"}</Button>}
+      {onReplace && <Button size="sm" variant={replacing ? "secondary" : "ghost"} onClick={onReplace} title="Remplacer la copie du projet par la version de la bibliothèque (demande avant d'écraser tes modifications)">{replacing ? "Keep mine" : "Use library"}</Button>}
     </li>
   );
 }
@@ -483,7 +483,7 @@ function LibDirField({ value, busy, onSave }: { value: string; busy: boolean; on
   };
   return (
     <label className="flex items-center gap-2 text-xs text-muted">
-      <span className="shrink-0">Folder in the project</span>
+      <span className="shrink-0">Dossier dans le projet</span>
       <Input className="h-7 font-mono text-xs" value={draft ?? value} disabled={busy} onChange={(e) => setDraft(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
     </label>
   );
@@ -494,7 +494,7 @@ function PresetSaver({ disabled, count, busy, onSave }: { disabled: boolean; cou
   return (
     <form className="mt-1 flex gap-1.5" onSubmit={(e) => { e.preventDefault(); if (name.trim()) { onSave(name.trim()); setName(""); } }}>
       <Input className="h-7 text-xs" placeholder={disabled ? "Tick functions first" : `Name for these ${count}`} value={name} disabled={disabled} onChange={(e) => setName(e.target.value)} />
-      <Button size="sm" type="submit" busy={busy} disabled={disabled || !name.trim()}>Save</Button>
+      <Button size="sm" type="submit" busy={busy} disabled={disabled || !name.trim()}>Enregistrer</Button>
     </form>
   );
 }
@@ -506,7 +506,7 @@ function BuildResult({ report, onClose }: { report: RunReport; onClose: () => vo
       <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs">
         <span className={ok ? "text-ok" : "text-danger"}>{report.timedOut ? "make timed out" : ok ? "make succeeded" : `make failed (exit ${report.code ?? "?"})`}</span>
         <span className="text-faint">{(report.durationMs / 1000).toFixed(1)} s</span>
-        <IconButton label="Hide" className="ml-auto size-5" onClick={onClose}><X className="size-3" /></IconButton>
+        <IconButton label="Masquer" className="ml-auto size-5" onClick={onClose}><X className="size-3" /></IconButton>
       </div>
       {(!ok || report.output.includes("warning")) && <CodeView text={report.output.trim() || "(no output)"} className="max-h-56 rounded-b-md" />}
     </div>

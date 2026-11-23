@@ -66,7 +66,7 @@ pub(crate) fn project_dir(state: &AppState, path: &str) -> Result<PathBuf> {
     let canon = std::fs::canonicalize(path).map_err(|_| AppError::new("invalid_target", format!("{path} no longer exists")))?;
     let s = state.settings()?;
     if !canon.is_dir() || !settings::is_inside_any(&canon, &s.roots) {
-        return Err(AppError::new("outside_roots", "This folder is not inside one of your projects folders (see Settings)."));
+        return Err(AppError::new("outside_roots", "Ce dossier n'est dans aucun de tes dossiers de projets (voir Réglages)."));
     }
     Ok(canon)
 }
@@ -74,7 +74,7 @@ pub(crate) fn project_dir(state: &AppState, path: &str) -> Result<PathBuf> {
 pub(crate) fn repo_dir(state: &AppState, path: &str) -> Result<PathBuf> {
     let dir = project_dir(state, path)?;
     if !git::is_repo(&dir) {
-        return Err(AppError::new("not_a_repo", "This folder is not a git repository"));
+        return Err(AppError::new("not_a_repo", "Ce dossier n'est pas un dépôt git"));
     }
     Ok(dir)
 }
@@ -104,7 +104,7 @@ pub fn ui_prefs_get(state: State<'_, AppState>) -> Result<serde_json::Value> {
 pub fn ui_prefs_set(state: State<'_, AppState>, prefs: serde_json::Value) -> Result<()> {
     let text = prefs.to_string();
     if !prefs.is_object() || text.len() > 16 * 1024 {
-        return Err(AppError::new("invalid_prefs", "Preferences must be a small JSON object"));
+        return Err(AppError::new("invalid_prefs", "Les préférences doivent être un petit objet JSON"));
     }
     db::set_setting(&state.conn(), "ui_prefs", &text)
 }
@@ -265,7 +265,7 @@ pub fn reveal_in_files(state: State<'_, AppState>, path: String) -> Result<()> {
     let canon = std::fs::canonicalize(&path).map_err(|_| AppError::new("invalid_target", format!("{path} no longer exists")))?;
     let allowed = settings::is_inside_any(&canon, &state.settings()?.roots) || canon.starts_with(&state.data_dir);
     if !allowed {
-        return Err(AppError::new("outside_roots", "This folder is not managed by TekBoard"));
+        return Err(AppError::new("outside_roots", "Ce dossier n'est pas géré par TekBoard"));
     }
     workspace::reveal(&canon)
 }
@@ -282,15 +282,15 @@ pub struct OpenedRemote {
 #[tauri::command(async)]
 pub fn open_remote(state: State<'_, AppState>, path: String) -> Result<OpenedRemote> {
     let dir = repo_dir(&state, &path)?;
-    let remote = git::any_remote_url(&dir).ok_or_else(|| AppError::new("no_remote", "This repository has no remote: there is nothing to open. Add one with `git remote add origin <url>`."))?;
-    let url = git::web_url(&remote, git::ssh_hostname).ok_or_else(|| AppError::new("no_web_remote", format!("The remote “{remote}” is not a web address TekBoard can open (a local path, or an SSH alias ssh does not know).")))?;
+    let remote = git::any_remote_url(&dir).ok_or_else(|| AppError::new("no_remote", "Ce dépôt n'a pas de dépôt distant : rien à ouvrir. Ajoutes-en un avec `git remote add origin <url>`."))?;
+    let url = git::web_url(&remote, git::ssh_hostname).ok_or_else(|| AppError::new("no_web_remote", format!("Le dépôt distant « {remote} » n'est pas une adresse web que TekBoard peut ouvrir (un chemin local, ou un alias SSH inconnu de ssh).")))?;
     let browser = match crate::toolenv::which("firefox") {
         Some(firefox) => {
             workspace::spawn_detached(&[firefox.to_string_lossy().into_owned(), "--new-tab".into(), url.clone()], &dir)?;
             "firefox"
         }
         None => {
-            workspace::spawn_detached(&["xdg-open".to_string(), url.clone()], &dir).map_err(|e| AppError::new("no_browser", format!("Firefox is not installed and the default browser could not be started: {e}")))?;
+            workspace::spawn_detached(&["xdg-open".to_string(), url.clone()], &dir).map_err(|e| AppError::new("no_browser", format!("Firefox n'est pas installé et le navigateur par défaut n'a pas pu démarrer : {e}")))?;
             "default"
         }
     };
@@ -311,7 +311,7 @@ pub fn project_launch(state: State<'_, AppState>, path: String) -> Result<String
     let dir = repo_dir(&state, &path)?;
     let sheet = db::get_sheet(&state.conn(), &dir.to_string_lossy())?;
     let terminal = state.settings()?.terminal_run_cmd;
-    let bin = sheet.run_bin.clone().or_else(|| crate::runner::detect(&dir).map(|(n, _)| n)).ok_or_else(|| AppError::new("binary_unknown", "TekBoard could not tell which program this project builds (no plain NAME in the Makefile, no executable at the root). Set the binary in the project sheet."))?;
+    let bin = sheet.run_bin.clone().or_else(|| crate::runner::detect(&dir).map(|(n, _)| n)).ok_or_else(|| AppError::new("binary_unknown", "TekBoard ne sait pas quel programme ce projet compile (pas de NAME simple dans le Makefile, pas d'exécutable à la racine). Indique le binaire dans la fiche du projet."))?;
     crate::runner::launch(&terminal, &dir, &bin, sheet.run_args.as_deref())?;
     db::log_activity(&state.conn(), now(), "launch", Some(&dir.to_string_lossy()), Some(&bin))?;
     Ok(bin)
@@ -436,7 +436,7 @@ pub fn template_sources() -> Vec<String> {
 /// Opens the template folder in the IDE so its files can be edited directly.
 #[tauri::command(async)]
 pub fn template_edit(state: State<'_, AppState>, id: String) -> Result<()> {
-    let t = templates::list(&state.templates())?.into_iter().find(|t| t.id == id).ok_or_else(|| AppError::new("invalid_template", "Unknown template"))?;
+    let t = templates::list(&state.templates())?.into_iter().find(|t| t.id == id).ok_or_else(|| AppError::new("invalid_template", "Modèle inconnu"))?;
     workspace::launch(&state.settings()?.ide_cmd, Path::new(&t.path))
 }
 
@@ -464,7 +464,7 @@ pub fn stage_files(state: State<'_, AppState>, repo: String, files: Vec<String>)
     let dir = repo_dir(&state, &repo)?;
     for f in &files {
         if templates::safe_rel(f).is_none() {
-            return Err(AppError::new("invalid_path", format!("Invalid file path: {f}")));
+            return Err(AppError::new("invalid_path", format!("Chemin de fichier invalide : {f}")));
         }
     }
     git::add(&dir, &files)?;
@@ -536,7 +536,7 @@ pub fn project_save(state: State<'_, AppState>, path: String, sheet: SheetInput)
     }
     if let Some(bin) = &next.run_bin {
         if templates::safe_rel(bin).is_none() {
-            return Err(AppError::new("invalid_path", "The binary must be a path inside the project folder (for example `my_hunter` or `build/app`)"));
+            return Err(AppError::new("invalid_path", "Le binaire doit être un chemin dans le dossier du projet (par exemple `my_hunter` ou `build/app`)"));
         }
     }
     if let Some(args) = &next.run_args {
@@ -552,7 +552,7 @@ pub fn project_save(state: State<'_, AppState>, path: String, sheet: SheetInput)
 pub fn project_set_status(state: State<'_, AppState>, path: String, status: String) -> Result<()> {
     let dir = repo_dir(&state, &path)?;
     if !db::STATUSES.contains(&status.as_str()) {
-        return Err(AppError::new("invalid_status", "Unknown status"));
+        return Err(AppError::new("invalid_status", "Statut inconnu"));
     }
     let conn = state.conn();
     db::set_status(&conn, &dir.to_string_lossy(), &status)?;
@@ -564,7 +564,7 @@ pub fn project_set_status(state: State<'_, AppState>, path: String, status: Stri
 pub fn project_set_kind(state: State<'_, AppState>, path: String, kind: Option<String>) -> Result<()> {
     let dir = repo_dir(&state, &path)?;
     if kind.as_deref().is_some_and(|k| k != "epitech" && k != "personal") {
-        return Err(AppError::new("invalid_kind", "Unknown classification"));
+        return Err(AppError::new("invalid_kind", "Classement inconnu"));
     }
     db::set_kind_override(&state.conn(), &dir.to_string_lossy(), kind.as_deref())
 }
@@ -637,7 +637,7 @@ pub struct SubjectScan {
 pub fn subjects_scan(app: tauri::AppHandle, state: State<'_, AppState>, dir: Option<String>) -> Result<SubjectScan> {
     let dir = match dir {
         Some(d) => PathBuf::from(d),
-        None => app.path().download_dir().map_err(|_| AppError::new("no_downloads", "The Downloads folder could not be located"))?,
+        None => app.path().download_dir().map_err(|_| AppError::new("no_downloads", "Le dossier Téléchargements est introuvable"))?,
     };
     if !dir.is_dir() {
         return Err(AppError::new("invalid_source", format!("{} is not a directory", dir.display())));
@@ -731,10 +731,10 @@ pub fn subject_remove(state: State<'_, AppState>, id: i64) -> Result<()> {
 
 #[tauri::command(async)]
 pub fn subject_open(state: State<'_, AppState>, id: i64) -> Result<()> {
-    let subject = db::get_subject(&state.conn(), id)?.ok_or_else(|| AppError::new("not_found", "Unknown subject"))?;
+    let subject = db::get_subject(&state.conn(), id)?.ok_or_else(|| AppError::new("not_found", "Sujet inconnu"))?;
     let path = subjects::file_path(&state.subjects(), &subject);
     if !path.is_file() {
-        return Err(AppError::new("not_found", "The file is missing from the library"));
+        return Err(AppError::new("not_found", "Le fichier manque dans la bibliothèque"));
     }
     workspace::reveal(&path)
 }
@@ -744,7 +744,7 @@ pub fn subject_open(state: State<'_, AppState>, id: i64) -> Result<()> {
 fn rel_files(files: &[String]) -> Result<()> {
     for f in files {
         if templates::safe_rel(f).is_none() {
-            return Err(AppError::new("invalid_path", format!("Invalid file path: {f}")));
+            return Err(AppError::new("invalid_path", format!("Chemin de fichier invalide : {f}")));
         }
     }
     Ok(())
@@ -799,7 +799,7 @@ pub fn git_sync(state: State<'_, AppState>, repo: String, op: String) -> Result<
         "fetch" => git::Sync::Fetch,
         "pull" => git::Sync::Pull,
         "push" => git::Sync::Push,
-        _ => return Err(AppError::new("invalid_op", "Unknown operation")),
+        _ => return Err(AppError::new("invalid_op", "Opération inconnue")),
     };
     let result = git::sync(&dir, kind);
     if kind == git::Sync::Push {
@@ -871,7 +871,7 @@ pub fn analytics(state: State<'_, AppState>) -> Result<Analytics> {
 // ───────────────────────────── Cozy Fox ─────────────────────────────
 
 fn cozy_paths(state: &AppState) -> Result<cozy::Paths> {
-    cozy::Paths::from_env(state.backups().join("cozy")).ok_or_else(|| AppError::new("cozy_missing", "HOME is not set"))
+    cozy::Paths::from_env(state.backups().join("cozy")).ok_or_else(|| AppError::new("cozy_missing", "HOME n'est pas défini"))
 }
 
 /// Best effort: the fox reacting to a build or a push must never make that action fail.

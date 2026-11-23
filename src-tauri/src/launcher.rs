@@ -169,7 +169,7 @@ pub struct CloneOutcome {
 /// Clones `url` into `parent/<repo name>`. Never touches an existing folder.
 pub fn clone_into(url: &str, parent: &Path) -> Result<CloneOutcome> {
     git::validate_clone_url(url)?;
-    let name = epitech::repo_dir_name(url).ok_or_else(|| AppError::new("invalid_url", "Cannot derive a folder name from this URL"))?;
+    let name = epitech::repo_dir_name(url).ok_or_else(|| AppError::new("invalid_url", "Impossible de tirer un nom de dossier de cette URL"))?;
     if !parent.is_dir() {
         return Err(AppError::new("invalid_target", format!("{} is not an existing directory", parent.display())));
     }

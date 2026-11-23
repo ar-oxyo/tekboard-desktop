@@ -376,7 +376,7 @@ pub fn store(conn: &Connection, fetched: &[Fetched], skipped_details: usize, now
 }
 
 pub fn not_connected() -> AppError {
-    AppError::new("my_not_connected", "Not connected to MY Epitech: open the sign-in window first.")
+    AppError::new("my_not_connected", "Pas connecté à MY Epitech : ouvre d'abord la fenêtre de connexion.")
 }
 
 #[cfg(test)]

@@ -199,7 +199,7 @@ Answer with ONLY the report inside one ```markdown block.",
 ];
 
 pub fn def(id: &str) -> Result<&'static Def> {
-    DEFS.iter().find(|d| d.id == id).ok_or_else(|| AppError::new("unknown_prompt", "Unknown prompt"))
+    DEFS.iter().find(|d| d.id == id).ok_or_else(|| AppError::new("unknown_prompt", "Prompt inconnu"))
 }
 
 /// Names written `{{NAME}}` in a template, in order of first appearance.
@@ -253,22 +253,22 @@ pub fn render(template: &str, values: &HashMap<String, String>) -> String {
 /// Checks a variant before it is saved. Returns warnings that do not prevent saving.
 pub fn validate(def: &Def, body: &str) -> Result<Vec<String>> {
     if body.trim().is_empty() {
-        return Err(AppError::new("invalid_prompt", "The prompt is empty"));
+        return Err(AppError::new("invalid_prompt", "Le prompt est vide"));
     }
     if body.len() > MAX_BODY {
-        return Err(AppError::new("invalid_prompt", format!("The prompt is too long ({} characters, {MAX_BODY} at most)", body.len())));
+        return Err(AppError::new("invalid_prompt", format!("Le prompt est trop long ({} caractères, {MAX_BODY} au plus)", body.len())));
     }
     if body.contains('\0') {
-        return Err(AppError::new("invalid_prompt", "The prompt contains a character that cannot be passed to a program"));
+        return Err(AppError::new("invalid_prompt", "Le prompt contient un caractère qui ne peut pas être passé à un programme"));
     }
     let used = variables_in(body);
     let unknown: Vec<&String> = used.iter().filter(|n| !def.vars.iter().any(|v| v.name == n.as_str())).collect();
     if !unknown.is_empty() {
-        return Err(AppError::new("invalid_prompt", format!("Unknown variable{}: {}. Available here: {}.", if unknown.len() > 1 { "s" } else { "" }, unknown.iter().map(|n| format!("{{{{{n}}}}}")).collect::<Vec<_>>().join(", "), def.vars.iter().map(|v| format!("{{{{{}}}}}", v.name)).collect::<Vec<_>>().join(", "))));
+        return Err(AppError::new("invalid_prompt", format!("Variable{} inconnue : {}. Disponibles ici : {}.", if unknown.len() > 1 { "s" } else { "" }, unknown.iter().map(|n| format!("{{{{{n}}}}}")).collect::<Vec<_>>().join(", "), def.vars.iter().map(|v| format!("{{{{{}}}}}", v.name)).collect::<Vec<_>>().join(", "))));
     }
     let missing: Vec<&str> = def.vars.iter().filter(|v| v.required && !used.iter().any(|n| n == v.name)).map(|v| v.name).collect();
     if !missing.is_empty() {
-        return Err(AppError::new("invalid_prompt", format!("This prompt cannot work without {}.", missing.iter().map(|n| format!("{{{{{n}}}}}")).collect::<Vec<_>>().join(", "))));
+        return Err(AppError::new("invalid_prompt", format!("Ce prompt ne peut pas fonctionner sans {}.", missing.iter().map(|n| format!("{{{{{n}}}}}")).collect::<Vec<_>>().join(", "))));
     }
     let mut warnings = Vec::new();
     if def.id == SUBJECT && !body.contains("json") {
@@ -296,7 +296,7 @@ pub fn set_active(conn: &Connection, id: &str, preset: Option<&str>) -> Result<(
     def(id)?;
     if let Some(p) = preset {
         if !db::prompt_variants(conn, id)?.iter().any(|(name, _, _)| name == p) {
-            return Err(AppError::new("unknown_preset", "This preset no longer exists"));
+            return Err(AppError::new("unknown_preset", "Cette version n'existe plus"));
         }
     }
     db::set_setting(conn, &active_key(id), preset.unwrap_or(""))
@@ -320,7 +320,7 @@ pub fn save(conn: &Connection, id: &str, preset: &str, body: &str, now: i64) -> 
     let d = def(id)?;
     let name = preset.trim();
     if name.is_empty() || name.chars().count() > MAX_PRESET_NAME || name.chars().any(|c| c.is_control()) {
-        return Err(AppError::new("invalid_preset", format!("A preset needs a name of at most {MAX_PRESET_NAME} characters")));
+        return Err(AppError::new("invalid_preset", format!("Une version a besoin d'un nom de {MAX_PRESET_NAME} caractères au plus")));
     }
     let warnings = validate(d, body)?;
     db::prompt_save(conn, id, name, body, now)?;

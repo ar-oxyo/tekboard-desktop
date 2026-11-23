@@ -97,7 +97,7 @@ fn invalid(what: impl Into<String>) -> AppError {
 fn clean_title(title: &str) -> Result<String> {
     let t = title.trim();
     if t.is_empty() {
-        return Err(invalid("A title is required"));
+        return Err(invalid("Un titre est nécessaire"));
     }
     Ok(t.chars().take(200).collect())
 }
@@ -105,7 +105,7 @@ fn clean_title(title: &str) -> Result<String> {
 fn clean_project(project: Option<&str>) -> Result<Option<String>> {
     match project.map(str::trim).filter(|p| !p.is_empty()) {
         None => Ok(None),
-        Some(p) if p.len() > 600 => Err(invalid("Unknown project")),
+        Some(p) if p.len() > 600 => Err(invalid("Projet inconnu")),
         Some(p) => Ok(Some(p.to_string())),
     }
 }
@@ -114,34 +114,34 @@ fn clean_color(color: Option<&str>) -> Result<Option<String>> {
     match color.map(str::trim).filter(|c| !c.is_empty()) {
         None => Ok(None),
         Some(c) if c.len() == 7 && c.starts_with('#') && c[1..].chars().all(|x| x.is_ascii_hexdigit()) => Ok(Some(c.to_lowercase())),
-        Some(c) => Err(invalid(format!("“{c}” is not a colour (#rrggbb)"))),
+        Some(c) => Err(invalid(format!("« {c} » n'est pas une couleur (#rrggbb)"))),
     }
 }
 
 fn clean_day(day: Option<&str>) -> Result<Option<String>> {
     match day.map(str::trim).filter(|d| !d.is_empty()) {
         None => Ok(None),
-        Some(d) => NaiveDate::parse_from_str(d, "%Y-%m-%d").map(|x| Some(x.format("%Y-%m-%d").to_string())).map_err(|_| invalid(format!("“{d}” is not a date (YYYY-MM-DD)"))),
+        Some(d) => NaiveDate::parse_from_str(d, "%Y-%m-%d").map(|x| Some(x.format("%Y-%m-%d").to_string())).map_err(|_| invalid(format!("« {d} » n'est pas une date (AAAA-MM-JJ)"))),
     }
 }
 
 fn clean_estimate(minutes: Option<i64>) -> Result<Option<i64>> {
     match minutes {
-        Some(m) if !(0..=MAX_ESTIMATE).contains(&m) => Err(invalid("An estimate is between 0 and 2000 hours")),
+        Some(m) if !(0..=MAX_ESTIMATE).contains(&m) => Err(invalid("Une estimation est comprise entre 0 et 2000 heures")),
         other => Ok(other),
     }
 }
 
 fn clean_priority(p: i64) -> Result<i64> {
-    if (0..=3).contains(&p) { Ok(p) } else { Err(invalid("A priority is 0 (none) to 3 (high)")) }
+    if (0..=3).contains(&p) { Ok(p) } else { Err(invalid("Une priorité va de 0 (aucune) à 3 (haute)")) }
 }
 
 fn check_span(start: i64, end: i64) -> Result<()> {
     if end <= start {
-        return Err(invalid("An entry must end after it starts"));
+        return Err(invalid("Une entrée doit finir après avoir commencé"));
     }
     if end - start > MAX_SPAN {
-        return Err(invalid("An entry cannot last more than two weeks"));
+        return Err(invalid("Une entrée ne peut pas durer plus de deux semaines"));
     }
     Ok(())
 }
@@ -173,11 +173,11 @@ pub fn state(conn: &Connection, now: i64) -> Result<State> {
 }
 
 pub fn get_task(conn: &Connection, id: i64) -> Result<Task> {
-    conn.query_row(&format!("SELECT {TASK_COLS} FROM tasks WHERE id = ?1"), [id], task_row).map_err(|_| AppError::new("not_found", "This task no longer exists"))
+    conn.query_row(&format!("SELECT {TASK_COLS} FROM tasks WHERE id = ?1"), [id], task_row).map_err(|_| AppError::new("not_found", "Cette tâche n'existe plus"))
 }
 
 pub fn get_event(conn: &Connection, id: i64) -> Result<PlanEvent> {
-    conn.query_row(&format!("SELECT {EVENT_COLS} FROM plan_events WHERE id = ?1"), [id], event_row).map_err(|_| AppError::new("not_found", "This calendar entry no longer exists"))
+    conn.query_row(&format!("SELECT {EVENT_COLS} FROM plan_events WHERE id = ?1"), [id], event_row).map_err(|_| AppError::new("not_found", "Cette entrée du calendrier n'existe plus"))
 }
 
 // ───────────────────────────── writing ─────────────────────────────
@@ -187,7 +187,7 @@ pub fn save_task(conn: &Connection, t: &Task, now: i64) -> Result<Task> {
     let title = clean_title(&t.title)?;
     let kind = if t.kind.is_empty() { "task" } else { t.kind.as_str() };
     if !TASK_KINDS.contains(&kind) {
-        return Err(invalid("Unknown kind of task"));
+        return Err(invalid("Type de tâche inconnu"));
     }
     let (project, due, estimate, priority) = (clean_project(t.project.as_deref())?, clean_day(t.due_day.as_deref())?, clean_estimate(t.estimate_min)?, clean_priority(t.priority)?);
     let parent = t.parent_id.filter(|p| *p != t.id && *p > 0);
@@ -198,7 +198,7 @@ pub fn save_task(conn: &Connection, t: &Task, now: i64) -> Result<Task> {
     } else {
         let n = conn.execute("UPDATE tasks SET title = ?1, notes = ?2, project = ?3, parent_id = ?4, kind = ?5, priority = ?6, estimate_min = ?7, due_day = ?8, done_at = ?9 WHERE id = ?10", params![title, notes, project, parent, kind, priority, estimate, due, t.done_at, t.id])?;
         if n == 0 {
-            return Err(AppError::new("not_found", "This task no longer exists"));
+            return Err(AppError::new("not_found", "Cette tâche n'existe plus"));
         }
         // A finished task leaves the calendar entries that were holding it marked as done.
         if t.done_at.is_some() {
@@ -219,7 +219,7 @@ pub fn delete_task(conn: &Connection, id: i64) -> Result<()> {
 pub fn save_event(conn: &Connection, e: &PlanEvent, now: i64) -> Result<PlanEvent> {
     let title = clean_title(&e.title)?;
     if !EVENT_KINDS.contains(&e.kind.as_str()) {
-        return Err(invalid("Unknown kind of calendar entry"));
+        return Err(invalid("Type d'entrée de calendrier inconnu"));
     }
     check_span(e.start, e.end)?;
     let (project, color) = (clean_project(e.project.as_deref())?, clean_color(e.color.as_deref())?);
@@ -231,7 +231,7 @@ pub fn save_event(conn: &Connection, e: &PlanEvent, now: i64) -> Result<PlanEven
     } else {
         let n = conn.execute("UPDATE plan_events SET kind = ?1, title = ?2, start_at = ?3, end_at = ?4, all_day = ?5, project = ?6, task_id = ?7, color = ?8, notes = ?9, done = ?10 WHERE id = ?11", params![e.kind, title, e.start, e.end, e.all_day as i64, project, e.task_id, color, notes, e.done as i64, e.id])?;
         if n == 0 {
-            return Err(AppError::new("not_found", "This calendar entry no longer exists"));
+            return Err(AppError::new("not_found", "Cette entrée du calendrier n'existe plus"));
         }
         e.id
     };
@@ -246,7 +246,7 @@ pub fn delete_event(conn: &Connection, id: i64) -> Result<()> {
 /// Priority, remaining work and colour of a project. `None` leaves a value alone;
 /// `Some(None)` clears it.
 pub fn set_project(conn: &Connection, key: &str, priority: Option<i64>, estimate_min: Option<Option<i64>>, color: Option<Option<String>>) -> Result<ProjectPlan> {
-    let key = clean_project(Some(key))?.ok_or_else(|| invalid("Unknown project"))?;
+    let key = clean_project(Some(key))?.ok_or_else(|| invalid("Projet inconnu"))?;
     conn.execute("INSERT INTO plan_projects (key) VALUES (?1) ON CONFLICT(key) DO NOTHING", [&key])?;
     if let Some(p) = priority {
         conn.execute("UPDATE plan_projects SET priority = ?2 WHERE key = ?1", params![key, clean_priority(p)?])?;
@@ -263,7 +263,7 @@ pub fn set_project(conn: &Connection, key: &str, priority: Option<i64>, estimate
 /// Records time really spent. The project's remaining estimate, when there is one, goes down by as much.
 pub fn log_work(conn: &Connection, project: Option<&str>, task_id: Option<i64>, title: &str, started_at: i64, seconds: i64) -> Result<WorkLog> {
     if !(1..=24 * 3600).contains(&seconds) {
-        return Err(invalid("A work session lasts between a second and a day"));
+        return Err(invalid("Une session de travail dure entre une seconde et une journée"));
     }
     let project = clean_project(project)?;
     let title = clean_title(title)?;
@@ -325,7 +325,7 @@ pub fn parse_local_in<Tz: TimeZone>(text: &str, tz: &Tz) -> Result<i64> {
     if let Ok(at) = DateTime::parse_from_rfc3339(t) {
         return Ok(at.timestamp());
     }
-    let naive = ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"].iter().find_map(|f| NaiveDateTime::parse_from_str(t, f).ok()).ok_or_else(|| invalid(format!("“{t}” is not a date and time (YYYY-MM-DDTHH:MM)")))?;
+    let naive = ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"].iter().find_map(|f| NaiveDateTime::parse_from_str(t, f).ok()).ok_or_else(|| invalid(format!("« {t} » n'est pas une date et une heure (AAAA-MM-JJTHH:MM)")))?;
     tz.from_local_datetime(&naive).earliest().map(|d| d.timestamp()).ok_or_else(|| invalid(format!("{t} does not exist in your time zone")))
 }
 
@@ -346,7 +346,7 @@ pub struct Applied {
 /// Applies every action or none: the first invalid one cancels the whole plan.
 pub fn apply(conn: &Connection, actions: &[Action], origin: &str, now: i64) -> Result<Applied> {
     if actions.len() > 200 {
-        return Err(invalid("A plan holds at most 200 changes"));
+        return Err(invalid("Un plan contient au plus 200 changements"));
     }
     let tx = conn.unchecked_transaction()?;
     let mut done = Applied::default();

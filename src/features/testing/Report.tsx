@@ -93,15 +93,15 @@ function Tests({ tests }: { tests: Record<string, unknown> }) {
   const bad = (num(tests.failed) ?? 0) + (num(tests.crashed) ?? 0);
   const failures = arr(tests.failures).map(rec);
   const coverage = num(tests.coverage);
-  if (total === null && failures.length === 0) return <p className="text-xs text-muted">The command printed no test summary TekBoard recognises (Criterion, CTest). Its exit code is the only result: see the steps and the log.</p>;
+  if (total === null && failures.length === 0) return <p className="text-xs text-muted">La commande n'a affiché aucun résumé de tests reconnu (Criterion, CTest). Son code de sortie est le seul résultat : voir les étapes et le journal.</p>;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
         {total !== null && <Stat label="Tests" value={total} />}
-        {passed !== null && <Stat label="Passed" value={passed} tone="ok" />}
-        <Stat label="Failed" value={bad} tone={bad > 0 ? "danger" : undefined} />
-        {total !== null && passed !== null && total > 0 && <Stat label="Success rate" value={`${((passed / total) * 100).toFixed(1)}%`} />}
-        {coverage !== null && <Stat label="Line coverage" value={`${coverage}%`} />}
+        {passed !== null && <Stat label="Réussis" value={passed} tone="ok" />}
+        <Stat label="Échoués" value={bad} tone={bad > 0 ? "danger" : undefined} />
+        {total !== null && passed !== null && total > 0 && <Stat label="Taux de réussite" value={`${((passed / total) * 100).toFixed(1)}%`} />}
+        {coverage !== null && <Stat label="Couverture des lignes" value={`${coverage}%`} />}
       </div>
       {failures.length > 0 && (
         <ul className="rounded-lg border border-danger/25 bg-danger/5 py-1">
@@ -148,24 +148,24 @@ function TestRepo({ s, steps, envActions }: { s: RunSummary; steps: JobStep[]; e
       {str(s.verdict) && <p className="display text-[15px] font-medium">{str(s.verdict)}</p>}
       <div className="rounded-lg border border-line bg-bg px-3 py-1.5">
         <Row label="Source">{s.mode === "remote" ? "Remote clone" : "Local Git snapshot"}{str(s.source) && <span className="text-muted"> · {str(s.source)}</span>}</Row>
-        <Row label="Branch">{str(s.branch) ?? "detached"}</Row>
+        <Row label="Branche">{str(s.branch) ?? "detached"}</Row>
         {commit && <Row label="Commit"><span className="font-mono">{commit.slice(0, 7)}</span>{str(s.localHead) && s.localHead !== commit && <span className="text-warn"> · your HEAD is {String(s.localHead).slice(0, 7)}</span>}</Row>}
-        <Row label="Environment">{iso.mode === "docker" ? `Container ${str(iso.image) ?? ""} — no network, home folder not shared` : "This computer's tools and libraries (clean clone, not isolated)"}</Row>
+        <Row label="Environnement">{iso.mode === "docker" ? `Container ${str(iso.image) ?? ""} — no network, home folder not shared` : "This computer's tools and libraries (clean clone, not isolated)"}</Row>
         <Row label="Clone" tone={tone("clone")}>{word("clone")}</Row>
-        <Row label="Build" tone={tone("build")}>{word("build")}{str(s.buildCommand) && <span className="font-mono text-muted"> · {str(s.buildCommand)}</span>}</Row>
-        {num(build.warnings) !== null && <Row label="Warnings" tone={(num(build.warnings) ?? 0) > 0 ? "warn" : undefined}>{num(build.warnings)}</Row>}
-        <Row label="Executable" tone={tone("executable")}>{step("executable")?.status === "success" ? `FOUND · ${str(exe.expected) ?? arr(exe.found).join(", ")}` : step("executable")?.status === "warning" ? `MISSING · ${str(exe.expected) ?? ""}` : "—"}</Row>
-        <Row label="Unit tests" tone={tone("tests")}>{num(tests.total) !== null ? `${num(tests.passed)}/${num(tests.total)}` : step("tests")?.status === "skipped" ? "not requested" : word("tests")}</Row>
+        <Row label="Compilation" tone={tone("build")}>{word("build")}{str(s.buildCommand) && <span className="font-mono text-muted"> · {str(s.buildCommand)}</span>}</Row>
+        {num(build.warnings) !== null && <Row label="Avertissements" tone={(num(build.warnings) ?? 0) > 0 ? "warn" : undefined}>{num(build.warnings)}</Row>}
+        <Row label="Exécutable" tone={tone("executable")}>{step("executable")?.status === "success" ? `FOUND · ${str(exe.expected) ?? arr(exe.found).join(", ")}` : step("executable")?.status === "warning" ? `MISSING · ${str(exe.expected) ?? ""}` : "—"}</Row>
+        <Row label="Tests du projet" tone={tone("tests")}>{num(tests.total) !== null ? `${num(tests.passed)}/${num(tests.total)}` : step("tests")?.status === "skipped" ? "not requested" : word("tests")}</Row>
       </div>
       {arr(s.differences).length > 0 && (
         <div className="rounded-lg border border-warn/25 bg-warn/5 px-3 py-2 text-xs text-warn">
-          <p className="mb-0.5 font-medium">Local and cloned versions differ</p>
+          <p className="mb-0.5 font-medium">Les versions locale et clonée diffèrent</p>
           {arr(s.differences).map((d, i) => <p key={i}>{String(d)}</p>)}
         </div>
       )}
       {referenced.length > 0 && (
         <div className="rounded-lg border border-danger/25 bg-danger/5 px-3 py-2 text-xs">
-          <p className="mb-0.5 font-medium text-danger">Files your build mentions that exist only on this computer</p>
+          <p className="mb-0.5 font-medium text-danger">Fichiers cités par ta compilation qui n'existent que sur cet ordinateur</p>
           {referenced.map((l, i) => <p key={i} className="selectable font-mono">{String(l.path)} <span className="font-sans text-muted">— {l.kind === "ignored" ? "ignored by Git" : "not added to Git"}</span></p>)}
         </div>
       )}
@@ -178,8 +178,8 @@ function TestRepo({ s, steps, envActions }: { s: RunSummary; steps: JobStep[]; e
       {num(tests.total) !== null && <Tests tests={tests} />}
       {envName && envActions && (
         <div className="flex items-center gap-2">
-          <Button size="sm" icon={<SquareTerminal className="size-3.5" />} onClick={() => envActions(envName, true)}>Terminal in the clone</Button>
-          <Button size="sm" variant="ghost" icon={<FolderOpen className="size-3.5" />} onClick={() => envActions(envName, false)}>Open folder</Button>
+          <Button size="sm" icon={<SquareTerminal className="size-3.5" />} onClick={() => envActions(envName, true)}>Terminal dans le clone</Button>
+          <Button size="sm" variant="ghost" icon={<FolderOpen className="size-3.5" />} onClick={() => envActions(envName, false)}>Ouvrir le dossier</Button>
           <span className="selectable min-w-0 truncate font-mono text-[11px] text-faint">{envDir}</span>
         </div>
       )}
@@ -199,10 +199,10 @@ function Banana({ s }: { s: RunSummary }) {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
         <Stat label="Infractions" value={num(s.total) ?? 0} tone={(num(s.total) ?? 0) === 0 ? "ok" : undefined} />
-        <Stat label="Major" value={num(sev.Major) ?? 0} tone={(num(sev.Major) ?? 0) > 0 ? "danger" : undefined} />
-        <Stat label="Minor" value={num(sev.Minor) ?? 0} tone={(num(sev.Minor) ?? 0) > 0 ? "warn" : undefined} />
+        <Stat label="Majeure" value={num(sev.Major) ?? 0} tone={(num(sev.Major) ?? 0) > 0 ? "danger" : undefined} />
+        <Stat label="Mineure" value={num(sev.Minor) ?? 0} tone={(num(sev.Minor) ?? 0) > 0 ? "warn" : undefined} />
         <Stat label="Info" value={num(sev.Info) ?? 0} />
-        <Stat label="Files checked" value={num(s.filesChecked) ?? 0} />
+        <Stat label="Fichiers vérifiés" value={num(s.filesChecked) ?? 0} />
       </div>
       {rules.length > 0 && <div className="flex flex-wrap gap-1.5">{rules.map(([r, n]) => <Badge key={r} mono>{r || "?"} × {String(n)}</Badge>)}</div>}
       {incomplete.length > 0 && <p className="text-xs text-warn">Only partly checked, because a compile error stopped the parser: {incomplete.join(", ")}</p>}
@@ -213,7 +213,7 @@ function Banana({ s }: { s: RunSummary }) {
             {list.map((f, i) => (
               <li key={i} className="selectable flex items-baseline gap-2 px-3 py-0.5 text-xs">
                 <span className="w-12 shrink-0 text-right font-mono text-faint">{num(f.line) ?? ""}</span>
-                <span className={cn("w-11 shrink-0", f.severity === "Major" ? "text-danger" : f.severity === "Minor" ? "text-warn" : "text-info")}>{String(f.severity)}</span>
+                <span className={cn("w-11 shrink-0", f.severity === "Majeure" ? "text-danger" : f.severity === "Mineure" ? "text-warn" : "text-info")}>{String(f.severity)}</span>
                 <span className="w-11 shrink-0 font-mono text-muted">{String(f.rule)}</span>
                 <span className="min-w-0 flex-1">{String(f.message)}</span>
               </li>
@@ -233,7 +233,7 @@ const RESULT: Record<string, { label: string; tone: "ok" | "warn" | "danger" | "
   warning: { label: "WARNING", tone: "warn" },
   fail: { label: "FAIL", tone: "danger" },
   partial: { label: "PARTIAL", tone: "info" },
-  not_run: { label: "NOT RUN", tone: "neutral" },
+  not_run: { label: "NON LANCÉ", tone: "neutral" },
 };
 const EVIDENCE: Record<string, string> = { auto: "measured", ai: "AI opinion", none: "not checked" };
 
@@ -244,7 +244,7 @@ function Moulinette({ s }: { s: RunSummary }) {
     <div className="flex flex-col gap-3">
       {str(s.overall) && (
         <div>
-          <p className="text-xs text-muted">Overall</p>
+          <p className="text-xs text-muted">Bilan</p>
           <p className="display text-lg font-medium">{str(s.overall)}</p>
         </div>
       )}
@@ -276,7 +276,7 @@ function Moulinette({ s }: { s: RunSummary }) {
           );
         })}
       </ul>
-      <p className="text-[11px] text-faint">A personal pre-check, not Epitech's Moulinette: it gives no grade and cannot predict one. “measured” lines come from tools run on this computer; “AI opinion” lines are Claude's reading of the code against the subject; “not checked” lines were not verified at all.</p>
+      <p className="text-[11px] text-faint">Une vérification personnelle, pas la moulinette d'Epitech : pas de note, et aucune prédiction. Les lignes « mesuré » viennent d'outils lancés sur cet ordinateur ; « avis de l'IA » est la lecture du code par Claude ; « non vérifié » n'a pas été vérifié du tout.</p>
     </div>
   );
 }
@@ -311,7 +311,7 @@ export function Report({ data, onCancel, envActions, onClear }: { data: ReportDa
         <Badge tone={STATUS_TONE[data.status]}>{running && <Spinner className="size-3" />}{STATUS_LABEL[data.status]}</Badge>
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{data.title}</span>
         <span className="text-xs text-faint">{duration(data.durationMs)}</span>
-        {running && onCancel && <Button size="sm" variant="danger" onClick={onCancel}>{data.kind === "command" ? "Stop" : "Cancel"}</Button>}
+        {running && onCancel && <Button size="sm" variant="danger" onClick={onCancel}>{data.kind === "command" ? "Arrêter" : "Annuler"}</Button>}
       </div>
       {data.kind === "moulinette_ai" || data.kind === "gen_tests" ? (
         <>
@@ -329,21 +329,21 @@ export function Report({ data, onCancel, envActions, onClear }: { data: ReportDa
       {data.kind === "moulinette" && <Moulinette s={s} />}
       {data.kind === "analysis" && str(s.report) && (
         <div>
-          <p className="mb-1 text-xs font-medium text-muted">Claude's analysis — its reading of the code, to verify, not a measurement or a grade</p>
+          <p className="mb-1 text-xs font-medium text-muted">Analyse de Claude : sa lecture du code, à vérifier, ni une mesure ni une note</p>
           <div className="selectable max-h-[30rem] overflow-auto rounded-lg border border-line bg-bg px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap">{str(s.report)}</div>
         </div>
       )}
       {data.kind === "build" && <p className="selectable text-[13px] text-muted"><span className="font-mono text-fg">{str(s.command)}</span> · exit {String(s.exitCode ?? "?")} · {num(s.warnings) ?? 0} warning(s){str(s.commit) && <> · commit <span className="font-mono">{str(s.commit)}</span></>}</p>}
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <p className="text-xs text-muted">Log</p>
+          <p className="text-xs text-muted">Journal</p>
           <span className="flex items-center gap-3">
-            {lines.length > 300 && <button type="button" className="text-xs text-muted hover:text-fg" onClick={() => setFull(!full)}>{full ? "Show the end only" : `Show all ${lines.length} lines`}</button>}
-            {onClear && <button type="button" className="text-xs text-muted hover:text-fg" onClick={onClear} title="Empties this view. The full log stays in the history.">Clear</button>}
+            {lines.length > 300 && <button type="button" className="text-xs text-muted hover:text-fg" onClick={() => setFull(!full)}>{full ? "N'afficher que la fin" : `Show all ${lines.length} lines`}</button>}
+            {onClear && <button type="button" className="text-xs text-muted hover:text-fg" onClick={onClear} title="Vide cette vue. Le journal complet reste dans l'historique.">Effacer</button>}
           </span>
         </div>
         <div ref={logRef} className="max-h-80 overflow-auto rounded-md">
-          <CodeView text={shown.trim() === "" ? "(nothing printed yet)" : shown.replace(/\n$/, "")} className="min-h-10 overflow-visible" />
+          <CodeView text={shown.trim() === "" ? "(rien d'affiché pour l'instant)" : shown.replace(/\n$/, "")} className="min-h-10 overflow-visible" />
         </div>
       </div>
     </div>

@@ -172,11 +172,11 @@ pub fn diff_against_current(repo: &Path, text: &str) -> String {
 pub fn write(repo: &Path, content: &str, expected_hash: Option<&str>, backups: &Path) -> Result<Option<String>> {
     let path = repo.join("README.md");
     if path.symlink_metadata().map(|m| m.file_type().is_symlink()).unwrap_or(false) {
-        return Err(AppError::new("outside_target", "README.md is a symbolic link"));
+        return Err(AppError::new("outside_target", "README.md est un lien symbolique"));
     }
     let cur = current(repo);
     if cur.as_ref().map(|c| sha(c.as_bytes())).as_deref() != expected_hash {
-        return Err(AppError::new("conflict", "README.md changed since the preview. Generate it again to compare with the new version."));
+        return Err(AppError::new("conflict", "README.md a changé depuis l'aperçu. Génère-le à nouveau pour comparer avec la nouvelle version."));
     }
     let mut saved = None;
     if let Some(c) = cur {

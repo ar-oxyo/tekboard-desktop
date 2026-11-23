@@ -26,7 +26,7 @@ export function SubjectsPage() {
       void qc.invalidateQueries({ queryKey: keys.subjects });
       toast({ kind: r.problems.length > 0 ? "info" : "ok", title: r.imported === 0 ? "No new subject on MY Epitech" : `${r.imported} subject${r.imported > 1 ? "s" : ""} added from MY Epitech`, detail: r.problems.join("\n") || undefined });
     },
-    onError: (e) => toast({ kind: "error", title: "Subjects not fetched", detail: asAppError(e).code === "my_not_connected" ? "Connect to MY Epitech first (MY Epitech screen), then try again." : asAppError(e).message }),
+    onError: (e) => toast({ kind: "error", title: "Sujets non récupérés", detail: asAppError(e).code === "my_not_connected" ? "Connect to MY Epitech first (MY Epitech screen), then try again." : asAppError(e).message }),
   });
   const repoList = repos.data ?? [];
   const list = subjects.data ?? [];
@@ -43,36 +43,36 @@ export function SubjectsPage() {
     const failed = results.filter((r) => r.error);
     void qc.invalidateQueries({ queryKey: keys.subjects });
     void qc.invalidateQueries({ queryKey: keys.activity });
-    if (failed.length > 0) toast({ kind: "error", title: `${failed.length} file${failed.length === 1 ? "" : "s"} not imported`, detail: failed[0].error ?? undefined });
+    if (failed.length > 0) toast({ kind: "error", title: `${failed.length} fichier${failed.length === 1 ? "" : "s"} non importé${failed.length === 1 ? "" : "s"}`, detail: failed[0].error ?? undefined });
     if (added + dup > 0) toast({ kind: "ok", title: `${added} document${added === 1 ? "" : "s"} added`, detail: dup > 0 ? `${dup} already in the library (same content) — skipped.` : undefined });
   };
 
   async function addFiles() {
-    const picked = await open({ multiple: true, title: "Add subjects", filters: [{ name: "PDF", extensions: ["pdf"] }] });
+    const picked = await open({ multiple: true, title: "Ajouter des sujets", filters: [{ name: "PDF", extensions: ["pdf"] }] });
     const paths = Array.isArray(picked) ? picked : typeof picked === "string" ? [picked] : [];
     if (paths.length === 0) return;
     try {
       report(await api.subjectsImport(paths.map((path) => ({ path, repoPath: null }))));
     } catch (e) {
-      toast({ kind: "error", title: "Import failed", detail: asAppError(e).message });
+      toast({ kind: "error", title: "Import échoué", detail: asAppError(e).message });
     }
   }
 
   return (
     <>
       <PageHeader
-        title="Subjects"
-        subtitle="Your subjects and course documents, kept in one place and linked to their project."
+        title="Sujets"
+        subtitle="Tes sujets et documents de cours, au même endroit et liés à leur projet."
         actions={
           <>
-            <Button variant="ghost" icon={<GraduationCap className="size-4" />} busy={fromMy.isPending} onClick={() => fromMy.mutate()} title="Fetches the subject PDFs MY Epitech attaches to your running projects and links them to their repository. Also done at each sync. Needs a connected MY Epitech session.">
-              From MY Epitech
+            <Button variant="ghost" icon={<GraduationCap className="size-4" />} busy={fromMy.isPending} onClick={() => fromMy.mutate()} title="Récupère les PDF de sujet que MY Epitech joint à tes projets en cours et les lie à leur dépôt. Fait aussi à chaque synchronisation. Nécessite une session MY Epitech connectée.">
+              Depuis MY Epitech
             </Button>
             <Button icon={<FilePlus2 className="size-4" />} onClick={() => void addFiles()}>
-              Add files…
+              Ajouter des fichiers…
             </Button>
             <Button variant="primary" icon={<Download className="size-4" />} onClick={() => setScanning(true)}>
-              Import from Downloads
+              Importer depuis Téléchargements
             </Button>
           </>
         }
@@ -82,15 +82,15 @@ export function SubjectsPage() {
 
       {subjects.isLoading ? (
         <p className="flex items-center gap-2 py-16 text-muted">
-          <Spinner /> Loading…
+          <Spinner /> Chargement…
         </p>
       ) : subjects.error ? (
         <ErrorNote>{asAppError(subjects.error).message}</ErrorNote>
       ) : list.length === 0 ? (
         !scanning && (
           <Card>
-            <EmptyState icon={<FileText className="size-6" />} title="No subject yet" action={<Button onClick={() => setScanning(true)}>Import from Downloads</Button>}>
-              TekBoard copies the PDFs you choose into its library and suggests the project each one belongs to. Your downloads are left where they are.
+            <EmptyState icon={<FileText className="size-6" />} title="Aucun sujet" action={<Button onClick={() => setScanning(true)}>Importer depuis Téléchargements</Button>}>
+              TekBoard copie les PDF choisis dans sa bibliothèque et propose le projet de chacun. Tes téléchargements restent où ils sont.
             </EmptyState>
           </Card>
         )
@@ -98,11 +98,11 @@ export function SubjectsPage() {
         <>
           <div className="relative mb-3 w-64">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
-            <Input className="pl-8" aria-label="Filter by name or project" placeholder="Filter" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <Input className="pl-8" aria-label="Filtrer par nom ou projet" placeholder="Filtrer" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
           <Card>
             {shown.length === 0 ? (
-              <EmptyState title="Nothing matches">Try another search.</EmptyState>
+              <EmptyState title="Rien ne correspond">Essaie une autre recherche.</EmptyState>
             ) : (
               <ul>
                 {shown.map((s) => (
@@ -119,7 +119,7 @@ export function SubjectsPage() {
 
 function ProjectSelect({ value, repos, onChange, className }: { value: string | null; repos: RepoInfo[]; onChange: (path: string | null) => void; className?: string }) {
   return (
-    <Select className={className} value={value ?? ""} label="Project" onChange={(v) => onChange(v || null)} options={[{ value: "", label: "No project" }, ...repoOptions(repos)]} />
+    <Select className={className} value={value ?? ""} label="Projet" onChange={(v) => onChange(v || null)} options={[{ value: "", label: "Aucun projet" }, ...repoOptions(repos)]} />
   );
 }
 
@@ -140,10 +140,10 @@ function SubjectRow({ subject, repos }: { subject: Subject; repos: RepoInfo[] })
   return (
     <li className="group flex h-12 items-center gap-3 border-b border-white/6 pr-2 pl-4 last:border-b-0 row-hover">
       <FileText className="size-4 shrink-0 text-faint" />
-      <button type="button" onClick={() => openDoc.mutate()} className="selectable min-w-0 flex-[2] truncate text-left text-[13px] font-medium hover:text-accent-strong" title="Open">
+      <button type="button" onClick={() => openDoc.mutate()} className="selectable min-w-0 flex-[2] truncate text-left text-[13px] font-medium hover:text-accent-strong" title="Ouvrir">
         {subject.name}
       </button>
-      {missing && <Badge tone="warn" title="The linked repository is no longer in your projects folders">project missing</Badge>}
+      {missing && <Badge tone="warn" title="Le dépôt lié n'est plus dans tes dossiers de projets">projet introuvable</Badge>}
       {brief ? (
         <Badge tone={brief.stale ? "warn" : "ok"} title={brief.brief.summary ?? ""}>
           {brief.stale ? "résumé périmé" : `lu${brief.brief.estimateTotalMin ? ` · ~${Math.round(brief.brief.estimateTotalMin / 60)} h` : ""}`}
@@ -160,14 +160,14 @@ function SubjectRow({ subject, repos }: { subject: Subject; repos: RepoInfo[] })
       {armed ? (
         <span className="flex shrink-0 items-center gap-1">
           <Button size="sm" variant="danger" busy={remove.isPending} onClick={() => remove.mutate()}>
-            Remove copy
+            Supprimer la copie
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setArmed(false)}>
-            Keep
+            Garder
           </Button>
         </span>
       ) : (
-        <IconButton label="Remove from the library" className="opacity-0 group-focus-within:opacity-100 group-hover:opacity-100" onClick={() => setArmed(true)}>
+        <IconButton label="Retirer de la bibliothèque" className="opacity-0 group-focus-within:opacity-100 group-hover:opacity-100" onClick={() => setArmed(true)}>
           <Trash2 className="size-4" />
         </IconButton>
       )}
@@ -214,7 +214,7 @@ function ScanPanel({ repos, onClose, onImported }: { repos: RepoInfo[]; onClose:
         right={
           <span className="flex items-center gap-2">
             <Button size="sm" variant="ghost" onClick={onClose}>
-              Cancel
+              Annuler
             </Button>
             <Button size="sm" variant="primary" disabled={picked.size === 0} busy={run.isPending} onClick={() => run.mutate()}>
               Import {picked.size || ""}
@@ -226,7 +226,7 @@ function ScanPanel({ repos, onClose, onImported }: { repos: RepoInfo[]; onClose:
       </CardTitle>
       {scan.isLoading ? (
         <p className="flex items-center gap-2 px-4 py-5 text-[13px] text-muted">
-          <Spinner /> Looking at your downloads…
+          <Spinner /> Lecture de tes téléchargements…
         </p>
       ) : scan.error ? (
         <div className="p-3">

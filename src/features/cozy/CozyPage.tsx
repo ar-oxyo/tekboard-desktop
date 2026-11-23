@@ -10,28 +10,28 @@ import { keys, useHome, useSettings } from "../../lib/hooks";
 import { useUi } from "../../lib/store";
 
 const PLAY: Array<{ cmd: string; label: string; hint: string }> = [
-  { cmd: "ball", label: "Ball", hint: "Throw him a ball" },
-  { cmd: "zoomies", label: "Zoomies", hint: "A burst of running around" },
-  { cmd: "spin", label: "Spin", hint: "Chase his tail" },
-  { cmd: "pounce", label: "Pounce", hint: "Hunter's jump" },
-  { cmd: "glass", label: "Glass jump", hint: "Jump onto a window" },
-  { cmd: "bird", label: "Bird", hint: "A bird comes by" },
-  { cmd: "mail", label: "Mail", hint: "He crosses the screen with a letter" },
-  { cmd: "water", label: "Water break", hint: "The water reminder, now" },
-  { cmd: "laser", label: "Laser", hint: "Toggle the laser pointer (also Super+Alt+L)" },
-  { cmd: "pilot", label: "Pilot mode", hint: "Take control of the fox: keyboard and mouse go to him until you stop (also Super+Alt+F)" },
+  { cmd: "ball", label: "Balle", hint: "Lui lancer une balle" },
+  { cmd: "zoomies", label: "Folie", hint: "Une course effrénée" },
+  { cmd: "spin", label: "Toupie", hint: "Courir après sa queue" },
+  { cmd: "pounce", label: "Bond", hint: "Saut de chasseur" },
+  { cmd: "glass", label: "Saut sur fenêtre", hint: "Sauter sur une fenêtre" },
+  { cmd: "bird", label: "Oiseau", hint: "Un oiseau passe" },
+  { cmd: "mail", label: "Courrier", hint: "Il traverse l'écran avec une lettre" },
+  { cmd: "water", label: "Pause eau", hint: "Le rappel d'eau, maintenant" },
+  { cmd: "laser", label: "Laser", hint: "Activer le pointeur laser (aussi Super+Alt+L)" },
+  { cmd: "pilot", label: "Mode pilote", hint: "Prends le contrôle du renard : clavier et souris vont à lui jusqu'à l'arrêt (aussi Super+Alt+F)" },
 ];
 
 const PREVIEW: Array<{ cmd: string; label: string }> = [
-  { cmd: "wx-rain", label: "Rain" },
-  { cmd: "wx-snow", label: "Snow" },
-  { cmd: "wx-sun", label: "Sun" },
-  { cmd: "wx-cold", label: "Cold" },
-  { cmd: "wx-auto", label: "Real weather" },
+  { cmd: "wx-rain", label: "Pluie" },
+  { cmd: "wx-snow", label: "Neige" },
+  { cmd: "wx-sun", label: "Soleil" },
+  { cmd: "wx-cold", label: "Froid" },
+  { cmd: "wx-auto", label: "Météo réelle" },
   { cmd: "season-halloween", label: "Halloween" },
-  { cmd: "season-christmas", label: "Christmas" },
-  { cmd: "season-spring", label: "Spring" },
-  { cmd: "season-auto", label: "Real season" },
+  { cmd: "season-christmas", label: "Noël" },
+  { cmd: "season-spring", label: "Printemps" },
+  { cmd: "season-auto", label: "Saison réelle" },
 ];
 
 export function CozyPage() {
@@ -48,7 +48,7 @@ export function CozyPage() {
     mutationFn: (name: string) => api.cozyRestore(name),
     onSuccess: (s) => {
       qc.setQueryData(["cozy"], s);
-      toast({ kind: "ok", title: "Previous configuration restored" });
+      toast({ kind: "ok", title: "Configuration précédente restaurée" });
     },
     onError: fail("Could not restore"),
   });
@@ -57,7 +57,7 @@ export function CozyPage() {
   if (status.isLoading) {
     return (
       <p className="flex items-center gap-2 py-16 text-muted">
-        <Spinner /> Looking for Cozy Fox…
+        <Spinner /> Recherche de Cozy Fox…
       </p>
     );
   }
@@ -69,9 +69,9 @@ export function CozyPage() {
       <>
         <PageHeader title="Cozy Fox" />
         <Card>
-          <EmptyState icon={<PawPrint className="size-6" />} title="Cozy Fox is not installed here">
+          <EmptyState icon={<PawPrint className="size-6" />} title="Cozy Fox n'est pas installé ici">
             <span className="selectable">
-              TekBoard looks for the Cozy Glass configuration at <Code>{tildify(s.widgetsPath, home)}</Code> and did not find it. Nothing was created.
+              TekBoard cherche la configuration de Cozy Glass dans <Code>{tildify(s.widgetsPath, home)}</Code> et ne l'a pas trouvée. Rien n'a été créé.
             </span>
           </EmptyState>
         </Card>
@@ -84,31 +84,31 @@ export function CozyPage() {
 
   return (
     <>
-      <PageHeader title="Cozy Fox" subtitle="Your desktop companion. Changes apply at once; the previous configuration is saved every time." />
+      <PageHeader title="Cozy Fox" subtitle="Ton compagnon de bureau. Les changements s'appliquent tout de suite ; la configuration précédente est sauvegardée à chaque fois." />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div className="flex flex-col gap-4">
           <Card>
-            <CardTitle right={update.isPending ? <Spinner /> : undefined}>Settings</CardTitle>
+            <CardTitle right={update.isPending ? <Spinner /> : undefined}>Réglages</CardTitle>
             <div className="py-1">
-              <Toggle label="Fox on the desktop" checked={on} onChange={(v) => update.mutate({ enabled: v })} />
-              <Toggle label="Outfits" hint="All of them: weather and season" checked={c.outfits ?? true} onChange={(v) => update.mutate({ outfits: v })} />
-              <Toggle label="Weather outfits" hint="Umbrella, scarf, sunglasses" checked={c.weatherOutfits ?? true} onChange={(v) => update.mutate({ weatherOutfits: v })} />
-              <Toggle label="Season outfits" hint="Hats, flower, pumpkin" checked={(c.season ?? "auto") !== "none"} onChange={(v) => update.mutate({ season: v ? "auto" : "none" })} />
-              <NumberRow label="Size" unit="×" value={c.scale} fallback="default" min={1} max={6} step={1} onCommit={(v) => update.mutate({ scale: v })} />
-              <NumberRow label="Speed" unit="×" value={c.speed} fallback="default" min={0.25} max={3} step={0.25} onCommit={(v) => update.mutate({ speed: v })} />
-              <NumberRow label="Water reminder" unit="min" hint="0 turns it off" value={c.water} fallback="default" min={0} max={240} step={5} onCommit={(v) => update.mutate({ water: v })} />
-              <NumberRow label="Bird visits" unit="min" hint="Average interval" value={c.birdEvery} fallback="default" min={1} max={120} step={1} onCommit={(v) => update.mutate({ birdEvery: v })} />
+              <Toggle label="Renard sur le bureau" checked={on} onChange={(v) => update.mutate({ enabled: v })} />
+              <Toggle label="Tenues" hint="Toutes : météo et saison" checked={c.outfits ?? true} onChange={(v) => update.mutate({ outfits: v })} />
+              <Toggle label="Tenues météo" hint="Parapluie, écharpe, lunettes de soleil" checked={c.weatherOutfits ?? true} onChange={(v) => update.mutate({ weatherOutfits: v })} />
+              <Toggle label="Tenues de saison" hint="Chapeaux, fleur, citrouille" checked={(c.season ?? "auto") !== "none"} onChange={(v) => update.mutate({ season: v ? "auto" : "none" })} />
+              <NumberRow label="Taille" unit="×" value={c.scale} fallback="default" min={1} max={6} step={1} onCommit={(v) => update.mutate({ scale: v })} />
+              <NumberRow label="Vitesse" unit="×" value={c.speed} fallback="default" min={0.25} max={3} step={0.25} onCommit={(v) => update.mutate({ speed: v })} />
+              <NumberRow label="Rappel d'eau" unit="min" hint="0 le désactive" value={c.water} fallback="default" min={0} max={240} step={5} onCommit={(v) => update.mutate({ water: v })} />
+              <NumberRow label="Visites d'oiseaux" unit="min" hint="Intervalle moyen" value={c.birdEvery} fallback="default" min={1} max={120} step={1} onCommit={(v) => update.mutate({ birdEvery: v })} />
             </div>
             <p className="selectable border-t border-white/6 px-4 py-2.5 text-xs text-faint">
-              Written to the <Code>companion</Code> block of <Code>{tildify(s.widgetsPath, home)}</Code>. “default” means the key is absent and the fox uses its own value.
+              Écrit dans le bloc <Code>companion</Code> block of <Code>{tildify(s.widgetsPath, home)}</Code>. “default” means the key is absent and the fox uses its own value.
             </p>
           </Card>
 
           <Card>
-            <CardTitle>TekBoard → fox</CardTitle>
+            <CardTitle>TekBoard → renard</CardTitle>
             <Toggle
-              label="React to builds and pushes made from TekBoard"
-              hint="Happy or sulking after a build, rocket after a push"
+              label="Réagir aux compilations et aux push faits depuis TekBoard"
+              hint="Content ou boudeur après une compilation, fusée après un push"
               checked={settings.data?.foxSignals ?? false}
               onChange={(v) => settings.data && saveSettings.mutate({ ...settings.data, foxSignals: v })}
             />
@@ -117,8 +117,8 @@ export function CozyPage() {
 
         <div className="flex flex-col gap-4">
           <Card>
-            <CardTitle>Play</CardTitle>
-            {!on && <p className="px-4 pt-3 text-xs text-warn">The fox is off: commands are sent but he will not show up.</p>}
+            <CardTitle>Jouer</CardTitle>
+            {!on && <p className="px-4 pt-3 text-xs text-warn">Le renard est éteint : les commandes partent mais il n'apparaîtra pas.</p>}
             <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-3">
               {PLAY.map((p) => (
                 <Button key={p.cmd} title={p.hint} disabled={send.isPending} onClick={() => send.mutate(p.cmd)}>
@@ -127,7 +127,7 @@ export function CozyPage() {
               ))}
             </div>
             <div className="border-t border-white/6 px-4 py-3">
-              <p className="mb-2 text-xs text-muted">Outfit previews — until the next reload</p>
+              <p className="mb-2 text-xs text-muted">Aperçu des tenues, jusqu'au prochain rechargement</p>
               <div className="flex flex-wrap gap-1.5">
                 {PREVIEW.map((p) => (
                   <Button key={p.cmd} size="sm" variant="ghost" onClick={() => send.mutate(p.cmd)}>
@@ -137,32 +137,32 @@ export function CozyPage() {
               </div>
             </div>
             <div className="flex items-center justify-between border-t border-white/6 px-4 py-3">
-              <span className="text-xs text-muted">Rocket previews and code reload</span>
+              <span className="text-xs text-muted">Aperçu de la fusée et rechargement du code</span>
               <span className="flex gap-1.5">
                 <Button size="sm" variant="ghost" onClick={() => send.mutate("push")}>
-                  Push ok
+                  Push réussi
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => send.mutate("push-fail")}>
-                  Push refused
+                  Push refusé
                 </Button>
-                <Button size="sm" variant="ghost" title="Reloads the fox's code without logging out" onClick={() => send.mutate("reload")}>
-                  Reload fox
+                <Button size="sm" variant="ghost" title="Recharge le code du renard sans fermer la session" onClick={() => send.mutate("reload")}>
+                  Recharger le renard
                 </Button>
               </span>
             </div>
           </Card>
 
           <Card>
-            <CardTitle>Saved configurations</CardTitle>
+            <CardTitle>Configurations sauvegardées</CardTitle>
             {s.backups.length === 0 ? (
-              <p className="px-4 py-4 text-[13px] text-muted">A copy of widgets.json is saved here before each change made from TekBoard.</p>
+              <p className="px-4 py-4 text-[13px] text-muted">Une copie de widgets.json est sauvegardée ici avant chaque changement fait depuis TekBoard.</p>
             ) : (
               <ul className="max-h-48 overflow-y-auto py-1">
                 {s.backups.slice(0, 20).map((name) => (
                   <li key={name} className="flex h-9 items-center gap-3 pr-2 pl-4">
                     <span className="selectable min-w-0 flex-1 truncate font-mono text-xs text-muted">{backupLabel(name)}</span>
                     <Button size="sm" variant="ghost" icon={<RotateCcw className="size-3.5" />} busy={restore.isPending && restore.variables === name} onClick={() => restore.mutate(name)}>
-                      Restore
+                      Restaurer
                     </Button>
                   </li>
                 ))}

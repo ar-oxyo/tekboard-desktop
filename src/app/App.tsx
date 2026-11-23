@@ -46,9 +46,9 @@ async function startFromCli(repo: string, what: string) {
     else if (what === "moulinette") id = await api.moulinetteStart(repo, { build: info.defaultBuild, tests: tests ?? null, memoryRun: info.config.runCmd, subjectAi: false });
     else if (what === "analysis") id = await api.analysisStart(repo);
     if (id !== null) ui.showJob(id, repo);
-    else ui.toast({ kind: "error", title: `Nothing to run for “${what}”` });
+    else ui.toast({ kind: "error", title: `Rien à lancer pour « ${what} »` });
   } catch (e) {
-    ui.toast({ kind: "error", title: "Could not start", detail: asAppError(e).message });
+    ui.toast({ kind: "error", title: "Démarrage impossible", detail: asAppError(e).message });
   }
 }
 

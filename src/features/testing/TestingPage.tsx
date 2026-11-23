@@ -45,11 +45,11 @@ export function TestingPage() {
   }, [finished, qc]);
 
   const fail = (title: string) => (e: unknown) => toast({ kind: "error", title, detail: asAppError(e).message });
-  const start = useMutation({ mutationFn: (fn: () => Promise<number>) => fn(), onSuccess: (id) => showJob(id, repoPath), onError: fail("Could not start") });
-  const cancel = useMutation({ mutationFn: (id: number) => api.jobCancel(id), onError: fail("Could not cancel") });
-  const openEnv = (name: string, terminal: boolean) => api.testrepoEnvOpen(name, terminal).catch(fail(terminal ? "The terminal did not start" : "Could not open the folder"));
+  const start = useMutation({ mutationFn: (fn: () => Promise<number>) => fn(), onSuccess: (id) => showJob(id, repoPath), onError: fail("Démarrage impossible") });
+  const cancel = useMutation({ mutationFn: (id: number) => api.jobCancel(id), onError: fail("Annulation impossible") });
+  const openEnv = (name: string, terminal: boolean) => api.testrepoEnvOpen(name, terminal).catch(fail(terminal ? "Le terminal n'a pas démarré" : "Dossier non ouvert"));
   const [toDelete, setToDelete] = useState<string | null>(null);
-  const delEnv = useMutation({ mutationFn: (name: string) => api.testrepoEnvDelete(name), onSuccess: () => { setToDelete(null); void qc.invalidateQueries({ queryKey: ["testrepo-envs"] }); }, onError: fail("Not deleted") });
+  const delEnv = useMutation({ mutationFn: (name: string) => api.testrepoEnvDelete(name), onSuccess: () => { setToDelete(null); void qc.invalidateQueries({ queryKey: ["testrepo-envs"] }); }, onError: fail("Non supprimé") });
   const [brief, setBrief] = useState<"tests" | "analysis" | null>(null);
 
   const raw: ReportData | null = runId !== null ? (run.data ? { ...run.data, steps: run.data.summary.steps ?? [], log: run.data.log ?? "" } : null) : (job.data ?? null);
@@ -72,18 +72,18 @@ export function TestingPage() {
   return (
     <>
       <PageHeader
-        title="Testing"
-        subtitle="Run, check and validate a project. Every result below was produced on this computer."
+        title="Vérifier"
+        subtitle="Lancer, vérifier et valider un projet. Chaque résultat ci-dessous a été produit sur cet ordinateur."
         actions={
           <ProjectPicker className="w-64" value={repoPath} onChange={(v) => useUi.setState({ testingRepo: v, runId: null })} />
         }
       />
       {repoPath === null ? (
         <Card>
-          <EmptyState icon={<FlaskConical className="size-6" />} title="Choose a project">Pick a repository at the top right to see what can be run on it.</EmptyState>
+          <EmptyState icon={<FlaskConical className="size-6" />} title="Choisis un projet">Choisis un dépôt en haut à droite pour voir ce qui peut être lancé.</EmptyState>
         </Card>
       ) : info.isLoading ? (
-        <p className="flex items-center gap-2 py-16 text-muted"><Spinner /> Looking at the project…</p>
+        <p className="flex items-center gap-2 py-16 text-muted"><Spinner /> Lecture du projet…</p>
       ) : info.error || !info.data ? (
         <ErrorNote>{asAppError(info.error).message}</ErrorNote>
       ) : (
@@ -109,10 +109,10 @@ export function TestingPage() {
 
             <Card>
               <CardTitle right={
-                <Select size="sm" className="w-40" label="Kind of run" value={kind} onChange={(v) => setKind(v as RunKind | "all")} options={[{ value: "all", label: "Everything" }, ...(Object.keys(KIND_LABEL) as RunKind[]).map((k) => ({ value: k as string, label: KIND_LABEL[k] }))]} />
-              }>History</CardTitle>
+                <Select size="sm" className="w-40" label="Type d'exécution" value={kind} onChange={(v) => setKind(v as RunKind | "all")} options={[{ value: "all", label: "Tout" }, ...(Object.keys(KIND_LABEL) as RunKind[]).map((k) => ({ value: k as string, label: KIND_LABEL[k] }))]} />
+              }>Historique</CardTitle>
               {(runs.data?.length ?? 0) === 0 ? (
-                <p className="px-4 py-4 text-[13px] text-muted">Nothing was run on this project yet. Builds, tests and checks are listed here with their logs.</p>
+                <p className="px-4 py-4 text-[13px] text-muted">Rien n'a encore été lancé sur ce projet. Compilations, tests et vérifications s'affichent ici avec leur journal.</p>
               ) : (
                 <ul className="max-h-72 overflow-y-auto py-1">
                   {runs.data!.map((r) => (
@@ -132,9 +132,9 @@ export function TestingPage() {
             </Card>
 
             <Card>
-              <CardTitle>Test environments</CardTitle>
+              <CardTitle>Environnements de test</CardTitle>
               {(envs.data?.length ?? 0) === 0 ? (
-                <p className="px-4 py-4 text-[13px] text-muted">TestRepo clones are kept here until you delete them, so you can open a terminal in one and try the program.</p>
+                <p className="px-4 py-4 text-[13px] text-muted">Les clones de la simulation de rendu restent ici jusqu'à ce que tu les supprimes : tu peux y ouvrir un terminal et essayer le programme.</p>
               ) : (
                 <ul className="max-h-56 overflow-y-auto py-1">
                   {envs.data!.map((e) => (
@@ -143,14 +143,14 @@ export function TestingPage() {
                       <span className="shrink-0 text-xs text-faint">{formatBytes(e.size)}</span>
                       {toDelete === e.name ? (
                         <>
-                          <Button size="sm" variant="danger" busy={delEnv.isPending} onClick={() => delEnv.mutate(e.name)}>Delete this clone</Button>
-                          <Button size="sm" variant="ghost" onClick={() => setToDelete(null)}>Keep</Button>
+                          <Button size="sm" variant="danger" busy={delEnv.isPending} onClick={() => delEnv.mutate(e.name)}>Supprimer ce clone</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setToDelete(null)}>Garder</Button>
                         </>
                       ) : (
                         <>
-                          <IconButton label="Open a terminal in this clone" onClick={() => void openEnv(e.name, true)}><SquareTerminal className="size-3.5" /></IconButton>
-                          <IconButton label="Open the folder" onClick={() => void openEnv(e.name, false)}><FolderOpen className="size-3.5" /></IconButton>
-                          <IconButton label="Delete this test environment" onClick={() => setToDelete(e.name)}><Trash2 className="size-3.5" /></IconButton>
+                          <IconButton label="Ouvrir un terminal dans ce clone" onClick={() => void openEnv(e.name, true)}><SquareTerminal className="size-3.5" /></IconButton>
+                          <IconButton label="Ouvrir le dossier" onClick={() => void openEnv(e.name, false)}><FolderOpen className="size-3.5" /></IconButton>
+                          <IconButton label="Supprimer cet environnement de test" onClick={() => setToDelete(e.name)}><Trash2 className="size-3.5" /></IconButton>
                         </>
                       )}
                     </li>
@@ -161,17 +161,17 @@ export function TestingPage() {
           </div>
 
           <Card className="min-w-0">
-            <CardTitle right={runId !== null && jobId !== null ? <Button size="sm" variant="ghost" onClick={() => useUi.setState({ runId: null })}>Back to the current task</Button> : undefined}>
+            <CardTitle right={runId !== null && jobId !== null ? <Button size="sm" variant="ghost" onClick={() => useUi.setState({ runId: null })}>Revenir à la tâche en cours</Button> : undefined}>
               {runId !== null ? "Report from the history" : busy ? "Running" : "Report"}
             </CardTitle>
             {data ? (
               <Report data={data} onCancel={busy && jobId !== null ? () => cancel.mutate(jobId) : undefined} envActions={(n, t) => void openEnv(n, t)} onClear={clearLog} />
             ) : (runId !== null && run.isLoading) || (jobId !== null && job.isLoading) ? (
-              <p className="flex items-center gap-2 px-4 py-8 text-[13px] text-muted"><Spinner /> Loading…</p>
+              <p className="flex items-center gap-2 px-4 py-8 text-[13px] text-muted"><Spinner /> Chargement…</p>
             ) : job.error && jobId !== null ? (
               <div className="p-4"><ErrorNote>{asAppError(job.error).message}</ErrorNote></div>
             ) : (
-              <EmptyState icon={<ShieldCheck className="size-5" />} title="Nothing running">Start a check on the left, or open a past report from the history. {repo ? `Project: ${displayName(repo)}.` : ""}</EmptyState>
+              <EmptyState icon={<ShieldCheck className="size-5" />} title="Rien en cours">Start a check on the left, or open a past report from the history. {repo ? `Project: ${displayName(repo)}.` : ""}</EmptyState>
             )}
           </Card>
         </div>
@@ -199,7 +199,7 @@ function headline(kind: RunKind, s: Record<string, unknown>): string | null {
   const o = (v: unknown) => (v && typeof v === "object" ? (v as Record<string, unknown>) : {});
   const t = o(s.tests);
   if ((kind === "tests" || kind === "gen_tests") && typeof t.total === "number") return `${t.passed}/${t.total} passed`;
-  if (kind === "testrepo") return `${s.mode === "remote" ? "Remote clone" : "Local snapshot"}${typeof s.commit === "string" ? ` · ${s.commit.slice(0, 7)}` : ""}`;
+  if (kind === "testrepo") return `${s.mode === "remote" ? "Clone du dépôt distant" : "Local snapshot"}${typeof s.commit === "string" ? ` · ${s.commit.slice(0, 7)}` : ""}`;
   if (kind === "banana" && typeof s.total === "number") return s.total === 0 ? "no infraction" : `${s.total} infraction(s)`;
   if (kind === "moulinette" && typeof s.overall === "string") return s.overall;
   if (kind === "build") return `${String(s.command ?? "")} · ${Number(s.warnings ?? 0)} warning(s)`;
@@ -265,7 +265,7 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
   const saveConfig = useMutation({
     mutationFn: (patch: Partial<TestingInfo["config"]>) => api.projectConfigSet(repo, { ...info.config, ...patch }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["testing-info", repo] }),
-    onError: (e) => toast({ kind: "error", title: "Not saved", detail: asAppError(e).message }),
+    onError: (e) => toast({ kind: "error", title: "Non enregistré", detail: asAppError(e).message }),
   });
   const runCustom = async () => {
     await api.projectConfigSet(repo, { ...info.config, testCmd: custom.trim() });
@@ -281,12 +281,12 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
 
   return (
     <Card>
-      <CardTitle>Checks</CardTitle>
-      <Tile id="tests" {...fold} icon={<FlaskConical className="size-4" />} title="Unit tests" action={<Button variant="primary" size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={command === "\0custom" ? !custom.trim() : !command || (chosen !== undefined && !chosen.trusted && !ack)} onClick={() => onStart(command === "\0custom" ? runCustom : () => api.testsRun(repo, command, ack))}>Run Unit Tests</Button>}>
+      <CardTitle>Vérifications</CardTitle>
+      <Tile id="tests" {...fold} icon={<FlaskConical className="size-4" />} title="Tests du projet" action={<Button variant="primary" size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={command === "\0custom" ? !custom.trim() : !command || (chosen !== undefined && !chosen.trusted && !ack)} onClick={() => onStart(command === "\0custom" ? runCustom : () => api.testsRun(repo, command, ack))}>Lancer les tests</Button>}>
         <Select
           size="sm"
           mono
-          label="Test command"
+          label="Commande de test"
           value={command}
           onChange={(v) => {
             setCommand(v);
@@ -295,11 +295,11 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
           options={[
             ...suites.map((s) => ({ value: s.command, label: s.command, hint: s.trusted ? undefined : "script" })),
             ...(saved && !suites.some((s) => s.command === saved) ? [{ value: saved, label: saved, hint: "saved" }] : []),
-            { value: "\0custom", label: "Another command…" },
+            { value: "\0custom", label: "Autre commande…" },
           ]}
         />
         {command === "\0custom" && <Input className="h-7 font-mono text-xs" placeholder="make my_tests" value={custom} onChange={(e) => setCustom(e.target.value)} />}
-        {command === "\0custom" && <p>Saved for this project. One program and its arguments: no pipes, quotes or &amp;&amp; (put those in a Makefile rule).</p>}
+        {command === "\0custom" && <p>Gardé pour ce projet. Un programme et ses arguments : pas de pipes, de guillemets ni de &amp;&amp; (mets-les dans une règle du Makefile).</p>}
         {chosen && !chosen.trusted && (
           <label className="flex items-start gap-2 text-warn">
             <input type="checkbox" className="mt-0.5 accent-(--color-warn)" checked={ack} onChange={(e) => setAck(e.target.checked)} />
@@ -313,37 +313,37 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
         {info.detection.notes.map((n) => <p key={n} className="text-warn">{n}</p>)}
       </Tile>
 
-      <Tile id="testrepo" {...fold} icon={<GitBranch className="size-4" />} title="TestRepo" action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} onClick={() => onStart(() => api.testrepoStart(repo, { mode, rev: null, build: build.trim(), tests: withTests ? firstTrusted : null, isolation, image: info.config.image }))}>TestRepo</Button>}>
-        <p>Clones the repository into a fresh folder and builds it there, to see what someone else gets.</p>
+      <Tile id="testrepo" {...fold} icon={<GitBranch className="size-4" />} title="Simulation de rendu" action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} onClick={() => onStart(() => api.testrepoStart(repo, { mode, rev: null, build: build.trim(), tests: withTests ? firstTrusted : null, isolation, image: info.config.image }))}>Simulation de rendu</Button>}>
+        <p>Clone le dépôt dans un dossier neuf et le compile, pour voir ce que la correction reçoit vraiment.</p>
         <Labeled label="Source">
-          <Seg value={mode} onChange={setMode} options={[{ id: "remote", label: "Remote clone", disabled: !info.hasRemote, title: info.hasRemote ? "What is published: the reference before a hand-in" : "This repository has no remote" }, { id: "snapshot", label: "Local Git snapshot", title: "What Git holds here at HEAD. Does not prove it was pushed." }]} />
+          <Seg value={mode} onChange={setMode} options={[{ id: "remote", label: "Clone du dépôt distant", disabled: !info.hasRemote, title: info.hasRemote ? "What is published: the reference before a hand-in" : "This repository has no remote" }, { id: "snapshot", label: "Instantané git local", title: "Ce que git contient ici à HEAD. Ne prouve pas que c'est poussé." }]} />
         </Labeled>
-        <Labeled label="Runs on">
-          <Seg value={isolation} onChange={setIsolation} options={[{ id: "none", label: "This computer" }, { id: "docker", label: "Container", disabled: !info.docker, title: info.docker ? `Docker image ${info.config.image ?? info.defaultImage}, no network` : "Docker is not installed" }]} />
+        <Labeled label="Exécuté sur">
+          <Seg value={isolation} onChange={setIsolation} options={[{ id: "none", label: "Cet ordinateur" }, { id: "docker", label: "Conteneur", disabled: !info.docker, title: info.docker ? `Docker image ${info.config.image ?? info.defaultImage}, no network` : "Docker is not installed" }]} />
         </Labeled>
         {isolation === "docker" ? (
           <Labeled label="Image">
             <Input className="h-7 font-mono text-xs" defaultValue={info.config.image ?? ""} placeholder={info.defaultImage} onBlur={(e) => e.target.value.trim() !== (info.config.image ?? "") && saveConfig.mutate({ image: e.target.value.trim() || null })} />
           </Labeled>
         ) : (
-          <p className="text-faint">“This computer” is a clean clone, not an isolated environment: your compiler and installed libraries are used.</p>
+          <p className="text-faint">« Cet ordinateur » est un clone propre, pas un environnement isolé : ton compilateur et tes bibliothèques sont utilisés.</p>
         )}
-        {isolation === "docker" && <p className="text-faint">The image must already be on this computer; TekBoard does not download it. The container has no network and cannot see your home folder. It is not Epitech's correction environment unless you use their image.</p>}
-        <Labeled label="Build"><Input className="h-7 font-mono text-xs" value={build} onChange={(e) => setBuild(e.target.value)} /></Labeled>
+        {isolation === "docker" && <p className="text-faint">L'image doit déjà être sur cet ordinateur ; TekBoard ne la télécharge pas. Le conteneur n'a pas de réseau et ne voit pas ton dossier personnel. Ce n'est l'environnement de correction d'Epitech que si tu utilises leur image.</p>}
+        <Labeled label="Compilation"><Input className="h-7 font-mono text-xs" value={build} onChange={(e) => setBuild(e.target.value)} /></Labeled>
         <label className={cn("flex items-center gap-2", !firstTrusted && "opacity-50")}>
           <input type="checkbox" className="accent-(--color-accent)" disabled={!firstTrusted} checked={withTests} onChange={(e) => setWithTests(e.target.checked)} />
-          Then run the tests {firstTrusted ? <code className="font-mono">({firstTrusted})</code> : "(no test command found)"}
+          Puis lancer les tests {firstTrusted ? <code className="font-mono">({firstTrusted})</code> : "(no test command found)"}
         </label>
       </Tile>
 
-      <Tile id="banana" {...fold} icon={<BananaIcon className="size-4" />} title="Banana" action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!banana} onClick={() => onStart(() => api.bananaRun(repo))}>Run Banana</Button>}>
+      <Tile id="banana" {...fold} icon={<BananaIcon className="size-4" />} title="Banana" action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!banana} onClick={() => onStart(() => api.bananaRun(repo))}>Lancer Banana</Button>}>
         {banana ? (
           <p className="selectable">
-            {info.banana.repoChecker ? <>Delivery files with <code className="font-mono">{info.banana.repoChecker}</code>{info.banana.version && ` (${info.banana.version})`}</> : "banana-check-repo is not installed"}
+            {info.banana.repoChecker ? <>Fichiers de rendu avec <code className="font-mono">{info.banana.repoChecker}</code>{info.banana.version && ` (${info.banana.version})`}</> : "banana-check-repo is not installed"}
             {info.banana.epiclang && info.banana.plugin ? "; coding style with epiclang's Banana plugin on every tracked .c and .h." : "; epiclang's Banana plugin was not found, so coding-style rules are skipped."}
           </p>
         ) : (
-          <p className="text-warn">Banana was not found on this computer (neither banana-check-repo nor epiclang's Banana plugin). TekBoard does not download it.</p>
+          <p className="text-warn">Banana est introuvable sur cet ordinateur (ni banana-check-repo ni le plugin Banana d'epiclang). TekBoard ne le télécharge pas.</p>
         )}
       </Tile>
 
@@ -356,16 +356,16 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
         )}
       </Tile>
 
-      <Tile id="moulinette" {...fold} icon={<ShieldCheck className="size-4" />} title="Vérifications rapides" action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} title={!build.trim() ? "Indique la commande de compilation dans la tuile « Simulation de rendu »" : undefined} onClick={() => { if (memory.trim() !== (info.config.runCmd ?? "")) saveConfig.mutate({ runCmd: memory.trim() || null }); onStart(() => api.moulinetteStart(repo, { build: build.trim(), tests: firstTrusted, memoryRun: memory.trim() || null, subjectAi })); }}>Run pre-check</Button>}>
+      <Tile id="moulinette" {...fold} icon={<ShieldCheck className="size-4" />} title="Vérifications rapides" action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} title={!build.trim() ? "Indique la commande de compilation dans la tuile « Simulation de rendu »" : undefined} onClick={() => { if (memory.trim() !== (info.config.runCmd ?? "")) saveConfig.mutate({ runCmd: memory.trim() || null }); onStart(() => api.moulinetteStart(repo, { build: build.trim(), tests: firstTrusted, memoryRun: memory.trim() || null, subjectAi })); }}>Lancer</Button>}>
         <p>Compilation, structure, Banana, tests et mémoire, sans IA et en quelques secondes, dans ton dossier de travail.</p>
-        <Labeled label="Memory run"><Input className="h-7 font-mono text-xs" placeholder={info.valgrind ? "./program arguments — run under Valgrind" : "Valgrind is not installed"} disabled={!info.valgrind} value={memory} onChange={(e) => setMemory(e.target.value)} /></Labeled>
+        <Labeled label="Exécution sous valgrind"><Input className="h-7 font-mono text-xs" placeholder={info.valgrind ? "./program arguments — run under Valgrind" : "Valgrind is not installed"} disabled={!info.valgrind} value={memory} onChange={(e) => setMemory(e.target.value)} /></Labeled>
         <label className={cn("flex items-start gap-2", (!claudeReady || !info.subject) && "opacity-60")}>
           <input type="checkbox" className="mt-0.5 accent-(--color-accent)" disabled={!claudeReady || !info.subject} checked={subjectAi} onChange={(e) => setSubjectAi(e.target.checked)} />
           <span>
-            Ask Claude Code to compare the code with the subject
+            Demander à Claude Code de comparer le code au sujet
             {info.subject ? <> (<span className="font-mono">{info.subject}</span>)</> : " — link a subject to this project first"}
             {!claudeReady && " — Claude Code is not installed"}
-            {subjectAi && <span className="block text-faint">Read-only. The subject's text and the files Claude reads are sent to Anthropic; it counts toward your Claude usage.</span>}
+            {subjectAi && <span className="block text-faint">Lecture seule. Le texte du sujet et les fichiers lus sont envoyés à Anthropic ; cela compte dans ton usage de Claude.</span>}
           </span>
         </label>
       </Tile>
@@ -388,17 +388,17 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
               Générer des tests
             </MenuItem>
             <MenuItem icon={<ScanSearch className="size-4" />} disabled={!claudeReady || busy} onSelect={() => onBrief("analysis")} hint="read-only">
-              Analyse repository…
+              Analyser le dépôt…
             </MenuItem>
             <MenuItem icon={<FileText className="size-4" />} onSelect={() => onTool("readme")}>
-              Generate README…
+              Générer le README…
             </MenuItem>
             <MenuSeparator />
-            <MenuItem icon={<PackageOpen className="size-4" />} onSelect={() => onTool("package")} hint="no AI call">
-              Package for AI…
+            <MenuItem icon={<PackageOpen className="size-4" />} onSelect={() => onTool("package")} hint="sans IA">
+              Paquet pour une IA…
             </MenuItem>
             <MenuItem icon={<PenLine className="size-4" />} onSelect={() => setPage("prompts")}>
-              Edit the prompts
+              Modifier les prompts
             </MenuItem>
           </Menu>
         }
@@ -409,7 +409,7 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
           <p className="text-warn">
             {info.claude.state === "not_found" ? "Claude Code was not found on this computer." : (info.claude.detail ?? "Claude Code cannot be used.")}{" "}
             <button type="button" className="text-accent-strong hover:underline" onClick={() => setPage("settings")}>
-              Check it in Settings
+              Vérifier dans Réglages
             </button>
           </p>
         )}

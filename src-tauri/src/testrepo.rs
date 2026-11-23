@@ -176,12 +176,12 @@ pub fn run(job: &Job, repo: &Path, params: &Params, env_root: &Path) -> Result<&
     let remote = match params.mode.as_str() {
         "remote" => true,
         "snapshot" => false,
-        _ => return Err(AppError::new("invalid_mode", "Unknown TestRepo source")),
+        _ => return Err(AppError::new("invalid_mode", "Source de simulation de rendu inconnue")),
     };
     let docker = match params.isolation.as_str() {
         "docker" => true,
         "none" => false,
-        _ => return Err(AppError::new("invalid_mode", "Unknown isolation level")),
+        _ => return Err(AppError::new("invalid_mode", "Niveau d'isolation inconnu")),
     };
     let build_argv = argv_of(&params.build)?;
     let tests_argv = match params.tests.as_deref().map(str::trim).filter(|t| !t.is_empty()) {
@@ -190,14 +190,14 @@ pub fn run(job: &Job, repo: &Path, params: &Params, env_root: &Path) -> Result<&
     };
     let image = params.image.clone().filter(|i| !i.trim().is_empty()).unwrap_or_else(|| DEFAULT_IMAGE.to_string());
     if docker && !valid_image(&image) {
-        return Err(AppError::new("invalid_image", "This container image name is not valid"));
+        return Err(AppError::new("invalid_image", "Ce nom d'image de conteneur n'est pas valide"));
     }
     let mut warn = false;
 
     // ── 1. what the working folder looks like
     job.start("inspect");
     let status = git::status(repo)?;
-    let local_head = git::run(Some(repo), &["rev-parse", "HEAD"]).map(|t| t.trim().to_string()).map_err(|_| AppError::new("no_commit", "This repository has no commit yet: there is nothing to clone."))?;
+    let local_head = git::run(Some(repo), &["rev-parse", "HEAD"]).map(|t| t.trim().to_string()).map_err(|_| AppError::new("no_commit", "Ce dépôt n'a encore aucun commit : il n'y a rien à cloner."))?;
     let origin = git::origin_url(repo);
     let dirty = status.staged + status.unstaged;
     job.set("mode", &params.mode);
@@ -228,7 +228,7 @@ pub fn run(job: &Job, repo: &Path, params: &Params, env_root: &Path) -> Result<&
     std::fs::create_dir_all(env_root)?;
     let env_dir: PathBuf = env_root.join(format!("{name}-{}", chrono::Local::now().format("%Y%m%d-%H%M%S")));
     if env_dir.exists() {
-        return Err(AppError::new("already_exists", "A test environment with this name already exists; try again in a second."));
+        return Err(AppError::new("already_exists", "Un environnement de test de ce nom existe déjà ; réessaie dans une seconde."));
     }
     let dest = env_dir.to_string_lossy().into_owned();
     job.set("envDir", &dest);
@@ -251,9 +251,9 @@ pub fn run(job: &Job, repo: &Path, params: &Params, env_root: &Path) -> Result<&
     } else {
         let rev = params.rev.clone().filter(|r| !r.trim().is_empty()).unwrap_or_else(|| "HEAD".into());
         if !valid_rev(&rev) {
-            return Err(AppError::new("invalid_rev", "This commit or branch name is not valid"));
+            return Err(AppError::new("invalid_rev", "Ce nom de commit ou de branche n'est pas valide"));
         }
-        let sha = git::run(Some(repo), &["rev-parse", "--verify", &format!("{rev}^{{commit}}")]).map(|t| t.trim().to_string()).map_err(|_| AppError::new("invalid_rev", format!("“{rev}” is not a commit of this repository")))?;
+        let sha = git::run(Some(repo), &["rev-parse", "--verify", &format!("{rev}^{{commit}}")]).map(|t| t.trim().to_string()).map_err(|_| AppError::new("invalid_rev", format!("« {rev} » n'est pas un commit de ce dépôt")))?;
         job.set("source", format!("local repository at {rev}"));
         let o = job.run(&s(&["git", "clone", "--quiet", "--no-hardlinks", &repo.to_string_lossy(), &dest]), env_root, Duration::from_secs(120), &net_env())?;
         if o.ok() {
@@ -421,12 +421,12 @@ pub fn list_envs(env_root: &Path) -> Vec<TestEnv> {
 /// Resolves a test environment by name; anything outside `env_root` is refused.
 pub fn env_path(env_root: &Path, name: &str) -> Result<PathBuf> {
     if name.is_empty() || name.contains('/') || name.contains('\0') || name == "." || name == ".." {
-        return Err(AppError::new("invalid_path", "Not a test environment"));
+        return Err(AppError::new("invalid_path", "Ce n'est pas un environnement de test"));
     }
     let path = env_root.join(name);
-    let meta = path.symlink_metadata().map_err(|_| AppError::new("invalid_target", "This test environment no longer exists"))?;
+    let meta = path.symlink_metadata().map_err(|_| AppError::new("invalid_target", "Cet environnement de test n'existe plus"))?;
     if !meta.is_dir() || std::fs::canonicalize(&path)?.parent() != std::fs::canonicalize(env_root).ok().as_deref() {
-        return Err(AppError::new("invalid_path", "Not a test environment"));
+        return Err(AppError::new("invalid_path", "Ce n'est pas un environnement de test"));
     }
     Ok(path)
 }

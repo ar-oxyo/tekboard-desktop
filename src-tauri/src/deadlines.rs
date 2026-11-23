@@ -34,11 +34,11 @@ where
     Tz::Offset: std::fmt::Display,
 {
     let day = day.trim();
-    let date = NaiveDate::parse_from_str(day, "%Y-%m-%d").map_err(|_| AppError::new("invalid_date", format!("“{day}” is not a valid date (expected YYYY-MM-DD)")))?;
+    let date = NaiveDate::parse_from_str(day, "%Y-%m-%d").map_err(|_| AppError::new("invalid_date", format!("« {day} » n'est pas une date valide (attendu : AAAA-MM-JJ)")))?;
     let at = match time.map(str::trim).filter(|t| !t.is_empty()) {
         None => None,
         Some(t) => {
-            let time = NaiveTime::parse_from_str(t, "%H:%M").map_err(|_| AppError::new("invalid_date", format!("“{t}” is not a valid time (expected HH:MM)")))?;
+            let time = NaiveTime::parse_from_str(t, "%H:%M").map_err(|_| AppError::new("invalid_date", format!("« {t} » n'est pas une heure valide (attendu : HH:MM)")))?;
             // A local time that does not exist (clock change) is refused rather than shifted.
             let at = tz.from_local_datetime(&date.and_time(time)).earliest().ok_or_else(|| AppError::new("invalid_date", format!("{day} {t} does not exist in your time zone")))?;
             Some(at.to_rfc3339_opts(chrono::SecondsFormat::Secs, false))

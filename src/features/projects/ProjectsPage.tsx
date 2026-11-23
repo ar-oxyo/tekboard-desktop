@@ -12,12 +12,12 @@ import { useUi } from "../../lib/store";
 import { BranchLabel, DueBadge, FavoriteButton, ProgressPicker, RepoMenu, StatusChips } from "./RepoBits";
 
 const FILTERS: Array<{ id: RepoFilter; label: string; title: string }> = [
-  { id: "active", label: "Active", title: "Everything that is not finished" },
-  { id: "in_progress", label: "In progress", title: "Being worked on" },
-  { id: "todo", label: "To do", title: "Not started" },
-  { id: "done", label: "Done", title: "Finished projects. Their status can be changed back from here." },
-  { id: "changes", label: "Needs attention", title: "Uncommitted work, commits to push or pull, conflicts" },
-  { id: "favorites", label: "Favorites", title: "Starred" },
+  { id: "active", label: "Actifs", title: "Tout ce qui n'est pas terminé" },
+  { id: "in_progress", label: "En cours", title: "En travail" },
+  { id: "todo", label: "À faire", title: "Pas commencé" },
+  { id: "done", label: "Terminé", title: "Projets terminés. Leur statut peut être changé ici." },
+  { id: "changes", label: "À regarder", title: "Travail non commité, commits à envoyer ou à récupérer, conflits" },
+  { id: "favorites", label: "Favoris", title: "Marqués d'une étoile" },
 ];
 
 export function ProjectsPage() {
@@ -48,16 +48,16 @@ export function ProjectsPage() {
   return (
     <>
       <PageHeader
-        title="Projects"
+        title="Projets"
         subtitle={hasRoots ? `${all.length} repositor${all.length === 1 ? "y" : "ies"} · ${school} Epitech` : undefined}
         actions={
           hasRoots && (
             <>
               <Button variant="ghost" icon={<RefreshCw className="size-3.5" />} busy={repos.isFetching} onClick={() => void qc.invalidateQueries({ queryKey: keys.repos })}>
-                Rescan
+                Relire
               </Button>
               <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => openLauncher({ mode: "new" })}>
-                New project
+                Nouveau projet
               </Button>
             </>
           )
@@ -65,24 +65,24 @@ export function ProjectsPage() {
       />
       {!hasRoots ? (
         <Card>
-          <EmptyState icon={<FolderGit2 className="size-6" />} title="No projects folder yet" action={<Button onClick={() => setPage("overview")}>Set up</Button>}>
-            Tell TekBoard where your repositories live.
+          <EmptyState icon={<FolderGit2 className="size-6" />} title="Pas encore de dossier de projets" action={<Button onClick={() => setPage("overview")}>Configurer</Button>}>
+            Dis à TekBoard où sont tes dépôts.
           </EmptyState>
         </Card>
       ) : repos.isLoading ? (
         <p className="flex items-center gap-2 py-16 text-muted">
-          <Spinner /> Scanning…
+          <Spinner /> Lecture…
         </p>
       ) : repos.error ? (
-        <ErrorNote title="Could not scan your projects">{asAppError(repos.error).message}</ErrorNote>
+        <ErrorNote title="Impossible de parcourir tes projets">{asAppError(repos.error).message}</ErrorNote>
       ) : (
         <>
           <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
             <div className="relative w-56">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
-              <Input autoFocus className="pl-8" aria-label="Search by name, module or branch" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <Input autoFocus className="pl-8" aria-label="Chercher par nom, module ou branche" placeholder="Rechercher" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
-            <div className="flex items-center gap-0.5" role="tablist" aria-label="Status filter">
+            <div className="flex items-center gap-0.5" role="tablist" aria-label="Filtre de statut">
               {FILTERS.map((f) => (
                 <button
                   key={f.id}
@@ -103,12 +103,12 @@ export function ProjectsPage() {
                 type="button"
                 role="switch"
                 aria-checked={epitechOnly}
-                title="Hide personal repositories and anything unrelated to the curriculum. A repository's classification can be corrected from its ⋯ menu."
+                title="Masque les dépôts personnels et ce qui n'est pas du cursus. Le classement d'un dépôt se corrige depuis son menu ⋯."
                 onClick={() => setEpitechOnly(!epitechOnly)}
                 className={cn("flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors duration-150", epitechOnly ? "border-transparent bg-accent-soft text-accent-strong" : "border-white/8 text-muted hover:border-line-strong hover:text-fg")}
               >
                 <GraduationCap className="size-3.5" />
-                Epitech only
+                Epitech seulement
               </button>
               {modules.length > 1 && (
                 <Select
@@ -118,18 +118,18 @@ export function ProjectsPage() {
                   label="Module"
                   value={activeModule}
                   onChange={setModule}
-                  options={[{ value: "", label: "All modules" }, ...modules.map((m) => ({ value: m.code, label: m.code, hint: m.name ? `${m.name} · ${m.count}` : String(m.count) }))]}
+                  options={[{ value: "", label: "Tous les modules" }, ...modules.map((m) => ({ value: m.code, label: m.code, hint: m.name ? `${m.name} · ${m.count}` : String(m.count) }))]}
                 />
               )}
               <Menu
                 trigger={
-                  <button type="button" title="Sort order" className="flex h-7 items-center gap-1.5 rounded-md border border-white/8 px-2.5 text-xs text-muted transition-colors duration-150 hover:border-line-strong hover:text-fg">
+                  <button type="button" title="Ordre de tri" className="flex h-7 items-center gap-1.5 rounded-md border border-white/8 px-2.5 text-xs text-muted transition-colors duration-150 hover:border-line-strong hover:text-fg">
                     <ArrowDownUp className="size-3.5" />
                     {sortLabel}
                   </button>
                 }
               >
-                <MenuLabel>Sort by</MenuLabel>
+                <MenuLabel>Trier par</MenuLabel>
                 {SORTS.map((s) => (
                   <MenuChoice key={s.id} checked={sort === s.id} onSelect={() => setSort(s.id)} hint={s.hint}>
                     {s.label}
@@ -185,7 +185,7 @@ function RepoRow({ repo, now, showStatus }: { repo: RepoInfo; now: Date; showSta
         {active > 0 ? timeAgo(Math.floor(active / 1000)) : "no commit"}
       </span>
       <span className="flex shrink-0 items-center">
-        <IconButton label="Open workspace (IDE + terminal)" className="hover:text-accent-strong" onClick={() => act.workspace.mutate(repo)}>
+        <IconButton label="Ouvrir l'espace de travail (IDE + terminal)" className="hover:text-accent-strong" onClick={() => act.workspace.mutate(repo)}>
           <Play className="size-4" />
         </IconButton>
         <RepoMenu repo={repo} />

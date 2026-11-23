@@ -73,15 +73,15 @@ const HOLD: &str = r#""$@"; code=$?; printf '\n[%s exited with code %s] Press En
 pub fn launch_argv(terminal_cmd: &str, repo: &Path, bin: &str, args: Option<&str>) -> Result<Vec<String>> {
     let mut argv: Vec<String> = terminal_cmd.split_whitespace().map(|a| a.replace("{dir}", &repo.to_string_lossy())).collect();
     if argv.is_empty() {
-        return Err(AppError::new("not_configured", "No terminal is configured to run programs. Set one in Settings → Workspace."));
+        return Err(AppError::new("not_configured", "Aucun terminal n'est configuré pour lancer des programmes. Définis-en un dans Réglages → Général."));
     }
-    let rel = safe_rel(bin).ok_or_else(|| AppError::new("invalid_path", "The binary must be a path inside the project folder"))?;
+    let rel = safe_rel(bin).ok_or_else(|| AppError::new("invalid_path", "Le binaire doit être un chemin dans le dossier du projet"))?;
     let program = repo.join(&rel);
     // The link, if any, must still point inside the project.
     let canon = std::fs::canonicalize(&program).map_err(|_| AppError::new("binary_missing", format!("{bin} does not exist yet. Build the project first, or set the binary in the project sheet.")))?;
     let root = std::fs::canonicalize(repo)?;
     if !canon.starts_with(&root) {
-        return Err(AppError::new("invalid_path", "The binary must be inside the project folder"));
+        return Err(AppError::new("invalid_path", "Le binaire doit être dans le dossier du projet"));
     }
     if !crate::toolenv::is_executable(&canon) {
         return Err(AppError::new("binary_missing", format!("{bin} is not an executable file.")));

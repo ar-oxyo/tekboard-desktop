@@ -42,7 +42,7 @@ export function MyEpitechPage() {
     mutationFn: (eraseCache: boolean) => api.myForget(eraseCache),
     onSuccess: () => {
       setConfirmForget(false);
-      toast({ kind: "ok", title: "Session erased" });
+      toast({ kind: "ok", title: "Session effacée" });
       void qc.invalidateQueries({ queryKey: ["my-status"] });
       void qc.invalidateQueries({ queryKey: ["my-data"] });
     },
@@ -61,11 +61,11 @@ export function MyEpitechPage() {
 
   return (
     <>
-      <PageHeader title="MY Epitech" subtitle="Your own account, read-only. You sign in on the real site, TekBoard never sees your password" />
+      <PageHeader title="MY Epitech" subtitle="Ton propre compte, en lecture seule. Tu te connectes sur le vrai site, TekBoard ne voit jamais ton mot de passe" />
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <Card className="min-w-0">
           <div className="flex h-11 items-center gap-1 border-b border-white/6 px-3">
-            {([["projects", "Projects & deadlines"], ["progress", "Credits & validations"], ["raw", "Raw answers"]] as const).map(([id, label]) => (
+            {([["projects", "Projets et rendus"], ["progress", "Crédits et validations"], ["raw", "Réponses brutes"]] as const).map(([id, label]) => (
               <button key={id} type="button" onClick={() => setTab(id)} className={cn("h-7 rounded-md px-2.5 text-[13px] transition-colors duration-150", tab === id ? "bg-raised text-fg" : "text-muted hover:text-fg")}>{label}</button>
             ))}
           </div>
@@ -74,14 +74,14 @@ export function MyEpitechPage() {
           {tab === "raw" && (data.error ? (
             <div className="p-4"><ErrorNote>{asAppError(data.error).message}</ErrorNote></div>
           ) : entries.length === 0 ? (
-            <EmptyState icon={<GraduationCap className="size-5" />} title="Nothing synced yet">Connect, then click “Sync now”. What MY Epitech answers is shown here as it is.</EmptyState>
+            <EmptyState icon={<GraduationCap className="size-5" />} title="Rien de synchronisé">Connecte-toi, puis clique sur « Synchroniser ». Les réponses de MY Epitech s'affichent ici telles quelles.</EmptyState>
           ) : (
             <ul className="py-1">{entries.map((e) => <EntryRow key={e.route} entry={e} />)}</ul>
           ))}
         </Card>
         <div className="flex flex-col gap-4">
           <Card>
-            <CardTitle right={s ? <Dot tone={s.connected ? "ok" : s.windowOpen ? "info" : "neutral"}>{s.connected ? "Connected" : s.windowOpen ? "Waiting for sign-in" : "Not connected"}</Dot> : <Spinner />}>Connection</CardTitle>
+            <CardTitle right={s ? <Dot tone={s.connected ? "ok" : s.windowOpen ? "info" : "neutral"}>{s.connected ? "Connecté" : s.windowOpen ? "Waiting for sign-in" : "Non connecté"}</Dot> : <Spinner />}>Connexion</CardTitle>
             <div className="flex flex-col gap-3 p-4 text-[13px]">
               <button type="button" aria-expanded={showHow} onClick={() => setHow(!showHow)} className="flex items-center gap-1 text-left text-xs text-muted hover:text-fg">
                 {showHow ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />} How the connection works and what is stored
@@ -89,54 +89,54 @@ export function MyEpitechPage() {
               {showHow && (
                 <>
               <ul className="flex list-disc flex-col gap-1.5 pl-4 text-xs leading-relaxed text-muted">
-                <li>A separate window opens <span className="font-mono">my.epitech.eu</span>. Microsoft sign-in and MFA happen there, as in a browser.</li>
-                <li>That window keeps its browser session in a folder of its own on this computer, so you stay signed in. “Erase session” deletes it.</li>
-                <li>TekBoard receives the site's access token from that window and keeps it in memory only. It is not written to its database or logs.</li>
+                <li>Une fenêtre séparée s'ouvre <span className="font-mono">my.epitech.eu</span>. La connexion Microsoft et la double authentification se font là, comme dans un navigateur.</li>
+                <li>Cette fenêtre garde sa session dans un dossier à elle sur cet ordinateur, pour rester connecté. « Effacer la session » la supprime.</li>
+                <li>TekBoard reçoit le jeton d'accès du site depuis cette fenêtre et le garde seulement en mémoire. Il n'est écrit ni en base ni dans les journaux.</li>
                 <li>Syncing happens when you click, or at the interval you set in Settings: about {s?.routes ?? 18} read-only requests (plus three per ongoing project, and one download per new subject PDF), half a second apart, on your own account.</li>
-                <li>The answers are stored on this computer so you can read them offline. Check that this use fits your school's rules.</li>
+                <li>Les réponses sont gardées sur cet ordinateur pour être lisibles hors ligne. Vérifie que cet usage respecte les règles de ton école.</li>
               </ul>
                 </>
               )}
               <label className="flex items-center gap-2">
                 <input type="checkbox" className="accent-(--color-accent)" checked={consent} onChange={(e) => accept(e.target.checked)} />
-                I agree to keep a MY Epitech session in TekBoard on this computer
+                J'accepte de garder une session MY Epitech dans TekBoard sur cet ordinateur
               </label>
               <div className="flex flex-wrap gap-2">
-                <Button variant="primary" icon={<LogIn className="size-3.5" />} disabled={!consent} busy={connect.isPending} onClick={() => connect.mutate()}>{s?.windowOpen ? "Show the sign-in window" : "Connect to MY Epitech"}</Button>
+                <Button variant="primary" icon={<LogIn className="size-3.5" />} disabled={!consent} busy={connect.isPending} onClick={() => connect.mutate()}>{s?.windowOpen ? "Afficher la fenêtre de connexion" : "Connect to MY Epitech"}</Button>
                 <Button icon={<RefreshCw className="size-3.5" />} disabled={!s?.connected} disabledReason="Connecte-toi d'abord : bouton Se connecter, puis identifie-toi dans la fenêtre MY Epitech" busy={sync.isPending} onClick={() => sync.mutate()}>Synchroniser</Button>
-                {(s?.sessionStored || s?.connected || entries.length > 0) && !confirmForget && <Button variant="ghost" icon={<Trash2 className="size-3.5" />} onClick={() => setConfirmForget(true)}>Erase session…</Button>}
+                {(s?.sessionStored || s?.connected || entries.length > 0) && !confirmForget && <Button variant="ghost" icon={<Trash2 className="size-3.5" />} onClick={() => setConfirmForget(true)}>Effacer la session…</Button>}
               </div>
               {confirmForget && (
                 <div className="flex flex-wrap items-center gap-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-xs">
-                  <span className="mr-auto text-danger">Sign out here and delete the stored session?</span>
-                  <Button size="sm" variant="danger" busy={forget.isPending} onClick={() => forget.mutate(false)}>Erase session</Button>
-                  <Button size="sm" variant="danger" busy={forget.isPending} onClick={() => forget.mutate(true)}>Session and synced data</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmForget(false)}>Keep</Button>
+                  <span className="mr-auto text-danger">Se déconnecter ici et supprimer la session gardée ?</span>
+                  <Button size="sm" variant="danger" busy={forget.isPending} onClick={() => forget.mutate(false)}>Effacer la session</Button>
+                  <Button size="sm" variant="danger" busy={forget.isPending} onClick={() => forget.mutate(true)}>Session et données synchronisées</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmForget(false)}>Garder</Button>
                 </div>
               )}
-              {s?.connected && <p className="selectable text-xs text-muted">{s.account ? `Signed in as ${s.account}. ` : ""}{s.expiresAt ? `This token is valid until ${new Date(s.expiresAt * 1000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}; keep the sign-in window open and the site renews it.` : ""}</p>}
+              {s?.connected && <p className="selectable text-xs text-muted">{s.account ? `Signed in as ${s.account}. ` : ""}{s.expiresAt ? `This token is valid until ${new Date(s.expiresAt * 1000).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}; keep the sign-in window open and the site renews it.` : ""}</p>}
               {s && (
                 <p className="text-xs text-muted">
                   {s.syncMinutes > 0 ? `Automatic sync every ${s.syncMinutes >= 60 ? `${s.syncMinutes / 60} h` : `${s.syncMinutes} min`} while connected` : "Automatic sync is off"}
                   {s.lastSync ? ` · last sync ${timeAgo(s.lastSync)}` : ""}.{" "}
                   <button type="button" className="text-accent-strong hover:underline" onClick={() => useUi.getState().setPage("settings")}>
-                    Change in Settings
+                    Modifier dans Réglages
                   </button>
                 </p>
               )}
-              {s && !s.connected && s.windowHidden && <p className="text-xs text-warn">The stored session was reopened in the background but the site has not handed over a session: sign-in is required. Click “Show the sign-in window”.</p>}
-              {s && !s.connected && s.windowOpen && !s.windowHidden && <p className="text-xs text-muted">Sign in in the MY Epitech window. This turns to “Connected” a moment after the dashboard loads.</p>}
+              {s && !s.connected && s.windowHidden && <p className="text-xs text-warn">La session gardée a été rouverte en arrière-plan mais le site n'a pas transmis de session : il faut se reconnecter. Clique sur « Afficher la fenêtre de connexion ».</p>}
+              {s && !s.connected && s.windowOpen && !s.windowHidden && <p className="text-xs text-muted">Connecte-toi dans la fenêtre MY Epitech. L'état passe à « Connecté » peu après le chargement du tableau de bord.</p>}
             </div>
           </Card>
           <Card>
             <button type="button" aria-expanded={showHistory} onClick={() => setShowHistory(!showHistory)} className="flex h-11 w-full items-center gap-2 px-4 text-left text-[13px] font-medium">
-              <span className="mr-auto">Sync history</span>
+              <span className="mr-auto">Historique des synchronisations</span>
               <span className="text-xs font-normal text-faint">{(data.data?.history.length ?? 0) === 0 ? "none yet" : `${data.data!.history.length} sync${data.data!.history.length > 1 ? "s" : ""}`}</span>
               {showHistory ? <ChevronDown className="size-3.5 text-faint" /> : <ChevronRight className="size-3.5 text-faint" />}
             </button>
             {showHistory &&
               ((data.data?.history.length ?? 0) === 0 ? (
-                <p className="border-t border-white/6 px-4 py-4 text-[13px] text-muted">No synchronisation yet</p>
+                <p className="border-t border-white/6 px-4 py-4 text-[13px] text-muted">Aucune synchronisation</p>
               ) : (
                 <ul className="max-h-80 overflow-y-auto border-t border-white/6 py-1">
                   {data.data!.history.map((h) => (

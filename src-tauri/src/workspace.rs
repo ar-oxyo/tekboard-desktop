@@ -10,7 +10,7 @@ use std::process::Stdio;
 pub fn build_argv(template: &str, dir: &str) -> Result<Vec<String>> {
     let mut argv: Vec<String> = template.split_whitespace().map(str::to_string).collect();
     if argv.is_empty() {
-        return Err(AppError::new("not_configured", "No command is configured for this action. Set one in Settings."));
+        return Err(AppError::new("not_configured", "Aucune commande n'est configurée pour cette action. Définis-en une dans Réglages."));
     }
     let mut used = false;
     for arg in argv.iter_mut().skip(1) {
@@ -43,7 +43,7 @@ pub fn spawn_detached(argv: &[String], cwd: &Path) -> Result<()> {
         .spawn()
         .map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
-                AppError::new("command_missing", format!("“{}” was not found. Check the command in Settings.", argv[0]))
+                AppError::new("command_missing", format!("« {} » est introuvable. Vérifie la commande dans Réglages.", argv[0]))
             } else {
                 AppError::Io(e)
             }
@@ -73,7 +73,7 @@ const OUTPUT_CAP: usize = 400 * 1024;
 pub fn run_captured(template: &str, cwd: &Path, timeout: std::time::Duration) -> Result<RunReport> {
     let argv: Vec<String> = template.split_whitespace().map(str::to_string).collect();
     if argv.is_empty() {
-        return Err(AppError::new("not_configured", "No build command is set for this project"));
+        return Err(AppError::new("not_configured", "Aucune commande de compilation n'est définie pour ce projet"));
     }
     run_argv_captured(&argv, cwd, timeout, &[])
 }
@@ -97,7 +97,7 @@ pub fn run_argv_captured(argv: &[String], cwd: &Path, timeout: std::time::Durati
         .spawn()
         .map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
-                AppError::new("command_missing", format!("“{}” was not found", argv[0]))
+                AppError::new("command_missing", format!("« {} » est introuvable", argv[0]))
             } else {
                 AppError::Io(e)
             }

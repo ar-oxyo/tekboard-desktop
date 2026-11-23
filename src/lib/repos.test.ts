@@ -41,10 +41,10 @@ describe("attention", () => {
   });
   it("orders conflicts before changes before sync", () => {
     const a = attention(repo({ status: { conflicted: 1, untracked: 2, staged: 1, ahead: 3, behind: 1 } }));
-    expect(a.map((x) => x.label)).toEqual(["1 conflict", "3 uncommitted", "3 to push", "1 to pull"]);
+    expect(a.map((x) => x.label)).toEqual(["1 conflit", "3 non commités", "3 à envoyer", "1 à récupérer"]);
   });
   it("flags an unpublished branch only when a remote exists", () => {
-    expect(attention(repo({ status: { upstream: null } })).map((x) => x.label)).toEqual(["Branch not published"]);
+    expect(attention(repo({ status: { upstream: null } })).map((x) => x.label)).toEqual(["Branche non publiée"]);
     expect(attention(repo({ status: { upstream: null }, remoteUrl: null }))).toEqual([]);
     expect(attention(repo({ status: { upstream: null, unborn: true } }))).toEqual([]);
   });
@@ -231,13 +231,13 @@ describe("clone targets", () => {
 describe("format", () => {
   const now = new Date("2026-11-10T12:00:00Z");
   it("timeAgo", () => {
-    expect(timeAgo("2026-11-10T11:59:40Z", now)).toBe("just now");
-    expect(timeAgo("2026-11-10T11:15:00Z", now)).toBe("45 min ago");
-    expect(timeAgo("2026-11-10T07:00:00Z", now)).toBe("5 h ago");
-    expect(timeAgo("2026-11-09T07:00:00Z", now)).toBe("yesterday");
-    expect(timeAgo("2026-11-03T12:00:00Z", now)).toBe("7 days ago");
-    expect(timeAgo("2026-08-01T12:00:00Z", now)).toBe("3 months ago");
-    expect(timeAgo(Math.floor(now.getTime() / 1000) - 7200, now)).toBe("2 h ago");
+    expect(timeAgo("2026-11-10T11:59:40Z", now)).toBe("à l'instant");
+    expect(timeAgo("2026-11-10T11:15:00Z", now)).toBe("il y a 45 min");
+    expect(timeAgo("2026-11-10T07:00:00Z", now)).toBe("il y a 5 h");
+    expect(timeAgo("2026-11-09T07:00:00Z", now)).toBe("hier");
+    expect(timeAgo("2026-11-03T12:00:00Z", now)).toBe("il y a 7 jours");
+    expect(timeAgo("2026-08-01T12:00:00Z", now)).toBe("il y a 3 mois");
+    expect(timeAgo(Math.floor(now.getTime() / 1000) - 7200, now)).toBe("il y a 2 h");
     expect(timeAgo("not a date", now)).toBe("");
   });
   it("tildify", () => {

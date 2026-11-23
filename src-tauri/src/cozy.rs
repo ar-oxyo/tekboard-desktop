@@ -81,7 +81,7 @@ fn number(v: f64) -> Value {
 /// Writes the fields present in `patch` into the `companion` object, leaving every other key alone.
 pub fn update(paths: &Paths, patch: &Companion) -> Result<Status> {
     if !paths.widgets.is_file() {
-        return Err(AppError::new("cozy_missing", "Cozy Glass is not installed on this machine (widgets.json not found)"));
+        return Err(AppError::new("cozy_missing", "Cozy Glass n'est pas installé sur cette machine (widgets.json introuvable)"));
     }
     if let Some(s) = &patch.season {
         if s != "auto" && s != "none" {
@@ -102,7 +102,7 @@ pub fn update(paths: &Paths, patch: &Companion) -> Result<Status> {
     }
     let mut root = read_root(&paths.widgets)?;
     let entry = root.entry("companion".to_string()).or_insert_with(|| Value::Object(Map::new()));
-    let Value::Object(companion) = entry else { return Err(AppError::new("cozy_invalid", "“companion” is not an object in widgets.json")) };
+    let Value::Object(companion) = entry else { return Err(AppError::new("cozy_invalid", "« companion » n'est pas un objet dans widgets.json")) };
     let mut set = |key: &str, value: Option<Value>| {
         if let Some(v) = value {
             companion.insert(key.to_string(), v);
@@ -151,10 +151,10 @@ pub fn restore(paths: &Paths, name: &str) -> Result<Status> {
     let valid = name.starts_with("widgets-") && name.ends_with(".json") && !name.contains('/') && !name.contains("..");
     let src = paths.backups.join(name);
     if !valid || !src.is_file() {
-        return Err(AppError::new("not_found", "Unknown backup"));
+        return Err(AppError::new("not_found", "Sauvegarde inconnue"));
     }
     let text = fs::read_to_string(&src)?;
-    serde_json::from_str::<Value>(&text).map_err(|_| AppError::new("cozy_invalid", "This backup is not valid JSON"))?;
+    serde_json::from_str::<Value>(&text).map_err(|_| AppError::new("cozy_invalid", "Cette sauvegarde n'est pas du JSON valide"))?;
     if paths.widgets.is_file() {
         backup(paths)?;
     }
@@ -170,10 +170,10 @@ pub const COMMANDS: &[&str] = &[
 
 pub fn send(paths: &Paths, command: &str) -> Result<()> {
     if !COMMANDS.contains(&command) {
-        return Err(AppError::new("cozy_invalid", format!("“{command}” is not a known fox command")));
+        return Err(AppError::new("cozy_invalid", format!("« {command} » n'est pas une commande connue du renard")));
     }
     if !paths.widgets.is_file() {
-        return Err(AppError::new("cozy_missing", "Cozy Glass is not installed on this machine"));
+        return Err(AppError::new("cozy_missing", "Cozy Glass n'est pas installé sur cette machine"));
     }
     if let Some(dir) = paths.fox_cmd.parent() {
         fs::create_dir_all(dir)?;

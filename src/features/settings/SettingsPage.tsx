@@ -9,9 +9,10 @@ import { tildify } from "../../lib/format";
 import { keys, useEnv, useHome, usePref, useRepos, useSettings, useTemplates } from "../../lib/hooks";
 import { cloneTargets } from "../../lib/repos";
 import { useUi } from "../../lib/store";
+import { AiSettingsCard } from "./AiSettings";
 import { ClaudeCard } from "./ClaudeCard";
 
-const TABS: Array<[string, string]> = [["general", "General"], ["tools", "Tools & Claude"], ["my", "MY Epitech"], ["design", "Design"]];
+const TABS: Array<[string, string]> = [["general", "Général"], ["ai", "Tika (IA)"], ["tools", "Outils et Claude Code"], ["my", "MY Epitech"], ["design", "Apparence"]];
 
 export function SettingsPage() {
   const qc = useQueryClient();
@@ -38,7 +39,7 @@ export function SettingsPage() {
       void qc.invalidateQueries({ queryKey: ["claude-info"] });
       void qc.invalidateQueries({ queryKey: ["testing-info"] });
       void qc.invalidateQueries({ queryKey: ["run-info"] });
-      toast({ kind: "ok", title: "Settings saved" });
+      toast({ kind: "ok", title: "Réglages enregistrés" });
     },
   });
 
@@ -47,7 +48,7 @@ export function SettingsPage() {
       <ErrorNote>{asAppError(settings.error).message}</ErrorNote>
     ) : (
       <p className="flex items-center gap-2 py-16 text-muted">
-        <Spinner /> Loading…
+        <Spinner /> Chargement…
       </p>
     );
   }
@@ -57,12 +58,12 @@ export function SettingsPage() {
   const set = (patch: Partial<Settings>) => setDraft({ ...draft, ...patch });
 
   async function addRoot() {
-    const dir = await open({ directory: true, multiple: false, title: "Add a projects folder" });
+    const dir = await open({ directory: true, multiple: false, title: "Ajouter un dossier de projets" });
     if (typeof dir === "string" && draft && !draft.roots.includes(dir)) set({ roots: [...draft.roots, dir] });
   }
 
   async function addSchoolDir() {
-    const dir = await open({ directory: true, multiple: false, title: "A folder that holds school work", defaultPath: draft?.roots[0] });
+    const dir = await open({ directory: true, multiple: false, title: "Un dossier qui contient du travail d'école", defaultPath: draft?.roots[0] });
     if (typeof dir === "string" && draft && !draft.epitechDirs.includes(dir)) set({ epitechDirs: [...draft.epitechDirs, dir] });
   }
   const targets = cloneTargets(repos.data ?? [], draft.roots).filter((t) => draft.roots.some((r) => t === r || t.startsWith(r + "/")));
@@ -70,53 +71,54 @@ export function SettingsPage() {
   return (
     <>
       <PageHeader
-        title="Settings"
+        title="Réglages"
         actions={
           <>
             {dirty && (
               <Button variant="ghost" onClick={() => setDraft(settings.data!)}>
-                Discard
+                Annuler les changements
               </Button>
             )}
             <Button variant="primary" icon={<Check className="size-3.5" />} disabled={!dirty} busy={save.isPending} onClick={() => save.mutate(draft)}>
-              Save
+              Enregistrer
             </Button>
           </>
         }
       />
       {save.error && (
         <div className="mb-4">
-          <ErrorNote title="Not saved">{asAppError(save.error).message}</ErrorNote>
+          <ErrorNote title="Non enregistré">{asAppError(save.error).message}</ErrorNote>
         </div>
       )}
 
-      <div className="mb-6 flex items-center gap-5 border-b border-white/6" role="tablist" aria-label="Settings sections">
+      <div className="mb-6 flex items-center gap-5 border-b border-white/6" role="tablist" aria-label="Sections des réglages">
         {TABS.map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`-mb-px h-9 border-b-2 px-1 text-[13px] transition-colors duration-150 ${tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg"}`}>
             {label}
           </button>
         ))}
       </div>
+      {tab === "ai" && <AiSettingsCard />}
       {tab === "general" && (
         <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
           <Card>
             <CardTitle
               right={
                 <Button size="sm" variant="ghost" icon={<FolderPlus className="size-3.5" />} onClick={() => void addRoot()}>
-                  Add folder
+                  Ajouter un dossier
                 </Button>
               }
             >
-              Projects folders
+              Dossiers de projets
             </CardTitle>
             {draft.roots.length === 0 ? (
-              <p className="px-4 py-4 text-[13px] text-muted">No folder yet. TekBoard lists the repositories found in the folders you add here.</p>
+              <p className="px-4 py-4 text-[13px] text-muted">Aucun dossier. TekBoard liste les dépôts trouvés dans les dossiers ajoutés ici.</p>
             ) : (
               <ul className="py-1">
                 {draft.roots.map((root) => (
                   <li key={root} className="flex h-9 items-center gap-2 pr-2 pl-4">
                     <span className="selectable min-w-0 flex-1 truncate font-mono text-xs">{tildify(root, home)}</span>
-                    <IconButton label="Stop scanning this folder" onClick={() => set({ roots: draft.roots.filter((r) => r !== root), cloneDir: draft.cloneDir?.startsWith(root) ? null : draft.cloneDir })}>
+                    <IconButton label="Ne plus lire ce dossier" onClick={() => set({ roots: draft.roots.filter((r) => r !== root), cloneDir: draft.cloneDir?.startsWith(root) ? null : draft.cloneDir })}>
                       <X className="size-4" />
                     </IconButton>
                   </li>
@@ -124,25 +126,25 @@ export function SettingsPage() {
               </ul>
             )}
             <div className="border-t border-white/6 px-4 py-3">
-              <Field label="Clone new projects into" hint="Automatic: next to the repositories of the same kind (Epitech with Epitech).">
-                <Select label="Clone folder" mono value={draft.cloneDir ?? ""} onChange={(v) => set({ cloneDir: v || null })} options={[{ value: "", label: "Automatic" }, ...targets.map((t) => ({ value: t, label: tildify(t, home) }))]} />
+              <Field label="Cloner les nouveaux projets dans" hint="Automatique : à côté des dépôts du même type (Epitech avec Epitech).">
+                <Select label="Dossier de clonage" mono value={draft.cloneDir ?? ""} onChange={(v) => set({ cloneDir: v || null })} options={[{ value: "", label: "Automatique" }, ...targets.map((t) => ({ value: t, label: tildify(t, home) }))]} />
               </Field>
             </div>
             <div className="border-t border-white/6 px-4 py-3">
               <div className="mb-1 flex items-center justify-between">
-                <span className="text-xs text-muted">School folders</span>
+                <span className="text-xs text-muted">Dossiers d'école</span>
                 <Button size="sm" variant="ghost" icon={<FolderPlus className="size-3.5" />} onClick={() => void addSchoolDir()}>
-                  Add
+                  Ajouter
                 </Button>
               </div>
               {draft.epitechDirs.length === 0 ? (
-                <p className="text-xs text-faint">Optional. Repositories inside these folders count as Epitech work even without a module name or a MY Epitech match.</p>
+                <p className="text-xs text-faint">Facultatif. Les dépôts de ces dossiers comptent comme travail Epitech, même sans nom de module ni correspondance MY Epitech.</p>
               ) : (
                 <ul>
                   {draft.epitechDirs.map((dir) => (
                     <li key={dir} className="flex h-8 items-center gap-2">
                       <span className="selectable min-w-0 flex-1 truncate font-mono text-xs">{tildify(dir, home)}</span>
-                      <IconButton label="No longer a school folder" onClick={() => set({ epitechDirs: draft.epitechDirs.filter((d) => d !== dir) })}>
+                      <IconButton label="Ce n'est plus un dossier d'école" onClick={() => set({ epitechDirs: draft.epitechDirs.filter((d) => d !== dir) })}>
                         <X className="size-4" />
                       </IconButton>
                     </li>
@@ -152,26 +154,26 @@ export function SettingsPage() {
             </div>
           </Card>
           <Card>
-            <CardTitle>Workspace</CardTitle>
+            <CardTitle>Espace de travail</CardTitle>
             <div className="flex flex-col gap-3 px-4 py-4">
               <Field
                 label="IDE command"
                 hint={
                   <>
-                    <Code>{"{dir}"}</Code> is replaced by the project folder. Run directly, without a shell.
+                    <Code>{"{dir}"}</Code> est remplacé par le dossier du projet. Lancé directement, sans shell.
                   </>
                 }
               >
                 <Input className="font-mono text-xs" placeholder="code {dir}" value={draft.ideCmd} onChange={(e) => set({ ideCmd: e.target.value })} />
               </Field>
-              <Field label="Terminal command">
+              <Field label="Commande du terminal">
                 <Input className="font-mono text-xs" placeholder="ptyxis --new-window -d {dir}" value={draft.terminalCmd} onChange={(e) => set({ terminalCmd: e.target.value })} />
               </Field>
-              <Field label="Terminal that runs a program" hint="Used by “Launch Binary”. The program and its arguments are appended after this command.">
+              <Field label="Terminal qui lance un programme" hint="Utilisé par « Lancer le binaire ». Le programme et ses arguments sont ajoutés après cette commande.">
                 <Input className="font-mono text-xs" placeholder="ptyxis --new-window -d {dir} --" value={draft.terminalRunCmd} onChange={(e) => set({ terminalRunCmd: e.target.value })} />
               </Field>
-              <Field label="Default template for new projects">
-                <Select label="Default template" value={draft.defaultTemplate ?? ""} onChange={(v) => set({ defaultTemplate: v || null })} options={[{ value: "", label: "None" }, ...(templates.data ?? []).map((t) => ({ value: t.id, label: t.name }))]} />
+              <Field label="Modèle par défaut des nouveaux projets">
+                <Select label="Modèle par défaut" value={draft.defaultTemplate ?? ""} onChange={(v) => set({ defaultTemplate: v || null })} options={[{ value: "", label: "Aucun" }, ...(templates.data ?? []).map((t) => ({ value: t.id, label: t.name }))]} />
               </Field>
             </div>
           </Card>
@@ -185,13 +187,13 @@ export function SettingsPage() {
             <CardTitle
               right={
                 <Button size="sm" onClick={() => useUi.getState().setPage("prompts")}>
-                  Open the prompt manager
+                  Ouvrir le gestionnaire de prompts
                 </Button>
               }
             >
               Prompts
             </CardTitle>
-            <p className="px-4 py-3 text-xs text-muted">Read and personalise what TekBoard asks Claude Code: pre-check against the subject, unit tests, README, repository analysis. Your versions are kept across updates.</p>
+            <p className="px-4 py-3 text-xs text-muted">Lis et personnalise ce que TekBoard demande à Claude Code : Tika, la moulinette, la génération de tests, le README, l'analyse. Tes versions sont gardées entre les mises à jour.</p>
           </Card>
           </div>
           <EnvironmentCard />
@@ -203,32 +205,32 @@ export function SettingsPage() {
             <CardTitle
               right={
                 <Button size="sm" onClick={() => useUi.getState().setPage("myepitech")}>
-                  Open MY Epitech
+                  Ouvrir MY Epitech
                 </Button>
               }
             >
               MY Epitech synchronisation
             </CardTitle>
             <div className="flex flex-col gap-3 px-4 py-4">
-              <Field label="Automatic sync" hint="Runs only while TekBoard is open and signed in to MY Epitech. Read-only requests on your own account, half a second apart. A failed sync is reported, never retried in a loop.">
+              <Field label="Synchronisation automatique" hint="Seulement quand TekBoard est ouvert et connecté à MY Epitech. Lectures seules sur ton propre compte, espacées d'une demi-seconde. Un échec est signalé, jamais réessayé en boucle.">
                 <Select
-                  label="Automatic sync"
+                  label="Synchronisation automatique"
                   value={String(draft.mySyncMinutes)}
                   onChange={(v) => set({ mySyncMinutes: Number(v) })}
                   options={[
-                    { value: "0", label: "Off — only when I click “Sync now”" },
-                    { value: "15", label: "Every 15 minutes" },
-                    { value: "30", label: "Every 30 minutes" },
-                    { value: "60", label: "Every hour" },
-                    { value: "180", label: "Every 3 hours" },
+                    { value: "0", label: "Désactivée : seulement quand je clique sur « Synchroniser »" },
+                    { value: "15", label: "Toutes les 15 minutes" },
+                    { value: "30", label: "Toutes les 30 minutes" },
+                    { value: "60", label: "Toutes les heures" },
+                    { value: "180", label: "Toutes les 3 heures" },
                   ]}
                 />
               </Field>
               <label className="flex items-start gap-3">
                 <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={draft.myAutoReconnect} onChange={(e) => set({ myAutoReconnect: e.target.checked })} />
                 <span>
-                  <span className="block text-[13px]">Reconnect when TekBoard starts</span>
-                  <span className="block text-xs text-faint">Opens the MY Epitech session kept on this computer in a hidden window. If the site asks you to sign in again, nothing is forced: the status says so and you open the window yourself.</span>
+                  <span className="block text-[13px]">Se reconnecter au démarrage de TekBoard</span>
+                  <span className="block text-xs text-faint">Rouvre dans une fenêtre cachée la session MY Epitech gardée sur cet ordinateur. Si le site redemande une connexion, rien n'est forcé : l'état l'indique et tu ouvres la fenêtre toi-même.</span>
                 </span>
               </label>
             </div>
@@ -238,7 +240,7 @@ export function SettingsPage() {
       {tab === "design" && (
         <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
           <Card>
-            <CardTitle>Design</CardTitle>
+            <CardTitle>Apparence</CardTitle>
             <ThemePicker
               current={settings.data.theme}
               onPick={(theme) => {
@@ -249,12 +251,12 @@ export function SettingsPage() {
             />
           </Card>
           <Card>
-            <CardTitle>Appearance</CardTitle>
+            <CardTitle>Apparence</CardTitle>
             <label className="flex items-center gap-3 px-4 py-4">
               <input type="checkbox" className="accent-(--color-accent)" checked={draft.glassEffects} onChange={(e) => set({ glassEffects: e.target.checked })} />
               <span>
-                <span className="block text-[13px]">Glass effect on dialogs</span>
-                <span className="block text-xs text-faint">Blur behind the command palette and dialogs. Turn off if scrolling or typing feels slow.</span>
+                <span className="block text-[13px]">Effet verre sur les dialogues</span>
+                <span className="block text-xs text-faint">Flou derrière la palette et les dialogues. Désactive-le si le défilement ou la saisie paraissent lents.</span>
               </span>
             </label>
           </Card>
@@ -266,16 +268,16 @@ export function SettingsPage() {
 
 // Swatches are fixed colours on purpose: each tile previews its own design, whatever the active one is.
 const THEMES: Array<{ id: string; name: string; tagline: string; bg: string; card: string; accent: string; text: string; radius: number }> = [
-  { id: "aurora", name: "Aurora", tagline: "Graphite, one violet accent", bg: "#141415", card: "#1e1e21", accent: "#9486ff", text: "#ededed", radius: 8 },
-  { id: "flat", name: "Flat", tagline: "Blue-grey, square and solid", bg: "#0c0d11", card: "#15181e", accent: "#8f83f7", text: "#e8eaf0", radius: 5 },
-  { id: "neon", name: "Neon", tagline: "Magenta, cyan and a grid", bg: "radial-gradient(120px 70px at 5% 0%, #ff50d277, transparent 70%), radial-gradient(120px 80px at 100% 100%, #28dcff66, transparent 70%), #07050f", card: "#1a1030", accent: "linear-gradient(120deg,#ff7ad9,#b46bff,#46dcff)", text: "#f4eeff", radius: 7 },
-  { id: "cozy", name: "Cozy", tagline: "Warm pastels, round corners", bg: "radial-gradient(120px 70px at 10% 0%, #cba6f755, transparent 70%), radial-gradient(110px 70px at 100% 100%, #fab38744, transparent 70%), #14141f", card: "#25253a", accent: "linear-gradient(135deg,#cba6f7,#f5c2e7)", text: "#cdd6f4", radius: 11 },
-  { id: "terminal", name: "Terminal", tagline: "Phosphor green, monospace", bg: "repeating-linear-gradient(180deg,#5cff8f14 0 1px,transparent 1px 3px), #040704", card: "#080d08", accent: "#5cff8f", text: "#cdf7c8", radius: 2 },
+  { id: "aurora", name: "Aurora", tagline: "Graphite, un seul accent violet", bg: "#141415", card: "#1e1e21", accent: "#9486ff", text: "#ededed", radius: 8 },
+  { id: "flat", name: "Flat", tagline: "Gris-bleu, net et carré", bg: "#0c0d11", card: "#15181e", accent: "#8f83f7", text: "#e8eaf0", radius: 5 },
+  { id: "neon", name: "Neon", tagline: "Magenta, cyan et une grille", bg: "radial-gradient(120px 70px at 5% 0%, #ff50d277, transparent 70%), radial-gradient(120px 80px at 100% 100%, #28dcff66, transparent 70%), #07050f", card: "#1a1030", accent: "linear-gradient(120deg,#ff7ad9,#b46bff,#46dcff)", text: "#f4eeff", radius: 7 },
+  { id: "cozy", name: "Cozy", tagline: "Pastels chauds, coins ronds", bg: "radial-gradient(120px 70px at 10% 0%, #cba6f755, transparent 70%), radial-gradient(110px 70px at 100% 100%, #fab38744, transparent 70%), #14141f", card: "#25253a", accent: "linear-gradient(135deg,#cba6f7,#f5c2e7)", text: "#cdd6f4", radius: 11 },
+  { id: "terminal", name: "Terminal", tagline: "Vert phosphore, monospace", bg: "repeating-linear-gradient(180deg,#5cff8f14 0 1px,transparent 1px 3px), #040704", card: "#080d08", accent: "#5cff8f", text: "#cdf7c8", radius: 2 },
 ];
 
 function ThemePicker({ current, onPick }: { current: string; onPick: (id: string) => void }) {
   return (
-    <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3" role="radiogroup" aria-label="Design">
+    <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3" role="radiogroup" aria-label="Apparence">
       {THEMES.map((t) => {
         const active = t.id === current;
         return (
@@ -313,15 +315,15 @@ function EnvironmentCard() {
       <CardTitle
         right={
           <Button size="sm" variant="ghost" busy={env.isFetching} onClick={() => void qc.invalidateQueries({ queryKey: keys.env })}>
-            Recheck
+            Revérifier
           </Button>
         }
       >
-        Environment
+        Environnement
       </CardTitle>
       {env.isLoading || !env.data ? (
         <p className="flex items-center gap-2 px-4 py-5 text-[13px] text-muted">
-          <Spinner /> Checking…
+          <Spinner /> Vérification…
         </p>
       ) : (
         <>
@@ -336,14 +338,14 @@ function EnvironmentCard() {
             ))}
           </ul>
           <div className="space-y-2.5 border-t border-white/6 px-4 py-3 text-[13px]">
-            <Row label="Git identity">
+            <Row label="Identité git">
               {env.data.identity.name && env.data.identity.email ? (
                 <span className="selectable text-muted">
                   {env.data.identity.name} · {env.data.identity.email}
                 </span>
               ) : (
                 <span className="text-warn">
-                  Not set — <Code>git config --global user.name</Code> / <Code>user.email</Code>
+                  Non configuré — <Code>git config --global user.name</Code> / <Code>user.email</Code>
                 </span>
               )}
             </Row>
@@ -352,11 +354,11 @@ function EnvironmentCard() {
                 <span className="text-muted">Connected{gh.login ? ` as ${gh.login}` : ""}</span>
               ) : gh?.state === "missing" ? (
                 <span className="text-muted">
-                  Not installed — <Code>sudo apt install gh</Code>
+                  Non installé — <Code>sudo apt install gh</Code>
                 </span>
               ) : gh?.state === "loggedOut" ? (
                 <span className="text-warn">
-                  Not logged in — <Code>gh auth login</Code>
+                  Non connecté — <Code>gh auth login</Code>
                 </span>
               ) : (
                 <span className="selectable text-warn">{gh?.state === "error" ? gh.message : ""}</span>
@@ -365,10 +367,10 @@ function EnvironmentCard() {
             <Row label="SSH agent">
               <span className="text-muted">{env.data.sshAgent ? "Available" : "Not reachable — keys with a passphrase will fail"}</span>
             </Row>
-            <Row label="GitHub over SSH">
+            <Row label="GitHub par SSH">
               <span className="flex min-w-0 items-center gap-2">
                 <Button size="sm" busy={ssh.isPending} onClick={() => ssh.mutate()}>
-                  Test
+                  Tester
                 </Button>
                 {ssh.data && <span className={`selectable min-w-0 truncate text-xs ${ssh.data.ok ? "text-ok" : "text-danger"}`}>{ssh.data.message}</span>}
               </span>

@@ -132,10 +132,10 @@ pub fn import(conn: &Connection, store: &Path, src: &Path, repo_path: Option<&st
         return Err(AppError::new("invalid_source", format!("{} is not a regular file", src.display())));
     }
     if !src.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")) {
-        return Err(AppError::new("invalid_source", "Only PDF files can be added to the subjects library"));
+        return Err(AppError::new("invalid_source", "Seuls des PDF peuvent être ajoutés aux sujets"));
     }
     if meta.len() > MAX_SIZE {
-        return Err(AppError::new("invalid_source", "This file is larger than 200 MB"));
+        return Err(AppError::new("invalid_source", "Ce fichier dépasse 200 Mo"));
     }
     let hash = sha256_file(src)?;
     if let Some(existing) = db::subject_by_hash(conn, &hash)? {
@@ -158,7 +158,7 @@ pub fn import(conn: &Connection, store: &Path, src: &Path, repo_path: Option<&st
             return Err(e);
         }
     };
-    let subject = db::get_subject(conn, id)?.ok_or_else(|| AppError::new("database", "Subject vanished after insert"))?;
+    let subject = db::get_subject(conn, id)?.ok_or_else(|| AppError::new("database", "Le sujet a disparu après l'insertion"))?;
     Ok(ImportOutcome { subject, duplicate: false })
 }
 
@@ -168,7 +168,7 @@ pub fn file_path(store: &Path, subject: &Subject) -> PathBuf {
 
 /// Removes the library copy and its record. The original download is not touched.
 pub fn remove(conn: &Connection, store: &Path, id: i64) -> Result<()> {
-    let subject = db::get_subject(conn, id)?.ok_or_else(|| AppError::new("not_found", "Unknown subject"))?;
+    let subject = db::get_subject(conn, id)?.ok_or_else(|| AppError::new("not_found", "Sujet inconnu"))?;
     let path = file_path(store, &subject);
     if path.is_file() {
         fs::remove_file(path)?;

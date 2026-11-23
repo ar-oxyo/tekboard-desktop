@@ -27,17 +27,17 @@ export function GitPage() {
 
   return (
     <>
-      <PageHeader title="Git" subtitle="Commit, sync and branch. Nothing here can rewrite or delete history." />
+      <PageHeader title="Git" subtitle="Commiter, synchroniser, brancher. Rien ici ne peut réécrire ni effacer l'historique." />
       {repos.isLoading ? (
         <p className="flex items-center gap-2 py-16 text-muted">
-          <Spinner /> Scanning…
+          <Spinner /> Lecture…
         </p>
       ) : repos.error ? (
         <ErrorNote>{asAppError(repos.error).message}</ErrorNote>
       ) : (repos.data?.length ?? 0) === 0 ? (
         <Card>
-          <EmptyState icon={<GitBranch className="size-6" />} title="No repository yet">
-            Add a projects folder in Settings or clone a project first.
+          <EmptyState icon={<GitBranch className="size-6" />} title="Aucun dépôt">
+            Ajoute d'abord un dossier de projets dans Réglages, ou clone un projet.
           </EmptyState>
         </Card>
       ) : (
@@ -45,7 +45,7 @@ export function GitPage() {
           <div>
             <div className="relative mb-2">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
-              <Input className="pl-8" aria-label="Filter repositories" placeholder="Filter" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <Input className="pl-8" aria-label="Filtrer les dépôts" placeholder="Filtrer" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
             <ul className="card flex max-h-[calc(100vh-196px)] flex-col gap-0.5 overflow-y-auto p-1.5">
               {list.map((r) => {
@@ -102,7 +102,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
     onSuccess: () => {
       setMessage("");
       setFile(null);
-      toast({ kind: "ok", title: "Committed locally" });
+      toast({ kind: "ok", title: "Commité localement" });
       refresh();
     },
     onError: fail("Commit failed"),
@@ -142,7 +142,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
       return d;
     },
     onSuccess: (d) => {
-      if (d.status.behind > 0) toast({ kind: "info", title: `${d.status.behind} commit${d.status.behind === 1 ? "" : "s"} to pull`, detail: "The remote moved since your last sync." });
+      if (d.status.behind > 0) toast({ kind: "info", title: `${d.status.behind} commit${d.status.behind === 1 ? "" : "s"} à récupérer`, detail: "Le dépôt distant a bougé depuis ta dernière synchronisation." });
       refresh();
     },
     onError: fail("Could not open the workspace"),
@@ -151,11 +151,11 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
   if (detail.isLoading) {
     return (
       <p className="flex items-center gap-2 py-10 text-muted">
-        <Spinner /> Reading the repository…
+        <Spinner /> Lecture du dépôt…
       </p>
     );
   }
-  if (detail.error || !detail.data) return <ErrorNote title="Could not read this repository">{asAppError(detail.error).message}</ErrorNote>;
+  if (detail.error || !detail.data) return <ErrorNote title="Impossible de lire ce dépôt">{asAppError(detail.error).message}</ErrorNote>;
 
   const d: GitDetail = detail.data;
   const st = d.status;
@@ -175,11 +175,11 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
           <h2 className="display truncate text-base font-medium">{displayName(repo)}</h2>
           {repo.epitech && <Tag>{repo.epitech.module}</Tag>}
           <span className="ml-auto flex flex-wrap items-center gap-2 self-center">
-            <Button size="sm" variant="ghost" icon={<Play className="size-3.5" />} busy={start.isPending} title="Fetch, then open IDE and terminal" onClick={() => start.mutate()}>
-              Start working
+            <Button size="sm" variant="ghost" icon={<Play className="size-3.5" />} busy={start.isPending} title="Récupère, puis ouvre l'IDE et le terminal" onClick={() => start.mutate()}>
+              Se mettre au travail
             </Button>
             <Button size="sm" icon={<RefreshCw className="size-3.5" />} disabled={!repo.remoteUrl || busy} disabledReason={!repo.remoteUrl ? "Ce dépôt n'a pas de dépôt distant (origin)" : "Une opération git est en cours"} busy={sync.isPending && sync.variables === "fetch"} onClick={() => sync.mutate("fetch")}>
-              Fetch
+              Récupérer
             </Button>
             <Button size="sm" icon={<ArrowDown className="size-3.5" />} disabled={!st.upstream || st.behind === 0 || busy} disabledReason={!st.upstream ? "La branche ne suit aucune branche distante" : st.behind === 0 ? "Rien à récupérer : tu es à jour" : "Une opération git est en cours"} busy={sync.isPending && sync.variables === "pull"} title="Avance rapide seulement : ne crée jamais de fusion" onClick={() => sync.mutate("pull")}>
               Pull{st.behind > 0 ? ` ${st.behind}` : ""}
@@ -188,7 +188,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
               Vérifier
             </Button>
             <Button size="sm" variant={canPush ? "primary" : "secondary"} icon={<ArrowUp className="size-3.5" />} disabled={!canPush || busy} disabledReason={busy ? "Une opération git est en cours" : st.ahead === 0 ? "Aucun commit à envoyer" : "Impossible d'envoyer depuis cet état (branche sans suivi ou en retard)"} onClick={() => setConfirmPush(true)}>
-              Push{st.ahead > 0 ? ` ${st.ahead}` : ""}
+              Envoyer{st.ahead > 0 ? ` ${st.ahead}` : ""}
             </Button>
           </span>
         </div>
@@ -201,7 +201,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
               size="sm"
               mono
               className="w-52"
-              label="Branch"
+              label="Branche"
               value={st.branch}
               disabled={switchBranch.isPending || st.unborn}
               disabledReason={st.unborn ? "Aucun commit encore : fais un premier commit pour créer la branche" : "Changement de branche en cours…"}
@@ -212,7 +212,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
           )}
           {newBranch === null ? (
             <Button size="sm" variant="ghost" icon={<Plus className="size-3.5" />} disabled={st.unborn} disabledReason="Fais d'abord un premier commit" onClick={() => setNewBranch("")}>
-              New branch
+              Nouvelle branche
             </Button>
           ) : (
             <form
@@ -224,10 +224,10 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
             >
               <Input autoFocus className="h-7 w-44 font-mono text-xs" placeholder="feature/name" value={newBranch} onChange={(e) => setNewBranch(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setNewBranch(null)} />
               <Button size="sm" type="submit" busy={createBranch.isPending} disabled={!newBranch.trim()}>
-                Create
+                Créer
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setNewBranch(null)}>
-                Cancel
+                Annuler
               </Button>
             </form>
           )}
@@ -240,7 +240,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
         {confirmPush && (
           <div className="border-t border-white/6 bg-raised/50 px-4 py-3">
             <p className="text-[13px] font-medium">{st.upstream ? `Push ${d.outgoing.length} commit${d.outgoing.length === 1 ? "" : "s"} to ${st.upstream}?` : `Publish branch “${st.branch}” to origin?`}</p>
-            <p className="mt-0.5 text-xs text-muted">A normal push: if the remote has newer commits it is refused, never forced.</p>
+            <p className="mt-0.5 text-xs text-muted">Un push normal : si le dépôt distant a des commits plus récents, il est refusé, jamais forcé.</p>
             {d.outgoing.length > 0 && (
               <ul className="mt-2 max-h-32 overflow-y-auto rounded-md border border-line bg-bg py-1">
                 {d.outgoing.map((c) => (
@@ -253,10 +253,10 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
             )}
             <div className="mt-2.5 flex items-center gap-2">
               <Button size="sm" variant="primary" icon={<ArrowUp className="size-3.5" />} busy={sync.isPending} onClick={() => sync.mutate("push")}>
-                Push
+                Envoyer
               </Button>
               <Button size="sm" variant="ghost" disabled={sync.isPending} onClick={() => setConfirmPush(false)}>
-                Cancel
+                Annuler
               </Button>
             </div>
           </div>
@@ -271,23 +271,23 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         <Card className="self-start">
           <ChangeList
-            title="Staged"
-            empty="Nothing staged"
+            title="Indexé"
+            empty="Rien d'indexé"
             changes={staged}
             letter={(c) => c.staged ?? "?"}
             selected={file?.staged ? file.path : null}
             onSelect={(c) => setFile({ path: c.path, staged: true, untracked: false })}
-            action={{ label: "Unstage", icon: <Minus className="size-3.5" />, run: (paths) => unstage.mutate(paths) }}
+            action={{ label: "Désindexer", icon: <Minus className="size-3.5" />, run: (paths) => unstage.mutate(paths) }}
           />
           <div className="border-t border-white/6">
             <ChangeList
-              title="Changes"
-              empty="Working tree clean"
+              title="Modifications"
+              empty="Rien à commiter"
               changes={unstaged}
               letter={(c) => (c.conflicted ? "!" : c.untracked ? "?" : (c.unstaged ?? "?"))}
               selected={file && !file.staged ? file.path : null}
               onSelect={(c) => setFile({ path: c.path, staged: false, untracked: c.untracked })}
-              action={{ label: "Stage", icon: <Plus className="size-3.5" />, run: (paths) => stage.mutate(paths) }}
+              action={{ label: "Indexer", icon: <Plus className="size-3.5" />, run: (paths) => stage.mutate(paths) }}
             />
           </div>
           <form
@@ -297,20 +297,20 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
               if (staged.length > 0 && message.trim()) commit.mutate();
             }}
           >
-            <Input placeholder="Commit message" value={message} onChange={(e) => setMessage(e.target.value)} aria-label="Commit message" />
+            <Input placeholder="Message de commit" value={message} onChange={(e) => setMessage(e.target.value)} aria-label="Message de commit" />
             <Button type="submit" variant="primary" icon={<GitCommitHorizontal className="size-3.5" />} busy={commit.isPending} disabled={staged.length === 0 || !message.trim()}>
               Commit {staged.length > 0 ? `${staged.length} file${staged.length === 1 ? "" : "s"}` : ""}
             </Button>
-            <p className="text-xs text-faint">Commits stay on this machine until you push.</p>
+            <p className="text-xs text-faint">Les commits restent sur cette machine tant que tu n'envoies pas.</p>
           </form>
         </Card>
 
         <div className="flex min-w-0 flex-col gap-4">
           {file && <DiffCard repo={repo.path} file={file} />}
           <Card>
-            <CardTitle right={d.incoming.length > 0 ? <Dot tone="info">{d.incoming.length} on the remote</Dot> : undefined}>History</CardTitle>
+            <CardTitle right={d.incoming.length > 0 ? <Dot tone="info">{d.incoming.length} on the remote</Dot> : undefined}>Historique</CardTitle>
             {d.log.length === 0 ? (
-              <p className="px-4 py-4 text-[13px] text-muted">No commit yet.</p>
+              <p className="px-4 py-4 text-[13px] text-muted">Aucun commit.</p>
             ) : (
               <ul className="py-1">
                 {d.log.map((c, i) => (
@@ -318,7 +318,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
                     <span className={cn("size-1.5 shrink-0 rounded-full", i < st.ahead ? "bg-accent" : "bg-line-strong")} />
                     <span className="selectable shrink-0 font-mono text-xs text-faint">{c.hash.slice(0, 7)}</span>
                     <span className="selectable min-w-0 flex-1 truncate">{c.subject}</span>
-                    {i < st.ahead && <span className="shrink-0 text-xs text-accent-strong">not pushed</span>}
+                    {i < st.ahead && <span className="shrink-0 text-xs text-accent-strong">pas envoyé</span>}
                     {c.author !== mainAuthor && <span className="hidden max-w-28 shrink-0 truncate text-right text-xs text-faint lg:block">{c.author}</span>}
                     <span className="w-20 shrink-0 text-right text-xs text-faint">{timeAgo(c.date)}</span>
                   </li>
@@ -379,14 +379,14 @@ function DiffCard({ repo, file }: { repo: string; file: { path: string; staged: 
       </CardTitle>
       {diff.isLoading ? (
         <p className="flex items-center gap-2 px-4 py-4 text-xs text-muted">
-          <Spinner /> Loading…
+          <Spinner /> Chargement…
         </p>
       ) : diff.error ? (
         <div className="p-3">
           <ErrorNote>{asAppError(diff.error).message}</ErrorNote>
         </div>
       ) : (diff.data ?? "").trim() === "" ? (
-        <p className="px-4 py-4 text-xs text-muted">No textual difference (mode change, or the change is on the other side: staged vs not staged).</p>
+        <p className="px-4 py-4 text-xs text-muted">Aucune différence de texte (changement de mode, ou la modification est de l'autre côté : indexée ou non).</p>
       ) : (
         <pre className="selectable max-h-[420px] overflow-auto bg-bg py-2 font-mono text-xs leading-[1.55]" style={{ tabSize: 4 }}>
           {diff.data!.split("\n").map((line, i) => (

@@ -49,7 +49,7 @@ export function ReadmeDialog({ repo }: { repo: string }) {
       close();
     },
   });
-  const startAi = useMutation({ mutationFn: () => api.readmeAiStart(repo, disclosure), onSuccess: setJobId, onError: (e) => toast({ kind: "error", title: "Could not start Claude Code", detail: asAppError(e).message }) });
+  const startAi = useMutation({ mutationFn: () => api.readmeAiStart(repo, disclosure), onSuccess: setJobId, onError: (e) => toast({ kind: "error", title: "Claude Code n'a pas pu démarrer", detail: asAppError(e).message }) });
   const exists = draft.data?.current !== null && draft.data?.current !== undefined;
 
   return (
@@ -58,18 +58,18 @@ export function ReadmeDialog({ repo }: { repo: string }) {
         open
         onClose={close}
         width="w-[860px]"
-        title="Generate README"
+        title="Générer le README"
         description={repo.split("/").pop()}
         footer={
           <>
             <span className="mr-auto text-xs text-muted">{exists ? "README.md exists: compare before replacing it. The current file is saved first." : "This project has no README.md yet."}</span>
-            <Button variant="ghost" onClick={close}>Cancel</Button>
+            <Button variant="ghost" onClick={close}>Annuler</Button>
             <Button variant="primary" busy={write.isPending} disabled={text === null || text.trim() === "" || running} onClick={() => write.mutate()}>{exists ? "Replace README.md" : "Write README.md"}</Button>
           </>
         }
       >
         {draft.isLoading && text === null ? (
-          <p className="flex items-center gap-2 py-8 text-muted"><Spinner /> Reading the project…</p>
+          <p className="flex items-center gap-2 py-8 text-muted"><Spinner /> Lecture du projet…</p>
         ) : draft.error ? (
           <ErrorNote>{asAppError(draft.error).message}</ErrorNote>
         ) : (
@@ -80,21 +80,21 @@ export function ReadmeDialog({ repo }: { repo: string }) {
                   <button key={t} type="button" onClick={() => setTab(t)} className={cn("h-7 rounded-md px-3 text-[13px] transition-colors", tab === t ? "bg-accent-soft text-accent-strong" : "text-muted hover:text-fg")}>{t === "edit" ? "Proposal (editable)" : exists ? "Diff with current" : "What will be written"}</button>
                 ))}
               </div>
-              <label className="ml-auto flex items-center gap-2 text-xs text-muted" title="Adds one sentence to the Tests section saying AI assistance was used. Check what your project's rules require.">
+              <label className="ml-auto flex items-center gap-2 text-xs text-muted" title="Ajoute une phrase dans la section Tests disant qu'une IA a aidé. Vérifie ce qu'exigent les règles de ton projet.">
                 <input type="checkbox" className="accent-(--color-accent)" checked={disclosure} onChange={(e) => setDisclosure(e.target.checked)} />
-                Include AI assistance disclosure
+                Mentionner l'aide d'une IA
               </label>
               <Button size="sm" icon={<Bot className="size-3.5" />} busy={running || startAi.isPending} onClick={() => setBrief(true)}>{running ? "Claude is reading…" : "Enrich with Claude…"}</Button>
             </div>
-            {source === "facts" && (draft.data?.missing.length ?? 0) > 0 && <p className="text-xs text-muted">Built only from facts found in the repository. Left for you as <code className="font-mono">TODO</code> comments: {draft.data!.missing.join("; ")}.</p>}
-            {source === "claude" && <p className="text-xs text-muted">Written by Claude Code from the files it read. Check it against your code before writing: it can be wrong.</p>}
+            {source === "facts" && (draft.data?.missing.length ?? 0) > 0 && <p className="text-xs text-muted">Construit seulement à partir des faits trouvés dans le dépôt. Laissé à compléter en <code className="font-mono">TODO</code> comments: {draft.data!.missing.join("; ")}.</p>}
+            {source === "claude" && <p className="text-xs text-muted">Écrit par Claude Code à partir des fichiers lus. Vérifie-le face à ton code avant de l'écrire : il peut se tromper.</p>}
             {failed && <ErrorNote title="Claude Code">{failed}</ErrorNote>}
             {tab === "edit" ? (
               <textarea spellCheck={false} className="field selectable h-[46vh] w-full resize-none border border-white/8 p-3 font-mono text-xs leading-relaxed text-fg focus:border-accent focus:outline-none" value={text ?? ""} onChange={(e) => { setText(e.target.value); if (source === "facts") setSource("claude"); }} />
             ) : diff.isLoading ? (
-              <p className="flex items-center gap-2 py-6 text-muted"><Spinner /> Comparing…</p>
+              <p className="flex items-center gap-2 py-6 text-muted"><Spinner /> Comparaison…</p>
             ) : (diff.data ?? "").trim() === "" ? (
-              <p className="py-6 text-[13px] text-muted">Identical to the current README.md.</p>
+              <p className="py-6 text-[13px] text-muted">Identique au README.md actuel.</p>
             ) : (
               <DiffView text={diff.data!} className="h-[46vh] rounded-md" />
             )}

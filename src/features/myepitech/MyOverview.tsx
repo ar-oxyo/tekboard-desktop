@@ -10,19 +10,19 @@ import { timeAgo } from "../../lib/format";
 import { daysLeft, deadlineLabel } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 
-const day = (iso: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
+const day = (iso: string | null) => (iso ? new Date(iso).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
 
 export function MyProjects() {
   const o = useQuery({ queryKey: ["my-overview"], queryFn: api.myOverview, staleTime: 0 });
   const [showPast, setShowPast] = useState(false);
-  if (o.isLoading) return <p className="flex items-center gap-2 px-4 py-8 text-[13px] text-muted"><Spinner /> Reading the synced data…</p>;
+  if (o.isLoading) return <p className="flex items-center gap-2 px-4 py-8 text-[13px] text-muted"><Spinner /> Lecture des données synchronisées…</p>;
   if (o.error || !o.data) return <div className="p-4"><ErrorNote>{asAppError(o.error).message}</ErrorNote></div>;
   const all = o.data.projects;
   const ongoing = all.filter((p) => p.ongoing || p.upcoming);
   const past = all.filter((p) => !p.ongoing && !p.upcoming);
   // Dates reach the repositories by themselves; what is left here are the ones you typed differently.
   const typed = all.filter((p) => p.repoPath && p.deadline && p.repoDeadlineSource === "manual" && p.repoDeadline !== p.deadline);
-  if (all.length === 0) return <p className="px-4 py-6 text-[13px] text-muted">No project in the synced data yet. Connect and click “Sync now”.</p>;
+  if (all.length === 0) return <p className="px-4 py-6 text-[13px] text-muted">Aucun projet dans les données synchronisées. Connecte-toi puis clique sur « Synchroniser ».</p>;
   return (
     <div>
       <div className="flex items-center gap-2 border-b border-white/6 px-4 py-2.5 text-xs text-muted">
@@ -69,16 +69,16 @@ function ProjectRow({ p }: { p: MyProject }) {
         <span className="flex w-24 shrink-0 justify-end">{p.ongoing && left !== null && <Countdown tone={left < 0 ? "danger" : left <= 2 ? "warn" : "neutral"}>{deadlineLabel(left)}</Countdown>}</span>
         {p.repoPath ? (
           <span className="flex w-32 shrink-0 justify-end">
-            <Button size="sm" variant="ghost" icon={<FolderGit2 className="size-3.5" />} title={`Matched by ${p.matchedBy}: ${p.repoPath}`} onClick={() => openSheet(p.repoPath!)}>Project sheet</Button>
+            <Button size="sm" variant="ghost" icon={<FolderGit2 className="size-3.5" />} title={`Matched by ${p.matchedBy}: ${p.repoPath}`} onClick={() => openSheet(p.repoPath!)}>Fiche du projet</Button>
           </span>
         ) : (
-          <span className="w-32 shrink-0 text-right text-xs text-faint" title="No local repository matches this project for certain (none cloned, or several copies).">no local repository</span>
+          <span className="w-32 shrink-0 text-right text-xs text-faint" title="Aucun dépôt local ne correspond à coup sûr à ce projet (aucun clone, ou plusieurs copies).">pas de dépôt local</span>
         )}
       </div>
       {open && (
         <div className="flex flex-col gap-2 px-4 pb-3 pl-[42px] text-xs">
           {p.unitName && <p className="text-muted">{p.unitName}{p.groupMax !== null && ` · ${p.groupMax === 1 ? "solo" : `groups of up to ${p.groupMax}`}`}{p.url && <span className="selectable ml-2 font-mono text-[11px] text-faint">{p.url}</span>}</p>}
-          {p.repoPath && <p className="text-muted">Deadline in TekBoard: <span className={p.repoDeadline === p.deadline ? "text-ok" : "text-warn"}>{p.repoDeadline ?? "none"}</span>{p.repoDeadlineSource === "manual" ? " (typed by you" : p.repoDeadlineSource === "my" ? " (from MY Epitech" : " ("}{p.repoDeadline !== p.deadline && p.deadline ? `${p.repoDeadlineSource ? ", " : ""}MY Epitech says ${p.deadline})` : ")"}</p>}
+          {p.repoPath && <p className="text-muted">Rendu dans TekBoard : <span className={p.repoDeadline === p.deadline ? "text-ok" : "text-warn"}>{p.repoDeadline ?? "none"}</span>{p.repoDeadlineSource === "manual" ? " (typed by you" : p.repoDeadlineSource === "my" ? " (from MY Epitech" : " ("}{p.repoDeadline !== p.deadline && p.deadline ? `${p.repoDeadlineSource ? ", " : ""}MY Epitech says ${p.deadline})` : ")"}</p>}
           {p.group.length > 1 && <p className="selectable text-muted">Group{p.groupName ? ` “${p.groupName}”` : ""}: {p.group.join(", ")}</p>}
           {t && (
             <div className="rounded-lg border border-line bg-bg px-3 py-2">
@@ -99,7 +99,7 @@ function ProjectRow({ p }: { p: MyProject }) {
               ))}
             </ul>
           )}
-          {!t && p.activities.length === 0 && <p className="text-faint">Details are synced for ongoing projects only.</p>}
+          {!t && p.activities.length === 0 && <p className="text-faint">Les détails ne sont synchronisés que pour les projets en cours.</p>}
         </div>
       )}
     </li>
@@ -110,12 +110,12 @@ export function MyProgress() {
   const o = useQuery({ queryKey: ["my-overview"], queryFn: api.myOverview, staleTime: 0 });
   if (!o.data) return o.isLoading ? <p className="px-4 py-6 text-muted"><Spinner /></p> : null;
   const d = o.data;
-  if (d.creditsAcquired === null && d.blocks.length === 0 && d.exams.length === 0) return <p className="px-4 py-6 text-[13px] text-muted">No validation data in the synced answers yet.</p>;
+  if (d.creditsAcquired === null && d.blocks.length === 0 && d.exams.length === 0) return <p className="px-4 py-6 text-[13px] text-muted">Aucune donnée de validation dans les réponses synchronisées.</p>;
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="flex flex-wrap gap-2">
-        {d.creditsAcquired !== null && <Tile label="Credits acquired" value={d.creditsAcquired} />}
-        {d.creditsTotal !== null && d.creditsTotal !== d.creditsAcquired && <Tile label="With prior credits" value={d.creditsTotal} />}
+        {d.creditsAcquired !== null && <Tile label="Crédits acquis" value={d.creditsAcquired} />}
+        {d.creditsTotal !== null && d.creditsTotal !== d.creditsAcquired && <Tile label="Avec les crédits antérieurs" value={d.creditsTotal} />}
         {d.exams.map((e) => <Tile key={e.label} label={e.label} value={e.best ?? "—"} hint={e.required !== null ? `required ${e.required}${e.max !== null ? ` / ${e.max}` : ""}` : undefined} tone={e.best !== null && e.required !== null ? (e.best >= e.required ? "ok" : "warn") : undefined} />)}
       </div>
       {d.blocks.length > 0 && (
@@ -130,7 +130,7 @@ export function MyProgress() {
           ))}
         </ul>
       )}
-      <p className="text-xs text-faint">As reported by MY Epitech at the last sync, for the current semester.</p>
+      <p className="text-xs text-faint">D'après MY Epitech à la dernière synchronisation, pour le semestre en cours.</p>
     </div>
   );
 }

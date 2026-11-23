@@ -81,7 +81,7 @@ const JQ: &str = ".[] | {name, full_name, owner: .owner.login, ssh_url, created_
 pub fn list_repos() -> Result<Vec<RemoteRepo>> {
     let out = gh(&["api", "--paginate", "user/repos?per_page=100&sort=created&direction=desc", "--jq", JQ]).map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
-            AppError::new("gh_missing", "GitHub CLI (gh) is not installed")
+            AppError::new("gh_missing", "GitHub CLI (gh) n'est pas installé")
         } else {
             AppError::Io(e)
         }

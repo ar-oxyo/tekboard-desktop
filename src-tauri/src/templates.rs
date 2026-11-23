@@ -52,14 +52,14 @@ const PREVIEW_BYTES: usize = 200 * 1024;
 
 fn valid_id(id: &str) -> Result<()> {
     let ok = !id.is_empty() && id.len() <= 80 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
-    if ok { Ok(()) } else { Err(AppError::new("invalid_template", "Unknown template")) }
+    if ok { Ok(()) } else { Err(AppError::new("invalid_template", "Modèle inconnu")) }
 }
 
 fn template_dir(store: &Path, id: &str) -> Result<PathBuf> {
     valid_id(id)?;
     let dir = store.join(id);
     if !dir.join("template.toml").is_file() {
-        return Err(AppError::new("invalid_template", "Unknown template"));
+        return Err(AppError::new("invalid_template", "Modèle inconnu"));
     }
     Ok(dir)
 }
@@ -226,11 +226,11 @@ pub struct FilePreview {
 
 pub fn read_file(store: &Path, id: &str, rel: &str) -> Result<FilePreview> {
     let base = template_dir(store, id)?.join("files");
-    let rel = safe_rel(rel).ok_or_else(|| AppError::new("invalid_path", "Invalid file path"))?;
+    let rel = safe_rel(rel).ok_or_else(|| AppError::new("invalid_path", "Chemin de fichier invalide"))?;
     let path = base.join(rel);
     let meta = fs::symlink_metadata(&path)?;
     if !meta.is_file() {
-        return Err(AppError::new("invalid_path", "Not a regular file"));
+        return Err(AppError::new("invalid_path", "Ce n'est pas un fichier ordinaire"));
     }
     let bytes = fs::read(&path)?;
     let truncated = bytes.len() > PREVIEW_BYTES;
@@ -280,7 +280,7 @@ pub struct ImportReport {
 pub fn import_dir(store: &Path, src: &Path, name: &str, description: &str) -> Result<ImportReport> {
     let name = name.trim();
     if name.is_empty() {
-        return Err(AppError::new("invalid_name", "The template needs a name"));
+        return Err(AppError::new("invalid_name", "Le modèle a besoin d'un nom"));
     }
     if !src.is_dir() {
         return Err(AppError::new("invalid_source", format!("{} is not a directory", src.display())));
@@ -290,7 +290,7 @@ pub fn import_dir(store: &Path, src: &Path, name: &str, description: &str) -> Re
     let mut total = 0u64;
     collect_import(src, src, &mut list, &mut skipped, &mut total)?;
     if list.is_empty() {
-        return Err(AppError::new("invalid_source", "This folder contains no file to import"));
+        return Err(AppError::new("invalid_source", "Ce dossier ne contient aucun fichier à importer"));
     }
     fs::create_dir_all(store)?;
     let id = unique_id(store, name);
@@ -328,9 +328,9 @@ fn collect_import(base: &Path, dir: &Path, out: &mut Vec<PathBuf>, skipped: &mut
         } else if ft.is_file() {
             *total += entry.metadata()?.len();
             if out.len() >= MAX_FILES || *total > MAX_BYTES {
-                return Err(AppError::new("template_too_large", format!("A template is limited to {MAX_FILES} files and {} MB", MAX_BYTES / 1024 / 1024)));
+                return Err(AppError::new("template_too_large", format!("Un modèle est limité à {MAX_FILES} fichiers et {} Mo", MAX_BYTES / 1024 / 1024)));
             }
-            out.push(path.strip_prefix(base).map_err(|_| AppError::new("invalid_source", "Unexpected path"))?.to_path_buf());
+            out.push(path.strip_prefix(base).map_err(|_| AppError::new("invalid_source", "Chemin inattendu"))?.to_path_buf());
         } else {
             *skipped += 1;
         }
@@ -395,13 +395,13 @@ fn prepare(store: &Path, id: &str, target: &Path, vars: &Vars) -> Result<Vec<Pre
     let mut seen = BTreeSet::new();
     for source in walk(&base)? {
         let dest_s = render(&source, vars);
-        let dest = safe_rel(&dest_s).ok_or_else(|| AppError::new("template_incompatible", format!("“{source}” resolves to an unsafe path (“{dest_s}”). Check the variable values.")))?;
+        let dest = safe_rel(&dest_s).ok_or_else(|| AppError::new("template_incompatible", format!("« {source} » donne un chemin dangereux (« {dest_s} »). Vérifie les valeurs des variables.")))?;
         if dest.components().next().is_some_and(|c| c.as_os_str() == ".git") {
-            return Err(AppError::new("template_incompatible", "A template cannot write inside .git"));
+            return Err(AppError::new("template_incompatible", "Un modèle ne peut pas écrire dans .git"));
         }
         let dest_s = dest.to_string_lossy().into_owned();
         if !seen.insert(dest_s.clone()) {
-            return Err(AppError::new("template_incompatible", format!("Two template files resolve to “{dest_s}”")));
+            return Err(AppError::new("template_incompatible", format!("Deux fichiers du modèle donnent « {dest_s} »")));
         }
         let src_path = base.join(&source);
         let mode = src_path.metadata()?.permissions().mode();
@@ -469,7 +469,7 @@ pub fn apply(store: &Path, id: &str, target: &Path, vars: &Vars, selected: &[Str
             fs::create_dir_all(parent)?;
             // A symlinked folder must not lead the write outside the project.
             if !fs::canonicalize(parent)?.starts_with(&target_canon) {
-                return Err(AppError::new("template_incompatible", format!("“{dest}” would be written outside the project")));
+                return Err(AppError::new("template_incompatible", format!("« {dest} » serait écrit hors du projet")));
             }
         }
         if replace {
@@ -485,7 +485,7 @@ pub fn apply(store: &Path, id: &str, target: &Path, vars: &Vars, selected: &[Str
             // create_new: if the file appeared since the plan, fail instead of clobbering it.
             let mut f = fs::OpenOptions::new().write(true).create_new(true).open(&path).map_err(|e| {
                 if e.kind() == std::io::ErrorKind::AlreadyExists {
-                    AppError::new("target_changed", format!("“{dest}” appeared in the project while applying. It was left untouched."))
+                    AppError::new("target_changed", format!("« {dest} » est apparu dans le projet pendant l'application. Il n'a pas été touché."))
                 } else {
                     AppError::Io(e)
                 }

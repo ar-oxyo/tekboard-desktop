@@ -3,18 +3,18 @@ export function timeAgo(when: string | number, now: Date = new Date()): string {
   const t = typeof when === "number" ? when * 1000 : Date.parse(when);
   if (Number.isNaN(t)) return "";
   const sec = Math.max(0, Math.round((now.getTime() - t) / 1000));
-  if (sec < 60) return "just now";
+  if (sec < 60) return "à l'instant";
   const min = Math.floor(sec / 60);
-  if (min < 60) return `${min} min ago`;
+  if (min < 60) return `il y a ${min} min`;
   const h = Math.floor(min / 60);
-  if (h < 24) return `${h} h ago`;
+  if (h < 24) return `il y a ${h} h`;
   const d = Math.floor(h / 24);
-  if (d === 1) return "yesterday";
-  if (d < 31) return `${d} days ago`;
+  if (d === 1) return "hier";
+  if (d < 31) return `il y a ${d} jours`;
   const mo = Math.floor(d / 30.44);
-  if (mo < 12) return `${mo} month${mo > 1 ? "s" : ""} ago`;
+  if (mo < 12) return `il y a ${mo} mois`;
   const y = Math.floor(d / 365.25);
-  return `${y} year${y > 1 ? "s" : ""} ago`;
+  return `il y a ${y} an${y > 1 ? "s" : ""}`;
 }
 
 /** Shortens the home prefix to `~` for display. */
@@ -36,10 +36,10 @@ export function looksLikeEpitech(name: string): boolean {
 
 export function greeting(now: Date = new Date()): string {
   const h = now.getHours();
-  if (h < 5) return "Still up";
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
+  if (h < 5) return "Encore debout";
+  if (h < 12) return "Bonjour";
+  if (h < 18) return "Bon après-midi";
+  return "Bonsoir";
 }
 
 export function formatBytes(n: number): string {

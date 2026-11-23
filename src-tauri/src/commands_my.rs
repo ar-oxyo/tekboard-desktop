@@ -58,7 +58,7 @@ fn open_window(app: &AppHandle, state: &AppState, visible: bool) -> Result<()> {
     }
     let dir = session_dir(state);
     std::fs::create_dir_all(&dir)?;
-    let url = myepitech::ORIGIN.parse().map_err(|_| AppError::new("invalid_url", "Bad MY Epitech address"))?;
+    let url = myepitech::ORIGIN.parse().map_err(|_| AppError::new("invalid_url", "Adresse MY Epitech invalide"))?;
     WebviewWindowBuilder::new(app, myepitech::WINDOW, WebviewUrl::External(url))
         .title("MY Epitech — sign in")
         .inner_size(1100.0, 780.0)
@@ -74,7 +74,7 @@ fn open_window(app: &AppHandle, state: &AppState, visible: bool) -> Result<()> {
             session.received_at = now();
         })
         .build()
-        .map_err(|e| AppError::new("window_failed", format!("The sign-in window could not open: {e}")))?;
+        .map_err(|e| AppError::new("window_failed", format!("La fenêtre de connexion n'a pas pu s'ouvrir : {e}")))?;
     Ok(())
 }
 
@@ -97,7 +97,7 @@ pub(crate) fn sync_now(state: &AppState) -> Result<SyncReport> {
     {
         let mut busy = state.my_syncing.lock().unwrap_or_else(|e| e.into_inner());
         if *busy {
-            return Err(AppError::new("busy", "A synchronisation is already running"));
+            return Err(AppError::new("busy", "Une synchronisation est déjà en cours"));
         }
         *busy = true;
     }
@@ -458,9 +458,9 @@ pub fn my_free_slots(state: State<'_, AppState>, event_id: i64) -> Result<Vec<Fr
     let token = valid_token(&state).ok_or_else(myepitech::not_connected)?;
     let (status, body) = myepitech::get_once(&token, &format!("/events/{event_id}/slots"));
     if status != 200 {
-        return Err(AppError::new("my_failed", format!("MY Epitech answered {status} for this session's slots")));
+        return Err(AppError::new("my_failed", format!("MY Epitech a répondu {status} pour les créneaux de cette séance")));
     }
-    free_slots(&body, chrono::Utc::now()).ok_or_else(|| AppError::new("my_failed", "Unreadable list of slots"))
+    free_slots(&body, chrono::Utc::now()).ok_or_else(|| AppError::new("my_failed", "Liste de créneaux illisible"))
 }
 
 #[cfg(test)]

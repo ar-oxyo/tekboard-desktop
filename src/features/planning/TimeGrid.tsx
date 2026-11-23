@@ -153,8 +153,8 @@ export function TimeGrid({ days, items, now, prefs, ghost, onCreate, onOpen, onM
           const date = new Date(d);
           const isToday = d === today;
           return (
-            <button key={d} type="button" onClick={() => onPickDay(d)} title="Open this day" className="flex h-11 items-center justify-center gap-2 border-l border-white/6 text-xs text-muted transition-colors duration-150 hover:text-fg">
-              <span className="capitalize">{date.toLocaleDateString(undefined, { weekday: "short" })}</span>
+            <button key={d} type="button" onClick={() => onPickDay(d)} title="Ouvrir ce jour" className="flex h-11 items-center justify-center gap-2 border-l border-white/6 text-xs text-muted transition-colors duration-150 hover:text-fg">
+              <span className="capitalize">{date.toLocaleDateString("fr-FR", { weekday: "short" })}</span>
               <span className={cn("flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[13px]", isToday ? "bg-accent font-medium text-on-accent" : "text-fg")}>{date.getDate()}</span>
             </button>
           );
@@ -162,7 +162,7 @@ export function TimeGrid({ days, items, now, prefs, ghost, onCreate, onOpen, onM
       </div>
       {hasAllDay && (
         <div className="grid shrink-0 border-b border-white/6" style={{ gridTemplateColumns: cols }}>
-          <div className="flex items-center justify-end pr-2 text-[10px] text-faint">all day</div>
+          <div className="flex items-center justify-end pr-2 text-[10px] text-faint">toute la journée</div>
           {days.map((d) => (
             <div key={d} data-day={d} className="flex min-h-7 flex-col gap-0.5 border-l border-white/6 p-0.5">
               {allDay

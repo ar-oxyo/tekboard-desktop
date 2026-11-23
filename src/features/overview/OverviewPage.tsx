@@ -17,10 +17,10 @@ export function OverviewPage() {
   const repos = useRepos(hasRoots);
   const qc = useQueryClient();
 
-  const today = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  const today = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
   if (settings.isLoading) return <Loading />;
-  if (settings.error) return <ErrorNote title="TekBoard could not read its settings">{asAppError(settings.error).message}</ErrorNote>;
+  if (settings.error) return <ErrorNote title="TekBoard n'a pas pu lire ses réglages">{asAppError(settings.error).message}</ErrorNote>;
 
   return (
     <>
@@ -38,7 +38,7 @@ export function OverviewPage() {
                   void qc.invalidateQueries({ queryKey: keys.candidates });
                 }}
               >
-                Refresh
+                Actualiser
               </Button>
 
             </>
@@ -51,7 +51,7 @@ export function OverviewPage() {
       ) : repos.isLoading ? (
         <Loading />
       ) : repos.error ? (
-        <ErrorNote title="Could not scan your projects">{asAppError(repos.error).message}</ErrorNote>
+        <ErrorNote title="Impossible de parcourir tes projets">{asAppError(repos.error).message}</ErrorNote>
       ) : (
         <>
           <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
@@ -99,7 +99,7 @@ function MoreSection({ repos }: { repos: RepoInfo[] }) {
 function Loading() {
   return (
     <div className="flex items-center gap-2 py-16 text-muted">
-      <Spinner /> Reading your projects…
+      <Spinner /> Lecture de tes projets…
     </div>
   );
 }
@@ -111,9 +111,9 @@ function FocusCard({ repo }: { repo: RepoInfo | null }) {
   if (!repo) {
     return (
       <Card>
-        <CardTitle>Current focus</CardTitle>
-        <EmptyState icon={<FolderGit2 className="size-6" />} title="No repository found in your projects folders">
-          Clone a project to get started, or add another folder in Settings.
+        <CardTitle>En cours</CardTitle>
+        <EmptyState icon={<FolderGit2 className="size-6" />} title="Aucun dépôt dans tes dossiers de projets">
+          Clone un projet pour commencer, ou ajoute un autre dossier dans Réglages.
         </EmptyState>
       </Card>
     );
@@ -122,7 +122,7 @@ function FocusCard({ repo }: { repo: RepoInfo | null }) {
     <Card hero>
       <div className="p-6">
         <div className="flex items-center justify-between gap-3 text-xs text-faint">
-          <span>Last opened</span>
+          <span>Ouvert récemment</span>
           <span>{repo.meta.lastOpenedAt ? `opened ${timeAgo(repo.meta.lastOpenedAt)}` : "most recent commit"}</span>
         </div>
         <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -144,14 +144,14 @@ function FocusCard({ repo }: { repo: RepoInfo | null }) {
             <span className="shrink-0 text-faint">{timeAgo(repo.lastCommit.date)}</span>
           </p>
         ) : (
-          <p className="mt-3 text-[13px] text-faint">No commit yet</p>
+          <p className="mt-3 text-[13px] text-faint">Aucun commit</p>
         )}
 
         <div className="mt-6 flex flex-wrap items-center gap-2">
           <Button variant="primary" icon={<Play className="size-3.5" />} busy={act.workspace.isPending} onClick={() => act.workspace.mutate(repo)}>
-            Continue working
+            Reprendre
           </Button>
-          <Button onClick={() => openSheet(repo.path)}>Project sheet</Button>
+          <Button onClick={() => openSheet(repo.path)}>Fiche du projet</Button>
           <ProgressPicker repo={repo} />
           <span className="ml-auto">
             <RepoMenu repo={repo} />
@@ -177,10 +177,10 @@ function AttentionCard({ repos }: { repos: RepoInfo[] }) {
           )
         }
       >
-        Needs attention
+        À regarder
       </CardTitle>
       {shown.length === 0 ? (
-        <p className="px-4 py-5 text-[13px] text-muted">Everything is committed and in sync with its remote.</p>
+        <p className="px-4 py-5 text-[13px] text-muted">Tout est commité et à jour avec le dépôt distant.</p>
       ) : (
         <ul>
           {shown.map((repo) => (
@@ -202,7 +202,7 @@ function AttentionCard({ repos }: { repos: RepoInfo[] }) {
 
 const dayText = (day: string | null) => {
   const m = day ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(day) : null;
-  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : "";
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }) : "";
 };
 
 /** Hand-ins in three groups: late, to come, and school projects whose date is not known. Nothing is ever estimated. */
@@ -234,7 +234,7 @@ function DeadlinesCard() {
             <span className="truncate">{i.title}</span>
             {!i.cloned && i.repoExpected && (
               <span className="flex shrink-0 items-center gap-1 text-[11px] text-info">
-                <CloudDownload className="size-3" /> not cloned
+                <CloudDownload className="size-3" /> pas cloné
               </span>
             )}
           </span>
@@ -251,14 +251,14 @@ function DeadlinesCard() {
   );
   return (
     <Card>
-      <CardTitle right={board.isFetching ? <Spinner /> : overdue.length + coming.length > 0 ? <span className="text-xs text-faint">{coming.length} to come{overdue.length > 0 ? ` · ${overdue.length} late` : ""}</span> : undefined}>Deadlines</CardTitle>
+      <CardTitle right={board.isFetching ? <Spinner /> : overdue.length + coming.length > 0 ? <span className="text-xs text-faint">{coming.length} to come{overdue.length > 0 ? ` · ${overdue.length} late` : ""}</span> : undefined}>Rendus</CardTitle>
       {board.error ? (
         <div className="p-3">
-          <ErrorNote title="Deadlines could not be read">{asAppError(board.error).message}</ErrorNote>
+          <ErrorNote title="Les dates de rendu n'ont pas pu être lues">{asAppError(board.error).message}</ErrorNote>
         </div>
       ) : board.isLoading ? (
         <p className="flex items-center gap-2 px-4 py-4 text-[13px] text-muted">
-          <Spinner /> Reading hand-in dates…
+          <Spinner /> Lecture des dates de rendu…
         </p>
       ) : items.length === 0 ? (
         <p className="flex items-start gap-2 px-4 py-4 text-[13px] text-muted">
@@ -275,13 +275,13 @@ function DeadlinesCard() {
         <div className="py-1">
           {overdue.length > 0 && (
             <>
-              <SectionLabel className="px-4 pt-2 pb-1">Late</SectionLabel>
+              <SectionLabel className="px-4 pt-2 pb-1">En retard</SectionLabel>
               <ul>{overdue.map(row)}</ul>
             </>
           )}
           {coming.length > 0 && (
             <>
-              {overdue.length > 0 && <SectionLabel className="px-4 pt-3 pb-1">To come</SectionLabel>}
+              {overdue.length > 0 && <SectionLabel className="px-4 pt-3 pb-1">À venir</SectionLabel>}
               <ul>{shownComing.map(row)}</ul>
               {coming.length > shownComing.length && (
                 <button type="button" onClick={() => setShowAll(true)} className="flex h-8 w-full items-center gap-1 px-4 text-xs text-muted hover:text-fg">
@@ -290,10 +290,10 @@ function DeadlinesCard() {
               )}
             </>
           )}
-          {overdue.length + coming.length === 0 && <p className="px-4 py-2 text-[13px] text-muted">Nothing is due.</p>}
+          {overdue.length + coming.length === 0 && <p className="px-4 py-2 text-[13px] text-muted">Aucun rendu prévu.</p>}
           {unknown.length > 0 && (
             <>
-              <button type="button" aria-expanded={showUnknown} onClick={() => setShowUnknown(!showUnknown)} className="mt-1 flex h-8 w-full items-center gap-1 border-t border-white/6 px-4 text-xs text-muted hover:text-fg" title="School projects that are not finished and have no hand-in date, neither typed nor reported by MY Epitech.">
+              <button type="button" aria-expanded={showUnknown} onClick={() => setShowUnknown(!showUnknown)} className="mt-1 flex h-8 w-full items-center gap-1 border-t border-white/6 px-4 text-xs text-muted hover:text-fg" title="Projets d'école pas terminés et sans date de rendu, ni saisie ni donnée par MY Epitech.">
                 {showUnknown ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />} {unknown.length} without a known date
               </button>
               {showUnknown && <ul>{unknown.map(row)}</ul>}
@@ -320,19 +320,19 @@ function NextProjectCard() {
   if (!gh) {
     body = (
       <p className="flex items-center gap-2 px-4 py-5 text-[13px] text-muted">
-        <Spinner /> Checking GitHub…
+        <Spinner /> Vérification de GitHub…
       </p>
     );
   } else if (gh.state === "missing") {
     body = (
       <Hint>
-        Install GitHub CLI to see the repositories waiting for you: <Code>sudo apt install gh</Code> then <Code>gh auth login</Code>. Cloning from a URL works without it.
+        Installe GitHub CLI pour voir les dépôts qui t'attendent : <Code>sudo apt install gh</Code> then <Code>gh auth login</Code>. Cloner depuis une URL fonctionne sans.
       </Hint>
     );
   } else if (gh.state === "loggedOut") {
     body = (
       <Hint>
-        GitHub CLI is installed but not logged in. Run <Code>gh auth login</Code> in a terminal, then refresh.
+        GitHub CLI est installé mais pas connecté. Lance <Code>gh auth login</Code> dans un terminal, puis actualise.
       </Hint>
     );
   } else if (gh.state === "error") {
@@ -340,13 +340,13 @@ function NextProjectCard() {
   } else if (candidates.isLoading) {
     body = (
       <p className="flex items-center gap-2 px-4 py-5 text-[13px] text-muted">
-        <Spinner /> Looking for repositories you have not cloned…
+        <Spinner /> Recherche des dépôts pas encore clonés…
       </p>
     );
   } else if (candidates.error) {
     body = <Hint>Could not list your repositories: {asAppError(candidates.error).message}</Hint>;
   } else if (!top) {
-    body = <p className="px-4 py-5 text-[13px] text-muted">Every repository you can access is already cloned here.</p>;
+    body = <p className="px-4 py-5 text-[13px] text-muted">Tous les dépôts auxquels tu as accès sont déjà clonés ici.</p>;
   } else {
     body = (
       <div className="px-4 py-4">
@@ -368,7 +368,7 @@ function NextProjectCard() {
         )}
         <div className="mt-4 flex items-center gap-2">
           <Button icon={<Play className="size-3.5" />} onClick={() => openLauncher({ mode: "new", url: top.repo.sshUrl })}>
-            Initialize
+            Initialiser
           </Button>
           {(candidates.data?.length ?? 0) > 1 && (
             <Button variant="ghost" onClick={() => openLauncher({ mode: "new" })}>
@@ -382,7 +382,7 @@ function NextProjectCard() {
 
   return (
     <Card>
-      <CardTitle>Next project</CardTitle>
+      <CardTitle>Prochain projet</CardTitle>
       {body}
     </Card>
   );
@@ -415,13 +415,13 @@ function ActivityCard({ repos }: { repos: RepoInfo[] }) {
   };
   return (
     <Card>
-      <CardTitle>Recent activity</CardTitle>
+      <CardTitle>Activité récente</CardTitle>
       {activity.error ? (
         <div className="p-3">
           <ErrorNote>{asAppError(activity.error).message}</ErrorNote>
         </div>
       ) : (activity.data?.length ?? 0) === 0 ? (
-        <p className="px-4 py-5 text-[13px] text-muted">What you do from TekBoard will show up here.</p>
+        <p className="px-4 py-5 text-[13px] text-muted">Ce que tu fais depuis TekBoard apparaîtra ici.</p>
       ) : (
         <ul className="py-1">
           {(all ? activity.data! : activity.data!.slice(0, 5)).map((a) => {

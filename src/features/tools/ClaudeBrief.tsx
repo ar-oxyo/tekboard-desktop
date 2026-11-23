@@ -14,33 +14,33 @@ export function ClaudeBriefDialog({ repo, task, disclosure = false, confirmLabel
       onClose={onClose}
       width="w-[720px]"
       title={task === "tests" ? "Generate unit tests with Claude Code" : task === "readme" ? "Write the README with Claude Code" : task === "analysis" ? "Analyse the repository with Claude Code" : "Check the subject with Claude Code"}
-      description="Nothing starts until you confirm."
+      description="Rien ne démarre avant ta confirmation."
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}>Annuler</Button>
           <Button variant="primary" disabled={!p?.available} onClick={onConfirm}>{confirmLabel}</Button>
         </>
       }
     >
       {brief.isLoading ? (
-        <p className="flex items-center gap-2 py-6 text-muted"><Spinner /> Preparing…</p>
+        <p className="flex items-center gap-2 py-6 text-muted"><Spinner /> Préparation…</p>
       ) : brief.error || !p ? (
         <ErrorNote>{asAppError(brief.error).message}</ErrorNote>
       ) : (
         <div className="flex flex-col gap-3 text-[13px]">
-          {!p.available && <ErrorNote>Claude Code is not installed on this computer (the `claude` command was not found).</ErrorNote>}
+          {!p.available && <ErrorNote>Claude Code n'est pas installé sur cet ordinateur (commande `claude` introuvable).</ErrorNote>}
           <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-2">
-            <dt className="text-muted">Can read</dt><dd>{p.canRead}</dd>
-            <dt className="text-muted">Can change</dt><dd>{p.canWrite}</dd>
-            <dt className="text-muted">Cannot</dt><dd>{p.cannot}</dd>
-            <dt className="text-muted">Account</dt><dd>{p.account}{p.version && <span className="text-faint"> · {p.version}</span>}</dd>
+            <dt className="text-muted">Peut lire</dt><dd>{p.canRead}</dd>
+            <dt className="text-muted">Peut modifier</dt><dd>{p.canWrite}</dd>
+            <dt className="text-muted">Ne peut pas</dt><dd>{p.cannot}</dd>
+            <dt className="text-muted">Compte</dt><dd>{p.account}{p.version && <span className="text-faint"> · {p.version}</span>}</dd>
           </dl>
           <div>
-            <p className="mb-1 text-xs font-medium text-muted">Command</p>
+            <p className="mb-1 text-xs font-medium text-muted">Commande</p>
             <CodeView text={p.argv.join(" ")} className="max-h-28 rounded-md whitespace-pre-wrap" />
           </div>
           <div>
-            <p className="mb-1 text-xs font-medium text-muted">Instructions it receives</p>
+            <p className="mb-1 text-xs font-medium text-muted">Instructions reçues</p>
             <CodeView text={brief.data!.prompt} className="max-h-56 rounded-md" />
           </div>
         </div>

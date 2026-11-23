@@ -9,9 +9,9 @@ import { formatBytes } from "../../lib/format";
 import { useUi } from "../../lib/store";
 
 const MODES: Array<{ id: PackOptions["mode"]; label: string; hint: string }> = [
-  { id: "context", label: "AI Context Pack", hint: "Source code plus PROJECT_CONTEXT.md, FILE_TREE.txt and a manifest written from the repository's facts." },
-  { id: "source", label: "Source only", hint: "Source code and build configuration." },
-  { id: "full", label: "Full project", hint: "Everything, assets included, except build products and secrets." },
+  { id: "context", label: "AI Context Pack", hint: "Le code source, plus PROJECT_CONTEXT.md, FILE_TREE.txt et un manifeste écrit à partir des faits du dépôt." },
+  { id: "source", label: "Code source seulement", hint: "Code source et configuration de compilation." },
+  { id: "full", label: "Projet complet", hint: "Tout, ressources comprises, sauf les produits de compilation et les secrets." },
 ];
 
 export function PackageDialog({ repo }: { repo: string }) {
@@ -24,7 +24,7 @@ export function PackageDialog({ repo }: { repo: string }) {
   const [onlyOut, setOnlyOut] = useState(false);
   const options: PackOptions = useMemo(() => ({ mode, exclude, include }), [mode, exclude, include]);
   const preview = useQuery({ queryKey: ["pack-preview", repo, options], queryFn: () => api.packagePreview(repo, options), staleTime: 0, placeholderData: (prev) => prev });
-  const create = useMutation({ mutationFn: () => api.packageCreate(repo, options), onError: (e) => toast({ kind: "error", title: "The archive was not created", detail: asAppError(e).message }) });
+  const create = useMutation({ mutationFn: () => api.packageCreate(repo, options), onError: (e) => toast({ kind: "error", title: "L'archive n'a pas été créée", detail: asAppError(e).message }) });
   const p = preview.data;
   const rows = (p?.entries ?? []).filter((e) => (!onlyOut || !e.included) && e.path.toLowerCase().includes(filter.toLowerCase()));
   const toggle = (path: string, included: boolean) => {
@@ -42,20 +42,20 @@ export function PackageDialog({ repo }: { repo: string }) {
       open
       onClose={close}
       width="w-[820px]"
-      title="Package for AI"
+      title="Paquet pour une IA"
       description={repo.split("/").pop()}
       footer={
         create.data ? (
           <>
             <span className="selectable mr-auto min-w-0 truncate font-mono text-xs text-muted">{create.data.path}</span>
-            <Button icon={<FolderOpen className="size-3.5" />} onClick={() => api.packageReveal().catch((e) => toast({ kind: "error", title: "Could not open the folder", detail: asAppError(e).message }))}>Open folder</Button>
-            <Button variant="primary" onClick={close}>Done</Button>
+            <Button icon={<FolderOpen className="size-3.5" />} onClick={() => api.packageReveal().catch((e) => toast({ kind: "error", title: "Dossier non ouvert", detail: asAppError(e).message }))}>Ouvrir le dossier</Button>
+            <Button variant="primary" onClick={close}>Terminé</Button>
           </>
         ) : (
           <>
             <span className="mr-auto text-xs text-muted">{p ? `${p.included} files · ${formatBytes(p.includedSize)} before compression` : ""}</span>
-            <Button variant="ghost" onClick={close}>Cancel</Button>
-            <Button variant="primary" busy={create.isPending} disabled={!p || p.included === 0} onClick={() => create.mutate()}>Create the ZIP</Button>
+            <Button variant="ghost" onClick={close}>Annuler</Button>
+            <Button variant="primary" busy={create.isPending} disabled={!p || p.included === 0} onClick={() => create.mutate()}>Créer le ZIP</Button>
           </>
         )
       }
@@ -78,8 +78,8 @@ export function PackageDialog({ repo }: { repo: string }) {
           </p>
         )}
         <div className="flex items-center gap-2">
-          <Input className="h-7 text-xs" placeholder="Filter files" value={filter} onChange={(e) => setFilter(e.target.value)} />
-          <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted"><input type="checkbox" className="accent-(--color-accent)" checked={onlyOut} onChange={(e) => setOnlyOut(e.target.checked)} />Only what is left out</label>
+          <Input className="h-7 text-xs" placeholder="Filtrer les fichiers" value={filter} onChange={(e) => setFilter(e.target.value)} />
+          <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted"><input type="checkbox" className="accent-(--color-accent)" checked={onlyOut} onChange={(e) => setOnlyOut(e.target.checked)} />Seulement ce qui est exclu</label>
           {preview.isFetching && <Spinner />}
         </div>
         <ul className="max-h-[38vh] overflow-y-auto rounded-lg border border-line bg-bg py-1">

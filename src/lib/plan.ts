@@ -264,24 +264,24 @@ export function projectLoad(p: PlanProject, events: PlanEvent[], busy: Span[], p
   let why = "";
   if (p.dueMs !== null && p.dueMs < now) {
     risk = "late";
-    why = "hand-in passed";
+    why = "rendu dépassé";
   } else if (p.dueMs !== null) {
     const left = p.dueMs - now;
     if (p.estimateMin !== null) {
       const room = freeSlots(busy, prefs, now, p.dueMs).reduce((s, f) => s + (f.end - f.start) / MIN, 0);
       if (unplanned > room) {
         risk = "risk";
-        why = `${fmtDur(unplanned)} to plan, ${fmtDur(room)} free before the hand-in`;
+        why = `${fmtDur(unplanned)} à planifier, ${fmtDur(room)} de libre avant le rendu`;
       } else if (unplanned > 0 && left < 3 * DAY) {
         risk = "risk";
-        why = `${fmtDur(unplanned)} not planned, hand-in close`;
+        why = `${fmtDur(unplanned)} non planifiées, rendu proche`;
       } else {
         risk = "ok";
-        why = unplanned > 0 ? `${fmtDur(unplanned)} still to plan` : p.estimateMin === 0 ? "nothing left" : "all the work is planned";
+        why = unplanned > 0 ? `${fmtDur(unplanned)} encore à planifier` : p.estimateMin === 0 ? "plus rien à faire" : "tout le travail est planifié";
       }
     } else if (left < 3 * DAY && planned === 0) {
       risk = "risk";
-      why = "hand-in close, no estimate and nothing planned";
+      why = "rendu proche, sans estimation ni session";
     }
   }
   return { remaining: p.estimateMin, planned, unplanned, next, risk, why };

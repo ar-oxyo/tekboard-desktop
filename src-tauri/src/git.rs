@@ -239,7 +239,7 @@ pub fn add(repo: &Path, files: &[String]) -> Result<()> {
 pub fn commit(repo: &Path, message: &str) -> Result<()> {
     let message = message.trim();
     if message.is_empty() {
-        return Err(AppError::new("empty_message", "The commit message is empty"));
+        return Err(AppError::new("empty_message", "Le message de commit est vide"));
     }
     run(Some(repo), &["commit", "-m", message]).map(|_| ())
 }
@@ -374,7 +374,7 @@ pub fn branches(repo: &Path) -> Result<Vec<Branch>> {
 pub fn validate_branch_name(repo: &Path, name: &str) -> Result<()> {
     let name = name.trim();
     let ok = !name.is_empty() && !name.starts_with('-') && run_raw(Some(repo), &["check-ref-format", "--branch", name]).map(|o| o.ok).unwrap_or(false);
-    if ok { Ok(()) } else { Err(AppError::new("invalid_branch", format!("“{name}” is not a valid branch name"))) }
+    if ok { Ok(()) } else { Err(AppError::new("invalid_branch", format!("« {name} » n'est pas un nom de branche valide"))) }
 }
 
 pub fn create_branch(repo: &Path, name: &str) -> Result<()> {
@@ -407,7 +407,7 @@ pub fn sync(repo: &Path, op: Sync) -> Result<String> {
         Sync::Push => {
             argv.push("push".into());
             if st.upstream.is_none() {
-                let branch = st.branch.clone().ok_or_else(|| AppError::new("detached", "HEAD is detached: switch to a branch before pushing"))?;
+                let branch = st.branch.clone().ok_or_else(|| AppError::new("detached", "HEAD est détachée : passe sur une branche avant d'envoyer"))?;
                 argv.extend(["-u".into(), "origin".into(), branch]);
             }
         }
@@ -419,7 +419,7 @@ pub fn sync(repo: &Path, op: Sync) -> Result<String> {
     }
     let report = crate::workspace::run_argv_captured(&argv, repo, std::time::Duration::from_secs(120), &envs)?;
     if report.timed_out {
-        return Err(AppError::new("timeout", "The remote did not answer within 2 minutes"));
+        return Err(AppError::new("timeout", "Le dépôt distant n'a pas répondu en 2 minutes"));
     }
     if report.code != Some(0) {
         let lower = report.output.to_lowercase();

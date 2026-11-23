@@ -91,14 +91,14 @@ pub fn save(conn: &Connection, settings: &Settings) -> Result<Settings> {
     if let Some(dir) = s.clone_dir.clone().filter(|d| !d.trim().is_empty()) {
         let canon = std::fs::canonicalize(&dir).map_err(|_| AppError::new("invalid_clone_dir", format!("{dir} is not an existing directory")))?;
         if !is_inside_any(&canon, &s.roots) {
-            return Err(AppError::new("invalid_clone_dir", "The clone folder must be inside one of the projects folders"));
+            return Err(AppError::new("invalid_clone_dir", "Le dossier de clonage doit être dans un des dossiers de projets"));
         }
         s.clone_dir = Some(canon.to_string_lossy().into_owned());
     } else {
         s.clone_dir = None;
     }
     if !THEMES.contains(&s.theme.as_str()) {
-        return Err(AppError::new("invalid_theme", format!("Unknown design “{}”", s.theme)));
+        return Err(AppError::new("invalid_theme", format!("Apparence inconnue « {} »", s.theme)));
     }
     s.ide_cmd = s.ide_cmd.trim().to_string();
     s.terminal_cmd = s.terminal_cmd.trim().to_string();
@@ -123,7 +123,7 @@ pub fn save(conn: &Connection, settings: &Settings) -> Result<Settings> {
         }
     }
     if !SYNC_INTERVALS.contains(&s.my_sync_minutes) {
-        return Err(AppError::new("invalid_interval", "Unknown sync interval"));
+        return Err(AppError::new("invalid_interval", "Intervalle de synchronisation inconnu"));
     }
     db::set_setting(conn, KEY, &serde_json::to_string(&s)?)?;
     Ok(s)

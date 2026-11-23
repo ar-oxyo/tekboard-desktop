@@ -515,11 +515,11 @@ impl Jobs {
 /// pipes and `&&` are refused instead of being silently passed as literal words.
 pub fn argv_of(command: &str) -> Result<Vec<String>> {
     if command.chars().any(|c| matches!(c, '|' | '&' | ';' | '<' | '>' | '`' | '$' | '"' | '\'' | '\\' | '\n')) {
-        return Err(AppError::new("invalid_command", "Commands run without a shell: no quotes, pipes, redirections or variables. Put complex commands in a Makefile rule."));
+        return Err(AppError::new("invalid_command", "Les commandes tournent sans shell : pas de guillemets, de pipes, de redirections ni de variables. Mets les commandes complexes dans une règle du Makefile."));
     }
     let argv: Vec<String> = command.split_whitespace().map(str::to_string).collect();
     if argv.is_empty() {
-        return Err(AppError::new("not_configured", "No command is set"));
+        return Err(AppError::new("not_configured", "Aucune commande n'est définie"));
     }
     Ok(argv)
 }
@@ -530,7 +530,7 @@ pub fn argv_of(command: &str) -> Result<Vec<String>> {
 /// (pipes, `&&`, redirections, `$VAR`, backticks) are refused when they are not quoted,
 /// instead of being handed to the program as literal words.
 pub fn split_command(command: &str) -> Result<Vec<String>> {
-    let refuse = |c: char| AppError::new("invalid_command", format!("“{c}” needs a shell, and commands here run without one. Quote it to pass it as text, or put the pipeline in a Makefile rule or a script."));
+    let refuse = |c: char| AppError::new("invalid_command", format!("« {c} » a besoin d'un shell, et les commandes tournent ici sans shell. Mets-le entre guillemets pour le passer comme texte, ou place l'enchaînement dans une règle du Makefile ou un script."));
     let mut words: Vec<String> = Vec::new();
     let mut cur = String::new();
     let mut in_word = false;
@@ -549,7 +549,7 @@ pub fn split_command(command: &str) -> Result<Vec<String>> {
                         cur.push('\\');
                         cur.push(n);
                     }
-                    None => return Err(AppError::new("invalid_command", "The command ends with a lone backslash")),
+                    None => return Err(AppError::new("invalid_command", "La commande finit par une barre oblique inverse seule")),
                 },
                 '$' | '`' => return Err(refuse(c)),
                 _ => cur.push(c),
@@ -564,7 +564,7 @@ pub fn split_command(command: &str) -> Result<Vec<String>> {
                         cur.push(n);
                         in_word = true;
                     }
-                    None => return Err(AppError::new("invalid_command", "The command ends with a lone backslash")),
+                    None => return Err(AppError::new("invalid_command", "La commande finit par une barre oblique inverse seule")),
                 },
                 '|' | '&' | ';' | '<' | '>' | '`' | '$' | '\n' | '\r' | '\0' => return Err(refuse(if c.is_control() { '⏎' } else { c })),
                 c if c.is_whitespace() => {
@@ -581,16 +581,16 @@ pub fn split_command(command: &str) -> Result<Vec<String>> {
         }
     }
     if quote.is_some() {
-        return Err(AppError::new("invalid_command", "A quote is not closed"));
+        return Err(AppError::new("invalid_command", "Un guillemet n'est pas fermé"));
     }
     if in_word {
         words.push(cur);
     }
     if words.is_empty() {
-        return Err(AppError::new("not_configured", "No command to run"));
+        return Err(AppError::new("not_configured", "Aucune commande à lancer"));
     }
     if words[0].is_empty() {
-        return Err(AppError::new("invalid_command", "The program name is empty"));
+        return Err(AppError::new("invalid_command", "Le nom du programme est vide"));
     }
     Ok(words)
 }

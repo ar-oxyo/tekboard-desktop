@@ -21,20 +21,20 @@ export function AnalyticsPage() {
 
   return (
     <>
-      <PageHeader title="Analytics" subtitle="Computed from the git history of your local repositories." />
+      <PageHeader title="Stats" subtitle="Calculé à partir de l'historique git de tes dépôts locaux." />
       {!hasRoots ? (
         <Card>
-          <EmptyState title="No projects folder yet">Add one in Settings to see your activity.</EmptyState>
+          <EmptyState title="Pas encore de dossier de projets">Ajoutes-en un dans Réglages pour voir ton activité.</EmptyState>
         </Card>
       ) : q.isLoading ? (
         <p className="flex items-center gap-2 py-16 text-muted">
-          <Spinner /> Reading git history…
+          <Spinner /> Lecture de l'historique git…
         </p>
       ) : q.error || !q.data ? (
         <ErrorNote>{asAppError(q.error).message}</ErrorNote>
       ) : q.data.totalCommits === 0 ? (
         <Card>
-          <EmptyState title="No commit found">Your repositories have no history yet.</EmptyState>
+          <EmptyState title="Aucun commit trouvé">Tes dépôts n'ont pas encore d'historique.</EmptyState>
         </Card>
       ) : (
         <Body a={q.data} />
@@ -49,14 +49,14 @@ function Body({ a }: { a: Analytics }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Your commits" value={a.myCommits.toLocaleString()} note={`${a.repos.filter((r) => r.mine > 0).length} repositories`} />
-        <Stat label="Active days" value={String(a.activeDays)} note="in the last 53 weeks" />
-        <Stat label="Current streak" value={`${a.currentStreak} day${a.currentStreak === 1 ? "" : "s"}`} note={`longest: ${a.longestStreak}`} />
-        <Stat label="Last commit" value={a.lastCommit ? timeAgo(a.lastCommit) : "—"} note={topRepo ? `most active: ${topRepo.name}` : undefined} />
+        <Stat label="Tes commits" value={a.myCommits.toLocaleString()} note={`${a.repos.filter((r) => r.mine > 0).length} repositories`} />
+        <Stat label="Jours actifs" value={String(a.activeDays)} note="in the last 53 weeks" />
+        <Stat label="Série en cours" value={`${a.currentStreak} day${a.currentStreak === 1 ? "" : "s"}`} note={`longest: ${a.longestStreak}`} />
+        <Stat label="Dernier commit" value={a.lastCommit ? timeAgo(a.lastCommit) : "—"} note={topRepo ? `most active: ${topRepo.name}` : undefined} />
       </div>
 
       <Card>
-        <CardTitle right={<HeatLegend />}>Your commits per day</CardTitle>
+        <CardTitle right={<HeatLegend />}>Tes commits par jour</CardTitle>
         <div className="overflow-x-auto px-4 py-4">
           <Heatmap days={a.days} />
         </div>
@@ -64,16 +64,16 @@ function Body({ a }: { a: Analytics }) {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
-          <CardTitle>Your commits per month</CardTitle>
+          <CardTitle>Tes commits par mois</CardTitle>
           <div className="px-4 pt-4 pb-3">
             <Columns data={a.monthly.map((m) => ({ key: m.date, label: monthLabel(m.date), value: m.count, tip: `${monthLabel(m.date, true)}: ${m.count} commit${m.count === 1 ? "" : "s"}` }))} everyLabel={1} />
           </div>
         </Card>
         <Card>
-          <CardTitle>When you commit</CardTitle>
+          <CardTitle>Quand tu commites</CardTitle>
           <div className="px-4 pt-4 pb-3">
             <Columns data={a.byHour.map((v, h) => ({ key: String(h), label: `${h}h`, value: v, tip: `${h}:00–${h}:59: ${v} commit${v === 1 ? "" : "s"}` }))} everyLabel={3} />
-            <p className="mt-2 text-xs text-faint">Hour of day of each commit. Says when you commit, not how long you worked.</p>
+            <p className="mt-2 text-xs text-faint">Heure de chaque commit. Dit quand tu commites, pas combien de temps tu as travaillé.</p>
           </div>
         </Card>
       </div>
@@ -83,12 +83,12 @@ function Body({ a }: { a: Analytics }) {
           <CardTitle
             right={
               <span className="flex items-center gap-3 text-xs text-muted">
-                <Key color={YOU} label="You" />
-                <Key color={OTHERS} label="Others" />
+                <Key color={YOU} label="Toi" />
+                <Key color={OTHERS} label="Les autres" />
               </span>
             }
           >
-            Commits by project
+            Commits par projet
           </CardTitle>
           <RepoBars repos={a.repos} />
           <p className="border-t border-white/6 px-4 py-2.5 text-xs text-faint">
@@ -96,7 +96,7 @@ function Body({ a }: { a: Analytics }) {
           </p>
         </Card>
         <Card className="self-start">
-          <CardTitle>Languages</CardTitle>
+          <CardTitle>Langages</CardTitle>
           <Languages a={a} />
           <p className="border-t border-white/6 px-4 py-2.5 text-xs text-faint">
             Lines in tracked files of repositories you committed to{topLang ? "" : " (none found)"}. A line of code is not a unit of productivity.
@@ -134,7 +134,7 @@ function Key({ color, label }: { color: string; label: string }) {
 
 function monthLabel(ym: string, long = false): string {
   const [y, m] = ym.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString(undefined, long ? { month: "long", year: "numeric" } : { month: "short" });
+  return new Date(y, m - 1, 1).toLocaleDateString("fr-FR", long ? { month: "long", year: "numeric" } : { month: "short" });
 }
 
 /** Tooltip that follows the hovered mark. Shared by every chart on the page. */
@@ -203,7 +203,7 @@ function Heatmap({ days }: { days: DayCount[] }) {
   const height = top + 7 * (size + gap);
   return (
     <div data-chart className="relative" style={{ width }}>
-      <svg width={width} height={height} role="img" aria-label="Commits per day over the last 53 weeks">
+      <svg width={width} height={height} role="img" aria-label="Commits par jour sur les 53 dernières semaines">
         {months.map((m) => (
           <text key={m.col} x={left + m.col * (size + gap)} y={10} className="fill-(--color-faint) text-[10px]">
             {m.label}
@@ -225,7 +225,7 @@ function Heatmap({ days }: { days: DayCount[] }) {
                 height={size}
                 rx={3}
                 fill={HEAT[heatStep(d.count, max)]}
-                onMouseEnter={(e) => tip.show(e, `${new Date(d.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}: ${d.count} commit${d.count === 1 ? "" : "s"}`)}
+                onMouseEnter={(e) => tip.show(e, `${new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}: ${d.count} commit${d.count === 1 ? "" : "s"}`)}
                 onMouseLeave={tip.hide}
               />
             ),
@@ -298,7 +298,7 @@ function Languages({ a }: { a: Analytics }) {
   const total = a.languages.reduce((n, l) => n + l.lines, 0);
   const shown = a.languages.slice(0, 8);
   const max = Math.max(1, ...shown.map((l) => l.lines));
-  if (shown.length === 0) return <p className="px-4 py-4 text-[13px] text-muted">No source file recognised.</p>;
+  if (shown.length === 0) return <p className="px-4 py-4 text-[13px] text-muted">Aucun fichier source reconnu.</p>;
   return (
     <ul className="py-2">
       {shown.map((l) => (

@@ -182,7 +182,7 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
       setDone({ ...done, committed: true });
       refreshAll();
     } catch (e) {
-      toast({ kind: "error", title: "Commit failed", detail: asAppError(e).message });
+      toast({ kind: "error", title: "Commit échoué", detail: asAppError(e).message });
     } finally {
       setCommitting(false);
     }
@@ -199,7 +199,7 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
   const conflictsSelected = plan.filter((e) => e.action === "conflict" && selected.has(e.dest)).length;
   const canStart = isNew ? url.trim().length > 0 && !!effectiveParent : !!chosenTemplate;
 
-  const title = isNew ? "New project" : "Apply a template";
+  const title = isNew ? "Nouveau projet" : "Apply a template";
   const description =
     phase === "preview"
       ? `Review what will be written to ${tildify(target ?? "", home)}`
@@ -214,7 +214,7 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
     footer = (
       <>
         <Button variant="ghost" onClick={close}>
-          Cancel
+          Annuler
         </Button>
         <Button variant="primary" icon={<Play className="size-3.5" />} disabled={!canStart} onClick={() => void start()}>
           {isNew ? "Initialize" : "Preview"}
@@ -229,17 +229,17 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
           {conflictsSelected > 0 && <span className="text-warn"> · {conflictsSelected} replaced (backup kept)</span>}
         </span>
         <Button variant="ghost" onClick={() => (isNew && target ? void skipTemplate() : close())}>
-          {isNew ? "Skip template" : "Cancel"}
+          {isNew ? "Skip template" : "Annuler"}
         </Button>
         <Button variant="primary" icon={<Check className="size-3.5" />} disabled={selected.size === 0 || !!planError} onClick={() => void apply()}>
-          {isNew ? "Apply & open" : "Apply"}
+          {isNew ? "Apply & open" : "Appliquer"}
         </Button>
       </>
     );
   } else if (phase === "done") {
     footer = (
       <Button variant="primary" onClick={close}>
-        Done
+        Terminé
       </Button>
     );
   }
@@ -268,16 +268,16 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
           {isNew && (
             <>
               <CandidateList state={env.data?.github.state} loading={candidates.isLoading} error={candidates.error} items={candidates.data ?? []} selectedUrl={url} onPick={(c) => setUrl(c.repo.sshUrl)} />
-              <Field label="Repository URL" hint="SSH or HTTPS. The folder takes the repository name.">
+              <Field label="URL du dépôt" hint="SSH ou HTTPS. Le dossier prend le nom du dépôt.">
                 <Input autoFocus={!request.url} className="font-mono text-xs" placeholder="git@github.com:Organisation/G-XXX-000-CITY-0-0-project-0.git" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && canStart && void start()} />
               </Field>
-              <Field label="Clone into" hint={repoName && effectiveParent ? `→ ${tildify(effectiveParent, home)}/${repoName}` : undefined}>
-                <Select label="Parent folder" mono value={effectiveParent ?? null} onChange={setParent} options={targets.map((t) => ({ value: t, label: tildify(t, home) }))} />
+              <Field label="Cloner dans" hint={repoName && effectiveParent ? `→ ${tildify(effectiveParent, home)}/${repoName}` : undefined}>
+                <Select label="Dossier parent" mono value={effectiveParent ?? null} onChange={setParent} options={targets.map((t) => ({ value: t, label: tildify(t, home) }))} />
               </Field>
             </>
           )}
-          <Field label="Template" hint={template ? template.description : isNew ? "The repository is cloned and opened as is." : "Pick the template to apply."}>
-            <Select label="Template" value={chosenTemplate} onChange={setTemplateId} options={[{ value: "", label: isNew ? "No template" : "Choose…" }, ...(templates.data ?? []).map((t) => ({ value: t.id, label: t.name, hint: `${t.fileCount} file${t.fileCount === 1 ? "" : "s"}` }))]} />
+          <Field label="Modèle" hint={template ? template.description : isNew ? "The repository is cloned and opened as is." : "Pick the template to apply."}>
+            <Select label="Modèle" value={chosenTemplate} onChange={setTemplateId} options={[{ value: "", label: isNew ? "No template" : "Choose…" }, ...(templates.data ?? []).map((t) => ({ value: t.id, label: t.name, hint: `${t.fileCount} file${t.fileCount === 1 ? "" : "s"}` }))]} />
           </Field>
         </div>
       )}
@@ -290,7 +290,7 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
 
       {phase === "preview" && template && (
         <div className="flex flex-col gap-4">
-          {alreadyPresent && <p className="rounded-md border border-line bg-raised px-3 py-2 text-[13px] text-muted">This repository was already cloned here. Nothing was downloaded.</p>}
+          {alreadyPresent && <p className="rounded-md border border-line bg-raised px-3 py-2 text-[13px] text-muted">Ce dépôt était déjà cloné ici. Rien n'a été téléchargé.</p>}
           {template.variables.length > 0 && (
             <div className="grid grid-cols-2 gap-3">
               {template.variables
@@ -302,7 +302,7 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
                 ))}
             </div>
           )}
-          {planError ? <ErrorNote title="This template cannot be applied with these values">{planError}</ErrorNote> : <PlanList plan={plan} selected={selected} onToggle={toggle} />}
+          {planError ? <ErrorNote title="Ce modèle ne peut pas être appliqué avec ces valeurs">{planError}</ErrorNote> : <PlanList plan={plan} selected={selected} onToggle={toggle} />}
         </div>
       )}
 
@@ -321,15 +321,15 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
               </li>
             )}
             {done.report?.backupDir && <li className="selectable">· Replaced files saved in {tildify(done.report.backupDir, home)}</li>}
-            {isNew && !done.workspaceIssue && <li>· IDE and terminal opened</li>}
+            {isNew && !done.workspaceIssue && <li>· IDE et terminal ouverts</li>}
           </ul>
-          {done.workspaceIssue && <ErrorNote title="The workspace did not fully open">{done.workspaceIssue}</ErrorNote>}
+          {done.workspaceIssue && <ErrorNote title="L'espace de travail ne s'est pas entièrement ouvert">{done.workspaceIssue}</ErrorNote>}
 
           {done.staged > 0 && (
             <div className="mt-1 rounded-lg border border-line bg-surface p-3">
               {done.committed ? (
                 <p className="flex items-center gap-2 text-[13px] text-ok">
-                  <Check className="size-4" /> Committed locally. Nothing was pushed.
+                  <Check className="size-4" /> Commité localement. Rien n'a été envoyé.
                 </p>
               ) : (
                 <>
@@ -337,9 +337,9 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
                     {done.staged} file{done.staged === 1 ? " is" : "s are"} staged. Commit now, or do it later yourself — TekBoard never pushes.
                   </p>
                   <div className="flex items-center gap-2">
-                    <Input value={message} onChange={(e) => setMessage(e.target.value)} aria-label="Commit message" />
+                    <Input value={message} onChange={(e) => setMessage(e.target.value)} aria-label="Message de commit" />
                     <Button icon={<GitCommitHorizontal className="size-3.5" />} busy={committing} disabled={!message.trim()} onClick={() => void commit()}>
-                      Commit
+                      Commiter
                     </Button>
                   </div>
                 </>
@@ -364,7 +364,7 @@ function PlanList({ plan, selected, onToggle }: { plan: PlanEntry[]; selected: S
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-xs font-medium text-muted">Files</span>
+        <span className="text-xs font-medium text-muted">Fichiers</span>
         {conflicts > 0 && <span className="text-xs text-warn">{conflicts} already exist — tick one to replace it</span>}
       </div>
       <ul className="max-h-[300px] overflow-y-auto rounded-lg border border-line bg-bg py-1">
@@ -395,15 +395,15 @@ function CandidateList({ state, loading, error, items, selectedUrl, onPick }: { 
   if (loading) {
     return (
       <p className="flex items-center gap-2 text-[13px] text-muted">
-        <Spinner /> Looking for repositories you have not cloned…
+        <Spinner /> Recherche des dépôts pas encore clonés…
       </p>
     );
   }
   if (error) return <p className="text-[13px] text-muted">GitHub list unavailable ({asAppError(error).message}). Paste a URL below.</p>;
-  if (items.length === 0) return <p className="text-[13px] text-muted">Every repository you can access is already cloned. Paste a URL below for anything else.</p>;
+  if (items.length === 0) return <p className="text-[13px] text-muted">Tous tes dépôts sont déjà clonés. Colle une URL ci-dessous pour un autre.</p>;
   return (
     <div>
-      <span className="mb-1 block text-xs font-medium text-muted">Not cloned yet</span>
+      <span className="mb-1 block text-xs font-medium text-muted">Pas encore clonés</span>
       <ul className="max-h-[188px] overflow-y-auto rounded-lg border border-line bg-bg py-1">
         {items.slice(0, 40).map((c) => {
           const active = c.repo.sshUrl === selectedUrl;

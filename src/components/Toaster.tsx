@@ -23,7 +23,7 @@ export function Toaster() {
             <p className="text-[13px] font-medium">{t.title}</p>
             {t.detail && <p className="mt-0.5 text-xs break-words text-muted">{t.detail}</p>}
           </div>
-          <button type="button" aria-label="Dismiss" onClick={() => dismiss(t.id)} className="text-faint hover:text-fg">
+          <button type="button" aria-label="Fermer" onClick={() => dismiss(t.id)} className="text-faint hover:text-fg">
             <X className="size-3.5" />
           </button>
         </div>

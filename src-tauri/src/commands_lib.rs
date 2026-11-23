@@ -35,7 +35,7 @@ pub fn library_add(state: State<'_, AppState>, name: String, path: String, copy:
     let slug: String = name.trim().chars().map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_lowercase() } else { '-' }).collect();
     let slug = slug.trim_matches('-').to_string();
     if slug.is_empty() {
-        return Err(AppError::new("invalid_name", "Give the library a name"));
+        return Err(AppError::new("invalid_name", "Donne un nom à la bibliothèque"));
     }
     // Keep the folder's own name last: it becomes `lib/<name>` in projects.
     let base = src.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "my".into());
