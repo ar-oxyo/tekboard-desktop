@@ -157,6 +157,11 @@ impl Job {
         self.touch(false);
     }
 
+    /// A value of the summary.
+    pub fn summary_value(&self, key: &str) -> Option<Value> {
+        self.lock().summary.get(key).cloned()
+    }
+
     /// A copy of the activity entries so far.
     pub fn events(&self) -> Vec<Value> {
         self.lock().events.clone()
@@ -480,6 +485,11 @@ impl Jobs {
                 v.duration_ms = job.started.elapsed().as_millis() as u64;
                 let steps = serde_json::to_value(&v.steps).unwrap_or(Value::Null);
                 v.summary.insert("steps".into(), steps);
+                // The activity feed is kept with the report (checks, commands), without the text chunks.
+                if !v.events.is_empty() {
+                    let kept: Vec<Value> = v.events.iter().filter(|e| e["kind"] != "text").rev().take(600).cloned().collect::<Vec<_>>().into_iter().rev().collect();
+                    v.summary.insert("events".into(), Value::Array(kept));
+                }
                 v.clone()
             };
             let conn = db.lock().unwrap_or_else(|e| e.into_inner());

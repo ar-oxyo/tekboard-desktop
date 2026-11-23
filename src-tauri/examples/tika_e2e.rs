@@ -18,6 +18,47 @@ fn main() {
     tekboard_lib::planner::set_project(&conn, "/p/my_rpg", Some(3), Some(Some(600)), None).unwrap();
     let state: &'static tekboard_lib::commands::AppState = Box::leak(Box::new(tekboard_lib::commands::AppState::for_tests(Arc::new(Mutex::new(conn)), base.join("data"), base.join("cache"))));
     tekboard_lib::ai::ipc::serve_static(state).unwrap();
+    // `--mouli <repo>` / `--tests <repo>`: an agent on a real repository instead of a conversation.
+    let agent = args.iter().position(|a| a == "--mouli" || a == "--tests").map(|i| (args[i].clone(), std::path::PathBuf::from(&args[i + 1])));
+    if let Some((what, repo)) = agent {
+        let mut s = tekboard_lib::ai::chat::AiSettings::load(&state.conn());
+        s.agent_model = std::env::var("AGENT_MODEL").unwrap_or_else(|_| "sonnet".into());
+        s.agent_minutes = 10;
+        s.save(&state.conn()).unwrap();
+        let job = if what == "--mouli" { tekboard_lib::ai::agents::moulinette(state, repo).unwrap() } else { tekboard_lib::ai::agents::generate_tests(state, repo).unwrap() };
+        let mut seen = 0;
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(700));
+            let v = state.jobs.get(job).unwrap();
+            for e in &v.events[seen.min(v.events.len())..] {
+                match e["kind"].as_str() {
+                    Some("phase") => eprintln!("== {} : {}", e["phase"].as_str().unwrap_or(""), e["text"].as_str().unwrap_or("")),
+                    Some("check") => eprintln!("  [check {}] {}", e["status"].as_str().unwrap_or(""), e["title"].as_str().unwrap_or("")),
+                    Some("exec") => eprintln!("  $ {}", e["detail"].as_str().unwrap_or("")),
+                    _ => {}
+                }
+            }
+            seen = v.events.len();
+            if v.status != "running" {
+                println!("STATUS {}", v.status);
+                for st in &v.steps {
+                    println!("STEP {} {} {}", st.status, st.label, st.detail.clone().unwrap_or_default());
+                }
+                println!("COUNTS {}", v.summary.get("counts").cloned().unwrap_or_default());
+                println!("VERDICT {}", v.summary.get("verdict").cloned().unwrap_or_default());
+                if let Some(c) = v.summary.get("changes") {
+                    println!("CHANGES {}", c.as_array().map(|a| a.iter().map(|x| x["path"].as_str().unwrap_or("").to_string()).collect::<Vec<_>>().join(", ")).unwrap_or_default());
+                }
+                println!("REPORT {}", v.summary.get("report").and_then(|r| r.as_str()).unwrap_or("-"));
+                if let Some(e) = v.summary.get("error") {
+                    println!("ERROR {e}");
+                }
+                break;
+            }
+        }
+        let _ = std::fs::remove_dir_all(&base);
+        return;
+    }
     let screen = tekboard_lib::ai::chat::Screen { page: "today".into(), ..Default::default() };
     let (thread, job) = tekboard_lib::ai::chat::send(state, None, &question, &screen).unwrap();
     eprintln!("thread {thread}, job {job}: {question}");

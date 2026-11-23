@@ -150,7 +150,12 @@ export function App() {
   // Tika opens a screen for the user (tool `navigate`).
   useEffect(() => {
     const off = listen<{ page: string; project: string | null; tab: string | null }>("ui-navigate", (e) => navigateTo(e.payload.page, e.payload.project, e.payload.tab));
-    return () => void off.then((f) => f());
+    // A task Tika started (moulinette, tests): shown live in Testing.
+    const job = listen<{ id: number; repo: string }>("ui-show-job", (e) => useUi.getState().showJob(e.payload.id, e.payload.repo));
+    return () => {
+      void off.then((f) => f());
+      void job.then((f) => f());
+    };
   }, []);
   // The day changed while the window stayed open: hand-in states are recomputed.
   useEffect(() => {

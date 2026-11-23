@@ -128,6 +128,19 @@ pub fn test_github_ssh() -> SshCheck {
 
 /// Every repository with what TekBoard knows about it, and the MY Epitech view it was matched against.
 /// Hand-in dates reported by MY Epitech are saved on the way, so every screen reads the same date.
+/// A repository inside the configured folders, for code that is not a command (Tika's tools).
+pub(crate) fn repo_dir_of(state: &AppState, path: &str) -> Result<PathBuf> {
+    let roots = settings::load(&state.conn())?.roots;
+    let p = std::fs::canonicalize(path).map_err(|_| AppError::new("not_found", format!("« {path} » n'est pas un dépôt local : clone le projet d'abord.")))?;
+    if !roots.iter().filter_map(|r| std::fs::canonicalize(r).ok()).any(|r| p.starts_with(&r)) {
+        return Err(AppError::new("outside_roots", "Ce dossier n'est pas dans tes dossiers de projets."));
+    }
+    if !p.join(".git").exists() {
+        return Err(AppError::new("not_a_repo", "Ce dossier n'est pas un dépôt git."));
+    }
+    Ok(p)
+}
+
 /// Last scan of the repositories. The dashboard, the deadline board and the agenda all ask
 /// for it at the same moment after a change: one scan serves them (a caller that arrives
 /// while a scan runs waits for it), then the result is reused for a very short while.

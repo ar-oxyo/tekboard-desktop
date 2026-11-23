@@ -84,6 +84,9 @@ pub const SPECS: &[Spec] = &[
     Spec { name: "extend_focus", label: "Prolongation de la session", risk: Risk::Read, description: "Ajoute du temps à la session en cours.", schema: || obj(json!({"minutes": n("Minutes à ajouter, 5 à 120")}), &["minutes"]) },
     Spec { name: "stop_focus", label: "Fin de la session", risk: Risk::Read, description: "Termine la session en cours ; done=true marque aussi sa tâche et son entrée du calendrier comme faites.", schema: || obj(json!({"done": b("Travail terminé")}), &[]) },
     Spec { name: "suggest_plan", label: "Calcul d'un planning", risk: Risk::Approval, description: "Calcule avec le moteur de TekBoard un planning réaliste (pauses, plafond, temps libre, marge et bloc de tests avant chaque rendu) à partir des estimations des projets, et le propose à l'utilisateur. scope : day, week, two_weeks, reorganize (replacer les sessions passées non faites). Plus fiable que de placer les sessions toi-même : utilise-le, puis ajuste avec propose_schedule si besoin.", schema: || obj(json!({"scope": s("day | week | two_weeks | reorganize"), "project": s("Limiter à un projet (clé)")}), &["scope"]) },
+    Spec { name: "start_moulinette", label: "Lancement de la moulinette", risk: Risk::Read, description: "Lance la moulinette de Tika (agent évaluateur dans un bac à sable, sur une copie du projet ; quelques minutes). Renvoie l'id de la tâche : attends-la avec wait_job puis explique les problèmes à partir du rapport.", schema: || obj(json!({"project": s("Clé du projet (dépôt local)")}), &["project"]) },
+    Spec { name: "generate_tests", label: "Génération de tests", risk: Risk::Read, description: "Lance la génération de tests unitaires sur une copie du projet (rien n'est écrit dans le projet : l'utilisateur valide le diff). Renvoie l'id de la tâche, à attendre avec wait_job.", schema: || obj(json!({"project": s("Clé du projet (dépôt local)")}), &["project"]) },
+    Spec { name: "wait_job", label: "Attente d'une tâche", risk: Risk::Read, description: "Attend qu'une tâche (moulinette, tests) se termine, au plus 240 s, et renvoie son résultat : vérifications, verdict, rapport. Rappelle-le si elle tourne encore.", schema: || obj(json!({"id": n("Id de la tâche"), "seconds": n("Attente maximale, 10 à 240")}), &["id"]) },
     Spec { name: "navigate", label: "Navigation", risk: Risk::Read, description: "Ouvre un écran de TekBoard pour l'utilisateur : today, projects, planning, school, stats, resources, settings ; avec un projet, ouvre sa page (onglet : overview, plan, checks, git, libraries, notes).", schema: || obj(json!({"page": s("Écran"), "project": s("Clé du projet"), "tab": s("Onglet de la page projet")}), &["page"]) },
     Spec { name: "list_runs", label: "Historique des vérifications", risk: Risk::Read, description: "Dernières exécutions (tests, Banana, TestRepo, moulinette, analyses) avec leur statut et leur résumé.", schema: || obj(json!({"project": s("Clé du projet"), "kind": s("Type d'exécution"), "limit": n("1 à 20")}), &[]) },
     Spec { name: "get_report", label: "Lecture d'un rapport", risk: Risk::Read, description: "Le rapport complet d'une exécution (id donné par list_runs), avec la fin de son journal.", schema: || obj(json!({"id": n("Id de l'exécution")}), &["id"]) },
@@ -497,6 +500,25 @@ fn run(state: &AppState, caller: &Caller, name: &str, a: &Value) -> Result<Out> 
             }
             let pid = propose(state, caller, "schedule", &title, &sug.notes.join(" "), &json!({"actions": sug.actions, "warnings": sug.unplaced.iter().map(|u| format!("Sans créneau : {} ({})", u.title, schedule::dur(u.minutes))).collect::<Vec<_>>(), "origin": "auto"}))?;
             read(json!({"status": "proposed", "proposalId": pid, "changements": sug.actions.len(), "nonPlace": sug.unplaced, "notes": sug.notes}))
+        }
+        "start_moulinette" | "generate_tests" => {
+            let dir = crate::commands::repo_dir_of(state, need(a, "project")?)?;
+            let id = if name == "start_moulinette" { super::agents::moulinette(state, dir.clone())? } else { super::agents::generate_tests(state, dir.clone())? };
+            crate::notify::emit("ui-show-job", json!({"id": id, "repo": dir}));
+            read(json!({"status": "started", "jobId": id, "message": "Tâche lancée : l'utilisateur la suit en direct dans Vérifier. Utilise wait_job pour le résultat."}))
+        }
+        "wait_job" => {
+            let id = need_i(a, "id")? as u64;
+            let secs = arg_i(a, "seconds").unwrap_or(180).clamp(10, 240);
+            let t0 = std::time::Instant::now();
+            loop {
+                let v = state.jobs.get(id).ok_or_else(|| AppError::new("not_found", "Tâche inconnue (terminée depuis longtemps ? utilise list_runs)."))?;
+                if v.status != "running" || t0.elapsed().as_secs() as i64 >= secs {
+                    let checks: Vec<Value> = v.events.iter().filter(|e| e["kind"] == "check").map(|e| json!({"titre": e["title"], "statut": e["status"], "preuve": crate::ai::stream::clip(e["evidence"].as_str().unwrap_or(""), 300), "piste": e["fix"]})).collect();
+                    return read(json!({"statut": v.status, "etapes": v.steps.iter().map(|s| json!({"etape": s.label, "statut": s.status, "detail": s.detail})).collect::<Vec<_>>(), "verifications": checks, "verdict": v.summary.get("verdict"), "rapport": v.summary.get("report").and_then(Value::as_str).map(|r| crate::ai::stream::clip(r, 5000)), "fichiersEcrits": v.summary.get("changes").and_then(Value::as_array).map(|c| c.iter().map(|x| x["path"].clone()).collect::<Vec<_>>()), "erreur": v.summary.get("error")}));
+                }
+                std::thread::sleep(std::time::Duration::from_secs(2));
+            }
         }
         "navigate" => {
             let page = need(a, "page")?;

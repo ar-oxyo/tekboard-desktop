@@ -397,16 +397,31 @@ pub fn claude_brief(state: State<'_, AppState>, repo: String, task: String, disc
     }
 }
 
+/// Test generation by Tika on a working copy: the result is a diff to validate.
 #[tauri::command(async)]
 pub fn gen_tests_start(state: State<'_, AppState>, repo: String) -> Result<u64> {
     let dir = repo_dir(&state, &repo)?;
-    let key = dir.to_string_lossy().into_owned();
-    if let Some(id) = state.jobs.active("gen_tests", Some(&key)) {
-        return Ok(id);
-    }
-    let template = prompts::template(&state.conn(), prompts::TESTS)?;
-    let title = title_for(&dir, "Generate tests with Claude");
-    Ok(state.jobs.start(state.db.clone(), "gen_tests", Some(key), title, moulinette::GEN_STEPS, move |job| moulinette::generate_tests(job, &dir, &template)))
+    crate::ai::agents::generate_tests(&state, dir)
+}
+
+/// Writes the chosen generated test files into the project (backups of replaced files).
+#[tauri::command(async)]
+pub fn gen_tests_apply(state: State<'_, AppState>, repo: String, run_id: i64, paths: Vec<String>) -> Result<usize> {
+    let dir = repo_dir(&state, &repo)?;
+    crate::ai::agents::apply_tests(&state, &dir, run_id, &paths)
+}
+
+/// Tika's moulinette: an agent evaluates a working copy, in the sandbox.
+#[tauri::command(async)]
+pub fn moulinette_ai_start(state: State<'_, AppState>, repo: String) -> Result<u64> {
+    let dir = repo_dir(&state, &repo)?;
+    crate::ai::agents::moulinette(&state, dir)
+}
+
+/// Whether the agents' sandbox works here, and why not.
+#[tauri::command(async)]
+pub fn sandbox_check() -> std::result::Result<(), String> {
+    crate::ai::sandbox::check()
 }
 
 /// Asks Claude Code (read-only) for a review of the repository. The report lands in the job summary.

@@ -545,7 +545,7 @@ export interface JobStep {
   detail: string | null;
   durationMs: number | null;
 }
-export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant";
+export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant";
 /** Kind-specific facts; see the Rust module that produces each kind. */
 export type RunSummary = Record<string, unknown> & { steps?: JobStep[] };
 export interface JobView {
@@ -1192,6 +1192,9 @@ export const api = {
   insightsList: () => invoke<Insight[]>("insights_list"),
   insightSet: (id: number, status: "dismiss" | "snooze" | "done", hours?: number) => invoke<void>("insight_set", { id, status, hours: hours ?? null }),
   insightsRefresh: () => invoke<number>("insights_refresh"),
+  moulinetteAiStart: (repo: string) => invoke<number>("moulinette_ai_start", { repo }),
+  genTestsApply: (repo: string, runId: number, paths: string[]) => invoke<number>("gen_tests_apply", { repo, runId, paths }),
+  sandboxCheck: () => invoke<void>("sandbox_check"),
   focusGet: () => invoke<FocusSession | null>("focus_get"),
   focusStart: (start: FocusStart) => invoke<FocusSession>("focus_start", { start }),
   focusPause: () => invoke<FocusSession>("focus_pause"),

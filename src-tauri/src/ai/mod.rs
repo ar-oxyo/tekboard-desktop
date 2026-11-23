@@ -6,6 +6,7 @@
 //! - `tools`: the actions Tika can take in TekBoard, with their risk level.
 
 pub mod agent_tools;
+pub mod agents;
 pub mod chat;
 pub mod insights;
 pub mod ipc;
@@ -15,3 +16,4 @@ pub mod runner;
 pub mod sandbox;
 pub mod stream;
 pub mod tools;
+pub mod workcopy;

@@ -4,7 +4,8 @@ import { Ban, Check, ChevronDown, ChevronRight, Circle, FolderOpen, Minus, Squar
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CodeView } from "../../components/DiffView";
 import { Badge, Button, cn, Spinner } from "../../components/ui";
-import type { JobStatus, JobStep, RunKind, RunSummary, StepStatus } from "../../lib/api";
+import type { JobEvent, JobStatus, JobStep, RunKind, RunSummary, StepStatus } from "../../lib/api";
+import { AgentView } from "./AgentView";
 
 export interface ReportData {
   kind: RunKind;
@@ -15,11 +16,16 @@ export interface ReportData {
   log: string;
   durationMs: number;
   startedAt: number;
+  events?: JobEvent[];
+  repo?: string | null;
+  repoPath?: string | null;
+  runId?: number | null;
+  id?: number;
 }
 
 export const STATUS_LABEL: Record<JobStatus, string> = { running: "En cours", success: "Réussi", warning: "Avertissement", failed: "Échec", cancelled: "Annulé", interrupted: "Interrompu" };
 export const STATUS_TONE: Record<JobStatus, "info" | "ok" | "warn" | "danger" | "neutral"> = { running: "info", success: "ok", warning: "warn", failed: "danger", cancelled: "neutral", interrupted: "neutral" };
-export const KIND_LABEL: Record<RunKind, string> = { tests: "Unit tests", testrepo: "TestRepo", banana: "Banana", moulinette: "Claude Moulinette", gen_tests: "Generated tests", readme: "README", build: "Build", command: "Command", analysis: "Repository analysis", assistant: "Planning assistant" };
+export const KIND_LABEL: Record<RunKind, string> = { tests: "Tests du projet", testrepo: "Simulation de rendu", banana: "Banana", moulinette: "Vérifications rapides", moulinette_ai: "Moulinette de Tika", gen_tests: "Tests générés", readme: "README", build: "Compilation", command: "Commande", analysis: "Analyse du dépôt", assistant: "Tika" };
 
 export function duration(ms: number): string {
   if (ms < 1000) return `${ms} ms`;
@@ -275,27 +281,6 @@ function Moulinette({ s }: { s: RunSummary }) {
   );
 }
 
-function GenTests({ s }: { s: RunSummary }) {
-  const changed = arr(s.changed);
-  return (
-    <div className="flex flex-col gap-3">
-      {changed.length > 0 && (
-        <div className="rounded-lg border border-line bg-bg px-3 py-2">
-          <p className="mb-1 text-xs font-medium text-muted">Files written by Claude Code — nothing is committed; review them on the Git screen</p>
-          {changed.map((c) => <p key={String(c)} className="selectable font-mono text-xs">{String(c)}</p>)}
-        </div>
-      )}
-      {rec(s.tests).framework !== undefined && <Tests tests={rec(s.tests)} />}
-      {str(s.report) && (
-        <div>
-          <p className="mb-1 text-xs font-medium text-muted">Claude's summary</p>
-          <p className="selectable rounded-lg border border-line bg-bg px-3 py-2 text-[13px] whitespace-pre-wrap">{str(s.report)}</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function CommandResult({ s, status }: { s: RunSummary; status: JobStatus }) {
   const code = num(s.exitCode);
   return (
@@ -328,12 +313,20 @@ export function Report({ data, onCancel, envActions, onClear }: { data: ReportDa
         <span className="text-xs text-faint">{duration(data.durationMs)}</span>
         {running && onCancel && <Button size="sm" variant="danger" onClick={onCancel}>{data.kind === "command" ? "Stop" : "Cancel"}</Button>}
       </div>
-      {data.kind === "command" ? <CommandResult s={s} status={data.status} /> : <Stepper steps={data.steps} />}
+      {data.kind === "moulinette_ai" || data.kind === "gen_tests" ? (
+        <>
+          <Stepper steps={data.steps.filter((x) => !x.id.startsWith("check:"))} />
+          <AgentView kind={data.kind} status={data.status} events={data.events ?? []} summary={s} repo={data.repo ?? data.repoPath ?? null} runId={data.runId ?? (data.id !== undefined && data.events === undefined ? data.id : null)} />
+        </>
+      ) : data.kind === "command" ? (
+        <CommandResult s={s} status={data.status} />
+      ) : (
+        <Stepper steps={data.steps} />
+      )}
       {data.kind === "testrepo" && <TestRepo s={s} steps={data.steps} envActions={envActions} />}
       {data.kind === "tests" && !running && <Tests tests={rec(s.tests)} />}
       {data.kind === "banana" && !running && <Banana s={s} />}
       {data.kind === "moulinette" && <Moulinette s={s} />}
-      {data.kind === "gen_tests" && <GenTests s={s} />}
       {data.kind === "analysis" && str(s.report) && (
         <div>
           <p className="mb-1 text-xs font-medium text-muted">Claude's analysis — its reading of the code, to verify, not a measurement or a grade</p>

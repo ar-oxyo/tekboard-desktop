@@ -1,7 +1,7 @@
 // Testing center: everything that checks a project — unit tests, clean-clone test, Banana,
 // the pre-check, test generation — with one live report and one history.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Banana as BananaIcon, Bot, ChevronDown, FileText, FlaskConical, FolderOpen, GitBranch, PackageOpen, PenLine, Play, ScanSearch, ShieldCheck, SquareTerminal, Trash2 } from "lucide-react";
+import { Banana as BananaIcon, Bot, ChevronDown, FileText, FlaskConical, FolderOpen, GitBranch, PackageOpen, PenLine, Play, ScanSearch, ShieldCheck, Sparkles, SquareTerminal, Trash2 } from "lucide-react";
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from "../../components/Menu";
 import { useEffect, useState, type ReactNode } from "react";
 import { Select } from "../../components/Select";
@@ -254,6 +254,7 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
   const [custom, setCustom] = useState(saved ?? "");
   const [ack, setAck] = useState(false);
   const chosen = suites.find((s) => s.command === command);
+  const sandbox = useQuery({ queryKey: ["sandbox"], queryFn: api.sandboxCheck, staleTime: 10 * 60_000, retry: false });
   const [mode, setMode] = useState<"remote" | "snapshot">(info.hasRemote ? "remote" : "snapshot");
   const [isolation, setIsolation] = useState<"none" | "docker">("none");
   const [build, setBuild] = useState(info.defaultBuild);
@@ -345,8 +346,17 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
         )}
       </Tile>
 
-      <Tile id="moulinette" {...fold} icon={<ShieldCheck className="size-4" />} title="Claude Moulinette" action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} onClick={() => { if (memory.trim() !== (info.config.runCmd ?? "")) saveConfig.mutate({ runCmd: memory.trim() || null }); onStart(() => api.moulinetteStart(repo, { build: build.trim(), tests: firstTrusted, memoryRun: memory.trim() || null, subjectAi })); }}>Run pre-check</Button>}>
-        <p>Build, structure, Banana, tests, memory, then the subject. A personal pre-check in your working folder: not Epitech's Moulinette, and no grade.</p>
+      <Tile id="tika" {...fold} icon={<Sparkles className="size-4" />} title="Moulinette de Tika" action={<Button size="sm" variant="primary" icon={<Play className="size-3.5" />} busy={busy} disabled={!claudeReady || sandbox.isError} title={!claudeReady ? "Claude Code n'est pas disponible : voir Réglages → Outils" : sandbox.isError ? String(sandbox.error) : undefined} onClick={() => onStart(() => api.moulinetteAiStart(repo))}>Lancer</Button>}>
+        <p>Tika joue l'évaluateur : il lit le sujet et le code, décide des tests, compile, essaie les arguments et les cas limites, passe valgrind et creuse ce qui casse. Tu suis chaque vérification en direct. Simulation, pas la moulinette officielle.</p>
+        {sandbox.isError ? (
+          <p className="text-warn">Bac à sable indisponible : {asAppError(sandbox.error).message || String(sandbox.error)}. Rien ne serait exécuté.</p>
+        ) : (
+          <p className="text-faint">Sur une copie de ton projet, dans bubblewrap : pas de réseau, ton dossier personnel est masqué, ton projet n'est jamais modifié. Compte dans ton usage de Claude.</p>
+        )}
+      </Tile>
+
+      <Tile id="moulinette" {...fold} icon={<ShieldCheck className="size-4" />} title="Vérifications rapides" action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} title={!build.trim() ? "Indique la commande de compilation dans la tuile « Simulation de rendu »" : undefined} onClick={() => { if (memory.trim() !== (info.config.runCmd ?? "")) saveConfig.mutate({ runCmd: memory.trim() || null }); onStart(() => api.moulinetteStart(repo, { build: build.trim(), tests: firstTrusted, memoryRun: memory.trim() || null, subjectAi })); }}>Run pre-check</Button>}>
+        <p>Compilation, structure, Banana, tests et mémoire, sans IA et en quelques secondes, dans ton dossier de travail.</p>
         <Labeled label="Memory run"><Input className="h-7 font-mono text-xs" placeholder={info.valgrind ? "./program arguments — run under Valgrind" : "Valgrind is not installed"} disabled={!info.valgrind} value={memory} onChange={(e) => setMemory(e.target.value)} /></Labeled>
         <label className={cn("flex items-start gap-2", (!claudeReady || !info.subject) && "opacity-60")}>
           <input type="checkbox" className="mt-0.5 accent-(--color-accent)" disabled={!claudeReady || !info.subject} checked={subjectAi} onChange={(e) => setSubjectAi(e.target.checked)} />
@@ -373,8 +383,8 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
             }
           >
             <MenuLabel>{claudeReady ? `Claude Code ${info.claude.version?.split(" ")[0] ?? ""}` : "Claude Code is not available"}</MenuLabel>
-            <MenuItem icon={<FlaskConical className="size-4" />} disabled={!claudeReady || busy} onSelect={() => onBrief("tests")} hint="writes in tests/">
-              Generate unit tests…
+            <MenuItem icon={<FlaskConical className="size-4" />} disabled={!claudeReady || busy} onSelect={() => onStart(() => api.genTestsStart(repo))} hint="diff à valider">
+              Générer des tests
             </MenuItem>
             <MenuItem icon={<ScanSearch className="size-4" />} disabled={!claudeReady || busy} onSelect={() => onBrief("analysis")} hint="read-only">
               Analyse repository…
@@ -393,7 +403,7 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
         }
       >
         {claudeReady ? (
-          <p>Test generation writes in <code className="font-mono">tests/</code> only; the analysis and the README are read-only. You see exactly what Claude Code may do and the instructions it receives before anything starts.</p>
+          <p>La génération de tests travaille sur une copie : Tika écrit, compile et lance les tests dans le bac à sable, puis te montre les fichiers à appliquer. L'analyse et le README sont en lecture seule.</p>
         ) : (
           <p className="text-warn">
             {info.claude.state === "not_found" ? "Claude Code was not found on this computer." : (info.claude.detail ?? "Claude Code cannot be used.")}{" "}
