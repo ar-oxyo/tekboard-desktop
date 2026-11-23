@@ -51,10 +51,10 @@ export function fileTitle(file: CatalogFile): string {
 }
 
 /** What ticking and unticking amounts to, compared with what the project holds. */
-export function buildRequest(libDir: string, desired: Set<string>, present: Set<string>, replace: Set<string>, exclude: Set<string>, init: boolean): LibPlanRequest {
+export function buildRequest(libDir: string, desired: Set<string>, present: Set<string>, replace: Set<string>, exclude: Set<string>, init: boolean, shared = false): LibPlanRequest {
   const add = [...desired].filter((r) => !present.has(r)).sort();
   const remove = [...present].filter((r) => !desired.has(r)).sort();
-  return { libDir, add, remove, replace: [...replace].filter((r) => desired.has(r)).sort(), exclude: [...exclude].sort(), init };
+  return { libDir, add, remove, replace: [...replace].filter((r) => desired.has(r)).sort(), exclude: [...exclude].sort(), init, shared };
 }
 
 export const isEmptyRequest = (r: LibPlanRequest) => r.add.length === 0 && r.remove.length === 0 && r.replace.length === 0 && !r.init;

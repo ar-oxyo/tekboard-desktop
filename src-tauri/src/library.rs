@@ -748,11 +748,19 @@ pub fn makefile_update(text: &str, add: &[String], remove: &[String]) -> MakeEdi
     MakeEdit::Edited(out)
 }
 
-/// A plain static-library Makefile, used only when the source library has none.
-fn generated_makefile(name: &str, dirs: &BTreeSet<String>, headers: &[String]) -> String {
+/// A plain library Makefile, used only when the source library has none: static (`.a`, copied
+/// next to the project's Makefile) or dynamic (`.so`, position-independent code).
+fn generated_makefile(name: &str, dirs: &BTreeSet<String>, headers: &[String], shared: bool) -> String {
     let mut wild = vec!["$(wildcard *.c)".to_string()];
     wild.extend(dirs.iter().filter(|d| !d.is_empty()).map(|d| format!("$(wildcard {d}/*.c)")));
     let _ = headers;
+    if shared {
+        return format!(
+            "##\n## EPITECH PROJECT, {year}\n## lib{name}\n## File description:\n## Makefile\n##\n\nCC\t=\tepiclang\n\nCFLAGS\t=\t-Wall -Wextra -fPIC -I.\n\nSRC\t=\t{src}\n\nOBJ\t=\t$(SRC:.c=.o)\n\nNAME\t=\tlib{name}.so\n\nall:\t$(NAME)\n\n$(NAME):\t$(OBJ)\n\t$(CC) -shared -o $(NAME) $(OBJ)\n\tcp $(NAME) ../\n\nclean:\n\trm -f $(OBJ)\n\nfclean:\tclean\n\trm -f $(NAME) ../$(NAME)\n\nre:\tfclean all\n\n.PHONY:\tall clean fclean re\n",
+            year = chrono::Local::now().format("%Y"),
+            src = wild.join(" \\\n\t\t"),
+        );
+    }
     format!(
         "##\n## EPITECH PROJECT, {year}\n## lib{name}\n## File description:\n## Makefile\n##\n\nCC\t=\tepiclang\n\nCFLAGS\t=\t-Wall -Wextra -I.\n\nSRC\t=\t{src}\n\nOBJ\t=\t$(SRC:.c=.o)\n\nNAME\t=\tlib{name}.a\n\nall:\t$(NAME)\n\n$(NAME):\t$(OBJ)\n\tar rc $(NAME) $(OBJ)\n\tcp $(NAME) ../\n\nclean:\n\trm -f $(OBJ)\n\nfclean:\tclean\n\trm -f $(NAME) ../$(NAME)\n\nre:\tfclean all\n\n.PHONY:\tall clean fclean re\n",
         year = chrono::Local::now().format("%Y"),
@@ -868,6 +876,10 @@ pub struct PlanRequest {
     pub exclude: Vec<String>,
     /// Create the library skeleton (Makefile, headers) even with no function.
     pub init: bool,
+    /// A dynamic library (`lib<name>.so`, built with -fPIC -shared) instead of a static one,
+    /// when TekBoard writes the library's Makefile.
+    #[serde(default)]
+    pub shared: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -994,7 +1006,7 @@ pub fn plan(conn: &Connection, repo: &Path, library: &Library, meta: &HashMap<St
         match &project_mk {
             None => {
                 let dirs: BTreeSet<String> = present.iter().map(|r| parent_of(r).to_string()).collect();
-                let text = scan.makefile.clone().unwrap_or_else(|| generated_makefile(&lib_name, &dirs, &[]));
+                let text = scan.makefile.clone().unwrap_or_else(|| generated_makefile(&lib_name, &dirs, &[], req.shared));
                 let text = match makefile_update(&text, &present.iter().cloned().collect::<Vec<_>>(), &[]) {
                     MakeEdit::Edited(t) => t,
                     MakeEdit::Unchanged => text,
@@ -1078,7 +1090,11 @@ pub fn plan(conn: &Connection, repo: &Path, library: &Library, meta: &HashMap<St
         if root_mk.is_file() {
             let text = read_text(&root_mk)?;
             if !text.contains(&lib_dir) && !text.contains(&format!("-l{lib_name}")) {
-                warnings.push(format!("The project Makefile mentions neither {lib_dir} nor -l{lib_name}: it will not build or link this library until you add it."));
+                warnings.push(if req.shared {
+                    format!("Le Makefile du projet ne mentionne ni {lib_dir} ni -l{lib_name}. Pour la bibliothèque dynamique, ajoute avant l'édition de liens : make -C {lib_dir}, puis -L. -l{lib_name} -Wl,-rpath,'$$ORIGIN' (le .so est copié à côté de ton Makefile).")
+                } else {
+                    format!("Le Makefile du projet ne mentionne ni {lib_dir} ni -l{lib_name} : ajoute make -C {lib_dir} puis -L. -l{lib_name} pour compiler et lier la bibliothèque.")
+                });
             }
         }
     }
@@ -1607,6 +1623,16 @@ mod tests {
         let strlen = cat.files.iter().find(|x| x.rel == "utils/my_strlen.c").unwrap();
         assert_eq!(strlen.deps[0].kind, "declared");
         assert_eq!(cat.cycles, vec![vec!["utils/my_strdup.c".to_string(), "utils/my_strlen.c".to_string()]]);
+    }
+
+    #[test]
+    fn generated_makefiles_static_or_dynamic() {
+        let dirs: BTreeSet<String> = ["".to_string(), "utils".to_string()].into_iter().collect();
+        let a = generated_makefile("my", &dirs, &[], false);
+        assert!(a.contains("libmy.a") && a.contains("ar rc") && !a.contains("-shared"));
+        let so = generated_makefile("my", &dirs, &[], true);
+        assert!(so.contains("NAME\t=\tlibmy.so") && so.contains("-fPIC") && so.contains("$(CC) -shared -o $(NAME) $(OBJ)") && so.contains("$(wildcard utils/*.c)"));
+        assert!(!so.contains("ar rc"));
     }
 
     #[test]

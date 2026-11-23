@@ -64,7 +64,7 @@ describe("library search", () => {
 describe("library request", () => {
   it("adds what is ticked and missing, removes what is unticked and present", () => {
     const r = buildRequest("lib/my", new Set(["a.c", "b.c"]), new Set(["b.c", "c.c"]), new Set(["b.c", "zzz.c"]), new Set(), false);
-    expect(r).toEqual({ libDir: "lib/my", add: ["a.c"], remove: ["c.c"], replace: ["b.c"], exclude: [], init: false });
+    expect(r).toEqual({ libDir: "lib/my", add: ["a.c"], remove: ["c.c"], replace: ["b.c"], exclude: [], init: false, shared: false });
     expect(isEmptyRequest(r)).toBe(false);
   });
 

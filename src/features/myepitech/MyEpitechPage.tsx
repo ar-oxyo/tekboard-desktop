@@ -103,7 +103,7 @@ export function MyEpitechPage() {
               </label>
               <div className="flex flex-wrap gap-2">
                 <Button variant="primary" icon={<LogIn className="size-3.5" />} disabled={!consent} busy={connect.isPending} onClick={() => connect.mutate()}>{s?.windowOpen ? "Show the sign-in window" : "Connect to MY Epitech"}</Button>
-                <Button icon={<RefreshCw className="size-3.5" />} disabled={!s?.connected} busy={sync.isPending} onClick={() => sync.mutate()}>Sync now</Button>
+                <Button icon={<RefreshCw className="size-3.5" />} disabled={!s?.connected} disabledReason="Connecte-toi d'abord : bouton Se connecter, puis identifie-toi dans la fenêtre MY Epitech" busy={sync.isPending} onClick={() => sync.mutate()}>Synchroniser</Button>
                 {(s?.sessionStored || s?.connected || entries.length > 0) && !confirmForget && <Button variant="ghost" icon={<Trash2 className="size-3.5" />} onClick={() => setConfirmForget(true)}>Erase session…</Button>}
               </div>
               {confirmForget && (

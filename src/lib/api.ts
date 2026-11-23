@@ -480,6 +480,8 @@ export interface LibPlanRequest {
   replace: string[];
   exclude: string[];
   init: boolean;
+  /** Dynamic library (.so) instead of a static one, when TekBoard writes its Makefile. */
+  shared?: boolean;
 }
 export interface LibPlanAction {
   path: string;

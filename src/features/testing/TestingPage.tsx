@@ -4,13 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Banana as BananaIcon, Bot, ChevronDown, FileText, FlaskConical, FolderOpen, GitBranch, PackageOpen, PenLine, Play, ScanSearch, ShieldCheck, Sparkles, SquareTerminal, Trash2 } from "lucide-react";
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from "../../components/Menu";
 import { useEffect, useState, type ReactNode } from "react";
+import { ProjectPicker } from "../../components/ProjectPicker";
 import { Select } from "../../components/Select";
 import { Button, Card, CardTitle, cn, Dot, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
 import { useJob } from "../../lib/jobs";
 import { api, asAppError, type RunKind, type TestingInfo } from "../../lib/api";
 import { formatBytes, timeAgo } from "../../lib/format";
 import { usePref, useRepos } from "../../lib/hooks";
-import { displayName, repoOptions } from "../../lib/repos";
+import { displayName } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { ClaudeBriefDialog } from "../tools/ClaudeBrief";
 import { QuickBar } from "./QuickBar";
@@ -74,7 +75,7 @@ export function TestingPage() {
         title="Testing"
         subtitle="Run, check and validate a project. Every result below was produced on this computer."
         actions={
-          <Select className="w-64" label="Project" placeholder="Project" search value={repoPath} onChange={(v) => useUi.setState({ testingRepo: v || null, runId: null })} options={repoOptions(repos.data ?? [])} />
+          <ProjectPicker className="w-64" value={repoPath} onChange={(v) => useUi.setState({ testingRepo: v, runId: null })} />
         }
       />
       {repoPath === null ? (

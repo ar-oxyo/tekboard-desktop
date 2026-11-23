@@ -1,9 +1,12 @@
-// Ctrl+K: navigate, open any project, start an action. Everything listed here does something real.
+// Ctrl+K: go anywhere, open any project, start an action, or ask Tika anything. Everything listed here does something real.
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { CalendarCheck, CalendarDays, PenLine, Sparkles, ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, PawPrint, Plus, RefreshCw, ScrollText, Settings } from "lucide-react";
-import type { ReactNode } from "react";
+import { CalendarCheck, CalendarDays, PenLine, Sparkles, ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, PawPrint, Plus, RefreshCw, ScrollText, Settings, Timer } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { SECTIONS } from "../../app/sections";
+import { startFocus } from "../planning/Focus";
+import { suggestPlan } from "../tika/suggest";
 import { Badge } from "../../components/ui";
 import { api } from "../../lib/api";
 import { keys, useProjectActions, useRepos, useSettings, useSubjects, useTemplates } from "../../lib/hooks";
@@ -15,27 +18,15 @@ const itemClass =
 const groupClass = "[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-normal [&_[cmdk-group-heading]]:text-faint ";
 
 const ic = "size-4";
-const GO: Array<[Page, string, ReactNode]> = [
-  ["overview", "Overview", <LayoutDashboard className={ic} />],
-  ["projects", "Projects", <FolderGit2 className={ic} />],
-  ["git", "Git", <GitBranch className={ic} />],
-  ["library", "Library", <LibraryBig className={ic} />],
-  ["testing", "Testing", <FlaskConical className={ic} />],
-  ["subjects", "Subjects", <FileText className={ic} />],
-  ["analytics", "Analytics", <ChartNoAxesColumn className={ic} />],
-  ["templates", "Templates", <LayoutTemplate className={ic} />],
-  ["myepitech", "MY Epitech", <GraduationCap className={ic} />],
-  ["cozy", "Cozy Fox", <PawPrint className={ic} />],
-  ["settings", "Settings", <Settings className={ic} />],
-  ["agenda", "Planning", <CalendarDays className={ic} />],
-  ["prompts", "Prompts", <PenLine className={ic} />],
-];
+const PAGE_ICON: Partial<Record<Page, ReactNode>> = { overview: <LayoutDashboard className={ic} />, projects: <FolderGit2 className={ic} />, git: <GitBranch className={ic} />, library: <LibraryBig className={ic} />, testing: <FlaskConical className={ic} />, subjects: <FileText className={ic} />, analytics: <ChartNoAxesColumn className={ic} />, templates: <LayoutTemplate className={ic} />, myepitech: <GraduationCap className={ic} />, cozy: <PawPrint className={ic} />, settings: <Settings className={ic} />, agenda: <CalendarDays className={ic} />, prompts: <PenLine className={ic} /> };
+/** Every screen, with the shortcut of its section (Ctrl+1 to Ctrl+7 open the sections). */
+const GO: Array<[Page, string, ReactNode, string | undefined]> = SECTIONS.flatMap((sec, i) => sec.pages.map((p, j) => [p.page, sec.pages.length > 1 ? `${sec.label} · ${p.label}` : sec.label, PAGE_ICON[p.page], j === 0 ? `Ctrl ${i + 1}` : undefined] as [Page, string, ReactNode, string | undefined]));
 type ToolId = "testing" | "library" | "package" | "readme";
 const TOOLS: Array<[ToolId, string, ReactNode]> = [
-  ["testing", "Test, TestRepo, Banana", <FlaskConical className={ic} />],
-  ["library", "Library functions", <LibraryBig className={ic} />],
-  ["package", "Package for AI", <PackageOpen className={ic} />],
-  ["readme", "Generate README", <ScrollText className={ic} />],
+  ["testing", "Vérifier (moulinette, tests)", <FlaskConical className={ic} />],
+  ["library", "Bibliothèques", <LibraryBig className={ic} />],
+  ["package", "Paquet pour une IA", <PackageOpen className={ic} />],
+  ["readme", "Générer le README", <ScrollText className={ic} />],
 ];
 
 export function CommandPalette() {
@@ -51,6 +42,8 @@ export function CommandPalette() {
   const openSheet = useUi((s) => s.openSheet);
   const toast = useUi((s) => s.toast);
   const act = useProjectActions();
+  const [search, setSearch] = useState("");
+  const ask = (text: string) => run(() => useUi.getState().openAssistant({ text }));
 
   const run = (fn: () => void) => () => {
     setOpen(false);
@@ -72,27 +65,40 @@ export function CommandPalette() {
           aria-describedby={undefined}
           className="glass anim-pop fixed top-[42%] left-1/2 z-50 w-[600px] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-hidden border border-white/10 focus:outline-none"
         >
-          <Dialog.Title className="sr-only">Command palette</Dialog.Title>
-          <Command loop label="Command palette">
-            <Command.Input autoFocus aria-label="Search projects, templates and actions" placeholder="Search" className="h-12 w-full border-b border-white/6 bg-transparent px-4 text-sm text-fg placeholder:text-faint focus:outline-none" />
+          <Dialog.Title className="sr-only">Palette de commandes</Dialog.Title>
+          <Command loop label="Palette de commandes">
+            <Command.Input autoFocus value={search} onValueChange={setSearch} aria-label="Rechercher un projet, un sujet, une action, ou demander à Tika" placeholder="Rechercher, ou demander à Tika…" className="h-12 w-full border-b border-white/6 bg-transparent px-4 text-sm text-fg placeholder:text-faint focus:outline-none" />
             <Command.List className="max-h-[380px] overflow-y-auto p-1.5">
-              <Command.Empty className="px-3 py-6 text-center text-[13px] text-muted">Nothing matches.</Command.Empty>
+              {search.trim().length > 2 && (
+                <Command.Group heading="Tika" className={groupClass}>
+                  <Command.Item forceMount value={`tika ${search}`} onSelect={ask(search.trim())} className={itemClass}>
+                    <Sparkles className="size-4 shrink-0 text-accent" />
+                    <span className="min-w-0 flex-1 truncate">
+                      Demander à Tika : <span className="text-fg">{search.trim()}</span>
+                    </span>
+                    <span className="text-[11px] text-faint">Entrée</span>
+                  </Command.Item>
+                </Command.Group>
+              )}
 
               <Command.Group heading="Actions" className={groupClass}>
                 <Item icon={<Plus className="size-4" />} onSelect={run(() => openLauncher({ mode: "new" }))} hint="Ctrl N">
-                  New project — clone and initialize
+                  Nouveau projet : cloner et initialiser
                 </Item>
                 <Item icon={<PenLine className="size-4" />} onSelect={run(() => useUi.getState().setCaptureOpen(true))} hint="Ctrl I">
-                  Quick capture — a task or an idea
+                  Capture rapide : une tâche ou une idée
                 </Item>
-                <Item icon={<Sparkles className="size-4" />} onSelect={run(() => useUi.getState().openAssistant())}>
-                  Ask the planning assistant
+                <Item icon={<Sparkles className="size-4" />} onSelect={run(() => useUi.getState().openAssistant())} hint="Ctrl J">
+                  Ouvrir Tika
                 </Item>
-                <Item icon={<CalendarCheck className="size-4" />} onSelect={run(() => useUi.getState().openAssistant({ text: "#day" }))}>
-                  Plan my day
+                <Item icon={<CalendarCheck className="size-4" />} onSelect={run(() => void suggestPlan("day"))}>
+                  Planifier ma journée
                 </Item>
-                <Item icon={<CalendarCheck className="size-4" />} onSelect={run(() => useUi.getState().openAssistant({ text: "#week" }))}>
-                  Plan my week
+                <Item icon={<CalendarCheck className="size-4" />} onSelect={run(() => void suggestPlan("week"))}>
+                  Planifier ma semaine
+                </Item>
+                <Item icon={<Timer className="size-4" />} onSelect={run(() => startFocus({ title: "Session de travail", project: null, taskId: null, eventId: null, plannedMin: 45 }, false))}>
+                  Démarrer une session de 45 min
                 </Item>
                 <Item
                   icon={<RefreshCw className="size-4" />}
@@ -102,19 +108,19 @@ export function CommandPalette() {
                     void qc.invalidateQueries({ queryKey: keys.env });
                   })}
                 >
-                  Refresh repositories and environment
+                  Actualiser les dépôts et l'environnement
                 </Item>
               </Command.Group>
 
-              <Command.Group heading="Go to" className={groupClass}>
-                {GO.map(([page, label, icon], n) => (
-                  <Item key={page} icon={icon} onSelect={go(page)} hint={n < 9 ? `Ctrl ${n + 1}` : undefined}>
+              <Command.Group heading="Aller à" className={groupClass}>
+                {GO.map(([page, label, icon, hint]) => (
+                  <Item key={page} icon={icon} onSelect={go(page)} hint={hint}>
                     {label}
                   </Item>
                 ))}
               </Command.Group>
               {(repos.data ?? []).length > 0 && (
-                <Command.Group heading="Project tools" className={groupClass}>
+                <Command.Group heading="Outils du projet" className={groupClass}>
                   {(repos.data ?? []).filter((r) => r.progress !== "done").slice(0, 40).flatMap((repo) =>
                     TOOLS.map(([id, label, icon]) => (
                       <Command.Item key={`${id}-${repo.path}`} value={`${label} ${repo.name} ${repo.path}`} onSelect={run(() => tool(id, repo.path))} className={itemClass}>
@@ -129,7 +135,7 @@ export function CommandPalette() {
               )}
 
               {(repos.data?.length ?? 0) > 0 && (
-                <Command.Group heading="Open workspace" className={groupClass}>
+                <Command.Group heading="Ouvrir l'espace de travail" className={groupClass}>
                   {repos.data!.map((repo) => (
                     <Command.Item key={repo.path} value={`${repo.name} ${repo.epitech?.module ?? ""} ${repo.group} ${repo.path}`} onSelect={run(() => act.workspace.mutate(repo))} className={itemClass}>
                       <FolderGit2 className="size-4 shrink-0 text-faint" />
@@ -147,7 +153,7 @@ export function CommandPalette() {
               )}
 
               {(repos.data?.length ?? 0) > 0 && (
-                <Command.Group heading="Notes & deadline" className={groupClass}>
+                <Command.Group heading="Fiche du projet" className={groupClass}>
                   {repos.data!.map((repo) => (
                     <Command.Item key={repo.path} value={`notes sheet deadline ${repo.name} ${repo.path}`} onSelect={run(() => openSheet(repo.path))} className={itemClass}>
                       <NotebookPen className="size-4 shrink-0 text-faint" />
@@ -159,13 +165,13 @@ export function CommandPalette() {
               )}
 
               {(subjects.data?.length ?? 0) > 0 && (
-                <Command.Group heading="Subjects" className={groupClass}>
+                <Command.Group heading="Sujets" className={groupClass}>
                   {subjects.data!.map((s) => (
                     <Command.Item
                       key={s.id}
                       value={`subject pdf ${s.name} ${s.id}`}
                       onSelect={run(() => {
-                        api.subjectOpen(s.id).catch((e) => toast({ kind: "error", title: "Could not open the document", detail: String((e as { message?: string }).message ?? e) }));
+                        api.subjectOpen(s.id).catch((e) => toast({ kind: "error", title: "Document non ouvert", detail: String((e as { message?: string }).message ?? e) }));
                       })}
                       className={itemClass}
                     >
@@ -177,12 +183,12 @@ export function CommandPalette() {
               )}
 
               {(templates.data?.length ?? 0) > 0 && (
-                <Command.Group heading="Templates" className={groupClass}>
+                <Command.Group heading="Modèles" className={groupClass}>
                   {templates.data!.map((t) => (
                     <Command.Item key={t.id} value={`template ${t.name} ${t.id}`} onSelect={go("templates")} className={itemClass}>
                       <LayoutTemplate className="size-4 shrink-0 text-faint" />
                       <span className="min-w-0 flex-1 truncate">{t.name}</span>
-                      <span className="text-xs text-faint">{t.fileCount} files</span>
+                      <span className="text-xs text-faint">{t.fileCount} fichiers</span>
                     </Command.Item>
                   ))}
                 </Command.Group>

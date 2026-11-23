@@ -29,7 +29,8 @@ import { PromptsPage } from "../features/prompts/PromptsPage";
 import { TestingPage } from "../features/testing/TestingPage";
 import { PackageDialog } from "../features/tools/PackageDialog";
 import { ReadmeDialog } from "../features/tools/ReadmeDialog";
-import { Sidebar } from "./Sidebar";
+import { remember, entryOf, SECTIONS } from "./sections";
+import { SectionTabs, Sidebar } from "./Sidebar";
 
 
 /** `tekboard --repo <path> --run banana` starts that check and shows it. */
@@ -60,13 +61,14 @@ export function navigateTo(page: string, project: string | null, tab: string | n
     if (tab === "libraries") return ui.openLibrary(project);
     return ui.openSheet(project);
   }
-  const map: Record<string, Page> = { today: "overview", projects: "projects", planning: "agenda", school: "myepitech", stats: "analytics", resources: "library", settings: "settings" };
+  const map: Record<string, Page> = { today: "overview", projects: "projects", planning: "agenda", school: "myepitech", stats: "analytics", resources: "templates", settings: "settings" };
   ui.setPage(map[page] ?? "overview");
 }
 
 export function App() {
   const page = useUi((s) => s.page);
   const setPage = useUi((s) => s.setPage);
+  useEffect(() => remember(page), [page]);
   const setPaletteOpen = useUi((s) => s.setPaletteOpen);
   const openLauncher = useUi((s) => s.openLauncher);
   const launch = useUi((s) => s.launch);
@@ -187,9 +189,9 @@ export function App() {
       } else if (key === "n" && !e.shiftKey) {
         e.preventDefault();
         openLauncher({ mode: "new" });
-      } else if (/^[1-9]$/.test(key)) {
+      } else if (/^[1-7]$/.test(key)) {
         e.preventDefault();
-        setPage(PAGES[Number(key) - 1]);
+        setPage(entryOf(SECTIONS[Number(key) - 1]));
       }
     };
     window.addEventListener("keydown", onKey);
@@ -206,7 +208,8 @@ export function App() {
             <PlanningPage />
           </div>
         ) : (
-        <div key={page} className="anim-rise mx-auto max-w-[1440px] px-8 pt-7 pb-10">
+        <div key={page} className="anim-rise mx-auto max-w-[1440px] px-8 pt-6 pb-10">
+          <SectionTabs />
           {page === "overview" && <OverviewPage />}
           {page === "projects" && <ProjectsPage />}
           {page === "git" && <GitPage />}

@@ -6,12 +6,12 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { BookMarked, Check, ChevronDown, ChevronRight, FilePlus2, FolderOpen, FolderPlus, Hammer, Library as LibraryIcon, PackagePlus, Plus, Search, Trash2, TriangleAlert, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CodeView, DiffView } from "../../components/DiffView";
+import { ProjectPicker } from "../../components/ProjectPicker";
 import { Select } from "../../components/Select";
 import { Badge, Button, Card, CardTitle, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
 import { api, asAppError, type CatalogFile, type LibFileState, type LibPlanAction, type RunReport } from "../../lib/api";
 import { tildify } from "../../lib/format";
 import { useHome, useRepos } from "../../lib/hooks";
-import { repoOptions } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { AddLibraryDialog, FileDetailDialog, ImportDialog } from "./LibraryDialogs";
 import { buildRequest, counts, fileTitle, filterFiles, isEmptyRequest, isPresent, needsAttention, type StateFilter } from "./model";
@@ -72,6 +72,8 @@ export function LibraryPage() {
   const [replace, setReplace] = useState<Set<string>>(new Set());
   const [exclude, setExclude] = useState<Set<string>>(new Set());
   const [init, setInit] = useState(false);
+  const [shared, setShared] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [confirmed, setConfirmed] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -82,9 +84,12 @@ export function LibraryPage() {
   const states = useMemo(() => new Map((status.data?.files ?? []).map((f) => [f.rel, f.state])), [status.data]);
   const present = useMemo(() => new Set((status.data?.files ?? []).filter((f) => f.rel.endsWith(".c") && isPresent(f.state)).map((f) => f.rel)), [status.data]);
 
-  // The boxes start as the project is: ticked = in the project.
-  const resetKey = `${libId}|${repoPath}|${status.dataUpdatedAt}`;
+  // The boxes start as the project is (ticked = in the project), once per project and
+  // library: a later re-read (window focus, a saved detail) never wipes what you ticked.
+  const [initFor, setInitFor] = useState<string | null>(null);
+  const resetKey = `${libId}|${repoPath}`;
   useEffect(() => {
+    if (initFor === resetKey || (repoPath !== null && !status.data)) return;
     // `--pick` ticks files once, when the project's state first arrives.
     const pick = status.data ? useUi.getState().libraryPick : [];
     if (pick.length > 0) useUi.setState({ libraryPick: [] });
@@ -93,8 +98,11 @@ export function LibraryPage() {
     setExclude(new Set());
     setInit(false);
     setConfirmed(new Set());
+    setInitFor(resetKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetKey]);
+  }, [resetKey, status.data]);
+  // After applying, what is in the project becomes the new starting point.
+  const resync = () => setInitFor(null);
 
   // Files dropped anywhere on this screen go to the import dialog.
   useEffect(() => {
@@ -120,8 +128,10 @@ export function LibraryPage() {
   const sources = useMemo(() => files.filter((f) => !f.isHeader), [files]);
   const shown = useMemo(() => filterFiles(files, { query, category, tag, state: stateFilter }, states), [files, query, category, tag, stateFilter, states]);
   const libDir = status.data?.libDir ?? "";
-  const request = useMemo(() => buildRequest(libDir, desired, present, replace, exclude, init), [libDir, desired, present, replace, exclude, init]);
-  const hasProject = repoPath !== null && status.data !== undefined;
+  const request = useMemo(() => buildRequest(libDir, desired, present, replace, exclude, init, shared), [libDir, desired, present, replace, exclude, init, shared]);
+  // Explicit states instead of a silent grey: no project, reading it, cannot read it, ready.
+  const projectState: "none" | "loading" | "error" | "ready" = repoPath === null ? "none" : status.data !== undefined ? "ready" : status.error ? "error" : "loading";
+  const hasProject = projectState === "ready";
   const planOn = hasProject && !isEmptyRequest(request);
   const plan = useQuery({ queryKey: ["lib-plan", libId, repoPath, request], queryFn: () => api.libraryPlan(repoPath!, libId!, request), enabled: planOn, staleTime: 0 });
 
@@ -139,6 +149,7 @@ export function LibraryPage() {
       toast({ kind: r.skipped.length ? "info" : "ok", title: parts.length ? `Library: ${parts.join(", ")}` : "Nothing to change", detail: r.backupDir ? "Previous versions were saved and can be restored from each file." : undefined });
       setBuild(null);
       refresh();
+      resync();
       void qc.invalidateQueries({ queryKey: ["repos"] });
     },
     onError: fail("The library was not changed"),
@@ -202,7 +213,15 @@ export function LibraryPage() {
           <>
             <Select className="w-44" label="Library" value={String(libId)} onChange={(v) => setLibId(Number(v))} options={libs.data!.map((l) => ({ value: String(l.id), label: l.name }))} />
             <IconButton label="Open the library folder" onClick={() => api.libraryReveal(libId).catch(fail("Could not open the folder"))}><FolderOpen className="size-4" /></IconButton>
-            <Button icon={<Plus className="size-3.5" />} onClick={() => setAdding(true)}>Library</Button>
+            {removing ? (
+              <>
+                <Button variant="danger" onClick={() => api.libraryUnregister(libId).then(() => (setRemoving(false), refresh(), void qc.invalidateQueries({ queryKey: ["libraries"] })), fail("Bibliothèque non retirée"))}>Retirer de TekBoard</Button>
+                <Button variant="ghost" onClick={() => setRemoving(false)}>Garder</Button>
+              </>
+            ) : (
+              <IconButton label="Retirer cette bibliothèque de TekBoard (ses fichiers et tes projets ne sont pas touchés)" onClick={() => setRemoving(true)}><Trash2 className="size-4" /></IconButton>
+            )}
+            <Button icon={<Plus className="size-3.5" />} onClick={() => setAdding(true)}>Bibliothèque</Button>
           </>
         }
       />
@@ -250,7 +269,7 @@ export function LibraryPage() {
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
               <Input autoFocus className="pl-8" aria-label="Search a function, a tag or a file" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
-            <Select className="w-44" label="Filter by state" value={stateFilter} onChange={(v) => setStateFilter(v as StateFilter)} disabled={!hasProject} options={[{ value: "all", label: "All" }, { value: "in", label: "In the project" }, { value: "out", label: "Not installed" }, { value: "attention", label: "Needs attention", hint: attention ? String(attention) : undefined }]} />
+            <Select className="w-44" label="Filter by state" value={stateFilter} onChange={(v) => setStateFilter(v as StateFilter)} disabled={!hasProject} disabledReason={projectState === "none" ? "Choisis un projet à droite pour filtrer selon ce qu'il contient" : projectState === "loading" ? "Lecture du projet…" : "L'état du projet n'a pas pu être lu (voir à droite)"} options={[{ value: "all", label: "Tout" }, { value: "in", label: "Dans le projet" }, { value: "out", label: "Pas installé" }, { value: "attention", label: "À vérifier", hint: attention ? String(attention) : undefined }]} />
           </div>
           {catalog.isLoading ? (
             <p className="flex items-center gap-2 px-4 py-10 text-[13px] text-muted"><Spinner /> Reading the library…</p>
@@ -275,8 +294,14 @@ export function LibraryPage() {
           <Card>
             <CardTitle right={status.isFetching ? <Spinner /> : undefined}>Project</CardTitle>
             <div className="flex flex-col gap-2.5 p-3">
-              <Select label="Target project" search value={repoPath ?? ""} onChange={(v) => setRepo(v || null)} options={[{ value: "", label: "No project — browse only" }, ...repoOptions(repos.data ?? [])]} />
-              {status.error && <ErrorNote>{asAppError(status.error).message}</ErrorNote>}
+              <ProjectPicker label="Projet cible" value={repoPath} onChange={setRepo} includeNone noneLabel="Aucun projet : consulter seulement" />
+              {projectState === "loading" && <p className="flex items-center gap-2 text-xs text-muted"><Spinner /> Lecture de la bibliothèque dans ce projet…</p>}
+              {status.error && (
+                <ErrorNote title="Ce projet ne peut pas recevoir la bibliothèque pour l'instant">
+                  {asAppError(status.error).message}{" "}
+                  <button type="button" className="text-accent-strong hover:underline" onClick={() => void status.refetch()}>Réessayer</button>
+                </ErrorNote>
+              )}
               {hasProject && (
                 <>
                   <LibDirField value={libDir} busy={saveDir.isPending} onSave={(d) => saveDir.mutate(d)} />
@@ -290,7 +315,12 @@ export function LibraryPage() {
                     <p className="text-xs text-muted">This project has no <code className="font-mono">{libDir}</code> yet.</p>
                   )}
                   <div className="flex flex-wrap gap-1.5">
-                    {!status.data!.hasMakefile && <Button size="sm" variant={init ? "primary" : "secondary"} icon={<PackagePlus className="size-3.5" />} onClick={() => setInit(!init)}>{init ? "Empty library: planned" : "Create an empty library"}</Button>}
+                    {!status.data!.hasMakefile && <Button size="sm" variant={init ? "primary" : "secondary"} icon={<PackagePlus className="size-3.5" />} onClick={() => setInit(!init)}>{init ? "Bibliothèque vide : prévue" : "Créer une bibliothèque vide"}</Button>}
+                    {!status.data!.hasMakefile && (
+                      <label className="flex items-center gap-1.5 text-xs text-muted" title="Quand TekBoard écrit le Makefile de la bibliothèque : .a (statique, par défaut) ou .so (dynamique, -fPIC -shared)">
+                        <input type="checkbox" className="accent-(--color-accent)" checked={shared} onChange={(e) => setShared(e.target.checked)} /> Dynamique (.so)
+                      </label>
+                    )}
                     {status.data!.hasMakefile && <Button size="sm" icon={<Hammer className="size-3.5" />} busy={runBuild.isPending} onClick={() => runBuild.mutate()}>Check it compiles</Button>}
                     {selectedRepo && <Button size="sm" variant="ghost" onClick={() => useUi.getState().openSheet(selectedRepo.path)}>Project sheet</Button>}
                   </div>
@@ -303,7 +333,7 @@ export function LibraryPage() {
           <Card>
             <CardTitle right={plan.isFetching ? <Spinner /> : undefined}>Changes</CardTitle>
             {!hasProject ? (
-              <p className="px-4 py-4 text-[13px] text-muted">Choose a project to install functions into it. Without one, ticking only prepares a preset.</p>
+              <p className="px-4 py-4 text-[13px] text-muted">{projectState === "none" ? "Choisis un projet pour y installer des fonctions. Sans projet, cocher prépare seulement un préréglage." : projectState === "loading" ? "Lecture du projet…" : "L'état du projet n'a pas pu être lu : voir le message au-dessus."}</p>
             ) : !planOn ? (
               <p className="px-4 py-4 text-[13px] text-muted">Tick a function to add it, untick one to remove it. Nothing is written before you apply.</p>
             ) : plan.error ? (

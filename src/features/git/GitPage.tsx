@@ -178,16 +178,16 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
             <Button size="sm" variant="ghost" icon={<Play className="size-3.5" />} busy={start.isPending} title="Fetch, then open IDE and terminal" onClick={() => start.mutate()}>
               Start working
             </Button>
-            <Button size="sm" icon={<RefreshCw className="size-3.5" />} disabled={!repo.remoteUrl || busy} busy={sync.isPending && sync.variables === "fetch"} onClick={() => sync.mutate("fetch")}>
+            <Button size="sm" icon={<RefreshCw className="size-3.5" />} disabled={!repo.remoteUrl || busy} disabledReason={!repo.remoteUrl ? "Ce dépôt n'a pas de dépôt distant (origin)" : "Une opération git est en cours"} busy={sync.isPending && sync.variables === "fetch"} onClick={() => sync.mutate("fetch")}>
               Fetch
             </Button>
-            <Button size="sm" icon={<ArrowDown className="size-3.5" />} disabled={!st.upstream || st.behind === 0 || busy} busy={sync.isPending && sync.variables === "pull"} title="Fast-forward only: never creates a merge" onClick={() => sync.mutate("pull")}>
+            <Button size="sm" icon={<ArrowDown className="size-3.5" />} disabled={!st.upstream || st.behind === 0 || busy} disabledReason={!st.upstream ? "La branche ne suit aucune branche distante" : st.behind === 0 ? "Rien à récupérer : tu es à jour" : "Une opération git est en cours"} busy={sync.isPending && sync.variables === "pull"} title="Avance rapide seulement : ne crée jamais de fusion" onClick={() => sync.mutate("pull")}>
               Pull{st.behind > 0 ? ` ${st.behind}` : ""}
             </Button>
-            <Button size="sm" title="Clone this repository into a fresh folder and build it there" disabled={busy} onClick={() => useUi.getState().openTesting(repo.path)}>
-              TestRepo
+            <Button size="sm" title="Ouvrir les vérifications de ce projet (moulinette, tests, simulation de rendu)" onClick={() => useUi.getState().openTesting(repo.path)}>
+              Vérifier
             </Button>
-            <Button size="sm" variant={canPush ? "primary" : "secondary"} icon={<ArrowUp className="size-3.5" />} disabled={!canPush || busy} onClick={() => setConfirmPush(true)}>
+            <Button size="sm" variant={canPush ? "primary" : "secondary"} icon={<ArrowUp className="size-3.5" />} disabled={!canPush || busy} disabledReason={busy ? "Une opération git est en cours" : st.ahead === 0 ? "Aucun commit à envoyer" : "Impossible d'envoyer depuis cet état (branche sans suivi ou en retard)"} onClick={() => setConfirmPush(true)}>
               Push{st.ahead > 0 ? ` ${st.ahead}` : ""}
             </Button>
           </span>
@@ -204,12 +204,14 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
               label="Branch"
               value={st.branch}
               disabled={switchBranch.isPending || st.unborn}
+              disabledReason={st.unborn ? "Aucun commit encore : fais un premier commit pour créer la branche" : "Changement de branche en cours…"}
+              showReason={st.unborn}
               onChange={(v) => v !== st.branch && switchBranch.mutate(v)}
               options={[...(d.branches.some((b) => b.name === st.branch) ? [] : [{ value: st.branch, label: st.branch }]), ...d.branches.map((b) => ({ value: b.name, label: b.name, hint: b.upstream ?? undefined }))]}
             />
           )}
           {newBranch === null ? (
-            <Button size="sm" variant="ghost" icon={<Plus className="size-3.5" />} disabled={st.unborn} onClick={() => setNewBranch("")}>
+            <Button size="sm" variant="ghost" icon={<Plus className="size-3.5" />} disabled={st.unborn} disabledReason="Fais d'abord un premier commit" onClick={() => setNewBranch("")}>
               New branch
             </Button>
           ) : (

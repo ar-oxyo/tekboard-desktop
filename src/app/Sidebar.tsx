@@ -1,48 +1,23 @@
-import { CalendarDays, ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, PawPrint, Search, Settings } from "lucide-react";
+import { CalendarDays, ChartNoAxesColumn, FolderGit2, GraduationCap, LayoutTemplate, Search, Settings, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn, Kbd } from "../components/ui";
+import { Orb } from "../features/tika/Orb";
 import { useEnv } from "../lib/hooks";
-import { PAGES, useUi, type Page } from "../lib/store";
-
-interface NavItem {
-  page: Page;
-  label: string;
-  icon: ReactNode;
-}
+import { useUi } from "../lib/store";
+import { entryOf, SECTIONS, sectionOf, type Section } from "./sections";
 
 const icon = "size-4";
-const GROUPS: Array<{ title: string; items: NavItem[] }> = [
-  {
-    title: "Work",
-    items: [
-      { page: "overview", label: "Overview", icon: <LayoutDashboard className={icon} /> },
-      { page: "projects", label: "Projects", icon: <FolderGit2 className={icon} /> },
-      { page: "agenda", label: "Planning", icon: <CalendarDays className={icon} /> },
-    ],
-  },
-  {
-    title: "Code",
-    items: [
-      { page: "git", label: "Git", icon: <GitBranch className={icon} /> },
-      { page: "testing", label: "Testing", icon: <FlaskConical className={icon} /> },
-      { page: "library", label: "Library", icon: <LibraryBig className={icon} /> },
-      { page: "templates", label: "Templates", icon: <LayoutTemplate className={icon} /> },
-    ],
-  },
-  {
-    title: "School",
-    items: [
-      { page: "myepitech", label: "MY Epitech", icon: <GraduationCap className={icon} /> },
-      { page: "subjects", label: "Subjects", icon: <FileText className={icon} /> },
-      { page: "analytics", label: "Analytics", icon: <ChartNoAxesColumn className={icon} /> },
-    ],
-  },
-];
-/** Pinned under the groups: the companion and the settings are not part of the daily work. */
-const FOOT: NavItem[] = [
-  { page: "cozy", label: "Cozy Fox", icon: <PawPrint className={icon} /> },
-  { page: "settings", label: "Settings", icon: <Settings className={icon} /> },
-];
+const ICONS: Record<Section["id"], ReactNode> = {
+  today: <Sun className={icon} />,
+  projects: <FolderGit2 className={icon} />,
+  planning: <CalendarDays className={icon} />,
+  school: <GraduationCap className={icon} />,
+  stats: <ChartNoAxesColumn className={icon} />,
+  resources: <LayoutTemplate className={icon} />,
+  settings: <Settings className={icon} />,
+};
+const MAIN = SECTIONS.slice(0, 5);
+const FOOT = SECTIONS.slice(5);
 
 export function Logo({ className }: { className?: string }) {
   return (
@@ -63,63 +38,47 @@ export function Sidebar() {
   const page = useUi((s) => s.page);
   const setPage = useUi((s) => s.setPage);
   const setPaletteOpen = useUi((s) => s.setPaletteOpen);
+  const tikaOpen = useUi((s) => s.assistantOpen);
   const env = useEnv();
-
+  const current = sectionOf(page).id;
   const missing = env.data?.tools.filter((t) => t.required && !t.path).length ?? 0;
   const gh = env.data?.github.state;
 
-  const row = (item: NavItem) => {
-    const n = PAGES.indexOf(item.page) + 1;
-    const current = page === item.page;
+  const row = (s: Section) => {
+    const n = SECTIONS.indexOf(s) + 1;
+    const on = current === s.id;
     return (
-      <button
-        key={item.page}
-        type="button"
-        aria-current={current ? "page" : undefined}
-        onClick={() => setPage(item.page)}
-        title={n >= 1 && n <= 9 ? `Ctrl+${n}` : undefined}
-        className={cn("nav-item flex h-8 shrink-0 items-center gap-2.5 px-2.5 text-[13px]", current ? "font-medium" : "text-muted hover:bg-white/4 hover:text-fg")}
-      >
-        <span className={cn("flex w-4 shrink-0 justify-center", current ? "text-accent" : "text-faint")}>{item.icon}</span>
-        {item.label}
+      <button key={s.id} type="button" aria-current={on ? "page" : undefined} onClick={() => setPage(entryOf(s))} title={`Ctrl+${n}`} className={cn("nav-item flex h-8 shrink-0 items-center gap-2.5 px-2.5 text-[13px]", on ? "font-medium" : "text-muted hover:bg-white/4 hover:text-fg")}>
+        <span className={cn("flex w-4 shrink-0 justify-center", on ? "text-accent" : "text-faint")}>{ICONS[s.id]}</span>
+        {s.label}
       </button>
     );
   };
 
   return (
-    <aside className="sidebar flex w-60 shrink-0 flex-col">
+    <aside className="sidebar flex w-56 shrink-0 flex-col">
       <div className="flex h-16 items-center gap-2.5 px-5">
         <Logo className="logo-glow size-6" />
         <span className="display text-[15px] font-medium">TekBoard</span>
       </div>
-
-      <button
-        type="button"
-        onClick={() => setPaletteOpen(true)}
-        className="mx-3 flex h-8 items-center gap-2.5 rounded-(--btn-radius) border border-white/7 bg-white/3 px-2.5 text-faint transition-colors duration-150 hover:border-white/12 hover:text-muted"
-      >
+      <button type="button" onClick={() => setPaletteOpen(true)} className="mx-3 flex h-8 items-center gap-2.5 rounded-(--btn-radius) border border-white/7 bg-white/3 px-2.5 text-faint transition-colors duration-150 hover:border-white/12 hover:text-muted">
         <Search className="size-4" />
-        <span className="flex-1 text-left text-[13px]">Search</span>
+        <span className="flex-1 text-left text-[13px]">Rechercher</span>
         <Kbd>Ctrl K</Kbd>
       </button>
-
-      <nav className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3" aria-label="Main">
-        {GROUPS.map((group) => (
-          <div key={group.title} className="flex flex-col gap-0.5">
-            <p className="px-2.5 pt-6 pb-2 text-xs text-faint">{group.title}</p>
-            {group.items.map(row)}
-          </div>
-        ))}
+      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 pt-5 pb-3" aria-label="Navigation">
+        {MAIN.map(row)}
+        <button type="button" onClick={() => (tikaOpen ? useUi.getState().closeAssistant() : useUi.getState().openAssistant())} title="Ctrl+J" className={cn("nav-item mt-4 flex h-9 shrink-0 items-center gap-2.5 px-2 text-[13px]", tikaOpen ? "font-medium" : "text-muted hover:bg-white/4 hover:text-fg")}>
+          <Orb size={20} />
+          Tika
+          <Kbd>Ctrl J</Kbd>
+        </button>
       </nav>
-
       <div className="flex flex-col gap-0.5 border-t border-white/6 px-3 py-3">
         {FOOT.map(row)}
-        <button type="button" onClick={() => setPage("settings")} title="Open Settings" className="mt-2 flex w-full flex-col gap-1 px-2.5 text-left text-xs text-faint transition-colors duration-150 hover:text-muted">
-          <Status ok={env.data ? missing === 0 : null} label={env.data ? (missing === 0 ? "Tools ready" : `${missing} tool${missing > 1 ? "s" : ""} missing`) : "Checking tools…"} />
-          <Status
-            ok={gh === undefined ? null : gh === "ready"}
-            label={gh === undefined ? "Checking GitHub…" : gh === "ready" ? "GitHub connected" : gh === "missing" ? "gh not installed" : gh === "loggedOut" ? "gh not logged in" : "GitHub unreachable"}
-          />
+        <button type="button" onClick={() => setPage("settings")} title="Ouvrir les réglages" className="mt-2 flex w-full flex-col gap-1 px-2.5 text-left text-xs text-faint transition-colors duration-150 hover:text-muted">
+          <Status ok={env.data ? missing === 0 : null} label={env.data ? (missing === 0 ? "Outils prêts" : `${missing} outil${missing > 1 ? "s" : ""} manquant${missing > 1 ? "s" : ""}`) : "Vérification des outils…"} />
+          <Status ok={gh === undefined ? null : gh === "ready"} label={gh === undefined ? "Vérification de GitHub…" : gh === "ready" ? "GitHub connecté" : gh === "missing" ? "gh non installé" : gh === "loggedOut" ? "gh non connecté" : "GitHub injoignable"} />
         </button>
       </div>
     </aside>
@@ -134,5 +93,22 @@ function Status({ ok, label }: { ok: boolean | null; label: string }) {
       </span>
       {label}
     </span>
+  );
+}
+
+/** Tabs of the current section, above its screen. */
+export function SectionTabs() {
+  const page = useUi((s) => s.page);
+  const setPage = useUi((s) => s.setPage);
+  const s = sectionOf(page);
+  if (s.pages.length < 2) return null;
+  return (
+    <div className="mb-5 flex items-center gap-1 border-b border-white/6" role="tablist" aria-label={s.label}>
+      {s.pages.map((p) => (
+        <button key={p.page} type="button" role="tab" aria-selected={p.page === page} onClick={() => setPage(p.page)} className={cn("-mb-px border-b-2 px-3 py-2 text-[13px] transition-colors duration-150", p.page === page ? "border-accent font-medium text-fg" : "border-transparent text-muted hover:text-fg")}>
+          {p.label}
+        </button>
+      ))}
+    </div>
   );
 }

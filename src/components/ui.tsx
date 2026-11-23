@@ -19,6 +19,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: "sm" | "md";
   icon?: ReactNode;
   busy?: boolean;
+  /** Why it is disabled, in words: never a grey button without a reason. */
+  disabledReason?: string | null;
 }
 
 const variants: Record<ButtonVariant, string> = {
@@ -28,10 +30,11 @@ const variants: Record<ButtonVariant, string> = {
   danger: "bg-danger/15 text-danger border border-danger/30 hover:bg-danger/25",
 };
 
-export function Button({ variant = "secondary", size = "md", icon, busy, children, className, disabled, ...rest }: ButtonProps) {
+export function Button({ variant = "secondary", size = "md", icon, busy, children, className, disabled, disabledReason, title, ...rest }: ButtonProps) {
   return (
     <button
       type="button"
+      title={disabled && disabledReason ? disabledReason : title}
       disabled={disabled || busy}
       className={cn(
         "inline-flex shrink-0 items-center justify-center gap-2 rounded-(--btn-radius) whitespace-nowrap transition-colors duration-150",
@@ -60,7 +63,7 @@ export function IconButton({ label, active, children, className, ...rest }: Icon
       aria-label={label}
       title={label}
       className={cn(
-        "inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors duration-150 hover:bg-hover disabled:opacity-40",
+        "inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors duration-150 hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50",
         active ? "text-accent" : "text-faint hover:text-fg",
         className,
       )}
