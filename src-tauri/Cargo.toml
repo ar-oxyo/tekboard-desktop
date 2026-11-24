@@ -1,7 +1,8 @@
 [package]
 name = "tekboard"
-version = "0.6.0"
+version = "0.6.1"
 description = "TekBoard — Epitech developer command center"
+authors = ["Thibault Eininger"]
 license = "GPL-3.0-only"
 repository = "https://github.com/ar-oxyo/tekboard-desktop"
 edition = "2021"

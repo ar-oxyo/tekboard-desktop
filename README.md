@@ -6,6 +6,8 @@
 
 <p align="center"><a href="https://github.com/ar-oxyo/tekboard-desktop/releases/latest"><b>Télécharger la dernière version</b></a></p>
 
+> **Projet personnel, non officiel.** TekBoard est une application que je développe seul, dans mon coin : Thibault Eininger, étudiant à Epitech. Elle n'est ni produite, ni validée, ni soutenue par Epitech, et n'a aucun lien avec l'école. « Epitech », « MY Epitech » et les noms des modules appartiennent à leurs propriétaires ; TekBoard ne fait que lire, avec ton accord, les données de ton propre compte.
+
 ![Projets](docs/screenshots/projects.png)
 
 ## Ce que fait Tekboard
@@ -122,8 +124,10 @@ npm run test:rust    # tests du backend
 
 ## English
 
-TekBoard is a local-first desktop dashboard for Epitech students on Linux: repositories, hand-ins, planning, weekly logtime, MY Epitech sync and Artix, an AI assistant that acts through controlled tools. Download the `.deb` (Ubuntu/Debian) or the AppImage from the [latest release](https://github.com/ar-oxyo/tekboard-desktop/releases/latest); the interface can be switched to English during the first-run setup or in Settings.
+TekBoard is an independent personal project by Thibault Eininger, an Epitech student — not an official Epitech product and not affiliated with or endorsed by Epitech. It is a local-first desktop dashboard for Epitech students on Linux: repositories, hand-ins, planning, weekly logtime, MY Epitech sync and Artix, an AI assistant that acts through controlled tools. Download the `.deb` (Ubuntu/Debian) or the AppImage from the [latest release](https://github.com/ar-oxyo/tekboard-desktop/releases/latest); the interface can be switched to English during the first-run setup or in Settings.
 
 ## Licence
 
-[GPL-3.0](LICENSE). Tekboard n'est pas un produit officiel d'Epitech.
+[GPL-3.0](LICENSE) © 2026 Thibault Eininger.
+
+TekBoard est un projet personnel et indépendant. Ce n'est pas un produit officiel d'Epitech, et Epitech n'y est associée d'aucune façon.

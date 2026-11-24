@@ -21,16 +21,24 @@ const MAIN = SECTIONS.slice(0, 5);
 const FOOT = SECTIONS.slice(5);
 
 export function Logo({ className }: { className?: string }) {
+  // Same drawing as public/tekboard.svg: a T inside a progress ring.
   return (
     <svg viewBox="0 0 512 512" className={className} aria-hidden>
-      <rect width="512" height="512" rx="116" fill="#15181e" />
-      <rect x="6" y="6" width="500" height="500" rx="110" fill="none" stroke="#343b49" strokeWidth="12" />
-      <rect x="112" y="124" width="84" height="84" rx="20" fill="#8f83f7" />
-      <rect x="214" y="124" width="84" height="84" rx="20" fill="#8f83f7" />
-      <rect x="316" y="124" width="84" height="84" rx="20" fill="#8f83f7" />
-      <rect x="214" y="226" width="84" height="84" rx="20" fill="#a69cfb" />
-      <rect x="214" y="328" width="84" height="60" rx="20" fill="#a69cfb" />
-      <rect x="316" y="352" width="84" height="36" rx="14" fill="#e8eaf0" />
+      <defs>
+        <linearGradient id="tb-logo-bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#25222f" />
+          <stop offset="1" stopColor="#121117" />
+        </linearGradient>
+        <linearGradient id="tb-logo-ink" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#c3b9ff" />
+          <stop offset="1" stopColor="#7c68f2" />
+        </linearGradient>
+      </defs>
+      <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#tb-logo-bg)" />
+      <rect x="21" y="21" width="470" height="470" rx="107" fill="none" stroke="#fff" strokeOpacity=".09" strokeWidth="10" />
+      <circle cx="256" cy="256" r="150" fill="none" stroke="#9486ff" strokeOpacity=".16" strokeWidth="34" />
+      <circle cx="256" cy="256" r="150" fill="none" stroke="url(#tb-logo-ink)" strokeWidth="34" strokeLinecap="round" strokeDasharray="700 243" transform="rotate(-90 256 256)" />
+      <path d="M194 202H318M256 202V318" fill="none" stroke="url(#tb-logo-ink)" strokeWidth="50" strokeLinecap="round" />
     </svg>
   );
 }

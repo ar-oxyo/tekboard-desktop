@@ -1054,4 +1054,5 @@ export const en: Record<string, string> = {
   "MY Epitech pas synchronisé : seules tes propres entrées sont affichées.": "MY Epitech not synced: only your own entries are shown.",
   "Rien en attente": "Nothing waiting",
   "{n} à placer · glisse sur le calendrier": "{n} to place · drag onto the calendar",
+  "Projet personnel et indépendant de Thibault Eininger : ce n'est pas une application officielle d'Epitech.": "An independent personal project by Thibault Eininger: not an official Epitech application.",
 };

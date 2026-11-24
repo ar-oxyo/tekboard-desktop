@@ -11,30 +11,28 @@
     <style>
       #splash { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: #141415; transition: opacity 160ms ease-out; }
       #splash.gone { opacity: 0; pointer-events: none; }
-      #splash svg { width: 72px; height: 72px; animation: tb-in 320ms cubic-bezier(.2,.8,.2,1) both; }
-      #splash .b { animation: tb-block 260ms cubic-bezier(.2,.8,.2,1) both; transform-box: fill-box; transform-origin: center; }
-      #splash .b:nth-of-type(2) { animation-delay: 50ms; } #splash .b:nth-of-type(3) { animation-delay: 100ms; }
-      #splash .b:nth-of-type(4) { animation-delay: 150ms; } #splash .b:nth-of-type(5) { animation-delay: 200ms; }
-      #splash .cursor { animation: tb-blink 1s steps(2, start) 300ms infinite; }
+      #splash svg { width: 72px; height: 72px; animation: tb-in 300ms cubic-bezier(.2,.8,.2,1) both; }
+      /* The ring fills up, then the T appears. */
+      #splash .ring { stroke-dasharray: 0 943; animation: tb-ring 520ms cubic-bezier(.3,.7,.2,1) 80ms forwards; }
+      #splash .t { opacity: 0; animation: tb-t 220ms ease-out 260ms forwards; }
       @keyframes tb-in { from { opacity: 0; transform: scale(.94); } }
-      @keyframes tb-block { from { opacity: 0; transform: translateY(6px) scale(.9); } }
-      @keyframes tb-blink { to { visibility: hidden; } }
-      @media (prefers-reduced-motion: reduce) { #splash svg, #splash .b, #splash .cursor { animation: none; } }
+      @keyframes tb-ring { to { stroke-dasharray: 700 243; } }
+      @keyframes tb-t { to { opacity: 1; } }
+      @media (prefers-reduced-motion: reduce) { #splash svg, #splash .ring, #splash .t { animation: none; stroke-dasharray: 700 243; opacity: 1; } }
     </style>
   </head>
   <body>
     <div id="splash" aria-hidden="true">
       <svg viewBox="0 0 512 512">
-        <rect x="16" y="16" width="480" height="480" rx="112" fill="#1a1d25" />
-        <rect x="21" y="21" width="470" height="470" rx="107" fill="none" stroke="#343b49" stroke-width="10" />
-        <g>
-          <rect class="b" x="112" y="124" width="84" height="84" rx="20" fill="#9486ff" />
-          <rect class="b" x="214" y="124" width="84" height="84" rx="20" fill="#9486ff" />
-          <rect class="b" x="316" y="124" width="84" height="84" rx="20" fill="#9486ff" />
-          <rect class="b" x="214" y="226" width="84" height="84" rx="20" fill="#a69cfb" />
-          <rect class="b" x="214" y="328" width="84" height="60" rx="20" fill="#a69cfb" />
-        </g>
-        <rect class="cursor" x="316" y="352" width="84" height="36" rx="14" fill="#e8eaf0" />
+        <defs>
+          <linearGradient id="sp-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#25222f" /><stop offset="1" stop-color="#121117" /></linearGradient>
+          <linearGradient id="sp-ink" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c3b9ff" /><stop offset="1" stop-color="#7c68f2" /></linearGradient>
+        </defs>
+        <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#sp-bg)" />
+        <rect x="21" y="21" width="470" height="470" rx="107" fill="none" stroke="#fff" stroke-opacity=".09" stroke-width="10" />
+        <circle cx="256" cy="256" r="150" fill="none" stroke="#9486ff" stroke-opacity=".16" stroke-width="34" />
+        <circle class="ring" cx="256" cy="256" r="150" fill="none" stroke="url(#sp-ink)" stroke-width="34" stroke-linecap="round" transform="rotate(-90 256 256)" />
+        <path class="t" d="M194 202H318M256 202V318" fill="none" stroke="url(#sp-ink)" stroke-width="50" stroke-linecap="round" />
       </svg>
     </div>
     <div id="root"></div>

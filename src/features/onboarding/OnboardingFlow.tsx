@@ -139,6 +139,7 @@ function Welcome() {
           </li>
         ))}
       </ul>
+      <p className="mt-5 text-xs text-faint">{t("Projet personnel et indépendant de Thibault Eininger : ce n'est pas une application officielle d'Epitech.")}</p>
     </>
   );
 }

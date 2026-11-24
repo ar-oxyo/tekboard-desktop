@@ -2,6 +2,11 @@
 
 Chaque version publiée a sa section ici ; la release GitHub reprend ce texte.
 
+## 0.6.1
+
+- Nouveau logo, sombre comme l'application : un T violet dans un anneau de progression, repris dans l'icône, la barre latérale et l'écran de lancement (l'anneau se remplit au démarrage).
+- Le README et l'assistant de premier lancement précisent que TekBoard est un projet personnel et indépendant, sans lien avec Epitech.
+
 ## 0.6.0
 
 Première version publique.
