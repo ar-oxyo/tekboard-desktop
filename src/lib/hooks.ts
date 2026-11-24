@@ -1,9 +1,10 @@
 // Data hooks: one query key per backend resource, plus the actions shared by several screens.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { homeDir } from "@tauri-apps/api/path";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, asAppError, type Progress, type RepoInfo, type RepoKind } from "./api";
 import { useUi } from "./store";
+import { t } from "./i18n";
 
 export const keys = {
   settings: ["settings"] as const,
@@ -20,7 +21,17 @@ export const keys = {
 };
 
 export const useSettings = () => useQuery({ queryKey: keys.settings, queryFn: api.getSettings, staleTime: Infinity });
-export const useRepos = (enabled = true) => useQuery({ queryKey: keys.repos, queryFn: api.scanRepos, enabled });
+/** Shown in everyday lists: not archived, and an Epitech project when "Epitech Projects Only" is on. */
+export const everyday = (r: RepoInfo, epitechOnly: boolean) => r.meta.visibility !== "archived" && (!epitechOnly || r.kind === "epitech");
+
+/** Projects (hidden ones are never listed by the backend). `all`: archived and personal ones too,
+ *  for the screens that manage projects or look one up by its path. */
+export function useRepos(enabled = true, opts: { all?: boolean } = {}) {
+  const only = useSettings().data?.epitechOnly ?? true;
+  const all = opts.all ?? false;
+  const select = useCallback((list: RepoInfo[]) => (all ? list : list.filter((r) => everyday(r, only))), [all, only]);
+  return useQuery({ queryKey: keys.repos, queryFn: api.scanRepos, enabled, select });
+}
 export const useEnv = () => useQuery({ queryKey: keys.env, queryFn: api.envStatus, staleTime: 60_000 });
 export const useTemplates = () => useQuery({ queryKey: keys.templates, queryFn: api.templatesList });
 export const useSubjects = () => useQuery({ queryKey: keys.subjects, queryFn: api.subjectsList });
@@ -74,7 +85,7 @@ export function useProjectActions() {
     mutationFn: (repo: RepoInfo) => api.openWorkspace(repo.path),
     onSuccess: (report) => {
       const partial = report.ide ?? report.terminal;
-      if (partial) toast({ kind: "error", title: report.ide ? "L'IDE n'a pas démarré" : "Le terminal n'a pas démarré", detail: partial });
+      if (partial) toast({ kind: "error", title: report.ide ? t("L'IDE n'a pas démarré") : t("Le terminal n'a pas démarré"), detail: partial });
       refresh();
     },
     onError: fail("Espace de travail non ouvert"),
@@ -104,7 +115,7 @@ export function useProjectActions() {
   const remote = useMutation({
     mutationFn: (repo: RepoInfo) => api.openRemote(repo.path),
     onSuccess: (r) => {
-      if (r.browser !== "firefox") toast({ kind: "info", title: "Firefox n'est pas installé", detail: `Ouvert dans ton navigateur par défaut : ${r.url}` });
+      if (r.browser !== "firefox") toast({ kind: "info", title: t("Firefox n'est pas installé"), detail: `Ouvert dans ton navigateur par défaut : ${r.url}` });
     },
     onError: fail("Page du dépôt non ouverte"),
   });
@@ -123,5 +134,15 @@ export function useProjectActions() {
       fail("Copie impossible"),
     );
   };
-  return { workspace, ide, terminal, files, favorite, copyUrl, progress, kind, remote, launch };
+  // Hidden / archived / shown again: only TekBoard's view changes, the folder stays where it is.
+  const visibility = useMutation({
+    mutationFn: ({ repo, visibility }: { repo: RepoInfo; visibility: "hidden" | "archived" | null }) => api.projectSetVisibility(repo.path, visibility),
+    onSuccess: (_r, v) => {
+      refresh();
+      void qc.invalidateQueries({ queryKey: ["hidden-repos"] });
+      toast({ kind: "ok", title: v.visibility === "hidden" ? t("Projet masqué") : v.visibility === "archived" ? t("Projet archivé") : t("Projet restauré"), detail: v.visibility ? t("Son dossier n'a pas bougé. Tu peux le restaurer depuis Projets.") : undefined });
+    },
+    onError: (e) => toast({ kind: "error", title: t("Non modifié"), detail: asAppError(e).message }),
+  });
+  return { workspace, ide, terminal, files, favorite, copyUrl, progress, kind, remote, launch, visibility };
 }

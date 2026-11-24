@@ -5,29 +5,26 @@ import { Download, FilePlus2, FileText, GraduationCap, Search, Trash2 } from "lu
 import { useEffect, useMemo, useState } from "react";
 import { Select } from "../../components/Select";
 import { Badge, Button, Card, CardTitle, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
-import { api, asAppError, type RepoInfo, type Subject, type SubjectImportResult } from "../../lib/api";
+import { api, asAppError, type RepoInfo, type Subject, type SubjectImportResult, type SubjectSuggestion } from "../../lib/api";
 import { formatBytes, tildify, timeAgo } from "../../lib/format";
 import { keys, useHome, useRepos, useSettings, useSubjects } from "../../lib/hooks";
 import { displayName, repoOptions } from "../../lib/repos";
 import { useUi } from "../../lib/store";
+import { useMySync } from "../myepitech/useMySync";
+import { t } from "../../lib/i18n";
 
 export function SubjectsPage() {
   const qc = useQueryClient();
   const toast = useUi((s) => s.toast);
   const settings = useSettings();
-  const repos = useRepos((settings.data?.roots.length ?? 0) > 0);
+  const repos = useRepos((settings.data?.roots.length ?? 0) > 0, { all: true });
   const subjects = useSubjects();
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(false);
 
-  const fromMy = useMutation({
-    mutationFn: api.myImportSubjects,
-    onSuccess: (r) => {
-      void qc.invalidateQueries({ queryKey: keys.subjects });
-      toast({ kind: r.problems.length > 0 ? "info" : "ok", title: r.imported === 0 ? "No new subject on MY Epitech" : `${r.imported} subject${r.imported > 1 ? "s" : ""} added from MY Epitech`, detail: r.problems.join("\n") || undefined });
-    },
-    onError: (e) => toast({ kind: "error", title: "Sujets non récupérés", detail: asAppError(e).code === "my_not_connected" ? "Connect to MY Epitech first (MY Epitech screen), then try again." : asAppError(e).message }),
-  });
+  const mySync = useMySync();
+  // Opening the screen ties what can be tied for sure, and lists what needs a yes or a no.
+  const assoc = useQuery({ queryKey: ["subjects", "associate"], queryFn: api.subjectsAssociate, staleTime: 0 });
   const repoList = repos.data ?? [];
   const list = subjects.data ?? [];
   const shown = useMemo(() => {
@@ -48,31 +45,31 @@ export function SubjectsPage() {
   };
 
   async function addFiles() {
-    const picked = await open({ multiple: true, title: "Ajouter des sujets", filters: [{ name: "PDF", extensions: ["pdf"] }] });
+    const picked = await open({ multiple: true, title: t("Ajouter des sujets"), filters: [{ name: "PDF", extensions: ["pdf"] }] });
     const paths = Array.isArray(picked) ? picked : typeof picked === "string" ? [picked] : [];
     if (paths.length === 0) return;
     try {
       report(await api.subjectsImport(paths.map((path) => ({ path, repoPath: null }))));
     } catch (e) {
-      toast({ kind: "error", title: "Import échoué", detail: asAppError(e).message });
+      toast({ kind: "error", title: t("Import échoué"), detail: asAppError(e).message });
     }
   }
 
   return (
     <>
       <PageHeader
-        title="Sujets"
-        subtitle="Tes sujets et documents de cours, au même endroit et liés à leur projet."
+        title={t("Sujets")}
+        subtitle={t("Tes sujets et documents de cours, au même endroit et liés à leur projet.")}
         actions={
           <>
-            <Button variant="ghost" icon={<GraduationCap className="size-4" />} busy={fromMy.isPending} onClick={() => fromMy.mutate()} title="Récupère les PDF de sujet que MY Epitech joint à tes projets en cours et les lie à leur dépôt. Fait aussi à chaque synchronisation. Nécessite une session MY Epitech connectée.">
-              Depuis MY Epitech
+            <Button variant="ghost" icon={<GraduationCap className="size-4" />} busy={mySync.busy} onClick={() => void mySync.sync()} title={t("Synchronise MY Epitech : télécharge les sujets des projets en cours et les associe à leur dépôt.")}>
+              {mySync.busy ? mySync.label : t("Sujets de MY Epitech")}
             </Button>
             <Button icon={<FilePlus2 className="size-4" />} onClick={() => void addFiles()}>
-              Ajouter des fichiers…
+              {t("Ajouter des fichiers…")}
             </Button>
             <Button variant="primary" icon={<Download className="size-4" />} onClick={() => setScanning(true)}>
-              Importer depuis Téléchargements
+              {t("Importer depuis Téléchargements")}
             </Button>
           </>
         }
@@ -80,17 +77,19 @@ export function SubjectsPage() {
 
       {scanning && <ScanPanel repos={repoList} onClose={() => setScanning(false)} onImported={report} />}
 
+      {(assoc.data?.suggestions.length ?? 0) > 0 && <Suggestions items={assoc.data!.suggestions} subjects={list} repos={repoList} />}
+
       {subjects.isLoading ? (
         <p className="flex items-center gap-2 py-16 text-muted">
-          <Spinner /> Chargement…
+          <Spinner /> {t("Chargement…")}
         </p>
       ) : subjects.error ? (
         <ErrorNote>{asAppError(subjects.error).message}</ErrorNote>
       ) : list.length === 0 ? (
         !scanning && (
           <Card>
-            <EmptyState icon={<FileText className="size-6" />} title="Aucun sujet" action={<Button onClick={() => setScanning(true)}>Importer depuis Téléchargements</Button>}>
-              TekBoard copie les PDF choisis dans sa bibliothèque et propose le projet de chacun. Tes téléchargements restent où ils sont.
+            <EmptyState icon={<FileText className="size-6" />} title={t("Aucun sujet")} action={<Button onClick={() => setScanning(true)}>{t("Importer depuis Téléchargements")}</Button>}>
+              {t("TekBoard copie les PDF choisis dans sa bibliothèque et propose le projet de chacun. Tes téléchargements restent où ils sont.")}
             </EmptyState>
           </Card>
         )
@@ -98,11 +97,11 @@ export function SubjectsPage() {
         <>
           <div className="relative mb-3 w-64">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
-            <Input className="pl-8" aria-label="Filtrer par nom ou projet" placeholder="Filtrer" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <Input className="pl-8" aria-label={t("Filtrer par nom ou projet")} placeholder="Filtrer" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
           <Card>
             {shown.length === 0 ? (
-              <EmptyState title="Rien ne correspond">Essaie une autre recherche.</EmptyState>
+              <EmptyState title={t("Rien ne correspond")}>{t("Essaie une autre recherche.")}</EmptyState>
             ) : (
               <ul>
                 {shown.map((s) => (
@@ -117,9 +116,48 @@ export function SubjectsPage() {
   );
 }
 
+/** Links TekBoard was not sure enough about to make alone. */
+function Suggestions({ items, subjects, repos }: { items: SubjectSuggestion[]; subjects: Subject[]; repos: RepoInfo[] }) {
+  const qc = useQueryClient();
+  const toast = useUi((s) => s.toast);
+  const decide = useMutation({
+    mutationFn: ({ s, accept }: { s: SubjectSuggestion; accept: boolean }) => api.subjectSuggestionDecide(s.subjectId, s.repoPath, accept),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.subjects }),
+    onError: (e) => toast({ kind: "error", title: t("Non enregistré"), detail: asAppError(e).message }),
+  });
+  return (
+    <Card className="mb-4">
+      <CardTitle>{t("Associations à valider")}</CardTitle>
+      <p className="border-b border-white/6 px-4 pb-2 text-xs text-faint">{t("TekBoard n'associe seul que ce qui est certain (même projet MY Epitech, ou un seul dépôt du même nom). Pour le reste, il demande.")}</p>
+      <ul className="py-1">
+        {items.map((it) => {
+          const sub = subjects.find((x) => x.id === it.subjectId);
+          const repo = repos.find((r) => r.path === it.repoPath);
+          if (!sub) return null;
+          return (
+            <li key={`${it.subjectId}-${it.repoPath}`} className="flex min-h-10 items-center gap-3 px-4 text-[13px]">
+              <FileText className="size-4 shrink-0 text-faint" />
+              <span className="min-w-0 flex-1 truncate font-medium">{sub.name}</span>
+              <span className="text-faint">→</span>
+              <span className="min-w-0 flex-1 truncate" title={it.repoPath}>{repo ? displayName(repo) : it.repoPath}</span>
+              <span className="hidden w-40 shrink-0 truncate text-xs text-faint md:block">{it.reason}</span>
+              <Button size="sm" variant="primary" busy={decide.isPending} onClick={() => decide.mutate({ s: it, accept: true })}>
+                {t("Associer")}
+              </Button>
+              <Button size="sm" variant="ghost" disabled={decide.isPending} onClick={() => decide.mutate({ s: it, accept: false })}>
+                {t("Ce n'est pas ça")}
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
+  );
+}
+
 function ProjectSelect({ value, repos, onChange, className }: { value: string | null; repos: RepoInfo[]; onChange: (path: string | null) => void; className?: string }) {
   return (
-    <Select className={className} value={value ?? ""} label="Projet" onChange={(v) => onChange(v || null)} options={[{ value: "", label: "Aucun projet" }, ...repoOptions(repos)]} />
+    <Select className={className} value={value ?? ""} label={t("Projet")} onChange={(v) => onChange(v || null)} options={[{ value: "", label: t("Aucun projet") }, ...repoOptions(repos)]} />
   );
 }
 
@@ -135,7 +173,7 @@ function SubjectRow({ subject, repos }: { subject: Subject; repos: RepoInfo[] })
   const missing = subject.repoPath !== null && !repos.some((r) => r.path === subject.repoPath);
   const briefs = useQuery({ queryKey: ["subject-briefs"], queryFn: api.subjectBriefs });
   const brief = briefs.data?.[String(subject.id)];
-  const analyze = useMutation({ mutationFn: () => api.subjectAnalyze(subject.id), onSuccess: () => toast({ kind: "info", title: "Tika lit le sujet", detail: "Le résumé sera gardé : le PDF ne sera plus relu." }), onError: fail("Sujet non analysé") });
+  const analyze = useMutation({ mutationFn: () => api.subjectAnalyze(subject.id), onSuccess: () => toast({ kind: "info", title: t("Artix lit le sujet"), detail: t("Le résumé sera gardé : le PDF ne sera plus relu.") }), onError: fail("Sujet non analysé") });
 
   return (
     <li className="group flex h-12 items-center gap-3 border-b border-white/6 pr-2 pl-4 last:border-b-0 row-hover">
@@ -143,15 +181,15 @@ function SubjectRow({ subject, repos }: { subject: Subject; repos: RepoInfo[] })
       <button type="button" onClick={() => openDoc.mutate()} className="selectable min-w-0 flex-[2] truncate text-left text-[13px] font-medium hover:text-accent-strong" title="Ouvrir">
         {subject.name}
       </button>
-      {missing && <Badge tone="warn" title="Le dépôt lié n'est plus dans tes dossiers de projets">projet introuvable</Badge>}
+      {missing && <Badge tone="warn" title={t("Le dépôt lié n'est plus dans tes dossiers de projets")}>{t("projet introuvable")}</Badge>}
       {brief ? (
         <Badge tone={brief.stale ? "warn" : "ok"} title={brief.brief.summary ?? ""}>
-          {brief.stale ? "résumé périmé" : `lu${brief.brief.estimateTotalMin ? ` · ~${Math.round(brief.brief.estimateTotalMin / 60)} h` : ""}`}
+          {brief.stale ? t("résumé périmé") : `lu${brief.brief.estimateTotalMin ? ` · ~${Math.round(brief.brief.estimateTotalMin / 60)} h` : ""}`}
         </Badge>
       ) : null}
       {(!brief || brief.stale) && (
-        <Button size="sm" variant="ghost" busy={analyze.isPending} onClick={() => analyze.mutate()} title="Tika lit le sujet une fois et en garde les exigences et une estimation">
-          Analyser
+        <Button size="sm" variant="ghost" busy={analyze.isPending} onClick={() => analyze.mutate()} title={t("Artix lit le sujet une fois et en garde les exigences et une estimation")}>
+          {t("Analyser")}
         </Button>
       )}
       <ProjectSelect className="w-52 shrink-0" value={missing ? null : subject.repoPath} repos={repos} onChange={(p) => link.mutate(p)} />
@@ -160,14 +198,14 @@ function SubjectRow({ subject, repos }: { subject: Subject; repos: RepoInfo[] })
       {armed ? (
         <span className="flex shrink-0 items-center gap-1">
           <Button size="sm" variant="danger" busy={remove.isPending} onClick={() => remove.mutate()}>
-            Supprimer la copie
+            {t("Supprimer la copie")}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setArmed(false)}>
-            Garder
+            {t("Garder")}
           </Button>
         </span>
       ) : (
-        <IconButton label="Retirer de la bibliothèque" className="opacity-0 group-focus-within:opacity-100 group-hover:opacity-100" onClick={() => setArmed(true)}>
+        <IconButton label={t("Retirer de la bibliothèque")} className="opacity-0 group-focus-within:opacity-100 group-hover:opacity-100" onClick={() => setArmed(true)}>
           <Trash2 className="size-4" />
         </IconButton>
       )}
@@ -214,7 +252,7 @@ function ScanPanel({ repos, onClose, onImported }: { repos: RepoInfo[]; onClose:
         right={
           <span className="flex items-center gap-2">
             <Button size="sm" variant="ghost" onClick={onClose}>
-              Annuler
+              {t("Annuler")}
             </Button>
             <Button size="sm" variant="primary" disabled={picked.size === 0} busy={run.isPending} onClick={() => run.mutate()}>
               Import {picked.size || ""}
@@ -226,7 +264,7 @@ function ScanPanel({ repos, onClose, onImported }: { repos: RepoInfo[]; onClose:
       </CardTitle>
       {scan.isLoading ? (
         <p className="flex items-center gap-2 px-4 py-5 text-[13px] text-muted">
-          <Spinner /> Lecture de tes téléchargements…
+          <Spinner /> {t("Lecture de tes téléchargements…")}
         </p>
       ) : scan.error ? (
         <div className="p-3">

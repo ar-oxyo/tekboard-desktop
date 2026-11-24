@@ -1,11 +1,11 @@
 //! Local SQLite store. Holds preferences and per-repository metadata only:
 //! no token, password or cookie is ever written here.
 
-use crate::error::Result;
+use crate::error::{AppError, Result};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::Serialize;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const MIGRATIONS: &[&str] = &[
     // v1
@@ -276,6 +276,27 @@ const MIGRATIONS: &[&str] = &[
      ALTER TABLE plan_events ADD COLUMN dedupe_key TEXT;
      CREATE UNIQUE INDEX plan_events_dedupe ON plan_events(dedupe_key) WHERE dedupe_key IS NOT NULL;
      ALTER TABLE work_log ADD COLUMN event_id INTEGER;",
+    // v9: projects kept out of sight (copies, finished work) without touching their folder,
+    // projects left out of the calendar, event categories, and where a subject's link comes
+    // from (MY Epitech project id, automatic or chosen by hand), with the links refused.
+    "ALTER TABLE repo_meta ADD COLUMN visibility TEXT;
+     ALTER TABLE plan_projects ADD COLUMN calendar_hidden INTEGER NOT NULL DEFAULT 0;
+     CREATE TABLE plan_categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        color TEXT NOT NULL,
+        position INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+     );
+     ALTER TABLE plan_events ADD COLUMN category TEXT;
+     ALTER TABLE subjects ADD COLUMN my_project_id INTEGER;
+     ALTER TABLE subjects ADD COLUMN link_source TEXT;
+     ALTER TABLE subjects ADD COLUMN main INTEGER NOT NULL DEFAULT 0;
+     CREATE TABLE subject_rejects (
+        subject_id INTEGER NOT NULL,
+        repo_path TEXT NOT NULL,
+        PRIMARY KEY (subject_id, repo_path)
+     );",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {
@@ -283,6 +304,61 @@ pub fn open(path: &Path) -> Result<Connection> {
         std::fs::create_dir_all(parent)?;
     }
     let conn = Connection::open(path)?;
+    conn.pragma_update(None, "journal_mode", "WAL")?;
+    migrate(&conn)?;
+    Ok(conn)
+}
+
+/// Schema version this build writes (`PRAGMA user_version` once migrated).
+pub fn schema_version() -> usize {
+    MIGRATIONS.len()
+}
+
+/// What happened to the database when the app started.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Opened {
+    Fine,
+    /// The file could not be read as a database: it was set aside under this name and a new one started.
+    Recovered(PathBuf),
+}
+
+/// Opens the app's database at start. A database made by a newer Tekboard is left as it is
+/// (error `db_newer`); an unreadable one is renamed `tekboard.db.corrupt-<date>`, never deleted,
+/// and a fresh one is started.
+pub fn open_at_start(path: &Path) -> Result<(Connection, Opened)> {
+    match open_checked(path) {
+        Ok(conn) => Ok((conn, Opened::Fine)),
+        Err(e) if e.code() == "db_newer" => Err(e),
+        Err(e) if e.code() == "db_corrupt" => {
+            let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
+            let aside = path.with_file_name(format!("{}.corrupt-{stamp}", path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()));
+            std::fs::rename(path, &aside)?;
+            for suffix in ["-wal", "-shm"] {
+                let side = PathBuf::from(format!("{}{suffix}", path.display()));
+                if side.exists() {
+                    let _ = std::fs::rename(&side, PathBuf::from(format!("{}{suffix}", aside.display())));
+                }
+            }
+            Ok((open(path)?, Opened::Recovered(aside)))
+        }
+        Err(e) => Err(e),
+    }
+}
+
+fn open_checked(path: &Path) -> Result<Connection> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let corrupt = |_: rusqlite::Error| AppError::new("db_corrupt", "Base de données illisible");
+    let conn = Connection::open(path).map_err(corrupt)?;
+    let check: String = conn.query_row("PRAGMA quick_check", [], |r| r.get(0)).map_err(corrupt)?;
+    if check != "ok" {
+        return Err(AppError::new("db_corrupt", "Base de données abîmée"));
+    }
+    let version = conn.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0)).map_err(corrupt)? as usize;
+    if version > MIGRATIONS.len() {
+        return Err(AppError::new("db_newer", "Ces données ont été écrites par une version plus récente de Tekboard. Installe la dernière version (github.com/ar-oxyo/tekboard-desktop/releases) : tes données sont intactes."));
+    }
     conn.pragma_update(None, "journal_mode", "WAL")?;
     migrate(&conn)?;
     Ok(conn)
@@ -338,12 +414,17 @@ pub struct RepoMeta {
     pub my_project_id: Option<i64>,
     pub run_bin: Option<String>,
     pub run_args: Option<String>,
+    /// `hidden` (a copy, a zombie: out of every list and of the matching with MY Epitech) or
+    /// `archived` (kept, out of the everyday lists). `None` = shown. The folder is never touched.
+    pub visibility: Option<String>,
 }
+
+pub const VISIBILITIES: &[&str] = &["hidden", "archived"];
 
 pub const STATUSES: &[&str] = &["todo", "in_progress", "done"];
 
 pub fn all_meta(conn: &Connection) -> Result<HashMap<String, RepoMeta>> {
-    let mut stmt = conn.prepare("SELECT path, favorite, archived, last_opened_at, deadline, deadline_at, deadline_source, status, kind_override, my_project_id, run_bin, run_args FROM repo_meta")?;
+    let mut stmt = conn.prepare("SELECT path, favorite, archived, last_opened_at, deadline, deadline_at, deadline_source, status, kind_override, my_project_id, run_bin, run_args, visibility FROM repo_meta")?;
     let rows = stmt.query_map([], |r| {
         Ok((
             r.get::<_, String>(0)?,
@@ -359,6 +440,7 @@ pub fn all_meta(conn: &Connection) -> Result<HashMap<String, RepoMeta>> {
                 my_project_id: r.get(9)?,
                 run_bin: r.get(10)?,
                 run_args: r.get(11)?,
+                visibility: r.get(12)?,
             },
         ))
     })?;
@@ -447,6 +529,11 @@ pub fn set_kind_override(conn: &Connection, path: &str, kind: Option<&str>) -> R
     Ok(())
 }
 
+pub fn set_visibility(conn: &Connection, path: &str, visibility: Option<&str>) -> Result<()> {
+    conn.execute("INSERT INTO repo_meta (path, visibility) VALUES (?1, ?2) ON CONFLICT(path) DO UPDATE SET visibility = excluded.visibility", params![path, visibility])?;
+    Ok(())
+}
+
 pub fn set_my_project(conn: &Connection, path: &str, id: Option<i64>) -> Result<()> {
     conn.execute("INSERT INTO repo_meta (path, my_project_id) VALUES (?1, ?2) ON CONFLICT(path) DO UPDATE SET my_project_id = excluded.my_project_id", params![path, id])?;
     Ok(())
@@ -501,13 +588,19 @@ pub struct Subject {
     pub size: i64,
     pub repo_path: Option<String>,
     pub added_at: i64,
+    /// MY Epitech project the document was downloaded from.
+    pub my_project_id: Option<i64>,
+    /// `manual` (chosen by the user: never changed automatically), `auto`, or `None`.
+    pub link_source: Option<String>,
+    /// The project's own subject, as opposed to a bootstrap or an annex.
+    pub main: bool,
 }
 
 fn subject_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<Subject> {
-    Ok(Subject { id: r.get(0)?, name: r.get(1)?, file: r.get(2)?, hash: r.get(3)?, size: r.get(4)?, repo_path: r.get(5)?, added_at: r.get(6)? })
+    Ok(Subject { id: r.get(0)?, name: r.get(1)?, file: r.get(2)?, hash: r.get(3)?, size: r.get(4)?, repo_path: r.get(5)?, added_at: r.get(6)?, my_project_id: r.get(7)?, link_source: r.get(8)?, main: r.get::<_, i64>(9)? != 0 })
 }
 
-const SUBJECT_COLS: &str = "id, name, file, hash, size, repo_path, added_at";
+const SUBJECT_COLS: &str = "id, name, file, hash, size, repo_path, added_at, my_project_id, link_source, main";
 
 pub fn list_subjects(conn: &Connection) -> Result<Vec<Subject>> {
     let mut stmt = conn.prepare(&format!("SELECT {SUBJECT_COLS} FROM subjects ORDER BY added_at DESC, id DESC"))?;
@@ -533,7 +626,45 @@ pub fn link_subject(conn: &Connection, id: i64, repo_path: Option<&str>) -> Resu
     Ok(())
 }
 
+/// A link the user made or undid by hand: automatic matching leaves it alone from now on.
+/// Unlinking also remembers the refused repository so it is not suggested again.
+pub fn link_subject_by_hand(conn: &Connection, id: i64, repo_path: Option<&str>) -> Result<()> {
+    if repo_path.is_none() {
+        if let Some(old) = get_subject(conn, id)?.and_then(|s| s.repo_path) {
+            conn.execute("INSERT OR IGNORE INTO subject_rejects (subject_id, repo_path) VALUES (?1, ?2)", params![id, old])?;
+        }
+    } else {
+        conn.execute("DELETE FROM subject_rejects WHERE subject_id = ?1 AND repo_path = ?2", params![id, repo_path])?;
+    }
+    conn.execute("UPDATE subjects SET repo_path = ?2, link_source = 'manual' WHERE id = ?1", params![id, repo_path])?;
+    Ok(())
+}
+
+pub fn reject_subject_link(conn: &Connection, id: i64, repo_path: &str) -> Result<()> {
+    conn.execute("INSERT OR IGNORE INTO subject_rejects (subject_id, repo_path) VALUES (?1, ?2)", params![id, repo_path])?;
+    Ok(())
+}
+
+pub fn subject_rejects(conn: &Connection) -> Result<Vec<(i64, String)>> {
+    let mut st = conn.prepare("SELECT subject_id, repo_path FROM subject_rejects")?;
+    let rows = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
+    Ok(rows.collect::<std::result::Result<_, _>>()?)
+}
+
+/// Where a subject came from on MY Epitech (set at import).
+pub fn set_subject_origin(conn: &Connection, id: i64, my_project_id: Option<i64>, main: bool) -> Result<()> {
+    conn.execute("UPDATE subjects SET my_project_id = COALESCE(?2, my_project_id), main = MAX(main, ?3) WHERE id = ?1", params![id, my_project_id, main as i64])?;
+    Ok(())
+}
+
+/// An automatic link: never over a link chosen by hand.
+pub fn link_subject_auto(conn: &Connection, id: i64, repo_path: &str) -> Result<bool> {
+    let n = conn.execute("UPDATE subjects SET repo_path = ?2, link_source = 'auto' WHERE id = ?1 AND (link_source IS NULL OR link_source = 'auto') AND repo_path IS NOT ?2", params![id, repo_path])?;
+    Ok(n > 0)
+}
+
 pub fn delete_subject(conn: &Connection, id: i64) -> Result<()> {
+    conn.execute("DELETE FROM subject_rejects WHERE subject_id = ?1", [id])?;
     conn.execute("DELETE FROM subjects WHERE id = ?1", [id])?;
     Ok(())
 }
@@ -561,6 +692,26 @@ pub fn recent_activity(conn: &Connection, limit: u32) -> Result<Vec<Activity>> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn an_unreadable_database_is_set_aside_and_a_newer_one_left_alone() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("tekboard.db");
+        std::fs::write(&path, "this is not sqlite, just some text that is long enough to have a header").unwrap();
+        let (conn, opened) = open_at_start(&path).unwrap();
+        let Opened::Recovered(aside) = opened else { panic!("not recovered") };
+        assert!(aside.is_file() && std::fs::read_to_string(&aside).unwrap().starts_with("this is not sqlite"));
+        assert_eq!(conn.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0)).unwrap() as usize, schema_version());
+        drop(conn);
+        let newer = tmp.path().join("newer.db");
+        let c = Connection::open(&newer).unwrap();
+        c.pragma_update(None, "user_version", (schema_version() + 5) as i64).unwrap();
+        drop(c);
+        assert_eq!(open_at_start(&newer).unwrap_err().code(), "db_newer");
+        let c = Connection::open(&newer).unwrap();
+        assert_eq!(c.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0)).unwrap() as usize, schema_version() + 5);
+        assert!(matches!(open_at_start(&path).unwrap().1, Opened::Fine));
+    }
+
     use super::*;
 
     #[test]

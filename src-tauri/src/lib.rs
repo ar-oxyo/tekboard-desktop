@@ -4,12 +4,14 @@ pub mod checker;
 pub mod claude;
 pub mod commands;
 pub mod commands_ai;
+pub mod commands_app;
 pub mod commands_dev;
 pub mod commands_lib;
 pub mod commands_my;
 pub mod commands_plan;
 pub mod cozy;
 pub mod cparse;
+pub mod datamgmt;
 pub mod db;
 pub mod deadlines;
 pub mod doctor;
@@ -20,6 +22,7 @@ pub mod git;
 pub mod github;
 pub mod jobs;
 pub mod launcher;
+pub mod logtime;
 pub mod library;
 pub mod moulinette;
 pub mod mydata;
@@ -41,39 +44,92 @@ pub mod templates;
 pub mod testing;
 pub mod testrepo;
 pub mod toolenv;
+pub mod updates;
 pub mod workspace;
 
 use commands::AppState;
 use std::sync::Mutex;
 use tauri::Manager;
 
+/// Opens the data, then starts the background services. An error here is shown to the user.
+fn start(app: &mut tauri::App) -> std::result::Result<(), String> {
+    let data_dir = app.path().app_data_dir().map_err(|e| format!("Dossier de données introuvable : {e}"))?;
+    let unwritable = |e: std::io::Error| format!("Tekboard ne peut pas écrire dans {} ({e}). Vérifie que ce dossier t'appartient et qu'il reste de la place sur le disque.", data_dir.display());
+    std::fs::create_dir_all(&data_dir).map_err(unwritable)?;
+    restrict(&data_dir);
+    let (conn, opened) = db::open_at_start(&data_dir.join("tekboard.db")).map_err(|e| e.to_string())?;
+    let mut notices = Vec::new();
+    if let db::Opened::Recovered(aside) = opened {
+        notices.push(format!("La base de données était illisible : elle a été mise de côté ({}) et Tekboard repart de zéro.", aside.display()));
+    }
+    if settings::repair(&conn).unwrap_or(false) {
+        notices.push("Des réglages illisibles ont été remis par défaut ; les autres sont gardés.".to_string());
+    }
+    let _ = settings::adopt_existing_setup(&conn);
+    *app.state::<commands_app::StartupNotices>().0.lock().unwrap_or_else(|e| e.into_inner()) = notices;
+    // Runs left open by a crash or by closing the app during a task.
+    let _ = db::mark_interrupted(&conn);
+    notify::init(app.handle().clone());
+    // Programs are looked up like the user's terminal would: see `toolenv`.
+    toolenv::set_override("claude", settings::load(&conn).ok().and_then(|s| s.claude_path).as_deref());
+    toolenv::warm_up();
+    if let Err(e) = templates::ensure_builtins(&data_dir.join("templates")) {
+        eprintln!("TekBoard: built-in templates not installed: {e}");
+    }
+    let cache_dir = app.path().app_cache_dir().map_err(|e| format!("Dossier de cache introuvable : {e}"))?;
+    std::fs::create_dir_all(&cache_dir).map_err(|e| format!("Tekboard ne peut pas écrire dans {} ({e}).", cache_dir.display()))?;
+    restrict(&cache_dir);
+    app.manage(AppState { db: std::sync::Arc::new(Mutex::new(conn)), data_dir, cache_dir, jobs: jobs::Jobs::default(), my: Mutex::new(myepitech::Session::default()), my_syncing: Mutex::new(false) });
+    commands_my::start_background(app.handle().clone());
+    commands_ai::start_background(app.handle().clone());
+    // Artix's tools, reachable by the Claude Code runs TekBoard starts (see ai::ipc).
+    if let Err(e) = ai::ipc::serve(app.handle().clone()) {
+        eprintln!("TekBoard: tools channel not opened: {e}");
+    }
+    Ok(())
+}
+
+/// Tekboard's folders are readable by their owner only (they hold the MY Epitech session).
+fn restrict(dir: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt;
+    let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(updates::Pending::default())
+        .manage(commands_app::StartupNotices::default())
         .setup(|app| {
-            let data_dir = app.path().app_data_dir()?;
-            std::fs::create_dir_all(&data_dir)?;
-            let conn = db::open(&data_dir.join("tekboard.db"))?;
-            // Runs left open by a crash or by closing the app during a task.
-            let _ = db::mark_interrupted(&conn);
-            notify::init(app.handle().clone());
-            // Programs are looked up like the user's terminal would: see `toolenv`.
-            toolenv::set_override("claude", settings::load(&conn).ok().and_then(|s| s.claude_path).as_deref());
-            toolenv::warm_up();
-            templates::ensure_builtins(&data_dir.join("templates"))?;
-            let cache_dir = app.path().app_cache_dir()?;
-            std::fs::create_dir_all(&cache_dir)?;
-            app.manage(AppState { db: std::sync::Arc::new(Mutex::new(conn)), data_dir, cache_dir, jobs: jobs::Jobs::default(), my: Mutex::new(myepitech::Session::default()), my_syncing: Mutex::new(false) });
-            commands_my::start_background(app.handle().clone());
-            commands_ai::start_background(app.handle().clone());
-            // Tika's tools, reachable by the Claude Code runs TekBoard starts (see ai::ipc).
-            if let Err(e) = ai::ipc::serve(app.handle().clone()) {
-                eprintln!("TekBoard: tools channel not opened: {e}");
+            if let Err(e) = start(app) {
+                // No crash and no half-started window: the reason, then quit.
+                use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+                if let Some(w) = app.get_webview_window("main") {
+                    let _ = w.hide();
+                }
+                let handle = app.handle().clone();
+                app.dialog().message(e.to_string()).title("Tekboard ne peut pas démarrer").kind(MessageDialogKind::Error).show(move |_| handle.exit(1));
             }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_settings,
+            commands_app::startup_notices,
+            commands_app::data_locations,
+            commands_app::data_open,
+            commands_app::data_export,
+            commands_app::data_inspect,
+            commands_app::data_import,
+            commands_app::data_clear_cache,
+            commands_app::settings_reset,
+            commands_app::app_reset_all,
+            commands_app::app_restart,
+            commands_app::update_info,
+            commands_app::update_check,
+            commands_app::update_install,
+            commands_app::update_save_package,
+            commands_app::update_open_releases,
             commands::save_settings,
             commands::ui_prefs_get,
             commands::ui_prefs_set,
@@ -130,6 +186,10 @@ pub fn run() {
             commands::subjects_scan,
             commands::subjects_import,
             commands::subject_link,
+            commands::subjects_associate,
+            commands::subject_suggestion_decide,
+            commands::project_set_visibility,
+            commands::hidden_repos,
             commands::subject_remove,
             commands::subject_open,
             commands::git_detail,
@@ -167,6 +227,7 @@ pub fn run() {
             commands_my::my_status,
             commands_my::my_connect,
             commands_my::my_sync,
+            commands_my::my_sync_auto,
             commands_my::my_data,
             commands_my::my_forget,
             commands_my::my_overview,
@@ -175,8 +236,13 @@ pub fn run() {
             commands_my::my_documents,
             commands_my::my_import_subjects,
             commands_my::my_academic,
+            commands_my::my_logtime,
             commands_my::my_free_slots,
             commands_plan::plan_state,
+            commands_plan::plan_project_calendar,
+            commands_plan::plan_categories,
+            commands_plan::plan_category_save,
+            commands_plan::plan_category_delete,
             commands_plan::plan_task_save,
             commands_plan::plan_task_delete,
             commands_plan::plan_event_save,

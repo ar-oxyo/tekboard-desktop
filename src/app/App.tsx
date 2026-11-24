@@ -20,17 +20,25 @@ import { CozyPage } from "../features/cozy/CozyPage";
 import { GitPage } from "../features/git/GitPage";
 import { LibraryPage } from "../features/library/LibraryPage";
 import { MyEpitechPage } from "../features/myepitech/MyEpitechPage";
+import { LogtimePage } from "../features/myepitech/LogtimePage";
 import { PlanningPage } from "../features/planning/PlanningPage";
 import { EventDialog, QuickCapture, TaskDialog, useCaptureShortcut } from "../features/planning/Dialogs";
 import { FocusBar } from "../features/planning/Focus";
-import { TikaPanel } from "../features/tika/TikaPanel";
-import { useNudges } from "../features/tika/Insights";
+import { ArtixPanel } from "../features/artix/ArtixPanel";
+import { useNudges } from "../features/artix/Insights";
 import { PromptsPage } from "../features/prompts/PromptsPage";
 import { TestingPage } from "../features/testing/TestingPage";
 import { PackageDialog } from "../features/tools/PackageDialog";
 import { ReadmeDialog } from "../features/tools/ReadmeDialog";
 import { remember, entryOf, SECTIONS } from "./sections";
 import { SectionTabs, Sidebar } from "./Sidebar";
+import { runMySync } from "../features/myepitech/useMySync";
+import { applyLang, t } from "../lib/i18n";
+import { hideSplash } from "../lib/splash";
+import { OnboardingFlow } from "../features/onboarding/OnboardingFlow";
+
+const UPDATE_KEY = "tekboard.update.lastCheck";
+const DAY = 24 * 3600 * 1000;
 
 
 /** `tekboard --repo <path> --run banana` starts that check and shows it. */
@@ -48,11 +56,11 @@ async function startFromCli(repo: string, what: string) {
     if (id !== null) ui.showJob(id, repo);
     else ui.toast({ kind: "error", title: `Rien à lancer pour « ${what} »` });
   } catch (e) {
-    ui.toast({ kind: "error", title: "Démarrage impossible", detail: asAppError(e).message });
+    ui.toast({ kind: "error", title: t("Démarrage impossible"), detail: asAppError(e).message });
   }
 }
 
-/** Opens a screen named the way Tika names it. */
+/** Opens a screen named the way Artix names it. */
 export function navigateTo(page: string, project: string | null, tab: string | null) {
   const ui = useUi.getState();
   if (project && page === "projects") {
@@ -78,6 +86,11 @@ export function App() {
   const qc = useQueryClient();
   useCaptureShortcut();
   useNudges();
+
+  // The language chosen in Settings (also on another computer's copy of the database).
+  useEffect(() => {
+    if (settings.data?.language) applyLang(settings.data.language);
+  }, [settings.data?.language]);
 
   // Glass only when the user keeps it on and the system does not ask for less transparency.
   const themeOverride = useUi((s) => s.themeOverride);
@@ -122,9 +135,12 @@ export function App() {
           useUi.getState().setCaptureOpen(true);
         } else if (s.run === "new-task") {
           useUi.getState().editTask({});
+        } else if (s.run === "update") {
+          // `tekboard --run update`: Settings → Mises à jour, checks and installs what it finds.
+          useUi.setState({ page: "settings", settingsTab: "updates", updateAuto: true });
         } else if (s.run === "my-connect") {
           setPage("myepitech");
-          void api.myConnect().catch(() => undefined);
+          void runMySync();
         } else if (s.repo && s.run) void startFromCli(s.repo, s.run);
       },
       () => undefined,
@@ -136,23 +152,23 @@ export function App() {
     const off = listenJobs(qc);
     return () => void off.then((f) => f());
   }, [qc]);
-  // Backend changes (jobs, syncs, Tika's actions, timers) and writes made here refresh
+  // Backend changes (jobs, syncs, Artix's actions, timers) and writes made here refresh
   // every screen that shows them (see lib/sync.ts).
   useEffect(() => {
     setQueryClient(qc);
     const off = listenData(qc);
     const unauth = listen<{ unauthorized: boolean }>("my-synced", (e) => {
-      if (e.payload.unauthorized) useUi.getState().toast({ kind: "error", title: "MY Epitech a refusé la session", detail: "La synchronisation automatique est arrêtée. Ouvre École → MY Epitech et reconnecte-toi." });
+      if (e.payload.unauthorized) useUi.getState().toast({ kind: "error", title: t("MY Epitech a refusé la session"), detail: t("La synchronisation automatique est arrêtée. Clique sur « Sync » (École → MY Epitech) pour te reconnecter.") });
     });
     return () => {
       void off.then((f) => f());
       void unauth.then((f) => f());
     };
   }, [qc]);
-  // Tika opens a screen for the user (tool `navigate`).
+  // Artix opens a screen for the user (tool `navigate`).
   useEffect(() => {
     const off = listen<{ page: string; project: string | null; tab: string | null }>("ui-navigate", (e) => navigateTo(e.payload.page, e.payload.project, e.payload.tab));
-    // A task Tika started (moulinette, tests): shown live in Testing.
+    // A task Artix started (moulinette, tests): shown live in Testing.
     const job = listen<{ id: number; repo: string }>("ui-show-job", (e) => useUi.getState().showJob(e.payload.id, e.payload.repo));
     return () => {
       void off.then((f) => f());
@@ -180,7 +196,7 @@ export function App() {
       if (key === "j") {
         e.preventDefault();
         const ui = useUi.getState();
-        if (e.shiftKey) ui.setTika({ thread: null, job: null });
+        if (e.shiftKey) ui.setArtix({ thread: null, job: null });
         if (ui.assistantOpen && !e.shiftKey) ui.closeAssistant();
         else ui.openAssistant();
       } else if (key === "k") {
@@ -197,6 +213,67 @@ export function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [setPage, setPaletteOpen, openLauncher]);
+
+  // The launch screen goes as soon as the settings are known (read or failed).
+  const settled = settings.isSuccess || settings.isError;
+  useEffect(() => {
+    if (settled) hideSplash();
+  }, [settled]);
+
+  // What the start had to repair (unreadable database or settings), said once.
+  useEffect(() => {
+    void api.startupNotices().then(
+      (notes) => notes.forEach((n) => useUi.getState().toast({ kind: "info", title: t("Au démarrage"), detail: n, duration: 12000 })),
+      () => undefined,
+    );
+  }, []);
+
+  // A new version, looked for at most once a day, quietly: offline or GitHub down says nothing.
+  const updateCheck = settings.data?.updateCheck ?? false;
+  const onboarded = settings.data?.onboarded ?? false;
+  useEffect(() => {
+    if (!updateCheck || !onboarded) return;
+    let last = 0;
+    try {
+      last = Number(localStorage.getItem(UPDATE_KEY) ?? 0);
+    } catch {
+      /* checked anyway */
+    }
+    if (Date.now() - last < DAY) return;
+    const id = window.setTimeout(() => {
+      void api.updateCheck().then(
+        (found) => {
+          try {
+            localStorage.setItem(UPDATE_KEY, String(Date.now()));
+          } catch {
+            /* checked again next time */
+          }
+          if (found)
+            useUi.getState().toast({
+              kind: "info",
+              title: t("Tekboard {v} est disponible", { v: found.version }),
+              detail: t("Tu utilises la version {v}.", { v: found.current }),
+              duration: 15000,
+              action: { label: t("Voir la mise à jour"), run: () => useUi.setState({ page: "settings", settingsTab: "updates", sheetPath: null }) },
+            });
+        },
+        () => undefined,
+      );
+    }, 15_000);
+    return () => window.clearTimeout(id);
+  }, [updateCheck, onboarded]);
+
+  if (settings.data && !settings.data.onboarded) {
+    return (
+      <>
+        <div className="app-bg" aria-hidden />
+        <div className="relative z-[1] h-full">
+          <OnboardingFlow />
+        </div>
+        <Toaster />
+      </>
+    );
+  }
 
   return (
     <div className="flex h-full">
@@ -218,6 +295,7 @@ export function App() {
           {page === "subjects" && <SubjectsPage />}
           {page === "analytics" && <AnalyticsPage />}
           {page === "myepitech" && <MyEpitechPage />}
+          {page === "logtime" && <LogtimePage />}
           {page === "cozy" && <CozyPage />}
           {page === "templates" && <TemplatesPage />}
           {page === "settings" && <SettingsPage />}
@@ -225,7 +303,7 @@ export function App() {
         </div>
         )}
       </main>
-      <TikaPanel />
+      <ArtixPanel />
       <CommandPalette />
       {sheetPath && <ProjectSheetDialog key={sheetPath} path={sheetPath} />}
       {launch && <LauncherDialog key={JSON.stringify(launch)} request={launch} />}

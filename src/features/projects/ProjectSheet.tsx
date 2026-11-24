@@ -11,21 +11,23 @@ import { displayName, due, localTime, moduleOf } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { Countdown, ProgressPicker } from "./RepoBits";
 import { AdvancedTab, GitTab, PlanOverview } from "./SheetPlan";
-import { DocsTab, LibraryTab, TestingTab } from "./SheetTabs";
+import { DocsTab, TestingTab } from "./SheetTabs";
+import { t } from "../../lib/i18n";
 
-type Tab = "overview" | "details" | "git" | "library" | "testing" | "docs" | "advanced";
-const TABS: Array<[Tab, string]> = [["overview", "Overview"], ["details", "Deadline & notes"], ["git", "Git"], ["library", "Library"], ["testing", "Testing"], ["docs", "Documentation"], ["advanced", "Advanced"]];
+// Libraries are managed from Projects → Libraries, where the whole catalogue is.
+type Tab = "overview" | "details" | "git" | "testing" | "docs" | "advanced";
+const TABS: Array<[Tab, string]> = [["overview", t("Vue d'ensemble")], ["details", t("Rendu et notes")], ["git", "Git"], ["testing", "Tests"], ["docs", t("Documentation")], ["advanced", t("Avancé")]];
 
 export function ProjectSheetDialog({ path }: { path: string }) {
   const close = useUi((s) => s.closeSheet);
-  const repos = useRepos();
+  const repos = useRepos(true, { all: true });
   const repo = repos.data?.find((r) => r.path === path);
   const sheet = useQuery({ queryKey: ["sheet", path], queryFn: () => api.projectGet(path), staleTime: 0 });
 
   if (!repo) {
     return (
-      <Modal open onClose={close} title="Projet" width="w-[720px]">
-        {repos.isLoading ? <Spinner /> : <ErrorNote>Ce dépôt n'est plus dans tes dossiers de projets.</ErrorNote>}
+      <Modal open onClose={close} title={t("Projet")} width="w-[720px]">
+        {repos.isLoading ? <Spinner /> : <ErrorNote>{t("Ce dépôt n'est plus dans tes dossiers de projets.")}</ErrorNote>}
       </Modal>
     );
   }
@@ -33,7 +35,7 @@ export function ProjectSheetDialog({ path }: { path: string }) {
     <Modal open onClose={close} title={displayName(repo)} width="w-[760px]">
       {sheet.isLoading ? (
         <p className="flex items-center gap-2 py-8 text-muted">
-          <Spinner /> Chargement…
+          <Spinner /> {t("Chargement…")}
         </p>
       ) : sheet.error ? (
         <ErrorNote>{asAppError(sheet.error).message}</ErrorNote>
@@ -79,7 +81,7 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
       qc.setQueryData(["sheet", repo.path], s);
       refresh();
     },
-    onError: (e) => toast({ kind: "error", title: "Non enregistré", detail: asAppError(e).message }),
+    onError: (e) => toast({ kind: "error", title: t("Non enregistré"), detail: asAppError(e).message }),
   });
   // Ctrl+S saves; leaving the dialog with unsaved changes saves them too.
   useEffect(() => {
@@ -121,7 +123,7 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
       if (dirty) await save.mutateAsync(draft);
       return api.projectLaunch(repo.path);
     },
-    onSuccess: (bin) => toast({ kind: "ok", title: `${bin} lancé dans un terminal`, detail: "La fenêtre reste ouverte à la fin du programme et affiche son code de sortie." }),
+    onSuccess: (bin) => toast({ kind: "ok", title: `${bin} lancé dans un terminal`, detail: t("La fenêtre reste ouverte à la fin du programme et affiche son code de sortie.") }),
   });
   const fromMy = useMutation({
     mutationFn: async () => {
@@ -132,11 +134,11 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
       return api.projectGet(repo.path);
     },
     onSuccess: accept,
-    onError: (e) => toast({ kind: "error", title: "Date non restaurée", detail: asAppError(e).message }),
+    onError: (e) => toast({ kind: "error", title: t("Date non restaurée"), detail: asAppError(e).message }),
   });
   const d = due(draft.deadline, draft.deadline && draft.deadlineTime ? `${draft.deadline}T${draft.deadlineTime}` : null, now);
   const linked = (subjects.data ?? []).filter((s) => s.repoPath === repo.path);
-  const openSubject = useMutation({ mutationFn: (id: number) => api.subjectOpen(id), onError: (e) => toast({ kind: "error", title: "Document non ouvert", detail: asAppError(e).message }) });
+  const openSubject = useMutation({ mutationFn: (id: number) => api.subjectOpen(id), onError: (e) => toast({ kind: "error", title: t("Document non ouvert"), detail: asAppError(e).message }) });
   const mod = moduleOf(repo);
   const my = repo.my;
   const differs = my?.deadline && stored.deadline && stored.deadlineSource === "manual" && (my.deadline !== stored.deadline || localTime(my.deadlineAt) !== localTime(stored.deadlineAt));
@@ -155,13 +157,13 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <ProgressPicker repo={repo} />
         {mod && <Tag title={my?.unitName ?? repo.kindReason}>{mod}</Tag>}
-        {d.state !== "unknown" ? <Countdown tone={d.tone} title={source ?? undefined}>{d.label}</Countdown> : <button type="button" className="text-xs text-faint hover:text-fg" onClick={() => setTab("details")}>pas de rendu</button>}
+        {d.state !== "unknown" ? <Countdown tone={d.tone} title={source ?? undefined}>{d.label}</Countdown> : <button type="button" className="text-xs text-faint hover:text-fg" onClick={() => setTab("details")}>{t("pas de rendu")}</button>}
         <span className="ml-auto flex items-center gap-1.5">
-          <Button size="sm" variant="primary" icon={<Code2 className="size-3.5" />} busy={act.workspace.isPending} onClick={() => act.workspace.mutate(repo)} title="Ouvre l'IDE et un terminal dans le projet">
-            Ouvrir l'IDE
+          <Button size="sm" variant="primary" icon={<Code2 className="size-3.5" />} busy={act.workspace.isPending} onClick={() => act.workspace.mutate(repo)} title={t("Ouvre l'IDE et un terminal dans le projet")}>
+            {t("Ouvrir l'IDE")}
           </Button>
           <Button size="sm" icon={<Hammer className="size-3.5" />} busy={build.isPending} onClick={() => build.mutate()} title={draft.buildCmd ? `Runs ${draft.buildCmd}` : "Runs make (set another command in Deadline & notes)"}>
-            Compiler
+            {t("Compiler")}
           </Button>
           <Button
             size="sm"
@@ -171,7 +173,7 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
             title={!bin ? undefined : !bin.terminal ? "No terminal is configured to run programs (Settings → Workspace)" : binary ? `Runs ./${binary}${draft.runArgs ? ` ${draft.runArgs}` : ""} in a terminal` : "Set the binary in Deadline & notes: TekBoard could not tell which program this project builds"}
             onClick={() => launch.mutate()}
           >
-            Lancer
+            {t("Lancer")}
           </Button>
         </span>
       </div>
@@ -179,8 +181,8 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
       {(buildState || build.error || launch.error) && (
         <div className="-mt-1 flex flex-col gap-2">
           {buildState}
-          {launch.error && <ErrorNote title="Le programme n'a pas démarré">{asAppError(launch.error).message}</ErrorNote>}
-          {build.error && <ErrorNote title="La compilation n'a pas pu démarrer">{asAppError(build.error).message}</ErrorNote>}
+          {launch.error && <ErrorNote title={t("Le programme n'a pas démarré")}>{asAppError(launch.error).message}</ErrorNote>}
+          {build.error && <ErrorNote title={t("La compilation n'a pas pu démarrer")}>{asAppError(build.error).message}</ErrorNote>}
           {build.data && build.data.output.trim() !== "" && build.data.code !== 0 && (
             <pre className="selectable max-h-48 overflow-auto rounded-md border border-line bg-bg p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted">{build.data.output}</pre>
           )}
@@ -196,14 +198,13 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
       {tab === "overview" && <PlanOverview repo={repo} />}
       {tab === "git" && <GitTab repo={repo} />}
       {tab === "advanced" && <AdvancedTab repo={repo} />}
-      {tab === "library" && <LibraryTab repo={repo} />}
       {tab === "testing" && <TestingTab repo={repo} />}
       {tab === "docs" && <DocsTab repo={repo} subjects={linked} onOpenSubject={(id) => openSubject.mutate(id)} />}
       {tab === "details" && (
         <>
           <div className="grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] items-start gap-3">
             <Field
-              label="Rendu"
+              label={t("Rendu")}
               hint={
                 d.state === "unknown" ? (
                   my?.deadline ? "Not set" : "Not set — TekBoard never guesses a date"
@@ -216,11 +217,11 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
               }
             >
               <span className="flex gap-2">
-                <Input type="date" aria-label="Jour du rendu" value={draft.deadline ?? ""} onChange={(e) => setDraft({ ...draft, deadline: e.target.value || null, deadlineTime: e.target.value ? draft.deadlineTime : null })} />
-                <Input type="time" aria-label="Heure du rendu (facultatif)" title="Facultatif. Sans heure, le rendu court jusqu'à la fin de la journée." className="w-[128px]" disabled={!draft.deadline} value={draft.deadlineTime ?? ""} onChange={(e) => setDraft({ ...draft, deadlineTime: e.target.value || null })} />
+                <Input type="date" aria-label={t("Jour du rendu")} value={draft.deadline ?? ""} onChange={(e) => setDraft({ ...draft, deadline: e.target.value || null, deadlineTime: e.target.value ? draft.deadlineTime : null })} />
+                <Input type="time" aria-label={t("Heure du rendu (facultatif)")} title={t("Facultatif. Sans heure, le rendu court jusqu'à la fin de la journée.")} className="w-[128px]" disabled={!draft.deadline} value={draft.deadlineTime ?? ""} onChange={(e) => setDraft({ ...draft, deadlineTime: e.target.value || null })} />
               </span>
             </Field>
-            <Field label="Commande de compilation" hint="Lancée directement dans le dossier du projet, sans shell.">
+            <Field label={t("Commande de compilation")} hint={t("Lancée directement dans le dossier du projet, sans shell.")}>
               <Input className="font-mono text-xs" placeholder="make" value={draft.buildCmd ?? ""} onChange={(e) => setDraft({ ...draft, buildCmd: e.target.value || null })} />
             </Field>
           </div>
@@ -229,34 +230,34 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
               MY Epitech says {my!.deadline}
               {localTime(my!.deadlineAt) && ` at ${localTime(my!.deadlineAt)}`} for “{my!.name}”. Your own date is kept.
               <Button size="sm" variant="ghost" busy={fromMy.isPending} onClick={() => fromMy.mutate()}>
-                Utiliser la date de MY Epitech
+                {t("Utiliser la date de MY Epitech")}
               </Button>
             </p>
           )}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Binaire à lancer" hint={bin?.detected ? `Detected: ${bin.detected} (${bin.detectedFrom}). Leave empty to use it.${bin && binary && !bin.exists && draft.runBin === saved.runBin ? " Not built yet." : ""}` : "Nothing detected (no plain NAME in the Makefile, no executable at the root)."}>
+            <Field label={t("Binaire à lancer")} hint={bin?.detected ? `Detected: ${bin.detected} (${bin.detectedFrom}). Leave empty to use it.${bin && binary && !bin.exists && draft.runBin === saved.runBin ? " Not built yet." : ""}` : "Nothing detected (no plain NAME in the Makefile, no executable at the root)."}>
               <Input className="font-mono text-xs" placeholder={bin?.detected ?? "path/inside/the/project"} value={draft.runBin ?? ""} onChange={(e) => setDraft({ ...draft, runBin: e.target.value || null })} />
             </Field>
-            <Field label="Arguments" hint={"Les guillemets groupent les mots. Pas de pipes ni de redirections : le programme est lancé sans shell."}>
+            <Field label="Arguments" hint={t("Les guillemets groupent les mots. Pas de pipes ni de redirections : le programme est lancé sans shell.")}>
               <Input className="font-mono text-xs" placeholder={'-n 3 "a file.txt"'} value={draft.runArgs ?? ""} onChange={(e) => setDraft({ ...draft, runArgs: e.target.value || null })} />
             </Field>
           </div>
           <div>
             <div className="mb-1.5 flex items-center justify-between">
-              <span className="text-xs text-muted">Notes</span>
+              <span className="text-xs text-muted">{t("Notes")}</span>
               <span className="text-xs text-faint">{dirty ? "Unsaved — Ctrl+S" : "Saved"}</span>
             </div>
             <textarea
               spellCheck={false}
               value={draft.notes}
               onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-              placeholder={"Markdown. Commandes utiles, ce qui a cassé et comment tu l'as réparé, TODO…"}
+              placeholder={t("Markdown. Commandes utiles, ce qui a cassé et comment tu l'as réparé, TODO…")}
               className="h-36 w-full resize-y rounded-md border border-line bg-bg p-2.5 font-mono text-xs leading-relaxed text-fg placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none"
             />
           </div>
           <div className="flex justify-end">
             <Button variant="primary" icon={<Check className="size-3.5" />} disabled={!dirty} busy={save.isPending} onClick={() => save.mutate(draft)}>
-              Enregistrer
+              {t("Enregistrer")}
             </Button>
           </div>
         </>

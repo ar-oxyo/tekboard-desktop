@@ -39,13 +39,23 @@ pub struct Settings {
     pub my_sync_minutes: u32,
     /// Reopen the stored MY Epitech session (in a hidden window) when TekBoard starts.
     pub my_auto_reconnect: bool,
+    /// Interface language: `fr` or `en`.
+    pub language: String,
+    /// Only Epitech projects in lists, planning and Artix. Personal ones stay one switch away.
+    pub epitech_only: bool,
+    /// Step of the first-run assistant reached so far, so closing the app resumes it there.
+    pub onboarding_step: String,
+    /// Look for a new release now and then (at most once a day).
+    pub update_check: bool,
 }
+
+pub const LANGUAGES: &[&str] = &["fr", "en"];
 
 pub const SYNC_INTERVALS: &[u32] = &[0, 15, 30, 60, 180];
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { roots: vec![], clone_dir: None, ide_cmd: String::new(), terminal_cmd: String::new(), default_template: None, glass_effects: true, theme: THEMES[0].to_string(), fox_signals: true, onboarded: false, epitech_dirs: vec![], claude_path: None, terminal_run_cmd: String::new(), my_sync_minutes: 0, my_auto_reconnect: false }
+        Settings { roots: vec![], clone_dir: None, ide_cmd: String::new(), terminal_cmd: String::new(), default_template: None, glass_effects: true, theme: THEMES[0].to_string(), fox_signals: true, onboarded: false, epitech_dirs: vec![], claude_path: None, terminal_run_cmd: String::new(), my_sync_minutes: 0, my_auto_reconnect: false, language: "fr".into(), epitech_only: true, onboarding_step: String::new(), update_check: true }
     }
 }
 
@@ -72,6 +82,41 @@ pub fn load(conn: &Connection) -> Result<Settings> {
             Ok(s)
         }
     }
+}
+
+/// Settings that no longer read (edited by hand, damaged): each field that still reads is
+/// kept, the others go back to their default, and the original text stays under `app.broken`.
+/// Returns whether anything had to be repaired.
+pub fn repair(conn: &Connection) -> Result<bool> {
+    let Some(raw) = db::get_setting(conn, KEY)? else { return Ok(false) };
+    if serde_json::from_str::<Settings>(&raw).is_ok() {
+        return Ok(false);
+    }
+    db::set_setting(conn, "app.broken", &raw)?;
+    match serde_json::from_str::<serde_json::Value>(&raw) {
+        Ok(serde_json::Value::Object(map)) => {
+            let kept: serde_json::Map<String, serde_json::Value> = map.into_iter().filter(|(k, v)| serde_json::from_value::<Settings>(serde_json::json!({ k.clone(): v.clone() })).is_ok()).collect();
+            db::set_setting(conn, KEY, &serde_json::Value::Object(kept).to_string())?;
+        }
+        _ => {
+            conn.execute("DELETE FROM settings WHERE key = ?1", [KEY])?;
+        }
+    }
+    Ok(true)
+}
+
+/// Set up before the first-run assistant existed (projects folders chosen, no step recorded):
+/// already configured, so the assistant is not shown on the first start of this version.
+pub fn adopt_existing_setup(conn: &Connection) -> Result<bool> {
+    let Some(raw) = db::get_setting(conn, KEY)? else { return Ok(false) };
+    let Ok(mut s) = serde_json::from_str::<Settings>(&raw) else { return Ok(false) };
+    if s.onboarded || s.roots.is_empty() || !s.onboarding_step.is_empty() {
+        return Ok(false);
+    }
+    s.onboarded = true;
+    s.onboarding_step = "done".into();
+    db::set_setting(conn, KEY, &serde_json::to_string(&s)?)?;
+    Ok(true)
 }
 
 pub fn save(conn: &Connection, settings: &Settings) -> Result<Settings> {
@@ -121,6 +166,9 @@ pub fn save(conn: &Connection, settings: &Settings) -> Result<Settings> {
         if !path.is_absolute() || !crate::toolenv::is_executable(path) {
             return Err(AppError::new("invalid_claude_path", format!("{p} is not an executable file. Pick the `claude` program itself, or leave the field empty to let TekBoard find it.")));
         }
+    }
+    if !LANGUAGES.contains(&s.language.as_str()) {
+        return Err(AppError::new("invalid_language", format!("Langue inconnue « {} »", s.language)));
     }
     if !SYNC_INTERVALS.contains(&s.my_sync_minutes) {
         return Err(AppError::new("invalid_interval", "Intervalle de synchronisation inconnu"));
@@ -241,6 +289,33 @@ pub(crate) fn find_repos(dir: &Path, depth: usize, max_depth: usize, out: &mut V
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_setup_made_before_the_assistant_is_kept() {
+        let conn = db::open_in_memory().unwrap();
+        db::set_setting(&conn, "app", r#"{"roots":["/home/me/delivery"],"onboarded":false}"#).unwrap();
+        assert!(adopt_existing_setup(&conn).unwrap());
+        assert!(load(&conn).unwrap().onboarded);
+        // A fresh install, or the assistant relaunched on purpose, is left alone.
+        db::set_setting(&conn, "app", r#"{"roots":["/home/me/delivery"],"onboarded":false,"onboardingStep":"welcome"}"#).unwrap();
+        assert!(!adopt_existing_setup(&conn).unwrap());
+        db::set_setting(&conn, "app", r#"{"roots":[],"onboarded":false}"#).unwrap();
+        assert!(!adopt_existing_setup(&conn).unwrap());
+    }
+
+    #[test]
+    fn damaged_settings_keep_what_still_reads() {
+        let conn = db::open_in_memory().unwrap();
+        db::set_setting(&conn, "app", r#"{"roots":["/home/me/delivery"],"theme":42,"onboarded":true}"#).unwrap();
+        assert!(repair(&conn).unwrap());
+        let s = load(&conn).unwrap();
+        assert_eq!((s.roots, s.theme.as_str(), s.onboarded), (vec!["/home/me/delivery".to_string()], "aurora", true));
+        assert!(db::get_setting(&conn, "app.broken").unwrap().unwrap().contains("42"));
+        assert!(!repair(&conn).unwrap());
+        db::set_setting(&conn, "app", "{not json").unwrap();
+        assert!(repair(&conn).unwrap());
+        assert!(!load(&conn).unwrap().onboarded);
+    }
+
     use super::*;
     use std::fs;
 

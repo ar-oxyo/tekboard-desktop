@@ -6,21 +6,26 @@ import { Button, cn } from "../../components/ui";
 import type { ScheduleAction } from "../../lib/api";
 import { dayKey, describeAction, fmtDur, fromLocalIso, MIN } from "../../lib/plan";
 import { usePlanData } from "../planning/usePlan";
+import { locale, t } from "../../lib/i18n";
 
 interface Props {
   title: string;
   rationale?: string | null;
   warnings?: string[];
   actions: ScheduleAction[];
-  /** Who made it: Tika (checked by the planning engine) or TekBoard's own scheduler. */
+  /** Who made it: Artix (checked by the planning engine) or TekBoard's own scheduler. */
   origin: "claude" | "auto";
   status: "pending" | "accepted" | "rejected";
   outcome?: string | null;
   busy?: boolean;
   onDecide?: (accept: boolean, keep: number[]) => void;
+  /** Name of the accept button ("Appliquer" by default). */
+  acceptLabel?: string;
+  /** A second way to accept (a breakdown: accept, then ask for sessions). */
+  alternate?: { label: string; onAccept: (keep: number[]) => void };
 }
 
-export function ProposalCard({ title, rationale, warnings, actions, origin, status, outcome, busy, onDecide }: Props) {
+export function ProposalCard({ title, rationale, warnings, actions, origin, status, outcome, busy, onDecide, acceptLabel, alternate }: Props) {
   const data = usePlanData();
   const [off, setOff] = useState<Set<number>>(new Set());
   const rows = useMemo(
@@ -55,7 +60,7 @@ export function ProposalCard({ title, rationale, warnings, actions, origin, stat
           <p className="text-[13px] font-medium">{title}</p>
           {rationale && <p className="mt-0.5 text-xs text-muted">{rationale}</p>}
         </div>
-        <span className="shrink-0 pt-0.5 text-[11px] text-faint">{origin === "auto" ? "calculé par TekBoard" : "vérifié par le moteur"}</span>
+        <span className="shrink-0 pt-0.5 text-[11px] text-faint">{origin === "auto" ? t("calculé par TekBoard") : t("vérifié par le moteur")}</span>
       </header>
       {warnings?.map((w) => (
         <p key={w} className="flex items-start gap-1.5 px-3 pb-1.5 text-xs text-warn">
@@ -88,7 +93,7 @@ export function ProposalCard({ title, rationale, warnings, actions, origin, stat
             const pct = Math.min(100, (added / ceiling) * 100);
             return (
               <div key={day} className="flex items-center gap-2 text-[11px] text-muted">
-                <span className="w-20 shrink-0">{new Date(fromLocalIso(`${day}T12:00`)).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" })}</span>
+                <span className="w-20 shrink-0">{new Date(fromLocalIso(`${day}T12:00`)).toLocaleDateString(locale(), { weekday: "short", day: "numeric" })}</span>
                 <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/6">
                   <span className={cn("block h-full rounded-full", pct > 95 ? "bg-warn" : "bg-accent")} style={{ width: `${pct}%` }} />
                 </span>
@@ -96,27 +101,30 @@ export function ProposalCard({ title, rationale, warnings, actions, origin, stat
               </div>
             );
           })}
-          <p className="text-[10px] text-faint">Barre : travail ajouté face au plafond de {fmtDur(ceiling)} par jour.</p>
+          <p className="text-[10px] text-faint">{t("Barre : travail ajouté face au plafond de {d} par jour.", { d: fmtDur(ceiling) })}</p>
         </div>
       )}
       <footer className="flex items-center gap-2 border-t border-white/6 px-3 py-2">
         {decided ? (
           <span className={cn("flex items-center gap-1.5 text-xs", status === "accepted" ? "text-ok" : "text-muted")}>
             {status === "accepted" ? <Check className="size-3.5" /> : <X className="size-3.5" />}
-            {status === "accepted" ? "Appliqué" : "Refusé"}
+            {status === "accepted" ? t("Appliqué") : t("Refusé")}
             {outcome && ` · ${outcome}`}
           </span>
         ) : (
           <>
-            <span className="flex-1 text-xs text-muted">
-              {chosen.length} changement{chosen.length > 1 ? "s" : ""} sur {rows.length}
-            </span>
+            <span className="flex-1 text-xs text-muted">{t("{n} sur {of}", { n: chosen.length, of: rows.length })}</span>
             <Button size="sm" variant="ghost" disabled={busy} onClick={() => onDecide?.(false, [])}>
-              Refuser
+              {t("Refuser")}
             </Button>
-            <Button size="sm" variant="primary" icon={<Check className="size-3.5" />} busy={busy} disabled={chosen.length === 0} title={chosen.length === 0 ? "Coche au moins un changement" : undefined} onClick={() => onDecide?.(true, chosen.map((r) => r.i))}>
-              Appliquer
+            <Button size="sm" variant={alternate ? "secondary" : "primary"} icon={<Check className="size-3.5" />} busy={busy} disabled={chosen.length === 0} title={chosen.length === 0 ? t("Coche au moins un changement") : undefined} onClick={() => onDecide?.(true, chosen.map((r) => r.i))}>
+              {acceptLabel ?? t("Appliquer")}
             </Button>
+            {alternate && (
+              <Button size="sm" variant="primary" busy={busy} disabled={chosen.length === 0} onClick={() => alternate.onAccept(chosen.map((r) => r.i))}>
+                {alternate.label}
+              </Button>
+            )}
           </>
         )}
       </footer>

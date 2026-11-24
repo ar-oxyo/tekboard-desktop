@@ -8,7 +8,8 @@ import { DiffView } from "../../components/DiffView";
 import { Badge, Button, cn } from "../../components/ui";
 import { api, asAppError, type JobEvent, type RunSummary } from "../../lib/api";
 import { useUi } from "../../lib/store";
-import { Markdown } from "../tika/Markdown";
+import { Markdown } from "../artix/Markdown";
+import { t } from "../../lib/i18n";
 
 const PHASES: Record<string, string> = { subject: "Sujet", build: "Compilation", arguments: "Arguments", edge_cases: "Cas limites", errors: "Erreurs", memory: "Mémoire", style: "Style", robustness: "Robustesse", report: "Rapport" };
 
@@ -65,7 +66,7 @@ export function AgentView({ kind, status, events, summary, repo, runId }: { kind
       {kind === "moulinette_ai" && (
         <p className="flex items-center gap-2 rounded-lg border border-accent/25 bg-accent-soft/40 px-3 py-2 text-xs text-muted">
           <ShieldCheck className="size-4 shrink-0 text-accent" />
-          Simulation par Tika, dans un bac à sable sans réseau, sur une copie de ton projet. Ce n'est pas la moulinette officielle d'Epitech.
+          Simulation par Artix, dans un bac à sable sans réseau, sur une copie de ton projet. Ce n'est pas la moulinette officielle d'Epitech.
         </p>
       )}
       {phases.length > 0 && (
@@ -144,7 +145,7 @@ function Activity({ items, running }: { items: JobEvent[]; running: boolean }) {
   return (
     <div>
       <button type="button" onClick={() => setOpen(!open)} className="mb-1 text-xs text-muted hover:text-fg">
-        Ce que Tika a fait ({items.length} action{items.length > 1 ? "s" : ""}) {open ? "· réduire" : "· tout voir"}
+        Ce que Artix a fait ({items.length} action{items.length > 1 ? "s" : ""}) {open ? "· réduire" : "· tout voir"}
       </button>
       <ul className="flex flex-col gap-0.5 rounded-lg bg-black/20 p-2 font-mono text-[11.5px]">
         {shown.map((e, i) => (
@@ -178,9 +179,9 @@ function Changes({ summary, repo, runId }: { summary: RunSummary; repo: string |
     <div className="flex flex-col gap-2 rounded-lg border border-white/7">
       <div className="flex items-center gap-2 border-b border-white/6 px-3 py-2">
         <FlaskConical className="size-4 text-accent" />
-        <span className="flex-1 text-[13px]">Fichiers écrits par Tika : rien n'est encore dans ton projet</span>
+        <span className="flex-1 text-[13px]">Fichiers écrits par Artix : rien n'est encore dans ton projet</span>
         <Button size="sm" variant="primary" disabled={done || !repo || runId === null || changes.every((c) => off.has(c.path))} busy={apply.isPending} onClick={() => apply.mutate()} title={runId === null ? "Disponible quand l'exécution est enregistrée" : undefined}>
-          {done ? "Appliqué" : "Appliquer au projet"}
+          {done ? t("Appliqué") : "Appliquer au projet"}
         </Button>
       </div>
       <div className="flex min-h-0">

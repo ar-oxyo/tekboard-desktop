@@ -337,6 +337,9 @@ pub struct SyncReport {
     pub detail: String,
     /// Subject PDFs added to the library by this sync.
     pub subjects_imported: usize,
+    /// Subjects tied to their repository by this sync, and links waiting for the user.
+    pub subjects_linked: usize,
+    pub subjects_to_confirm: usize,
 }
 
 /// Stores what was fetched. A failed route keeps its previous good answer in the cache, and
@@ -372,7 +375,7 @@ pub fn store(conn: &Connection, fetched: &[Fetched], skipped_details: usize, now
         detail = if detail.is_empty() { note } else { format!("{detail}; {note}") };
     }
     conn.execute("INSERT INTO my_sync_log (at, ok, failed, detail) VALUES (?1, ?2, ?3, ?4)", params![now, ok as i64, problems.len() as i64, detail])?;
-    Ok(SyncReport { ok, failed: problems.len(), unauthorized, detail, subjects_imported: 0 })
+    Ok(SyncReport { ok, failed: problems.len(), unauthorized, detail, subjects_imported: 0, subjects_linked: 0, subjects_to_confirm: 0 })
 }
 
 pub fn not_connected() -> AppError {

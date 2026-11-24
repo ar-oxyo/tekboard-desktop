@@ -1,7 +1,13 @@
 {
   "name": "tekboard",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.6.0",
+  "license": "GPL-3.0-only",
+  "description": "Organise tes projets Epitech : dépôts, rendus, planning, logtime, MY Epitech et Artix.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ar-oxyo/tekboard-desktop.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +16,9 @@
     "test": "vitest run",
     "test:rust": "./scripts/tauri.sh cargo test",
     "app:dev": "./scripts/tauri.sh dev",
-    "app:build": "./scripts/tauri.sh build"
+    "app:build": "./scripts/tauri.sh build",
+    "app:build:signed": "./scripts/tauri.sh build --config '{\"bundle\":{\"createUpdaterArtifacts\":true}}'",
+    "release:check": "node scripts/release.mjs check"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

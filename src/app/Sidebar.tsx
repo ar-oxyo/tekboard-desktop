@@ -1,10 +1,11 @@
 import { CalendarDays, ChartNoAxesColumn, FolderGit2, GraduationCap, LayoutTemplate, Search, Settings, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn, Kbd } from "../components/ui";
-import { Orb } from "../features/tika/Orb";
+import { Artix } from "../features/artix/Artix";
 import { useEnv } from "../lib/hooks";
 import { useUi } from "../lib/store";
 import { entryOf, SECTIONS, sectionOf, type Section } from "./sections";
+import { t } from "../lib/i18n";
 
 const icon = "size-4";
 const ICONS: Record<Section["id"], ReactNode> = {
@@ -38,7 +39,7 @@ export function Sidebar() {
   const page = useUi((s) => s.page);
   const setPage = useUi((s) => s.setPage);
   const setPaletteOpen = useUi((s) => s.setPaletteOpen);
-  const tikaOpen = useUi((s) => s.assistantOpen);
+  const artixOpen = useUi((s) => s.assistantOpen);
   const env = useEnv();
   const current = sectionOf(page).id;
   const missing = env.data?.tools.filter((t) => t.required && !t.path).length ?? 0;
@@ -63,22 +64,22 @@ export function Sidebar() {
       </div>
       <button type="button" onClick={() => setPaletteOpen(true)} className="mx-3 flex h-8 items-center gap-2.5 rounded-(--btn-radius) border border-white/7 bg-white/3 px-2.5 text-faint transition-colors duration-150 hover:border-white/12 hover:text-muted">
         <Search className="size-4" />
-        <span className="flex-1 text-left text-[13px]">Rechercher</span>
+        <span className="flex-1 text-left text-[13px]">{t("Rechercher")}</span>
         <Kbd>Ctrl K</Kbd>
       </button>
       <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 pt-5 pb-3" aria-label="Navigation">
         {MAIN.map(row)}
-        <button type="button" onClick={() => (tikaOpen ? useUi.getState().closeAssistant() : useUi.getState().openAssistant())} title="Ctrl+J" className={cn("nav-item mt-4 flex h-9 shrink-0 items-center gap-2.5 px-2 text-[13px]", tikaOpen ? "font-medium" : "text-muted hover:bg-white/4 hover:text-fg")}>
-          <Orb size={20} />
-          Tika
+        <button type="button" onClick={() => (artixOpen ? useUi.getState().closeAssistant() : useUi.getState().openAssistant())} title="Ctrl+J" className={cn("nav-item mt-4 flex h-9 shrink-0 items-center gap-2.5 px-2 text-[13px]", artixOpen ? "font-medium" : "text-muted hover:bg-white/4 hover:text-fg")}>
+          <Artix size={20} />
+          Artix
           <Kbd>Ctrl J</Kbd>
         </button>
       </nav>
       <div className="flex flex-col gap-0.5 border-t border-white/6 px-3 py-3">
         {FOOT.map(row)}
-        <button type="button" onClick={() => setPage("settings")} title="Ouvrir les réglages" className="mt-2 flex w-full flex-col gap-1 px-2.5 text-left text-xs text-faint transition-colors duration-150 hover:text-muted">
-          <Status ok={env.data ? missing === 0 : null} label={env.data ? (missing === 0 ? "Outils prêts" : `${missing} outil${missing > 1 ? "s" : ""} manquant${missing > 1 ? "s" : ""}`) : "Vérification des outils…"} />
-          <Status ok={gh === undefined ? null : gh === "ready"} label={gh === undefined ? "Vérification de GitHub…" : gh === "ready" ? "GitHub connecté" : gh === "missing" ? "gh non installé" : gh === "loggedOut" ? "gh non connecté" : "GitHub injoignable"} />
+        <button type="button" onClick={() => setPage("settings")} title={t("Ouvrir les réglages")} className="mt-2 flex w-full flex-col gap-1 px-2.5 text-left text-xs text-faint transition-colors duration-150 hover:text-muted">
+          <Status ok={env.data ? missing === 0 : null} label={env.data ? (missing === 0 ? t("Outils prêts") : `${missing} outil${missing > 1 ? "s" : ""} manquant${missing > 1 ? "s" : ""}`) : t("Vérification des outils…")} />
+          <Status ok={gh === undefined ? null : gh === "ready"} label={gh === undefined ? t("Vérification de GitHub…") : gh === "ready" ? t("GitHub connecté") : gh === "missing" ? t("gh non installé") : gh === "loggedOut" ? t("gh non connecté") : t("GitHub injoignable")} />
         </button>
       </div>
     </aside>

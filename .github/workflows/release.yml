@@ -1,0 +1,91 @@
+name: Release
+
+# Pushing a tag `vX.Y.Z` builds the Linux packages and prepares a DRAFT release with them.
+# Nothing is public until the draft is published by hand on GitHub (Releases → Edit → Publish).
+# Users' apps only see a version once it is published (releases/latest).
+#
+# Repository secrets needed (Settings → Secrets and variables → Actions):
+#   TAURI_SIGNING_PRIVATE_KEY           content of the private key (npx tauri signer generate)
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  its password
+# The matching public key is `plugins.updater.pubkey` in src-tauri/tauri.conf.json.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  linux:
+    # 22.04: an older glibc, so the AppImage also starts on older distributions.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versions and changelog agree with the tag
+        run: node scripts/release.mjs check "$GITHUB_REF_NAME"
+
+      - name: System libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev libssl-dev pkg-config patchelf file
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+      - run: npm test
+      - name: Backend tests
+        run: |
+          git config --global user.name CI
+          git config --global user.email ci@example.com
+          git config --global init.defaultBranch main
+          cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Build and sign the packages
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        # Signed updater artifacts (.sig) only here: a local `npm run app:build` needs no key.
+        run: npx tauri build --bundles deb,appimage --config '{"bundle":{"createUpdaterArtifacts":true}}'
+
+      - name: Updater manifest, checksums, notes
+        id: files
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          B=src-tauri/target/release/bundle
+          mkdir -p out
+          cp $B/deb/*_"$VERSION"_*.deb $B/deb/*_"$VERSION"_*.deb.sig out/
+          cp $B/appimage/*_"$VERSION"_*.AppImage $B/appimage/*_"$VERSION"_*.AppImage.sig out/
+          node scripts/release.mjs manifest "$VERSION" "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}" "$B" > out/latest.json
+          (cd out && sha256sum *.deb *.AppImage > SHA256SUMS)
+          node scripts/release.mjs notes "$VERSION" > notes.md
+          {
+            echo
+            echo "---"
+            echo "**Installer** : télécharge le fichier .deb (Ubuntu, Debian) et ouvre-le d'un double-clic, ou l'AppImage pour les autres distributions. Guide : https://github.com/${GITHUB_REPOSITORY}#installer"
+            echo
+            echo "Tekboard se met ensuite à jour tout seul (Réglages → Mises à jour). Empreintes SHA-256 : fichier SHA256SUMS."
+          } >> notes.md
+          ls -l out
+
+      - name: Build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            out/*.deb
+            out/*.AppImage
+
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" out/* --draft --title "TekBoard ${GITHUB_REF_NAME#v}" --notes-file notes.md --verify-tag

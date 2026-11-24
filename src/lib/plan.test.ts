@@ -6,7 +6,7 @@ import { DEFAULT_PREFS, type PlanProject, type Span, addDays, busySpans, calItem
 const at = (day: number, h: number, m = 0) => new Date(2026, 10, day, h, m).getTime();
 const prefs = { ...DEFAULT_PREFS, dayStart: 9 * 60, dayEnd: 19 * 60, maxMinutesPerDay: 240, sessionMinutes: 90, breakMinutes: 15 };
 const project = (over: Partial<PlanProject> = {}): PlanProject => ({ key: "/p/rpg", title: "MyRPG", module: "G-MUL-200", repoPath: "/p/rpg", day: null, at: null, dueMs: at(20, 19, 42), status: "in_progress", priority: 0, estimateMin: 720, color: "#fff", ...over });
-const event = (id: number, start: number, end: number, over: Partial<PlanEvent> = {}): PlanEvent => ({ id, kind: "session", title: "s", start: start / 1000, end: end / 1000, allDay: false, project: "/p/rpg", taskId: null, color: null, notes: "", origin: "me", done: false, ...over });
+const event = (id: number, start: number, end: number, over: Partial<PlanEvent> = {}): PlanEvent => ({ id, kind: "session", title: "s", start: start / 1000, end: end / 1000, allDay: false, project: "/p/rpg", taskId: null, color: null, notes: "", origin: "me", done: false, category: null, ...over });
 
 describe("dates", () => {
   it("writes and reads local times, and finds Monday", () => {
@@ -61,11 +61,11 @@ describe("calendar", () => {
     const items = calItems(
       { tasks: [], events: [event(1, at(16, 14), at(16, 15))], projects: [], log: [] },
       [
-        { kind: "deadline", title: "MyRPG", day: "2026-11-20", start: new Date(at(20, 19, 42)).toISOString(), end: null, module: "G-MUL-200", detail: null, mine: true, mandatory: true, exam: false, repoPath: "/p/rpg", until: null, status: null, eventId: null },
-        { kind: "event", title: "Kick-off", day: "2026-11-16", start: new Date(at(16, 10)).toISOString(), end: new Date(at(16, 12)).toISOString(), module: "G-MUL-200", detail: null, mine: true, mandatory: false, exam: false, repoPath: null, until: null, status: "registered", eventId: 1 },
-        { kind: "event", title: "Other promo", day: "2026-11-16", start: new Date(at(16, 10)).toISOString(), end: new Date(at(16, 12)).toISOString(), module: "X", detail: null, mine: false, mandatory: false, exam: false, repoPath: null, until: null, status: null, eventId: null },
-        { kind: "activity", title: "Defense", day: "2026-11-18", start: new Date(at(18, 9)).toISOString(), end: new Date(at(18, 12)).toISOString(), module: "G-MUL-200", detail: "not registered", mine: true, mandatory: true, exam: false, repoPath: null, until: null, status: "not_registered", eventId: 2 },
-        { kind: "holiday", title: "Break", day: "2026-11-21", start: null, end: null, module: null, detail: null, mine: true, mandatory: false, exam: false, repoPath: null, until: "2026-11-22", status: null, eventId: null },
+        { kind: "deadline", title: "MyRPG", day: "2026-11-20", start: new Date(at(20, 19, 42)).toISOString(), end: null, module: "G-MUL-200", detail: null, mine: true, mandatory: true, exam: false, repoPath: "/p/rpg", until: null, status: null, eventId: null, projectKey: null },
+        { kind: "event", title: "Kick-off", day: "2026-11-16", start: new Date(at(16, 10)).toISOString(), end: new Date(at(16, 12)).toISOString(), module: "G-MUL-200", detail: null, mine: true, mandatory: false, exam: false, repoPath: null, until: null, status: "registered", eventId: 1, projectKey: null },
+        { kind: "event", title: "Other promo", day: "2026-11-16", start: new Date(at(16, 10)).toISOString(), end: new Date(at(16, 12)).toISOString(), module: "X", detail: null, mine: false, mandatory: false, exam: false, repoPath: null, until: null, status: null, eventId: null, projectKey: null },
+        { kind: "activity", title: "Defense", day: "2026-11-18", start: new Date(at(18, 9)).toISOString(), end: new Date(at(18, 12)).toISOString(), module: "G-MUL-200", detail: "not registered", mine: true, mandatory: true, exam: false, repoPath: null, until: null, status: "not_registered", eventId: 2, projectKey: null },
+        { kind: "holiday", title: "Break", day: "2026-11-21", start: null, end: null, module: null, detail: null, mine: true, mandatory: false, exam: false, repoPath: null, until: "2026-11-22", status: null, eventId: null, projectKey: null },
       ],
       [project()],
     );

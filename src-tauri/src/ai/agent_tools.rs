@@ -1,4 +1,4 @@
-//! Tools of the agents TekBoard runs on a working copy (Tika's moulinette, test generation).
+//! Tools of the agents TekBoard runs on a working copy (Artix's moulinette, test generation).
 //!
 //! - `exec`: the only way an agent runs a command. It runs inside bubblewrap (`sandbox`), in
 //!   the job's working copy and nowhere else, with time and resource limits. Every command

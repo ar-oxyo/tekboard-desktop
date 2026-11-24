@@ -1,4 +1,4 @@
-// A small Markdown renderer for Tika's answers: paragraphs, **bold**, *italic*, `code`,
+// A small Markdown renderer for Artix's answers: paragraphs, **bold**, *italic*, `code`,
 // fenced code, lists, headings and quotes. It builds React elements only (no HTML is
 // injected), so whatever the model writes stays text.
 import { Fragment, type ReactNode } from "react";

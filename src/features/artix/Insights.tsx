@@ -7,6 +7,7 @@ import { useEffect, type ReactNode } from "react";
 import { Button, IconButton } from "../../components/ui";
 import { api, asAppError, type Insight, type InsightAction } from "../../lib/api";
 import { useUi } from "../../lib/store";
+import { t } from "../../lib/i18n";
 
 const ICON: Record<string, ReactNode> = { deadline: <CalendarClock className="size-4" />, stalled: <Hourglass className="size-4" />, overload: <Layers className="size-4" />, missed: <AlarmClock className="size-4" />, tests: <FlaskConical className="size-4" />, subject: <FileText className="size-4" /> };
 
@@ -19,7 +20,7 @@ export async function runInsightAction(i: Insight, a: InsightAction) {
     else if (a.tool) {
       const r = await api.aiTool(a.tool, a.args ?? {});
       if (r.status === "proposed") ui.openAssistant();
-      else if (r.status === "nothing") ui.toast({ kind: "info", title: String(r.message ?? "Rien à faire") });
+      else if (r.status === "nothing") ui.toast({ kind: "info", title: String(r.message ?? t("Rien à faire")) });
     }
     await api.insightSet(i.id, "done");
   } catch (e) {
@@ -46,7 +47,7 @@ export function InsightList({ compact }: { compact?: boolean }) {
                 </Button>
               ))}
               <Button size="sm" variant="ghost" onClick={() => set.mutate({ id: i.id, s: "snooze" })}>
-                Plus tard
+                {t("Plus tard")}
               </Button>
             </div>
           </div>
@@ -71,7 +72,7 @@ export function useNudges() {
       const first = all.find((i) => e.payload.includes(i.key));
       if (!first) return;
       localStorage.setItem(NUDGE_KEY, String(Date.now()));
-      useUi.getState().toast({ kind: "info", title: first.title, detail: `${first.body} — Ouvre Tika (Ctrl+J) pour agir.` });
+      useUi.getState().toast({ kind: "info", title: first.title, detail: `${first.body} — Ouvre Artix (Ctrl+J) pour agir.` });
     });
     return () => void off.then((f) => f());
   }, []);

@@ -1,51 +1,12 @@
-// The other tabs of a project sheet: its libraries, its checks, its documents.
+// The other tabs of a project sheet: its tests and checks, its documents.
 import { useQuery } from "@tanstack/react-query";
-import { FileText, FlaskConical, GitBranch, LibraryBig, PackageOpen, ShieldCheck } from "lucide-react";
+import { FileText, FlaskConical, GitBranch, PackageOpen, ShieldCheck } from "lucide-react";
 import { Badge, Button, Spinner } from "../../components/ui";
 import { api, type RepoInfo, type RunKind } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { useUi } from "../../lib/store";
 import { KIND_LABEL, STATUS_LABEL, STATUS_TONE } from "../testing/Report";
-
-export function LibraryTab({ repo }: { repo: RepoInfo }) {
-  const openLibrary = useUi((s) => s.openLibrary);
-  const libs = useQuery({ queryKey: ["libraries"], queryFn: api.libraryList });
-  return (
-    <div className="flex flex-col gap-3">
-      {libs.isLoading ? <Spinner /> : (libs.data?.length ?? 0) === 0 ? (
-        <p className="text-[13px] text-muted">Aucune bibliothèque enregistrée. Ajoute-en une dans Projets → Bibliothèques pour installer ses fonctions une par une.</p>
-      ) : (
-        <ul className="rounded-lg border border-line bg-bg py-1">
-          {libs.data!.map((l) => <LibRow key={l.id} repo={repo.path} id={l.id} name={l.name} />)}
-        </ul>
-      )}
-      <div><Button variant="primary" icon={<LibraryBig className="size-3.5" />} onClick={() => openLibrary(repo.path)}>Ajouter ou gérer des fonctions</Button></div>
-    </div>
-  );
-}
-
-function LibRow({ repo, id, name }: { repo: string; id: number; name: string }) {
-  const st = useQuery({ queryKey: ["lib-status", id, repo], queryFn: () => api.libraryProject(repo, id), staleTime: 0 });
-  const src = (st.data?.files ?? []).filter((f) => f.rel.endsWith(".c"));
-  const present = src.filter((f) => f.state !== "absent").length;
-  const edited = src.filter((f) => f.state === "modified" || f.state === "modified_update" || f.state === "differs").length;
-  const updates = src.filter((f) => f.state === "update" || f.state === "modified_update").length;
-  return (
-    <li className="flex min-h-9 items-center gap-2.5 px-3 text-[13px]">
-      <span className="font-medium">{name}</span>
-      {st.data && <span className="font-mono text-xs text-faint">{st.data.libDir}</span>}
-      <span className="ml-auto flex items-center gap-1.5">
-        {st.isLoading ? <Spinner /> : st.error ? <span className="text-xs text-danger">unreadable</span> : !st.data?.exists ? <span className="text-xs text-muted">absente de ce projet</span> : (
-          <>
-            <Badge tone="ok">{present} of {src.length} files</Badge>
-            {edited > 0 && <Badge tone="warn">{edited} edited here</Badge>}
-            {updates > 0 && <Badge tone="info">{updates} update{updates > 1 ? "s" : ""}</Badge>}
-          </>
-        )}
-      </span>
-    </li>
-  );
-}
+import { t } from "../../lib/i18n";
 
 export function TestingTab({ repo }: { repo: RepoInfo }) {
   const openTesting = useUi((s) => s.openTesting);
@@ -56,7 +17,7 @@ export function TestingTab({ repo }: { repo: RepoInfo }) {
   return (
     <div className="flex flex-col gap-3">
       {runs.isLoading ? <Spinner /> : latest.size === 0 ? (
-        <p className="text-[13px] text-muted">Rien n'a encore été lancé sur ce projet.</p>
+        <p className="text-[13px] text-muted">{t("Rien n'a encore été lancé sur ce projet.")}</p>
       ) : (
         <ul className="rounded-lg border border-line bg-bg py-1">
           {[...latest.values()].map((r) => (
@@ -71,8 +32,8 @@ export function TestingTab({ repo }: { repo: RepoInfo }) {
         </ul>
       )}
       <div className="flex flex-wrap gap-2">
-        <Button variant="primary" icon={<FlaskConical className="size-3.5" />} onClick={() => openTesting(repo.path)}>Ouvrir Vérifier</Button>
-        <span className="flex items-center gap-1.5 text-xs text-muted"><GitBranch className="size-3.5" />TestRepo · <ShieldCheck className="size-3.5" />Moulinette de Tika, Banana et génération de tests sont là</span>
+        <Button variant="primary" icon={<FlaskConical className="size-3.5" />} onClick={() => openTesting(repo.path)}>{t("Ouvrir les tests")}</Button>
+        <span className="flex items-center gap-1.5 text-xs text-muted"><GitBranch className="size-3.5" />TestRepo · <ShieldCheck className="size-3.5" />{t("Moulinette d'Artix, Banana et génération de tests sont là")}</span>
       </div>
     </div>
   );
@@ -86,7 +47,7 @@ export function DocsTab({ repo, subjects, onOpenSubject }: { repo: RepoInfo; sub
       <div>
         <span className="mb-1 block text-xs font-medium text-muted">Sujet</span>
         {subjects.length === 0 ? (
-          <p className="text-[13px] text-muted">Aucun sujet n'est lié. <button type="button" className="text-accent-strong hover:underline" onClick={() => { useUi.getState().closeSheet(); setPage("subjects"); }}>Lie-en un depuis École → Sujets</button> pour l'ouvrir d'ici et que la moulinette le lise.</p>
+          <p className="text-[13px] text-muted">{t("Aucun sujet n'est lié.")} <button type="button" className="text-accent-strong hover:underline" onClick={() => { useUi.getState().closeSheet(); setPage("subjects"); }}>{t("Lie-en un depuis École → Sujets")}</button> {t("pour l'ouvrir d'ici et que la moulinette le lise.")}</p>
         ) : (
           <ul className="flex flex-wrap gap-2">
             {subjects.map((s) => <li key={s.id}><Button size="sm" icon={<FileText className="size-3.5" />} onClick={() => onOpenSubject(s.id)}>{s.name}</Button></li>)}
@@ -94,10 +55,10 @@ export function DocsTab({ repo, subjects, onOpenSubject }: { repo: RepoInfo; sub
         )}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button icon={<FileText className="size-3.5" />} onClick={() => openTool("readme", repo.path)}>Générer le README</Button>
-        <Button icon={<PackageOpen className="size-3.5" />} onClick={() => openTool("package", repo.path)}>Paquet pour une IA</Button>
+        <Button icon={<FileText className="size-3.5" />} onClick={() => openTool("readme", repo.path)}>{t("Générer le README")}</Button>
+        <Button icon={<PackageOpen className="size-3.5" />} onClick={() => openTool("package", repo.path)}>{t("Paquet pour une IA")}</Button>
       </div>
-      <p className="text-xs text-faint">Le README est proposé, comparé à l'actuel et écrit seulement quand tu valides. L'archive est créée sur cet ordinateur et n'est envoyée nulle part.</p>
+      <p className="text-xs text-faint">{t("Le README est proposé, comparé à l'actuel et écrit seulement quand tu valides. L'archive est créée sur cet ordinateur et n'est envoyée nulle part.")}</p>
     </div>
   );
 }

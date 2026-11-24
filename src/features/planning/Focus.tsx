@@ -11,6 +11,7 @@ import { api, asAppError, type FocusNotice, type FocusSession } from "../../lib/
 import { useNow } from "../../lib/hooks";
 import { fmtDur } from "../../lib/plan";
 import { useUi } from "../../lib/store";
+import { t } from "../../lib/i18n";
 
 export const focusKey = ["focus"] as const;
 
@@ -22,11 +23,11 @@ export function startFocus(f: { title: string; project: string | null; taskId: n
       if (openWorkspace && f.project && f.project.startsWith("/")) {
         api.openWorkspace(f.project).then(
           (r) => (r.ide || r.terminal) && ui.toast({ kind: "error", title: "Espace de travail ouvert en partie", detail: r.ide ?? r.terminal ?? "" }),
-          (e) => ui.toast({ kind: "error", title: "Espace de travail non ouvert", detail: asAppError(e).message }),
+          (e) => ui.toast({ kind: "error", title: t("Espace de travail non ouvert"), detail: asAppError(e).message }),
         );
       }
     },
-    (e) => ui.toast({ kind: "error", title: "Session non démarrée", detail: asAppError(e).message }),
+    (e) => ui.toast({ kind: "error", title: t("Session non démarrée"), detail: asAppError(e).message }),
   );
 }
 
@@ -54,13 +55,13 @@ export function FocusBar() {
     const off = listen<FocusNotice>("focus-notice", (e) => {
       const n = e.payload;
       if (n.kind === "closed") toast({ kind: "info", title: `Session « ${n.title} » terminée (${fmtDur(n.minutes)})`, detail: REASON[n.reason] ?? undefined });
-      if (n.kind === "paused") toast({ kind: "info", title: "Session en pause", detail: "L'ordinateur était en veille : ce temps n'est pas compté." });
+      if (n.kind === "paused") toast({ kind: "info", title: t("Session en pause"), detail: "L'ordinateur était en veille : ce temps n'est pas compté." });
       if (n.kind === "break") setHint(`Tu travailles depuis ${fmtDur(n.minutes)} : une vraie pause de 10 min ?`);
     });
     return () => void off.then((f) => f());
   }, [toast]);
   const err = (title: string) => (e: unknown) => toast({ kind: "error", title, detail: asAppError(e).message });
-  const stop = useMutation({ mutationFn: (done: boolean) => api.focusStop(done), onSuccess: (f) => toast({ kind: "ok", title: (f.seconds ?? 0) >= 60 ? `${fmtDur(Math.round((f.seconds ?? 0) / 60))} enregistrées` : "Session arrêtée", detail: (f.seconds ?? 0) >= 60 ? f.title : "Moins d'une minute : rien d'enregistré." }), onError: err("Session non arrêtée") });
+  const stop = useMutation({ mutationFn: (done: boolean) => api.focusStop(done), onSuccess: (f) => toast({ kind: "ok", title: (f.seconds ?? 0) >= 60 ? `${fmtDur(Math.round((f.seconds ?? 0) / 60))} enregistrées` : t("Session arrêtée"), detail: (f.seconds ?? 0) >= 60 ? f.title : t("Moins d'une minute : rien d'enregistré.") }), onError: err("Session non arrêtée") });
   const extend = useMutation({ mutationFn: (m: number) => api.focusExtend(m), onError: err("Session non prolongée") });
   const pause = useMutation({ mutationFn: (paused: boolean) => (paused ? api.focusResume() : api.focusPause()), onError: err("Impossible") });
   const discard = useMutation({ mutationFn: api.focusDiscard, onError: err("Impossible") });
@@ -84,12 +85,12 @@ export function FocusBar() {
           <p className="max-w-64 truncate text-[13px] font-medium">{f.title}</p>
           <p className="font-mono text-xs text-muted">
             {clock(elapsed)} <span className={due ? "text-warn" : "text-faint"}>/ {fmtDur(f.plannedMin)}</span>
-            {paused && <span className="ml-1.5 font-sans text-faint">en pause</span>}
+            {paused && <span className="ml-1.5 font-sans text-faint">{t("en pause")}</span>}
           </p>
         </div>
         {due ? (
           <>
-            <span className="text-xs text-warn">Temps écoulé</span>
+            <span className="text-xs text-warn">{t("Temps écoulé")}</span>
             <Button size="sm" icon={<Plus className="size-3" />} onClick={() => extend.mutate(10)}>
               10 min
             </Button>
@@ -109,15 +110,15 @@ export function FocusBar() {
         ) : (
           <>
             <Button size="sm" icon={<Square className="size-3" />} busy={stop.isPending} onClick={() => stop.mutate(true)} title="Enregistre le temps et marque la session (ou la tâche) comme faite">
-              Fait
+              {t("Fait")}
             </Button>
-            <IconButton label={paused ? "Reprendre" : "Pause (le temps ne compte pas)"} onClick={() => pause.mutate(paused)}>
+            <IconButton label={paused ? "Reprendre" : t("Pause (le temps ne compte pas)")} onClick={() => pause.mutate(paused)}>
               {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
             </IconButton>
-            <IconButton label="Arrêter sans marquer comme fait" onClick={() => stop.mutate(false)}>
+            <IconButton label={t("Arrêter sans marquer comme fait")} onClick={() => stop.mutate(false)}>
               <Square className="size-3.5" />
             </IconButton>
-            <IconButton label="Abandonner (rien d'enregistré)" onClick={() => discard.mutate()}>
+            <IconButton label={t("Abandonner (rien d'enregistré)")} onClick={() => discard.mutate()}>
               <X className="size-4" />
             </IconButton>
           </>

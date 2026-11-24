@@ -111,6 +111,11 @@ pub(crate) fn sync_now(state: &AppState) -> Result<SyncReport> {
         let _ = crate::commands::load_repos(state);
         let (imported, problems) = import_subjects(state, &token);
         report.subjects_imported = imported;
+        // New and moved repositories get their subject; what is uncertain waits for the user.
+        if let Ok(a) = crate::commands::associate_subjects(state) {
+            report.subjects_linked = a.linked;
+            report.subjects_to_confirm = a.suggestions.len();
+        }
         if !problems.is_empty() {
             let note = format!("subjects not imported: {}", problems.join("; "));
             report.detail = if report.detail.is_empty() { note } else { format!("{}; {note}", report.detail) };
@@ -138,7 +143,8 @@ pub(crate) fn import_subjects(state: &AppState, token: &str) -> (usize, Vec<Stri
     let mut problems = Vec::new();
     let Ok((_, overview)) = crate::commands::load_repos(state) else { return (0, vec!["projects could not be listed".into()]) };
     let library = crate::db::list_subjects(&state.conn()).unwrap_or_default();
-    let mut wanted: Vec<(myres::Resource, Option<String>)> = Vec::new();
+    // (document, MY Epitech project, its repository, project still running)
+    let mut wanted: Vec<(myres::Resource, Option<String>, bool)> = Vec::new();
     for p in overview.projects.iter().filter(|p| p.ongoing || p.upcoming) {
         let body: Option<String> = state.conn().query_row("SELECT body FROM my_cache WHERE route = ?1 AND status BETWEEN 200 AND 299", [myres::listing_route(p.id)], |r| r.get(0)).ok();
         let Some(listing) = body.and_then(|b| serde_json::from_str::<serde_json::Value>(&b).ok()) else { continue };
@@ -146,19 +152,27 @@ pub(crate) fn import_subjects(state: &AppState, token: &str) -> (usize, Vec<Stri
         // The project's own subject is imported last, so it is the most recent one linked to the repository.
         files.sort_by_key(|f| f.main);
         for f in files {
-            let known = library.iter().any(|s| s.name == f.name && f.size.is_none_or(|size| size == s.size));
-            if !known {
-                wanted.push((f, p.repo_path.clone()));
+            match library.iter().find(|s| s.name == f.name && f.size.is_none_or(|size| size == s.size)) {
+                // Already in the library: it now knows which MY Epitech project it belongs to,
+                // which is what ties it to the right repository (see `associate_subjects`).
+                Some(known) => {
+                    if known.my_project_id.is_none() || (f.main && !known.main) {
+                        let _ = crate::db::set_subject_origin(&state.conn(), known.id, Some(p.id), f.main);
+                    }
+                }
+                None => wanted.push((f, p.repo_path.clone(), p.ongoing)),
             }
         }
     }
+    // Subjects before bootstraps and annexes, running projects before coming ones.
+    wanted.sort_by_key(|(f, _, ongoing)| (!f.main, !ongoing));
     let skipped = wanted.len().saturating_sub(MAX_SUBJECTS_PER_SYNC);
     if skipped > 0 {
         problems.push(format!("{skipped} more document(s) left for the next sync"));
     }
     let dir = state.cache_dir.join("my-resources");
     let mut imported = 0;
-    for (res, repo) in wanted.into_iter().take(MAX_SUBJECTS_PER_SYNC) {
+    for (res, repo, _) in wanted.into_iter().take(MAX_SUBJECTS_PER_SYNC) {
         let outcome = (|| -> Result<bool> {
             let route = myres::link_route(&res).ok_or_else(|| AppError::new("invalid_path", "unusable file name"))?;
             std::thread::sleep(std::time::Duration::from_millis(500));
@@ -179,6 +193,10 @@ pub(crate) fn import_subjects(state: &AppState, token: &str) -> (usize, Vec<Stri
             });
             let _ = std::fs::remove_file(&tmp);
             let r = result?;
+            let _ = crate::db::set_subject_origin(&state.conn(), r.subject.id, Some(res.project_id), res.main);
+            if r.subject.repo_path.is_some() {
+                let _ = state.conn().execute("UPDATE subjects SET link_source = 'auto' WHERE id = ?1 AND link_source IS NULL", [r.subject.id]);
+            }
             if !r.duplicate {
                 // A new version of a project's subject: what was read from the old one is out of date.
                 if let Some(rp) = &repo {
@@ -249,6 +267,7 @@ pub struct SubjectsImport {
 pub fn my_import_subjects(state: State<'_, AppState>) -> Result<SubjectsImport> {
     let token = valid_token(&state).ok_or_else(myepitech::not_connected)?;
     let (imported, problems) = import_subjects(&state, &token);
+    let _ = crate::commands::associate_subjects(&state);
     Ok(SubjectsImport { imported, problems })
 }
 
@@ -256,6 +275,139 @@ pub fn my_import_subjects(state: State<'_, AppState>) -> Result<SubjectsImport> 
 pub fn my_sync(state: State<'_, AppState>) -> Result<SyncReport> {
     sync_now(&state)
 }
+
+/// What the one-button sync went through, sent as `my-sync-progress` while it runs.
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncProgress {
+    /// `connecting` (session being reopened), `sign-in` (the window waits for the user),
+    /// `syncing`, `done` or `failed`.
+    pub phase: &'static str,
+}
+
+/// How long a stored session gets to hand its token over before the window is shown.
+const SILENT_WAIT_MS: u64 = 12_000;
+/// How long the user has to sign in once the window is shown.
+const SIGN_IN_WAIT_MS: u64 = 5 * 60_000;
+
+/// Waits for a valid token. `Err(true)` when the window was closed, `Err(false)` on timeout.
+fn wait_for_token(app: &AppHandle, state: &AppState, ms: u64) -> std::result::Result<String, bool> {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(ms);
+    loop {
+        if let Some(t) = valid_token(state) {
+            return Ok(t);
+        }
+        if app.get_webview_window(myepitech::WINDOW).is_none() {
+            return Err(true);
+        }
+        if std::time::Instant::now() >= deadline {
+            return Err(false);
+        }
+        std::thread::sleep(std::time::Duration::from_millis(300));
+    }
+}
+
+static FLOW: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// The one Sync button: uses the session in memory, otherwise reopens the stored one (hidden),
+/// otherwise shows MY Epitech for the user to sign in; syncs as soon as a token is there.
+/// The window is closed afterwards only when this sync opened it: a window the user (or
+/// the startup reconnection) opened stays as it was.
+#[tauri::command]
+pub async fn my_sync_auto(app: AppHandle) -> Result<SyncReport> {
+    let handle = app.clone();
+    tauri::async_runtime::spawn_blocking(move || sync_blocking(&handle)).await.map_err(|e| AppError::new("sync_failed", e.to_string()))?
+}
+
+/// The whole flow, on the calling thread (never the main one: it waits for the sign-in).
+pub fn sync_blocking(app: &AppHandle) -> Result<SyncReport> {
+    use std::sync::atomic::Ordering;
+    if FLOW.swap(true, Ordering::SeqCst) {
+        return Err(AppError::new("busy", "Une synchronisation est déjà en cours"));
+    }
+    let outcome = sync_flow(app);
+    FLOW.store(false, Ordering::SeqCst);
+    crate::notify::emit("my-sync-progress", SyncProgress { phase: if outcome.is_ok() { "done" } else { "failed" } });
+    outcome
+}
+
+fn sync_flow(app: &AppHandle) -> Result<SyncReport> {
+    let state = app.state::<AppState>();
+    let progress = |phase: &'static str| crate::notify::emit("my-sync-progress", SyncProgress { phase });
+    // A window that was already there (opened by the user, or hidden by the startup
+    // reconnection) is left as it was found: never closed, hidden again if it was hidden.
+    let found_hidden = app.get_webview_window(myepitech::WINDOW).is_some_and(|w| !w.is_visible().unwrap_or(true));
+    let mut opened_here = false;
+    let mut shown_here = false;
+    let restore = |opened_here: bool, shown_here: bool| {
+        let Some(w) = app.get_webview_window(myepitech::WINDOW) else { return };
+        if opened_here {
+            let _ = w.close();
+        } else if shown_here && found_hidden {
+            let _ = w.hide();
+        }
+    };
+    // Two rounds at most: the site may refuse the token in memory (session expired there).
+    for round in 0..2 {
+        if valid_token(&state).is_none() {
+            progress("connecting");
+            if app.get_webview_window(myepitech::WINDOW).is_none() {
+                // A stored session is tried out of sight first; without one, sign-in is needed anyway.
+                let silent = round == 0 && session_dir(&state).is_dir();
+                open_on_main(app, !silent)?;
+                opened_here = true;
+            }
+            let visible = app.get_webview_window(myepitech::WINDOW).is_some_and(|w| w.is_visible().unwrap_or(false));
+            let mut got = if visible { Err(false) } else { wait_for_token(app, &state, SILENT_WAIT_MS) };
+            if got == Err(false) {
+                // The site needs the user: show the window and wait for the sign-in.
+                progress("sign-in");
+                if let Some(w) = app.get_webview_window(myepitech::WINDOW) {
+                    shown_here = shown_here || !visible;
+                    let _ = w.show();
+                    let _ = w.unminimize();
+                    let _ = w.set_focus();
+                }
+                got = wait_for_token(app, &state, SIGN_IN_WAIT_MS);
+            }
+            match got {
+                Ok(_) => {}
+                Err(true) => return Err(AppError::new("my_cancelled", "Fenêtre MY Epitech fermée avant la connexion : rien n'a été synchronisé.")),
+                Err(false) => {
+                    restore(opened_here, shown_here);
+                    return Err(AppError::new("my_timeout", "Pas de connexion à MY Epitech au bout de 5 minutes : rien n'a été synchronisé."));
+                }
+            }
+        }
+        progress("syncing");
+        let report = sync_now(&state)?;
+        if report.unauthorized {
+            if round == 0 {
+                continue;
+            }
+            return Err(AppError::new("my_unauthorized", "MY Epitech refuse la session : reconnecte-toi dans la fenêtre MY Epitech."));
+        }
+        restore(opened_here, shown_here);
+        if report.ok == 0 {
+            return Err(AppError::new("my_network", "MY Epitech ne répond pas (réseau ou site indisponible). Les données déjà gardées restent affichées."));
+        }
+        return Ok(report);
+    }
+    unreachable!("the loop returns on its second round")
+}
+
+/// Windows are created on the main thread.
+fn open_on_main(app: &AppHandle, visible: bool) -> Result<()> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let handle = app.clone();
+    app.run_on_main_thread(move || {
+        let state = handle.state::<AppState>();
+        let _ = tx.send(open_window(&handle, &state, visible));
+    })
+    .map_err(|e| AppError::new("window_failed", e.to_string()))?;
+    rx.recv_timeout(std::time::Duration::from_secs(10)).map_err(|_| AppError::new("window_failed", "La fenêtre MY Epitech ne s'est pas ouverte"))?
+}
+
 
 /// Whether an automatic sync is due: the interval is set, and the last attempt is older than it.
 pub fn sync_due(interval_minutes: u32, last_sync: Option<i64>, now: i64) -> bool {
@@ -406,6 +558,12 @@ pub fn my_agenda(state: State<'_, AppState>) -> Result<crate::mydata::Agenda> {
     let (repos, overview) = crate::commands::load_repos(&state)?;
     let board = crate::projects::board(&repos, &overview, chrono::Utc::now());
     Ok(crate::mydata::agenda(&state.conn(), &overview, &board))
+}
+
+/// Log time per week against the weekly goal, from the last sync.
+#[tauri::command(async)]
+pub fn my_logtime(state: State<'_, AppState>) -> crate::logtime::Logtime {
+    crate::logtime::read(&state.conn(), chrono::Local::now().date_naive())
 }
 
 /// Credits, units, skills, log time and automated test results, for Analytics.

@@ -350,6 +350,11 @@ impl Jobs {
         self.jobs.lock().unwrap_or_else(|e| e.into_inner())
     }
 
+    /// Whether any task is still running (imports and resets wait for them).
+    pub fn any_running(&self) -> bool {
+        self.map().values().any(|j| j.lock().status == "running")
+    }
+
     /// A job of this kind already running on this repository, if any: a second click joins it.
     pub fn active(&self, kind: &str, repo: Option<&str>) -> Option<u64> {
         self.map().values().find_map(|j| {

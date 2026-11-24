@@ -1,7 +1,8 @@
 // "Plan my day / week / this project / what I did not do": computed by TekBoard's planning
-// engine (src-tauri/src/schedule.rs) and shown as a proposal card in Tika's panel.
+// engine (src-tauri/src/schedule.rs) and shown as a proposal card in Artix's panel.
 import { api, asAppError } from "../../lib/api";
 import { useUi } from "../../lib/store";
+import { t } from "../../lib/i18n";
 
 export type PlanScope = "day" | "week" | "two_weeks" | "reorganize";
 
@@ -12,8 +13,8 @@ export async function suggestPlan(scope: PlanScope, project?: string | null) {
     if (r.status === "proposed") {
       ui.closeSheet();
       ui.openAssistant();
-    } else ui.toast({ kind: "info", title: scope === "reorganize" ? "Rien à replacer" : "Rien à planifier", detail: [r.message, ...(r.notes ?? [])].filter(Boolean).join(" ") });
+    } else ui.toast({ kind: "info", title: scope === "reorganize" ? t("Rien à replacer") : t("Rien à planifier"), detail: [r.message, ...(r.notes ?? [])].filter(Boolean).join(" ") });
   } catch (e) {
-    ui.toast({ kind: "error", title: "Planning non calculé", detail: asAppError(e).message });
+    ui.toast({ kind: "error", title: t("Planning non calculé"), detail: asAppError(e).message });
   }
 }

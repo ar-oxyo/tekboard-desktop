@@ -1,6 +1,7 @@
 import { CircleAlert, CircleCheck, Info, X } from "lucide-react";
 import { useUi } from "../lib/store";
 import { cn } from "./ui";
+import { t as tr } from "../lib/i18n";
 
 export function Toaster() {
   const toasts = useUi((s) => s.toasts);
@@ -22,8 +23,20 @@ export function Toaster() {
           <div className="selectable min-w-0 flex-1">
             <p className="text-[13px] font-medium">{t.title}</p>
             {t.detail && <p className="mt-0.5 text-xs break-words text-muted">{t.detail}</p>}
+            {t.action && (
+              <button
+                type="button"
+                className="mt-1.5 text-xs font-medium text-accent hover:text-accent-strong"
+                onClick={() => {
+                  t.action!.run();
+                  dismiss(t.id);
+                }}
+              >
+                {t.action.label}
+              </button>
+            )}
           </div>
-          <button type="button" aria-label="Fermer" onClick={() => dismiss(t.id)} className="text-faint hover:text-fg">
+          <button type="button" aria-label={tr("Fermer")} onClick={() => dismiss(t.id)} className="text-faint hover:text-fg">
             <X className="size-3.5" />
           </button>
         </div>

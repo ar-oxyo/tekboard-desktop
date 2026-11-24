@@ -128,7 +128,7 @@ pub fn test_github_ssh() -> SshCheck {
 
 /// Every repository with what TekBoard knows about it, and the MY Epitech view it was matched against.
 /// Hand-in dates reported by MY Epitech are saved on the way, so every screen reads the same date.
-/// A repository inside the configured folders, for code that is not a command (Tika's tools).
+/// A repository inside the configured folders, for code that is not a command (Artix's tools).
 pub(crate) fn repo_dir_of(state: &AppState, path: &str) -> Result<PathBuf> {
     let roots = settings::load(&state.conn())?.roots;
     let p = std::fs::canonicalize(path).map_err(|_| AppError::new("not_found", format!("« {path} » n'est pas un dépôt local : clone le projet d'abord.")))?;
@@ -168,12 +168,33 @@ fn scan_shared(roots: &[String], meta: &std::collections::HashMap<String, db::Re
     repos
 }
 
+/// The projects every screen works with: hidden ones (copies, zombies) are left out, and so
+/// are personal projects when "Epitech projects only" is on.
 pub(crate) fn load_repos(state: &AppState) -> Result<(Vec<RepoInfo>, crate::myview::Overview)> {
+    let only_school = state.settings().map(|s| s.epitech_only).unwrap_or(true);
+    let (mut repos, overview) = load_repos_all(state)?;
+    if only_school {
+        repos.retain(|r| r.kind == "epitech");
+    }
+    Ok((repos, overview))
+}
+
+/// Every project that is not hidden, personal ones included.
+pub(crate) fn load_repos_all(state: &AppState) -> Result<(Vec<RepoInfo>, crate::myview::Overview)> {
+    let (repos, _hidden, overview) = load_repos_split(state)?;
+    Ok((repos, overview))
+}
+
+/// Shown projects, hidden ones, and the MY Epitech view matched against the shown ones only:
+/// a hidden copy can neither take a MY Epitech project nor make the matching ambiguous.
+pub(crate) fn load_repos_split(state: &AppState) -> Result<(Vec<RepoInfo>, Vec<RepoInfo>, crate::myview::Overview)> {
     let (s, meta) = {
         let conn = state.conn();
         (settings::load(&conn)?, db::all_meta(&conn)?)
     };
-    let mut repos = scan_shared(&s.roots, &meta);
+    let mut all = scan_shared(&s.roots, &meta);
+    crate::projects::mark_duplicates(&mut all);
+    let (mut repos, hidden): (Vec<RepoInfo>, Vec<RepoInfo>) = all.into_iter().partition(|r| r.meta.visibility.as_deref() != Some("hidden"));
     let now = chrono::Utc::now();
     let conn = state.conn();
     let mut overview = crate::myview::overview_at(&conn, &repos, now);
@@ -190,12 +211,81 @@ pub(crate) fn load_repos(state: &AppState) -> Result<(Vec<RepoInfo>, crate::myvi
     if crate::planner::rekey(&conn, &links)? > 0 {
         crate::notify::changed(&["plan"]);
     }
-    Ok((repos, overview))
+    Ok((repos, hidden, overview))
+}
+
+/// Links subjects to repositories (see `subjects::associate`) and returns what needs the user.
+pub(crate) fn associate_subjects(state: &AppState) -> Result<crate::subjects::Association> {
+    let (repos, _, overview) = load_repos_split(state)?;
+    // Copies are not candidates: the folder kept is.
+    let candidates: Vec<crate::subjects::Candidate> = repos
+        .iter()
+        .filter(|r| r.duplicate_of.is_none())
+        .map(|r| {
+            let mut names: Vec<&str> = vec![r.name.as_str()];
+            if let Some(e) = &r.epitech {
+                names.push(e.project.as_str());
+            }
+            if let Some(m) = &r.my {
+                names.push(m.name.as_str());
+            }
+            if let Some(rem) = &r.remote {
+                names.push(rem.name.as_str());
+            }
+            crate::subjects::Candidate { path: r.path.as_str(), names, module: r.my.as_ref().map(|m| m.unit_code.as_str()).or(r.epitech.as_ref().map(|e| e.module.as_str())) }
+        })
+        .collect();
+    let my_repo_of = |id: i64| overview.projects.iter().find(|p| p.id == id).and_then(|p| p.repo_path.clone());
+    let a = crate::subjects::associate(&state.conn(), &candidates, &my_repo_of)?;
+    if a.linked > 0 {
+        let _ = db::log_activity(&state.conn(), now(), "subjects_linked", None, Some(&format!("{} linked automatically", a.linked)));
+        crate::notify::changed(&["subjects"]);
+    }
+    Ok(a)
+}
+
+/// Runs the association and returns the links waiting for the user's decision.
+#[tauri::command(async)]
+pub fn subjects_associate(state: State<'_, AppState>) -> Result<crate::subjects::Association> {
+    associate_subjects(&state)
+}
+
+/// Accepts (`accept`) or refuses a suggested link.
+#[tauri::command(async)]
+pub fn subject_suggestion_decide(state: State<'_, AppState>, id: i64, repo_path: String, accept: bool) -> Result<()> {
+    let dir = repo_dir(&state, &repo_path)?.to_string_lossy().into_owned();
+    if accept {
+        db::link_subject_by_hand(&state.conn(), id, Some(&dir))
+    } else {
+        db::reject_subject_link(&state.conn(), id, &dir)
+    }
+}
+
+/// Hides, archives or shows again a project. Only TekBoard's view changes: the folder stays.
+#[tauri::command(async)]
+pub fn project_set_visibility(state: State<'_, AppState>, path: String, visibility: Option<String>) -> Result<()> {
+    if let Some(v) = &visibility {
+        if !db::VISIBILITIES.contains(&v.as_str()) {
+            return Err(AppError::new("invalid_visibility", format!("Visibilité inconnue « {v} »")));
+        }
+    }
+    let dir = repo_dir(&state, &path)?;
+    db::set_visibility(&state.conn(), &dir.to_string_lossy(), visibility.as_deref())?;
+    crate::notify::changed(&["repos", "plan", "subjects"]);
+    Ok(())
+}
+
+/// Hidden projects, to show them again.
+#[tauri::command(async)]
+pub fn hidden_repos(state: State<'_, AppState>) -> Result<Vec<RepoInfo>> {
+    Ok(load_repos_split(&state)?.1)
 }
 
 #[tauri::command(async)]
 pub fn scan_repos(state: State<'_, AppState>) -> Result<Vec<RepoInfo>> {
-    Ok(load_repos(&state)?.0)
+    // Personal projects included: the window applies "Epitech projects only" itself, so they
+    // stay reachable from the project list.
+    Ok(load_repos_all(&state)?.0)
 }
 
 /// Unfinished work and its hand-in state, MY Epitech projects not cloned yet included.
@@ -702,6 +792,12 @@ pub fn subjects_import(state: State<'_, AppState>, items: Vec<SubjectImport>) ->
             None => None,
         };
         let res = subjects::import(&state.conn(), &store, Path::new(&item.path), repo.as_deref(), now());
+        // A project picked in the import list is the user's choice.
+        if let (Ok(o), Some(r)) = (&res, &repo) {
+            if o.subject.repo_path.as_deref() == Some(r.as_str()) {
+                let _ = db::link_subject_by_hand(&state.conn(), o.subject.id, Some(r));
+            }
+        }
         out.push(match res {
             Ok(o) => SubjectImportResult { path: item.path, subject: Some(o.subject), duplicate: o.duplicate, error: None },
             Err(e) => SubjectImportResult { path: item.path, subject: None, duplicate: false, error: Some(e.to_string()) },
@@ -710,6 +806,8 @@ pub fn subjects_import(state: State<'_, AppState>, items: Vec<SubjectImport>) ->
     let added = out.iter().filter(|r| r.subject.is_some() && !r.duplicate).count();
     if added > 0 {
         db::log_activity(&state.conn(), now(), "subjects_import", None, Some(&format!("{added} document{}", if added == 1 { "" } else { "s" })))?;
+        // Documents imported without a project are matched right away.
+        let _ = associate_subjects(&state);
     }
     Ok(out)
 }
@@ -720,7 +818,7 @@ pub fn subject_link(state: State<'_, AppState>, id: i64, repo_path: Option<Strin
         Some(p) => Some(repo_dir(&state, &p)?.to_string_lossy().into_owned()),
         None => None,
     };
-    db::link_subject(&state.conn(), id, repo.as_deref())
+    db::link_subject_by_hand(&state.conn(), id, repo.as_deref())
 }
 
 /// Deletes TekBoard's copy only.

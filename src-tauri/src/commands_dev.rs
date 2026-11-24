@@ -397,7 +397,7 @@ pub fn claude_brief(state: State<'_, AppState>, repo: String, task: String, disc
     }
 }
 
-/// Test generation by Tika on a working copy: the result is a diff to validate.
+/// Test generation by Artix on a working copy: the result is a diff to validate.
 #[tauri::command(async)]
 pub fn gen_tests_start(state: State<'_, AppState>, repo: String) -> Result<u64> {
     let dir = repo_dir(&state, &repo)?;
@@ -411,7 +411,7 @@ pub fn gen_tests_apply(state: State<'_, AppState>, repo: String, run_id: i64, pa
     crate::ai::agents::apply_tests(&state, &dir, run_id, &paths)
 }
 
-/// Tika's moulinette: an agent evaluates a working copy, in the sandbox.
+/// Artix's moulinette: an agent evaluates a working copy, in the sandbox.
 #[tauri::command(async)]
 pub fn moulinette_ai_start(state: State<'_, AppState>, repo: String) -> Result<u64> {
     let dir = repo_dir(&state, &repo)?;
@@ -660,7 +660,7 @@ mod tests {
     use crate::db::Subject;
 
     fn doc(id: i64, name: &str) -> Subject {
-        Subject { id, name: name.into(), file: name.into(), hash: id.to_string(), size: 1, repo_path: Some("/r".into()), added_at: id }
+        Subject { id, name: name.into(), file: name.into(), hash: id.to_string(), size: 1, repo_path: Some("/r".into()), added_at: id, my_project_id: None, link_source: None, main: false }
     }
 
     #[test]

@@ -58,6 +58,8 @@ pub struct PlanEvent {
     /// `me`, `auto` (local scheduling) or `claude`.
     pub origin: String,
     pub done: bool,
+    /// Category chosen by the user (`plan_categories.id`). `None` = the category of its kind.
+    pub category: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -68,6 +70,8 @@ pub struct ProjectPlan {
     /// Work still to do, in minutes, as the user estimates it. Time logged is taken off it.
     pub estimate_min: Option<i64>,
     pub color: Option<String>,
+    /// Left out of the calendar (hand-ins, openings and sessions from MY Epitech). Nothing is deleted.
+    pub calendar_hidden: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -153,11 +157,11 @@ fn task_row(r: &rusqlite::Row) -> rusqlite::Result<Task> {
 }
 
 fn event_row(r: &rusqlite::Row) -> rusqlite::Result<PlanEvent> {
-    Ok(PlanEvent { id: r.get(0)?, kind: r.get(1)?, title: r.get(2)?, start: r.get(3)?, end: r.get(4)?, all_day: r.get::<_, i64>(5)? != 0, project: r.get(6)?, task_id: r.get(7)?, color: r.get(8)?, notes: r.get(9)?, origin: r.get(10)?, done: r.get::<_, i64>(11)? != 0 })
+    Ok(PlanEvent { id: r.get(0)?, kind: r.get(1)?, title: r.get(2)?, start: r.get(3)?, end: r.get(4)?, all_day: r.get::<_, i64>(5)? != 0, project: r.get(6)?, task_id: r.get(7)?, color: r.get(8)?, notes: r.get(9)?, origin: r.get(10)?, done: r.get::<_, i64>(11)? != 0, category: r.get(12)? })
 }
 
 const TASK_COLS: &str = "id, title, notes, project, parent_id, kind, priority, estimate_min, due_day, done_at, created_at";
-const EVENT_COLS: &str = "id, kind, title, start_at, end_at, all_day, project, task_id, color, notes, origin, done";
+const EVENT_COLS: &str = "id, kind, title, start_at, end_at, all_day, project, task_id, color, notes, origin, done, category";
 
 /// Open tasks and those finished in the last 60 days; calendar entries and time logged since 120 days.
 pub fn state(conn: &Connection, now: i64) -> Result<State> {
@@ -165,8 +169,8 @@ pub fn state(conn: &Connection, now: i64) -> Result<State> {
     let tasks = st.query_map([now - 60 * 86_400], task_row)?.collect::<std::result::Result<_, _>>()?;
     let mut st = conn.prepare(&format!("SELECT {EVENT_COLS} FROM plan_events WHERE end_at >= ?1 ORDER BY start_at, id"))?;
     let events = st.query_map([now - 120 * 86_400], event_row)?.collect::<std::result::Result<_, _>>()?;
-    let mut st = conn.prepare("SELECT key, priority, estimate_min, color FROM plan_projects ORDER BY key")?;
-    let projects = st.query_map([], |r| Ok(ProjectPlan { key: r.get(0)?, priority: r.get(1)?, estimate_min: r.get(2)?, color: r.get(3)? }))?.collect::<std::result::Result<_, _>>()?;
+    let mut st = conn.prepare("SELECT key, priority, estimate_min, color, calendar_hidden FROM plan_projects ORDER BY key")?;
+    let projects = st.query_map([], |r| Ok(ProjectPlan { key: r.get(0)?, priority: r.get(1)?, estimate_min: r.get(2)?, color: r.get(3)?, calendar_hidden: r.get::<_, i64>(4)? != 0 }))?.collect::<std::result::Result<_, _>>()?;
     let mut st = conn.prepare("SELECT id, project, task_id, title, started_at, seconds FROM work_log WHERE started_at >= ?1 ORDER BY started_at DESC")?;
     let log = st.query_map([now - 120 * 86_400], |r| Ok(WorkLog { id: r.get(0)?, project: r.get(1)?, task_id: r.get(2)?, title: r.get(3)?, started_at: r.get(4)?, seconds: r.get(5)? }))?.collect::<std::result::Result<_, _>>()?;
     Ok(State { tasks, events, projects, log })
@@ -225,11 +229,13 @@ pub fn save_event(conn: &Connection, e: &PlanEvent, now: i64) -> Result<PlanEven
     let (project, color) = (clean_project(e.project.as_deref())?, clean_color(e.color.as_deref())?);
     let notes: String = e.notes.chars().take(8000).collect();
     let origin = if ["me", "auto", "claude"].contains(&e.origin.as_str()) { e.origin.as_str() } else { "me" };
+    // A category that no longer exists falls back to the entry's kind.
+    let category = e.category.as_deref().filter(|c| !c.is_empty() && !EVENT_KINDS.contains(c)).filter(|c| conn.query_row("SELECT 1 FROM plan_categories WHERE id = ?1", [c], |_| Ok(())).is_ok());
     let id = if e.id == 0 {
-        conn.execute("INSERT INTO plan_events (kind, title, start_at, end_at, all_day, project, task_id, color, notes, origin, done, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)", params![e.kind, title, e.start, e.end, e.all_day as i64, project, e.task_id, color, notes, origin, e.done as i64, now])?;
+        conn.execute("INSERT INTO plan_events (kind, title, start_at, end_at, all_day, project, task_id, color, notes, origin, done, created_at, category) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)", params![e.kind, title, e.start, e.end, e.all_day as i64, project, e.task_id, color, notes, origin, e.done as i64, now, category])?;
         conn.last_insert_rowid()
     } else {
-        let n = conn.execute("UPDATE plan_events SET kind = ?1, title = ?2, start_at = ?3, end_at = ?4, all_day = ?5, project = ?6, task_id = ?7, color = ?8, notes = ?9, done = ?10 WHERE id = ?11", params![e.kind, title, e.start, e.end, e.all_day as i64, project, e.task_id, color, notes, e.done as i64, e.id])?;
+        let n = conn.execute("UPDATE plan_events SET kind = ?1, title = ?2, start_at = ?3, end_at = ?4, all_day = ?5, project = ?6, task_id = ?7, color = ?8, notes = ?9, done = ?10, category = ?12 WHERE id = ?11", params![e.kind, title, e.start, e.end, e.all_day as i64, project, e.task_id, color, notes, e.done as i64, e.id, category])?;
         if n == 0 {
             return Err(AppError::new("not_found", "Cette entrée du calendrier n'existe plus"));
         }
@@ -257,7 +263,74 @@ pub fn set_project(conn: &Connection, key: &str, priority: Option<i64>, estimate
     if let Some(c) = color {
         conn.execute("UPDATE plan_projects SET color = ?2 WHERE key = ?1", params![key, clean_color(c.as_deref())?])?;
     }
-    Ok(conn.query_row("SELECT key, priority, estimate_min, color FROM plan_projects WHERE key = ?1", [&key], |r| Ok(ProjectPlan { key: r.get(0)?, priority: r.get(1)?, estimate_min: r.get(2)?, color: r.get(3)? }))?)
+    Ok(conn.query_row("SELECT key, priority, estimate_min, color, calendar_hidden FROM plan_projects WHERE key = ?1", [&key], |r| Ok(ProjectPlan { key: r.get(0)?, priority: r.get(1)?, estimate_min: r.get(2)?, color: r.get(3)?, calendar_hidden: r.get::<_, i64>(4)? != 0 }))?)
+}
+
+/// Leaves a project out of the calendar, or shows it again. Its data is untouched.
+pub fn set_calendar_hidden(conn: &Connection, key: &str, hidden: bool) -> Result<()> {
+    let key = clean_project(Some(key))?.ok_or_else(|| invalid("Projet inconnu"))?;
+    conn.execute("INSERT INTO plan_projects (key, calendar_hidden) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET calendar_hidden = excluded.calendar_hidden", params![key, hidden as i64])?;
+    Ok(())
+}
+
+// ───────────────────────────── categories ─────────────────────────────
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Category {
+    pub id: String,
+    pub name: String,
+    pub color: String,
+    /// One of the five kinds the planning engine understands: renamed and recoloured, never deleted.
+    pub builtin: bool,
+}
+
+/// Built-in categories: the kinds of entries, with their default name and colour.
+pub const BUILTIN_CATEGORIES: &[(&str, &str, &str)] = &[("session", "Session de travail", "#8b7cf6"), ("event", "Événement", "#5fb4e8"), ("reminder", "Rappel", "#e2a93b"), ("block", "Indisponible", "#6b7280"), ("task", "Tâche", "#8b7cf6")];
+
+pub fn categories(conn: &Connection) -> Result<Vec<Category>> {
+    let mut st = conn.prepare("SELECT id, name, color FROM plan_categories ORDER BY position, created_at, id")?;
+    let stored: Vec<(String, String, String)> = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?.collect::<std::result::Result<_, _>>()?;
+    let mut out: Vec<Category> = BUILTIN_CATEGORIES
+        .iter()
+        .map(|(id, name, color)| match stored.iter().find(|(s, _, _)| s == id) {
+            Some((_, n, c)) => Category { id: id.to_string(), name: n.clone(), color: c.clone(), builtin: true },
+            None => Category { id: id.to_string(), name: name.to_string(), color: color.to_string(), builtin: true },
+        })
+        .collect();
+    out.extend(stored.into_iter().filter(|(id, _, _)| !EVENT_KINDS.contains(&id.as_str())).map(|(id, name, color)| Category { id, name, color, builtin: false }));
+    Ok(out)
+}
+
+/// Creates (`id` empty) or renames / recolours a category.
+pub fn save_category(conn: &Connection, id: Option<&str>, name: &str, color: &str, now: i64) -> Result<Category> {
+    let name: String = name.trim().chars().take(40).collect();
+    if name.is_empty() {
+        return Err(invalid("Une catégorie a besoin d'un nom"));
+    }
+    let color = clean_color(Some(color))?.ok_or_else(|| invalid("Une catégorie a besoin d'une couleur"))?;
+    let id = match id.filter(|i| !i.is_empty()) {
+        Some(i) => {
+            let known = EVENT_KINDS.contains(&i) || conn.query_row("SELECT 1 FROM plan_categories WHERE id = ?1", [i], |_| Ok(())).is_ok();
+            if !known {
+                return Err(AppError::new("not_found", "Cette catégorie n'existe plus"));
+            }
+            i.to_string()
+        }
+        None => format!("c{now}{}", conn.query_row("SELECT COUNT(*) FROM plan_categories", [], |r| r.get::<_, i64>(0))?),
+    };
+    conn.execute("INSERT INTO plan_categories (id, name, color, created_at) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(id) DO UPDATE SET name = excluded.name, color = excluded.color", params![id, name, color, now])?;
+    categories(conn)?.into_iter().find(|c| c.id == id).ok_or_else(|| AppError::new("database", "Catégorie introuvable après l'enregistrement"))
+}
+
+/// Deletes a category of the user's; its entries go back to the category of their kind.
+pub fn delete_category(conn: &Connection, id: &str) -> Result<()> {
+    if EVENT_KINDS.contains(&id) {
+        return Err(invalid("Les catégories de base se renomment mais ne se suppriment pas"));
+    }
+    conn.execute("UPDATE plan_events SET category = NULL WHERE category = ?1", [id])?;
+    conn.execute("DELETE FROM plan_categories WHERE id = ?1", [id])?;
+    Ok(())
 }
 
 /// Records time really spent. The project's remaining estimate, when there is one, goes down by as much.
@@ -494,7 +567,7 @@ mod tests {
         assert_eq!((created.kind.as_str(), created.origin.as_str(), created.end - created.start), ("session", "claude", 7200));
         assert_eq!(get_event(&conn, e.id).unwrap().end - get_event(&conn, e.id).unwrap().start, 5400);
         assert_eq!(s.tasks.iter().filter(|t| t.parent_id.is_some()).count(), 2);
-        assert_eq!(s.projects[0], ProjectPlan { key: "/p/rpg".into(), priority: 3, estimate_min: Some(720), color: None });
+        assert_eq!(s.projects[0], ProjectPlan { key: "/p/rpg".into(), priority: 3, estimate_min: Some(720), color: None, calendar_hidden: false });
     }
 
     #[test]
@@ -531,6 +604,25 @@ mod tests {
         let s = state(&conn, NOW).unwrap();
         assert_eq!(s.tasks[0].project.as_deref(), Some("/p/rpg"));
         assert_eq!(s.events[0].project.as_deref(), Some("/p/rpg"));
-        assert_eq!(s.projects, vec![ProjectPlan { key: "/p/rpg".into(), priority: 2, estimate_min: Some(300), color: None }]);
+        assert_eq!(s.projects, vec![ProjectPlan { key: "/p/rpg".into(), priority: 2, estimate_min: Some(300), color: None, calendar_hidden: false }]);
+    }
+
+    #[test]
+    fn categories_keep_the_five_kinds_and_add_the_users() {
+        let c = crate::db::open_in_memory().unwrap();
+        assert_eq!(categories(&c).unwrap().len(), 5);
+        let sport = save_category(&c, None, "Sport", "#22AA55", 10).unwrap();
+        assert!(!sport.builtin && sport.color == "#22aa55");
+        save_category(&c, Some("event"), "Perso", "#112233", 11).unwrap();
+        let all = categories(&c).unwrap();
+        assert_eq!(all.iter().find(|x| x.id == "event").unwrap().name, "Perso", "a base category is renamed, not duplicated");
+        assert_eq!(all.len(), 6);
+        let ev = save_event(&c, &PlanEvent { kind: "event".into(), title: "Foot".into(), start: 1000, end: 4600, category: Some(sport.id.clone()), ..Default::default() }, 1).unwrap();
+        assert_eq!(ev.category.as_deref(), Some(sport.id.as_str()));
+        assert!(delete_category(&c, "session").is_err(), "base categories stay");
+        delete_category(&c, &sport.id).unwrap();
+        assert_eq!(get_event(&c, ev.id).unwrap().category, None, "its entries fall back to their kind");
+        set_calendar_hidden(&c, "my:12", true).unwrap();
+        assert!(state(&c, 0).unwrap().projects.iter().any(|p| p.key == "my:12" && p.calendar_hidden));
     }
 }

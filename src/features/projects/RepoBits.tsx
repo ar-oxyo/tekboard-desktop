@@ -1,5 +1,5 @@
 // Pieces used wherever a repository is shown: status chips, the progress picker and the action menu.
-import { CircleCheck, CircleDashed, CircleDot, Code2, Copy, FlaskConical, FolderOpen, GitBranch, Globe, GraduationCap, LayoutTemplate, NotebookPen, Rocket, Star, SquareTerminal, User, Wand2 } from "lucide-react";
+import { Archive, ArchiveRestore, CircleCheck, CircleDashed, EyeOff, CircleDot, Code2, Copy, FlaskConical, FolderOpen, GitBranch, Globe, GraduationCap, LayoutTemplate, NotebookPen, Rocket, Star, SquareTerminal, User, Wand2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Menu, MenuChoice, MenuItem, MenuLabel, MenuSeparator, SubMenu } from "../../components/Menu";
 import { cn, Dot, IconButton } from "../../components/ui";
@@ -7,6 +7,7 @@ import type { Progress, RepoInfo } from "../../lib/api";
 import { useProjectActions } from "../../lib/hooks";
 import { attention, dueOf } from "../../lib/repos";
 import { useUi } from "../../lib/store";
+import { t } from "../../lib/i18n";
 
 /** `quiet` hides the default branch: on a list, "main" forty times says nothing. */
 export function BranchLabel({ repo, quiet }: { repo: RepoInfo; quiet?: boolean }) {
@@ -71,9 +72,9 @@ export function DueBadge({ repo, now }: { repo: RepoInfo; now?: Date }) {
 }
 
 export const PROGRESS: Array<{ id: Progress; label: string; icon: ReactNode; tone: string }> = [
-  { id: "todo", label: "À faire", icon: <CircleDashed className="size-3.5" />, tone: "text-muted" },
-  { id: "in_progress", label: "En cours", icon: <CircleDot className="size-3.5" />, tone: "text-accent-strong" },
-  { id: "done", label: "Terminé", icon: <CircleCheck className="size-3.5" />, tone: "text-ok" },
+  { id: "todo", label: t("À faire"), icon: <CircleDashed className="size-3.5" />, tone: "text-muted" },
+  { id: "in_progress", label: t("En cours"), icon: <CircleDot className="size-3.5" />, tone: "text-accent-strong" },
+  { id: "done", label: t("Terminé"), icon: <CircleCheck className="size-3.5" />, tone: "text-ok" },
 ];
 
 /** To do / In progress / Done. Applied at once and reversible from anywhere, a finished project included. */
@@ -99,7 +100,7 @@ export function ProgressPicker({ repo, compact }: { repo: RepoInfo; compact?: bo
         </button>
       }
     >
-      <MenuLabel>Statut</MenuLabel>
+      <MenuLabel>{t("Statut")}</MenuLabel>
       {PROGRESS.map((p) => (
         <MenuChoice key={p.id} checked={p.id === repo.progress && !repo.progressInferred} icon={<span className={p.tone}>{p.icon}</span>} onSelect={() => act.progress.mutate({ repo, status: p.id })} hint={p.id === repo.progress && repo.progressInferred ? "current" : undefined}>
           {p.label}
@@ -121,57 +122,70 @@ export function RepoMenu({ repo, sheet = true }: { repo: RepoInfo; sheet?: boole
     <Menu label={`More actions for ${repo.name}`}>
       {sheet && (
         <MenuItem icon={<NotebookPen className="size-4" />} onSelect={() => openSheet(repo.path)}>
-          Fiche du projet
+          {t("Fiche du projet")}
         </MenuItem>
       )}
       <MenuItem icon={<Code2 className="size-4" />} onSelect={() => act.ide.mutate(repo)}>
-        Ouvrir dans l'IDE
+        {t("Ouvrir dans l'IDE")}
       </MenuItem>
       <MenuItem icon={<SquareTerminal className="size-4" />} onSelect={() => act.terminal.mutate(repo)}>
-        Ouvrir un terminal ici
+        {t("Ouvrir un terminal ici")}
       </MenuItem>
       <MenuItem icon={<FolderOpen className="size-4" />} onSelect={() => act.files.mutate(repo)}>
-        Afficher dans Fichiers
+        {t("Afficher dans Fichiers")}
       </MenuItem>
-      <MenuItem icon={<Rocket className="size-4" />} onSelect={() => act.launch.mutate(repo)} title="Lance le programme que ce projet compile, dans un terminal">
-        Lancer le binaire
+      <MenuItem icon={<Rocket className="size-4" />} onSelect={() => act.launch.mutate(repo)} title={t("Lance le programme que ce projet compile, dans un terminal")}>
+        {t("Lancer le binaire")}
       </MenuItem>
       <MenuSeparator />
       <MenuItem icon={<Globe className="size-4" />} disabled={!hasRemote} onSelect={() => act.remote.mutate(repo)} hint={hasRemote ? "Firefox" : "no remote"} title={hasRemote ? (repo.remoteUrl ?? undefined) : "This repository has no remote"}>
-        Ouvrir sur GitHub
+        {t("Ouvrir sur GitHub")}
       </MenuItem>
       <MenuItem icon={<Copy className="size-4" />} disabled={!hasRemote} onSelect={() => act.copyUrl(repo)}>
-        Copier l'URL distante
+        {t("Copier l'URL distante")}
       </MenuItem>
       <MenuItem icon={<GitBranch className="size-4" />} onSelect={() => openGit(repo.path)}>
         Git
       </MenuItem>
       <MenuItem icon={<FlaskConical className="size-4" />} onSelect={() => openTesting(repo.path)}>
-        Vérifier
+        Tests
       </MenuItem>
       <MenuItem icon={<LayoutTemplate className="size-4" />} onSelect={() => openLauncher({ mode: "existing", path: repo.path })}>
-        Appliquer un modèle…
+        {t("Appliquer un modèle…")}
       </MenuItem>
       <MenuSeparator />
-      <SubMenu icon={<CircleDot className="size-4" />} label="Statut">
+      <SubMenu icon={<CircleDot className="size-4" />} label={t("Statut")}>
         {PROGRESS.map((p) => (
           <MenuChoice key={p.id} checked={p.id === repo.progress} icon={<span className={p.tone}>{p.icon}</span>} onSelect={() => act.progress.mutate({ repo, status: p.id })}>
             {p.label}
           </MenuChoice>
         ))}
       </SubMenu>
-      <SubMenu icon={repo.kind === "epitech" ? <GraduationCap className="size-4" /> : <User className="size-4" />} label="Classement">
-        <MenuLabel>{repo.kind === "epitech" ? "Epitech" : "Personnel"} — {repo.kindReason}</MenuLabel>
+      <SubMenu icon={repo.kind === "epitech" ? <GraduationCap className="size-4" /> : <User className="size-4" />} label={t("Classement")}>
+        <MenuLabel>{repo.kind === "epitech" ? "Epitech" : t("Personnel")} — {repo.kindReason}</MenuLabel>
         <MenuChoice checked={repo.meta.kindOverride === "epitech"} icon={<GraduationCap className="size-4" />} onSelect={() => act.kind.mutate({ repo, kind: "epitech" })}>
           Epitech
         </MenuChoice>
         <MenuChoice checked={repo.meta.kindOverride === "personal"} icon={<User className="size-4" />} onSelect={() => act.kind.mutate({ repo, kind: "personal" })}>
-          Personnel
+          {t("Personnel")}
         </MenuChoice>
         <MenuChoice checked={repo.meta.kindOverride === null} icon={<Wand2 className="size-4" />} onSelect={() => act.kind.mutate({ repo, kind: null })}>
-          Automatique
+          {t("Automatique")}
         </MenuChoice>
       </SubMenu>
+      <MenuSeparator />
+      {repo.meta.visibility === "archived" ? (
+        <MenuItem icon={<ArchiveRestore className="size-4" />} onSelect={() => act.visibility.mutate({ repo, visibility: null })}>
+          {t("Désarchiver")}
+        </MenuItem>
+      ) : (
+        <MenuItem icon={<Archive className="size-4" />} onSelect={() => act.visibility.mutate({ repo, visibility: "archived" })} title={t("Sort le projet des listes de tous les jours. Il reste dans Projets → Archivés.")}>
+          {t("Archiver")}
+        </MenuItem>
+      )}
+      <MenuItem icon={<EyeOff className="size-4" />} onSelect={() => act.visibility.mutate({ repo, visibility: "hidden" })} hint={repo.duplicateOf ? t("copie") : undefined} title={t("Pour une copie ou un dossier fantôme : TekBoard l'ignore partout (listes, planning, MY Epitech). Le dossier n'est jamais supprimé.")}>
+        {t("Masquer")}
+      </MenuItem>
     </Menu>
   );
 }

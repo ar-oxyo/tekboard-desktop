@@ -1,9 +1,10 @@
+import { t as tr } from "./i18n";
 /** "5 h ago" from an ISO date or a unix timestamp (seconds). Empty string when unparseable. */
 export function timeAgo(when: string | number, now: Date = new Date()): string {
   const t = typeof when === "number" ? when * 1000 : Date.parse(when);
   if (Number.isNaN(t)) return "";
   const sec = Math.max(0, Math.round((now.getTime() - t) / 1000));
-  if (sec < 60) return "à l'instant";
+  if (sec < 60) return tr("à l'instant");
   const min = Math.floor(sec / 60);
   if (min < 60) return `il y a ${min} min`;
   const h = Math.floor(min / 60);
@@ -36,10 +37,10 @@ export function looksLikeEpitech(name: string): boolean {
 
 export function greeting(now: Date = new Date()): string {
   const h = now.getHours();
-  if (h < 5) return "Encore debout";
-  if (h < 12) return "Bonjour";
-  if (h < 18) return "Bon après-midi";
-  return "Bonsoir";
+  if (h < 5) return tr("Encore debout");
+  if (h < 12) return tr("Bonjour");
+  if (h < 18) return tr("Bon après-midi");
+  return tr("Bonsoir");
 }
 
 export function formatBytes(n: number): string {

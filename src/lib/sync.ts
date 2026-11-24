@@ -1,7 +1,7 @@
 // One place that knows which screens read which data. The backend announces what changed
 // (`data-changed` with domains, after every write, job, sync or background task) and this
 // table turns it into query invalidations. A screen never needs a "Refresh" button to see
-// a change made elsewhere: by Tika, by a sync, by another window part.
+// a change made elsewhere: by Artix, by a sync, by another window part.
 import { listen } from "@tauri-apps/api/event";
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 
@@ -17,7 +17,7 @@ export const DOMAIN_KEYS: Record<Domain, QueryKey[]> = {
   insights: [["insights"], ["today"]],
   runs: [["runs"], ["job-active"], ["today"]],
   subjects: [["subjects"], ["briefs"], ["subject-briefs"]],
-  my: [["my-status"], ["my-data"], ["my-overview"], ["my-academic"], ["repos"], ["plan"], ["subjects"]],
+  my: [["my-status"], ["my-data"], ["my-logtime"], ["my-overview"], ["my-academic"], ["repos"], ["plan"], ["subjects"]],
   libraries: [["libraries"], ["lib-status"], ["lib-catalog"], ["lib-presets"], ["lib-suggestions"]],
   settings: [["settings"], ["ui-prefs"], ["claude-info"]],
   prompts: [["prompts"]],
@@ -69,6 +69,13 @@ export const COMMAND_DOMAINS: Record<string, Domain[]> = {
   library_import: ["libraries"],
   my_import_subjects: ["subjects"],
   my_sync: ["my"],
+  my_sync_auto: ["my", "subjects", "repos", "plan"],
+  subject_suggestion_decide: ["subjects"],
+  subjects_associate: ["subjects"],
+  project_set_visibility: ["repos", "plan", "subjects"],
+  plan_project_calendar: ["plan"],
+  plan_category_save: ["plan"],
+  plan_category_delete: ["plan"],
   my_apply_deadlines: ["repos", "plan"],
   my_forget: ["my"],
   project_config_set: ["repos"],
@@ -100,6 +107,8 @@ export const COMMAND_DOMAINS: Record<string, Domain[]> = {
 let client: QueryClient | null = null;
 
 /** Called once by the app: lets `afterCommand` reach the query cache. */
+export const getQueryClient = (): QueryClient | null => client;
+
 export function setQueryClient(qc: QueryClient) {
   client = qc;
 }

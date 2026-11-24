@@ -5,6 +5,7 @@ import { api, asAppError, type ScheduleAction, type PlanEvent, type PlanState, t
 import { useBoard, usePref, useRepos } from "../../lib/hooks";
 import { busySpans, calItems, DEFAULT_PREFS, withMode, planProjects, projectLoad, type Load, type PlanPrefs } from "../../lib/plan";
 import { useUi } from "../../lib/store";
+import { t } from "../../lib/i18n";
 
 export const planKey = ["plan"] as const;
 const EMPTY: PlanState = { tasks: [], events: [], projects: [], log: [] };
@@ -17,15 +18,17 @@ export function usePlanPrefs(): [PlanPrefs, (p: PlanPrefs) => void] {
 
 export function usePlanData() {
   const plan = useQuery({ queryKey: planKey, queryFn: api.planState });
+  const cats = useQuery({ queryKey: ["plan", "categories"], queryFn: api.planCategories, staleTime: 60_000 });
+  const categories = useMemo(() => cats.data ?? [], [cats.data]);
   const agenda = useQuery({ queryKey: ["repos", "agenda"], queryFn: api.myAgenda });
   const board = useBoard();
   const repos = useRepos();
   const [prefs, setPrefs] = usePlanPrefs();
   const state = plan.data ?? EMPTY;
   const projects = useMemo(() => planProjects(board.data ?? [], repos.data ?? [], plan.data), [board.data, repos.data, plan.data]);
-  const items = useMemo(() => calItems(plan.data, agenda.data?.items ?? [], projects), [plan.data, agenda.data, projects]);
-  const busy = useMemo(() => busySpans(items), [items]);
-  return { state, agenda: agenda.data, projects, items, busy, prefs, setPrefs, loading: plan.isLoading || agenda.isLoading || board.isLoading, fetching: agenda.isFetching || plan.isFetching, error: plan.error ?? agenda.error };
+  const items = useMemo(() => calItems(plan.data, agenda.data?.items ?? [], projects, categories), [plan.data, agenda.data, projects, categories]);
+  const busy = useMemo(() => busySpans(calItems(plan.data, agenda.data?.items ?? [], projects, categories, false)), [plan.data, agenda.data, projects, categories]);
+  return { state, agenda: agenda.data, projects, items, busy, categories, prefs, setPrefs, loading: plan.isLoading || agenda.isLoading || board.isLoading, fetching: agenda.isFetching || plan.isFetching, error: plan.error ?? agenda.error };
 }
 
 /** Planned / remaining / risk of every project, recomputed when the minute changes. */
@@ -64,7 +67,7 @@ export function usePlanActions() {
       optimistic((s) =>
         e.id
           ? { ...s, events: s.events.map((x) => (x.id === e.id ? ({ ...x, ...e } as PlanEvent) : x)) }
-          : { ...s, events: [...s.events, { allDay: false, project: null, taskId: null, color: null, notes: "", origin: "me", done: false, ...e, id: temp-- } as PlanEvent] },
+          : { ...s, events: [...s.events, { allDay: false, project: null, taskId: null, color: null, notes: "", origin: "me", done: false, category: null, ...e, id: temp-- } as PlanEvent] },
       ),
     onError: fail("Élément non enregistré"),
   });
@@ -91,7 +94,7 @@ export function usePlanActions() {
     mutationFn: ({ actions, origin }: { actions: ScheduleAction[]; origin: "auto" | "claude" }) => api.planApply(actions, origin),
     onSuccess: (r) => {
       const parts = [r.created && `${r.created} ajouté${r.created > 1 ? "s" : ""}`, r.moved && `${r.moved} déplacé${r.moved > 1 ? "s" : ""}`, r.deleted && `${r.deleted} supprimé${r.deleted > 1 ? "s" : ""}`, r.tasks && `${r.tasks} tâche${r.tasks > 1 ? "s" : ""}`, r.projects && `${r.projects} réglage${r.projects > 1 ? "s" : ""} de projet`].filter(Boolean);
-      toast({ kind: "ok", title: "Plan appliqué", detail: parts.join(" · ") });
+      toast({ kind: "ok", title: t("Plan appliqué"), detail: parts.join(" · ") });
     },
     onError: fail("Plan non appliqué : rien n'a été modifié"),
   });

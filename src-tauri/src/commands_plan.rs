@@ -57,6 +57,33 @@ pub fn plan_project_set(state: State<'_, AppState>, key: String, patch: ProjectP
     planner::set_project(&state.conn(), &key, patch.priority, patch.estimate_min, patch.color)
 }
 
+/// Leaves a project (repository path or `my:<id>`) out of the calendar, or shows it again.
+#[tauri::command(async)]
+pub fn plan_project_calendar(state: State<'_, AppState>, key: String, hidden: bool) -> Result<()> {
+    planner::set_calendar_hidden(&state.conn(), &key, hidden)?;
+    crate::notify::changed(&["plan"]);
+    Ok(())
+}
+
+#[tauri::command(async)]
+pub fn plan_categories(state: State<'_, AppState>) -> Result<Vec<planner::Category>> {
+    planner::categories(&state.conn())
+}
+
+#[tauri::command(async)]
+pub fn plan_category_save(state: State<'_, AppState>, id: Option<String>, name: String, color: String) -> Result<planner::Category> {
+    let c = planner::save_category(&state.conn(), id.as_deref(), &name, &color, chrono::Utc::now().timestamp())?;
+    crate::notify::changed(&["plan"]);
+    Ok(c)
+}
+
+#[tauri::command(async)]
+pub fn plan_category_delete(state: State<'_, AppState>, id: String) -> Result<()> {
+    planner::delete_category(&state.conn(), &id)?;
+    crate::notify::changed(&["plan"]);
+    Ok(())
+}
+
 #[tauri::command(async)]
 pub fn plan_log_add(state: State<'_, AppState>, project: Option<String>, task_id: Option<i64>, title: String, started_at: i64, seconds: i64) -> Result<WorkLog> {
     planner::log_work(&state.conn(), project.as_deref(), task_id, &title, started_at, seconds)

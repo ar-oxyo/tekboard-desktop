@@ -1,4 +1,4 @@
-//! Agents that work on a copy of a project: Tika's moulinette (a simulated evaluation) and
+//! Agents that work on a copy of a project: Artix's moulinette (a simulated evaluation) and
 //! test generation. Both:
 //! 1. copy the project as it is now (`workcopy`) into a throwaway folder;
 //! 2. check that the sandbox works (no unsandboxed fallback);
@@ -95,9 +95,9 @@ fn run_agent(job: &crate::jobs::Job, a: Agent, work: &Path) -> Result<(crate::jo
     r
 }
 
-pub const MOULI_STEPS: &[(&str, &str)] = &[("prepare", "Copie de travail et bac à sable"), ("agent", "Évaluation par Tika")];
+pub const MOULI_STEPS: &[(&str, &str)] = &[("prepare", "Copie de travail et bac à sable"), ("agent", "Évaluation par Artix")];
 
-/// Tika's moulinette on `repo`. Returns the job id.
+/// Artix's moulinette on `repo`. Returns the job id.
 pub fn moulinette(state: &AppState, repo: PathBuf) -> Result<u64> {
     crate::claude::executable()?;
     let key = repo.to_string_lossy().into_owned();
@@ -108,7 +108,7 @@ pub fn moulinette(state: &AppState, repo: PathBuf) -> Result<u64> {
     let name = repo.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     let binary = crate::runner::detect(&repo).map(|(b, _)| b);
     let ctx = Ctx::of(state, &repo);
-    let title = format!("Moulinette de Tika · {name}");
+    let title = format!("Moulinette d'Artix · {name}");
     Ok(state.jobs.start(state.db.clone(), "moulinette_ai", Some(key.clone()), title, MOULI_STEPS, move |job| {
         let Some(work) = prepare(job, &ctx, &repo, "mouli")? else { return Ok("failed") };
         job.start("agent");
@@ -133,7 +133,7 @@ pub fn moulinette(state: &AppState, repo: PathBuf) -> Result<u64> {
         if answer.is_err() {
             return Ok("failed");
         }
-        // What was found stays in Tika's memory for the next conversations.
+        // What was found stays in Artix's memory for the next conversations.
         let verdict = job_summary_str(job, "verdict").unwrap_or_else(|| format!("{passed} vérifications réussies, {failed} échouées"));
         let failed_titles: Vec<String> = checks.iter().filter(|c| c["status"] == "failed").filter_map(|c| c["title"].as_str()).take(5).map(str::to_string).collect();
         let memo = format!("Moulinette du {} : {verdict}{}", crate::schedule::local_iso(now()).get(..10).unwrap_or_default(), if failed_titles.is_empty() { String::new() } else { format!(" Échecs : {}.", failed_titles.join(" ; ")) });
@@ -150,7 +150,7 @@ fn job_summary_str(job: &crate::jobs::Job, key: &str) -> Option<String> {
     job.summary_value(key).and_then(|v| v.as_str().map(str::to_string))
 }
 
-pub const GEN_STEPS: &[(&str, &str)] = &[("prepare", "Copie de travail et bac à sable"), ("agent", "Tika écrit et lance les tests"), ("diff", "Changements à valider")];
+pub const GEN_STEPS: &[(&str, &str)] = &[("prepare", "Copie de travail et bac à sable"), ("agent", "Artix écrit et lance les tests"), ("diff", "Changements à valider")];
 
 /// Test generation on a copy; the result is a diff (`summary.changes`) applied by `apply_tests`.
 pub fn generate_tests(state: &AppState, repo: PathBuf) -> Result<u64> {
@@ -162,7 +162,7 @@ pub fn generate_tests(state: &AppState, repo: PathBuf) -> Result<u64> {
     let persona = crate::prompts::template(&state.conn(), crate::prompts::TESTS_AGENT)?;
     let name = repo.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     let ctx = Ctx::of(state, &repo);
-    Ok(state.jobs.start(state.db.clone(), "gen_tests", Some(key), format!("Tests générés par Tika · {name}"), GEN_STEPS, move |job| {
+    Ok(state.jobs.start(state.db.clone(), "gen_tests", Some(key), format!("Tests générés par Artix · {name}"), GEN_STEPS, move |job| {
         let Some(work) = prepare(job, &ctx, &repo, "tests")? else { return Ok("failed") };
         job.start("agent");
         let has_tests = repo.join("tests").is_dir();

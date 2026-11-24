@@ -10,6 +10,7 @@ import { timeAgo } from "../../lib/format";
 import { keys, useRepos, useSettings } from "../../lib/hooks";
 import { attention, displayName, matchesQuery } from "../../lib/repos";
 import { useUi } from "../../lib/store";
+import { t } from "../../lib/i18n";
 
 export function GitPage() {
   const settings = useSettings();
@@ -27,16 +28,16 @@ export function GitPage() {
 
   return (
     <>
-      <PageHeader title="Git" subtitle="Commiter, synchroniser, brancher. Rien ici ne peut réécrire ni effacer l'historique." />
+      <PageHeader title="Git" subtitle={t("Commiter, synchroniser, brancher. Rien ici ne peut réécrire ni effacer l'historique.")} />
       {repos.isLoading ? (
         <p className="flex items-center gap-2 py-16 text-muted">
-          <Spinner /> Lecture…
+          <Spinner /> {t("Lecture…")}
         </p>
       ) : repos.error ? (
         <ErrorNote>{asAppError(repos.error).message}</ErrorNote>
       ) : (repos.data?.length ?? 0) === 0 ? (
         <Card>
-          <EmptyState icon={<GitBranch className="size-6" />} title="Aucun dépôt">
+          <EmptyState icon={<GitBranch className="size-6" />} title={t("Aucun dépôt")}>
             Ajoute d'abord un dossier de projets dans Réglages, ou clone un projet.
           </EmptyState>
         </Card>
@@ -45,7 +46,7 @@ export function GitPage() {
           <div>
             <div className="relative mb-2">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
-              <Input className="pl-8" aria-label="Filtrer les dépôts" placeholder="Filtrer" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <Input className="pl-8" aria-label={t("Filtrer les dépôts")} placeholder="Filtrer" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
             <ul className="card flex max-h-[calc(100vh-196px)] flex-col gap-0.5 overflow-y-auto p-1.5">
               {list.map((r) => {
@@ -102,7 +103,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
     onSuccess: () => {
       setMessage("");
       setFile(null);
-      toast({ kind: "ok", title: "Commité localement" });
+      toast({ kind: "ok", title: t("Commité localement") });
       refresh();
     },
     onError: fail("Commit failed"),
@@ -155,7 +156,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
       </p>
     );
   }
-  if (detail.error || !detail.data) return <ErrorNote title="Impossible de lire ce dépôt">{asAppError(detail.error).message}</ErrorNote>;
+  if (detail.error || !detail.data) return <ErrorNote title={t("Impossible de lire ce dépôt")}>{asAppError(detail.error).message}</ErrorNote>;
 
   const d: GitDetail = detail.data;
   const st = d.status;
@@ -175,7 +176,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
           <h2 className="display truncate text-base font-medium">{displayName(repo)}</h2>
           {repo.epitech && <Tag>{repo.epitech.module}</Tag>}
           <span className="ml-auto flex flex-wrap items-center gap-2 self-center">
-            <Button size="sm" variant="ghost" icon={<Play className="size-3.5" />} busy={start.isPending} title="Récupère, puis ouvre l'IDE et le terminal" onClick={() => start.mutate()}>
+            <Button size="sm" variant="ghost" icon={<Play className="size-3.5" />} busy={start.isPending} title={t("Récupère, puis ouvre l'IDE et le terminal")} onClick={() => start.mutate()}>
               Se mettre au travail
             </Button>
             <Button size="sm" icon={<RefreshCw className="size-3.5" />} disabled={!repo.remoteUrl || busy} disabledReason={!repo.remoteUrl ? "Ce dépôt n'a pas de dépôt distant (origin)" : "Une opération git est en cours"} busy={sync.isPending && sync.variables === "fetch"} onClick={() => sync.mutate("fetch")}>
@@ -184,8 +185,8 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
             <Button size="sm" icon={<ArrowDown className="size-3.5" />} disabled={!st.upstream || st.behind === 0 || busy} disabledReason={!st.upstream ? "La branche ne suit aucune branche distante" : st.behind === 0 ? "Rien à récupérer : tu es à jour" : "Une opération git est en cours"} busy={sync.isPending && sync.variables === "pull"} title="Avance rapide seulement : ne crée jamais de fusion" onClick={() => sync.mutate("pull")}>
               Pull{st.behind > 0 ? ` ${st.behind}` : ""}
             </Button>
-            <Button size="sm" title="Ouvrir les vérifications de ce projet (moulinette, tests, simulation de rendu)" onClick={() => useUi.getState().openTesting(repo.path)}>
-              Vérifier
+            <Button size="sm" title={t("Ouvrir les tests de ce projet (moulinette, tests, simulation de rendu)")} onClick={() => useUi.getState().openTesting(repo.path)}>
+              Tests
             </Button>
             <Button size="sm" variant={canPush ? "primary" : "secondary"} icon={<ArrowUp className="size-3.5" />} disabled={!canPush || busy} disabledReason={busy ? "Une opération git est en cours" : st.ahead === 0 ? "Aucun commit à envoyer" : "Impossible d'envoyer depuis cet état (branche sans suivi ou en retard)"} onClick={() => setConfirmPush(true)}>
               Envoyer{st.ahead > 0 ? ` ${st.ahead}` : ""}
@@ -227,7 +228,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
                 Créer
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setNewBranch(null)}>
-                Annuler
+                {t("Annuler")}
               </Button>
             </form>
           )}
@@ -240,7 +241,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
         {confirmPush && (
           <div className="border-t border-white/6 bg-raised/50 px-4 py-3">
             <p className="text-[13px] font-medium">{st.upstream ? `Push ${d.outgoing.length} commit${d.outgoing.length === 1 ? "" : "s"} to ${st.upstream}?` : `Publish branch “${st.branch}” to origin?`}</p>
-            <p className="mt-0.5 text-xs text-muted">Un push normal : si le dépôt distant a des commits plus récents, il est refusé, jamais forcé.</p>
+            <p className="mt-0.5 text-xs text-muted">{t("Un push normal : si le dépôt distant a des commits plus récents, il est refusé, jamais forcé.")}</p>
             {d.outgoing.length > 0 && (
               <ul className="mt-2 max-h-32 overflow-y-auto rounded-md border border-line bg-bg py-1">
                 {d.outgoing.map((c) => (
@@ -256,7 +257,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
                 Envoyer
               </Button>
               <Button size="sm" variant="ghost" disabled={sync.isPending} onClick={() => setConfirmPush(false)}>
-                Annuler
+                {t("Annuler")}
               </Button>
             </div>
           </div>
@@ -272,7 +273,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
         <Card className="self-start">
           <ChangeList
             title="Indexé"
-            empty="Rien d'indexé"
+            empty={t("Rien d'indexé")}
             changes={staged}
             letter={(c) => c.staged ?? "?"}
             selected={file?.staged ? file.path : null}
@@ -282,7 +283,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
           <div className="border-t border-white/6">
             <ChangeList
               title="Modifications"
-              empty="Rien à commiter"
+              empty={t("Rien à commiter")}
               changes={unstaged}
               letter={(c) => (c.conflicted ? "!" : c.untracked ? "?" : (c.unstaged ?? "?"))}
               selected={file && !file.staged ? file.path : null}
@@ -297,11 +298,11 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
               if (staged.length > 0 && message.trim()) commit.mutate();
             }}
           >
-            <Input placeholder="Message de commit" value={message} onChange={(e) => setMessage(e.target.value)} aria-label="Message de commit" />
+            <Input placeholder={t("Message de commit")} value={message} onChange={(e) => setMessage(e.target.value)} aria-label={t("Message de commit")} />
             <Button type="submit" variant="primary" icon={<GitCommitHorizontal className="size-3.5" />} busy={commit.isPending} disabled={staged.length === 0 || !message.trim()}>
               Commit {staged.length > 0 ? `${staged.length} file${staged.length === 1 ? "" : "s"}` : ""}
             </Button>
-            <p className="text-xs text-faint">Les commits restent sur cette machine tant que tu n'envoies pas.</p>
+            <p className="text-xs text-faint">{t("Les commits restent sur cette machine tant que tu n'envoies pas.")}</p>
           </form>
         </Card>
 
@@ -310,7 +311,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
           <Card>
             <CardTitle right={d.incoming.length > 0 ? <Dot tone="info">{d.incoming.length} on the remote</Dot> : undefined}>Historique</CardTitle>
             {d.log.length === 0 ? (
-              <p className="px-4 py-4 text-[13px] text-muted">Aucun commit.</p>
+              <p className="px-4 py-4 text-[13px] text-muted">{t("Aucun commit.")}</p>
             ) : (
               <ul className="py-1">
                 {d.log.map((c, i) => (
@@ -318,7 +319,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
                     <span className={cn("size-1.5 shrink-0 rounded-full", i < st.ahead ? "bg-accent" : "bg-line-strong")} />
                     <span className="selectable shrink-0 font-mono text-xs text-faint">{c.hash.slice(0, 7)}</span>
                     <span className="selectable min-w-0 flex-1 truncate">{c.subject}</span>
-                    {i < st.ahead && <span className="shrink-0 text-xs text-accent-strong">pas envoyé</span>}
+                    {i < st.ahead && <span className="shrink-0 text-xs text-accent-strong">{t("pas envoyé")}</span>}
                     {c.author !== mainAuthor && <span className="hidden max-w-28 shrink-0 truncate text-right text-xs text-faint lg:block">{c.author}</span>}
                     <span className="w-20 shrink-0 text-right text-xs text-faint">{timeAgo(c.date)}</span>
                   </li>
@@ -379,14 +380,14 @@ function DiffCard({ repo, file }: { repo: string; file: { path: string; staged: 
       </CardTitle>
       {diff.isLoading ? (
         <p className="flex items-center gap-2 px-4 py-4 text-xs text-muted">
-          <Spinner /> Chargement…
+          <Spinner /> {t("Chargement…")}
         </p>
       ) : diff.error ? (
         <div className="p-3">
           <ErrorNote>{asAppError(diff.error).message}</ErrorNote>
         </div>
       ) : (diff.data ?? "").trim() === "" ? (
-        <p className="px-4 py-4 text-xs text-muted">Aucune différence de texte (changement de mode, ou la modification est de l'autre côté : indexée ou non).</p>
+        <p className="px-4 py-4 text-xs text-muted">{t("Aucune différence de texte (changement de mode, ou la modification est de l'autre côté : indexée ou non).")}</p>
       ) : (
         <pre className="selectable max-h-[420px] overflow-auto bg-bg py-2 font-mono text-xs leading-[1.55]" style={{ tabSize: 4 }}>
           {diff.data!.split("\n").map((line, i) => (

@@ -1,13 +1,42 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
     <link rel="icon" type="image/svg+xml" href="/tekboard.svg" />
     <title>TekBoard</title>
+    <!-- Launch screen: drawn before any script loads, removed as soon as the app is ready
+         (src/lib/splash.ts). No minimum duration. -->
+    <style>
+      #splash { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: #141415; transition: opacity 160ms ease-out; }
+      #splash.gone { opacity: 0; pointer-events: none; }
+      #splash svg { width: 72px; height: 72px; animation: tb-in 320ms cubic-bezier(.2,.8,.2,1) both; }
+      #splash .b { animation: tb-block 260ms cubic-bezier(.2,.8,.2,1) both; transform-box: fill-box; transform-origin: center; }
+      #splash .b:nth-of-type(2) { animation-delay: 50ms; } #splash .b:nth-of-type(3) { animation-delay: 100ms; }
+      #splash .b:nth-of-type(4) { animation-delay: 150ms; } #splash .b:nth-of-type(5) { animation-delay: 200ms; }
+      #splash .cursor { animation: tb-blink 1s steps(2, start) 300ms infinite; }
+      @keyframes tb-in { from { opacity: 0; transform: scale(.94); } }
+      @keyframes tb-block { from { opacity: 0; transform: translateY(6px) scale(.9); } }
+      @keyframes tb-blink { to { visibility: hidden; } }
+      @media (prefers-reduced-motion: reduce) { #splash svg, #splash .b, #splash .cursor { animation: none; } }
+    </style>
   </head>
   <body>
+    <div id="splash" aria-hidden="true">
+      <svg viewBox="0 0 512 512">
+        <rect x="16" y="16" width="480" height="480" rx="112" fill="#1a1d25" />
+        <rect x="21" y="21" width="470" height="470" rx="107" fill="none" stroke="#343b49" stroke-width="10" />
+        <g>
+          <rect class="b" x="112" y="124" width="84" height="84" rx="20" fill="#9486ff" />
+          <rect class="b" x="214" y="124" width="84" height="84" rx="20" fill="#9486ff" />
+          <rect class="b" x="316" y="124" width="84" height="84" rx="20" fill="#9486ff" />
+          <rect class="b" x="214" y="226" width="84" height="84" rx="20" fill="#a69cfb" />
+          <rect class="b" x="214" y="328" width="84" height="60" rx="20" fill="#a69cfb" />
+        </g>
+        <rect class="cursor" x="316" y="352" width="84" height="36" rx="14" fill="#e8eaf0" />
+      </svg>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

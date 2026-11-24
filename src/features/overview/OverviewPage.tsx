@@ -10,6 +10,7 @@ import { attention, currentFocus, displayName, due } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { BranchLabel, Countdown, DueBadge, ProgressPicker, RepoMenu, StatusChips } from "../projects/RepoBits";
 import { Onboarding } from "../settings/Onboarding";
+import { locale, plural, t } from "../../lib/i18n";
 
 export function OverviewPage() {
   const settings = useSettings();
@@ -17,10 +18,10 @@ export function OverviewPage() {
   const repos = useRepos(hasRoots);
   const qc = useQueryClient();
 
-  const today = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  const today = new Date().toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
 
   if (settings.isLoading) return <Loading />;
-  if (settings.error) return <ErrorNote title="TekBoard n'a pas pu lire ses réglages">{asAppError(settings.error).message}</ErrorNote>;
+  if (settings.error) return <ErrorNote title={t("TekBoard n'a pas pu lire ses réglages")}>{asAppError(settings.error).message}</ErrorNote>;
 
   return (
     <>
@@ -51,7 +52,7 @@ export function OverviewPage() {
       ) : repos.isLoading ? (
         <Loading />
       ) : repos.error ? (
-        <ErrorNote title="Impossible de parcourir tes projets">{asAppError(repos.error).message}</ErrorNote>
+        <ErrorNote title={t("Impossible de parcourir tes projets")}>{asAppError(repos.error).message}</ErrorNote>
       ) : (
         <>
           <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
@@ -79,8 +80,8 @@ function MoreSection({ repos }: { repos: RepoInfo[] }) {
     <section className="mt-6">
       <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="mb-3 flex items-center gap-1.5 text-[13px] text-muted hover:text-fg">
         {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-        Repositories and activity
-        {flagged > 0 && <span className="text-xs text-faint">· {flagged} need attention</span>}
+        {t("Dépôts et activité")}
+        {flagged > 0 && <span className="text-xs text-faint">· {plural(flagged, "{n} à regarder", "{n} à regarder")}</span>}
       </button>
       {open && (
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
@@ -99,7 +100,7 @@ function MoreSection({ repos }: { repos: RepoInfo[] }) {
 function Loading() {
   return (
     <div className="flex items-center gap-2 py-16 text-muted">
-      <Spinner /> Lecture de tes projets…
+      <Spinner /> {t("Lecture de tes projets…")}
     </div>
   );
 }
@@ -111,9 +112,9 @@ function FocusCard({ repo }: { repo: RepoInfo | null }) {
   if (!repo) {
     return (
       <Card>
-        <CardTitle>En cours</CardTitle>
-        <EmptyState icon={<FolderGit2 className="size-6" />} title="Aucun dépôt dans tes dossiers de projets">
-          Clone un projet pour commencer, ou ajoute un autre dossier dans Réglages.
+        <CardTitle>{t("En cours")}</CardTitle>
+        <EmptyState icon={<FolderGit2 className="size-6" />} title={t("Aucun dépôt dans tes dossiers de projets")}>
+          {t("Clone un projet pour commencer, ou ajoute un autre dossier dans Réglages.")}
         </EmptyState>
       </Card>
     );
@@ -122,7 +123,7 @@ function FocusCard({ repo }: { repo: RepoInfo | null }) {
     <Card hero>
       <div className="p-6">
         <div className="flex items-center justify-between gap-3 text-xs text-faint">
-          <span>Ouvert récemment</span>
+          <span>{t("Ouvert récemment")}</span>
           <span>{repo.meta.lastOpenedAt ? `opened ${timeAgo(repo.meta.lastOpenedAt)}` : "most recent commit"}</span>
         </div>
         <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -144,14 +145,14 @@ function FocusCard({ repo }: { repo: RepoInfo | null }) {
             <span className="shrink-0 text-faint">{timeAgo(repo.lastCommit.date)}</span>
           </p>
         ) : (
-          <p className="mt-3 text-[13px] text-faint">Aucun commit</p>
+          <p className="mt-3 text-[13px] text-faint">{t("Aucun commit")}</p>
         )}
 
         <div className="mt-6 flex flex-wrap items-center gap-2">
           <Button variant="primary" icon={<Play className="size-3.5" />} busy={act.workspace.isPending} onClick={() => act.workspace.mutate(repo)}>
             Reprendre
           </Button>
-          <Button onClick={() => openSheet(repo.path)}>Fiche du projet</Button>
+          <Button onClick={() => openSheet(repo.path)}>{t("Fiche du projet")}</Button>
           <ProgressPicker repo={repo} />
           <span className="ml-auto">
             <RepoMenu repo={repo} />
@@ -177,10 +178,10 @@ function AttentionCard({ repos }: { repos: RepoInfo[] }) {
           )
         }
       >
-        À regarder
+        {t("À regarder")}
       </CardTitle>
       {shown.length === 0 ? (
-        <p className="px-4 py-5 text-[13px] text-muted">Tout est commité et à jour avec le dépôt distant.</p>
+        <p className="px-4 py-5 text-[13px] text-muted">{t("Tout est commité et à jour avec le dépôt distant.")}</p>
       ) : (
         <ul>
           {shown.map((repo) => (
@@ -202,7 +203,7 @@ function AttentionCard({ repos }: { repos: RepoInfo[] }) {
 
 const dayText = (day: string | null) => {
   const m = day ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(day) : null;
-  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }) : "";
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" }) : "";
 };
 
 /** Hand-ins in three groups: late, to come, and school projects whose date is not known. Nothing is ever estimated. */
@@ -226,7 +227,7 @@ function DeadlinesCard() {
       <button
         type="button"
         onClick={() => (i.repoPath ? openSheet(i.repoPath) : i.repoExpected ? openLauncher({ mode: "new" }) : setPage("myepitech"))}
-        title={i.repoPath ? `${i.repoPath}\n${i.source === "my" ? "Date from MY Epitech" : i.source === "manual" ? "Date typed by you" : "Date saved earlier"}${i.myDay ? `\nMY Epitech says ${i.myDay}` : ""}` : i.repoExpected ? "Listed by MY Epitech, no local repository yet. Click to clone it." : "Listed by MY Epitech. No repository is expected for it."}
+        title={i.repoPath ? `${i.repoPath}\n${i.source === "my" ? t("Date donnée par MY Epitech") : i.source === "manual" ? t("Date saisie par toi") : t("Date enregistrée plus tôt")}${i.myDay ? `\n${t("MY Epitech indique {d}", { d: i.myDay })}` : ""}` : i.repoExpected ? t("Listé par MY Epitech, pas encore de dépôt local. Clique pour le cloner.") : t("Listé par MY Epitech. Aucun dépôt n'est attendu pour ce projet.")}
         className="row-hover flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left text-[13px]"
       >
         <span className="min-w-0 flex-1">
@@ -234,7 +235,7 @@ function DeadlinesCard() {
             <span className="truncate">{i.title}</span>
             {!i.cloned && i.repoExpected && (
               <span className="flex shrink-0 items-center gap-1 text-[11px] text-info">
-                <CloudDownload className="size-3" /> pas cloné
+                <CloudDownload className="size-3" /> {t("pas cloné")}
               </span>
             )}
           </span>
@@ -254,11 +255,11 @@ function DeadlinesCard() {
       <CardTitle right={board.isFetching ? <Spinner /> : overdue.length + coming.length > 0 ? <span className="text-xs text-faint">{coming.length} to come{overdue.length > 0 ? ` · ${overdue.length} late` : ""}</span> : undefined}>Rendus</CardTitle>
       {board.error ? (
         <div className="p-3">
-          <ErrorNote title="Les dates de rendu n'ont pas pu être lues">{asAppError(board.error).message}</ErrorNote>
+          <ErrorNote title={t("Les dates de rendu n'ont pas pu être lues")}>{asAppError(board.error).message}</ErrorNote>
         </div>
       ) : board.isLoading ? (
         <p className="flex items-center gap-2 px-4 py-4 text-[13px] text-muted">
-          <Spinner /> Lecture des dates de rendu…
+          <Spinner /> {t("Lecture des dates de rendu…")}
         </p>
       ) : items.length === 0 ? (
         <p className="flex items-start gap-2 px-4 py-4 text-[13px] text-muted">
@@ -281,7 +282,7 @@ function DeadlinesCard() {
           )}
           {coming.length > 0 && (
             <>
-              {overdue.length > 0 && <SectionLabel className="px-4 pt-3 pb-1">À venir</SectionLabel>}
+              {overdue.length > 0 && <SectionLabel className="px-4 pt-3 pb-1">{t("À venir")}</SectionLabel>}
               <ul>{shownComing.map(row)}</ul>
               {coming.length > shownComing.length && (
                 <button type="button" onClick={() => setShowAll(true)} className="flex h-8 w-full items-center gap-1 px-4 text-xs text-muted hover:text-fg">
@@ -290,11 +291,11 @@ function DeadlinesCard() {
               )}
             </>
           )}
-          {overdue.length + coming.length === 0 && <p className="px-4 py-2 text-[13px] text-muted">Aucun rendu prévu.</p>}
+          {overdue.length + coming.length === 0 && <p className="px-4 py-2 text-[13px] text-muted">{t("Aucun rendu prévu.")}</p>}
           {unknown.length > 0 && (
             <>
-              <button type="button" aria-expanded={showUnknown} onClick={() => setShowUnknown(!showUnknown)} className="mt-1 flex h-8 w-full items-center gap-1 border-t border-white/6 px-4 text-xs text-muted hover:text-fg" title="Projets d'école pas terminés et sans date de rendu, ni saisie ni donnée par MY Epitech.">
-                {showUnknown ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />} {unknown.length} without a known date
+              <button type="button" aria-expanded={showUnknown} onClick={() => setShowUnknown(!showUnknown)} className="mt-1 flex h-8 w-full items-center gap-1 border-t border-white/6 px-4 text-xs text-muted hover:text-fg" title={t("Projets d'école pas terminés et sans date de rendu, ni saisie ni donnée par MY Epitech.")}>
+                {showUnknown ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />} {plural(unknown.length, "{n} sans date connue", "{n} sans date connue")}
               </button>
               {showUnknown && <ul>{unknown.map(row)}</ul>}
             </>
@@ -306,7 +307,7 @@ function DeadlinesCard() {
 }
 
 const confidenceTone = { high: "ok", medium: "warn", low: "neutral" } as const;
-const confidenceLabel = { high: "Likely your next project", medium: "Possible match", low: "Uncertain" } as const;
+const confidenceLabel = { high: t("Sans doute ton prochain projet"), medium: t("Correspondance possible"), low: t("Incertain") } as const;
 
 function NextProjectCard() {
   const env = useEnv();
@@ -320,7 +321,7 @@ function NextProjectCard() {
   if (!gh) {
     body = (
       <p className="flex items-center gap-2 px-4 py-5 text-[13px] text-muted">
-        <Spinner /> Vérification de GitHub…
+        <Spinner /> {t("Vérification de GitHub…")}
       </p>
     );
   } else if (gh.state === "missing") {
@@ -340,13 +341,13 @@ function NextProjectCard() {
   } else if (candidates.isLoading) {
     body = (
       <p className="flex items-center gap-2 px-4 py-5 text-[13px] text-muted">
-        <Spinner /> Recherche des dépôts pas encore clonés…
+        <Spinner /> {t("Recherche des dépôts pas encore clonés…")}
       </p>
     );
   } else if (candidates.error) {
     body = <Hint>Could not list your repositories: {asAppError(candidates.error).message}</Hint>;
   } else if (!top) {
-    body = <p className="px-4 py-5 text-[13px] text-muted">Tous les dépôts auxquels tu as accès sont déjà clonés ici.</p>;
+    body = <p className="px-4 py-5 text-[13px] text-muted">{t("Tous les dépôts auxquels tu as accès sont déjà clonés ici.")}</p>;
   } else {
     body = (
       <div className="px-4 py-4">
@@ -382,7 +383,7 @@ function NextProjectCard() {
 
   return (
     <Card>
-      <CardTitle>Prochain projet</CardTitle>
+      <CardTitle>{t("Prochain projet")}</CardTitle>
       {body}
     </Card>
   );
@@ -393,15 +394,15 @@ function Hint({ children }: { children: React.ReactNode }) {
 }
 
 const ACTIVITY_LABEL: Record<string, string> = {
-  open_workspace: "Opened workspace",
-  open_ide: "Opened in IDE",
-  open_terminal: "Opened terminal",
-  clone: "Cloned",
-  template_apply: "Applied template",
-  template_import: "Imported template",
-  commit: "Committed",
-  build: "Built",
-  subjects_import: "Imported subjects",
+  open_workspace: t("Espace de travail ouvert"),
+  open_ide: t("Ouvert dans l'IDE"),
+  open_terminal: t("Terminal ouvert"),
+  clone: t("Cloné"),
+  template_apply: t("Modèle appliqué"),
+  template_import: t("Modèle importé"),
+  commit: t("Commit"),
+  build: t("Compilé"),
+  subjects_import: t("Sujets importés"),
 };
 
 function ActivityCard({ repos }: { repos: RepoInfo[] }) {
@@ -415,13 +416,13 @@ function ActivityCard({ repos }: { repos: RepoInfo[] }) {
   };
   return (
     <Card>
-      <CardTitle>Activité récente</CardTitle>
+      <CardTitle>{t("Activité récente")}</CardTitle>
       {activity.error ? (
         <div className="p-3">
           <ErrorNote>{asAppError(activity.error).message}</ErrorNote>
         </div>
       ) : (activity.data?.length ?? 0) === 0 ? (
-        <p className="px-4 py-5 text-[13px] text-muted">Ce que tu fais depuis TekBoard apparaîtra ici.</p>
+        <p className="px-4 py-5 text-[13px] text-muted">{t("Ce que tu fais depuis TekBoard apparaîtra ici.")}</p>
       ) : (
         <ul className="py-1">
           {(all ? activity.data! : activity.data!.slice(0, 5)).map((a) => {

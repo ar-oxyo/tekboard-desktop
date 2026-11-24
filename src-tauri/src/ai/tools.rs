@@ -1,4 +1,4 @@
-//! What Tika can do in TekBoard. One registry, used by the MCP bridge (Claude Code calls a
+//! What Artix can do in TekBoard. One registry, used by the MCP bridge (Claude Code calls a
 //! tool), by the suggestion buttons and by the window: the same logic everywhere.
 //!
 //! Each tool has a risk level:
@@ -7,7 +7,7 @@
 //! - `Approval`: nothing changes; a proposal (`ai_proposals`) is created for the user to accept,
 //!   edit or refuse. Bulk calendar changes, deletions and file writes are always this kind.
 //!
-//! What a tool returns is the truth Tika works from: it never claims something happened
+//! What a tool returns is the truth Artix works from: it never claims something happened
 //! unless a tool said so.
 
 use super::memory;
@@ -76,19 +76,22 @@ pub const SPECS: &[Spec] = &[
     Spec { name: "create_task", label: "Création d'une tâche", risk: Risk::Reversible, description: "Ajoute une tâche (avec sous-tâches éventuelles) à un projet ou à l'inbox.", schema: || obj(json!({"title": s("Titre court"), "project": s("Clé du projet"), "estimateMin": n("Estimation en minutes"), "priority": n("0 aucune, 1 basse, 2 moyenne, 3 haute"), "dueDay": s("Échéance AAAA-MM-JJ"), "notes": s("Détails"), "subtasks": {"type": "array", "items": {"type": "string"}, "description": "Titres des sous-tâches"}}), &["title"]) },
     Spec { name: "update_task", label: "Mise à jour d'une tâche", risk: Risk::Reversible, description: "Modifie une tâche : titre, fait/pas fait, estimation, priorité, échéance.", schema: || obj(json!({"id": n("Numéro de la tâche"), "title": s("Titre"), "done": b("Terminée"), "estimateMin": n("Minutes"), "priority": n("0–3"), "dueDay": s("AAAA-MM-JJ")}), &["id"]) },
     Spec { name: "set_project_plan", label: "Réglage d'un projet", risk: Risk::Reversible, description: "Fixe l'estimation du travail restant (minutes) et/ou la priorité (0–3) d'un projet.", schema: || obj(json!({"project": s("Clé du projet"), "estimateMin": n("Travail restant en minutes"), "priority": n("0–3")}), &["project"]) },
-    Spec { name: "create_event", label: "Ajout au calendrier", risk: Risk::Reversible, description: "Ajoute UNE entrée au calendrier : session (travail sur un projet), event (personnel), block (créneau indisponible), reminder. Une session est vérifiée (horaires, pauses, plafond) : en cas de problème rien n'est créé et l'outil dit pourquoi. Pour plusieurs entrées, utilise propose_schedule.", schema: || obj(json!({"kind": s("session | event | block | reminder"), "title": s("Titre"), "start": s(TIME), "end": s(TIME), "project": s("Clé du projet (sessions)"), "taskId": n("Tâche liée"), "notes": s("Notes")}), &["kind", "title", "start", "end"]) },
+    Spec { name: "create_event", label: "Ajout au calendrier", risk: Risk::Reversible, description: "Ajoute UNE entrée au calendrier : session (travail sur un projet), event (personnel), block (créneau indisponible), reminder. Une session est vérifiée (horaires, pauses, plafond) : en cas de problème rien n'est créé et l'outil dit pourquoi. Pour plusieurs entrées, utilise propose_schedule.", schema: || obj(json!({"kind": s("session | event | block | reminder"), "title": s("Titre"), "start": s(TIME), "end": s(TIME), "project": s("Clé du projet (sessions)"), "taskId": n("Tâche liée"), "notes": s("Notes"), "category": s("Id de catégorie (list_categories), facultatif")}), &["kind", "title", "start", "end"]) },
+    Spec { name: "update_event", label: "Modification d'une entrée", risk: Risk::Reversible, description: "Modifie UNE entrée du calendrier sans la déplacer : titre, notes, type (session, event, block, reminder), catégorie (id donné par list_categories), projet, faite ou non.", schema: || obj(json!({"id": n("Id de l'entrée (get_calendar)"), "title": s("Nouveau titre"), "notes": s("Notes"), "kind": s("session | event | block | reminder"), "category": s("Id de catégorie, vide pour celle du type"), "project": s("Clé du projet"), "done": b("Faite")}), &["id"]) },
+    Spec { name: "list_categories", label: "Catégories du calendrier", risk: Risk::Read, description: "Les catégories d'entrées du calendrier (id, nom, couleur) : les cinq de base et celles de l'utilisateur.", schema: none },
     Spec { name: "move_event", label: "Déplacement d'une entrée", risk: Risk::Reversible, description: "Déplace ou redimensionne UNE entrée du calendrier (id donné par get_calendar). Vérifiée comme create_event.", schema: || obj(json!({"id": n("Id de l'entrée"), "start": s(TIME), "end": s(TIME)}), &["id", "start", "end"]) },
     Spec { name: "delete_event", label: "Suppression proposée", risk: Risk::Approval, description: "Propose de supprimer une entrée du calendrier. Rien n'est supprimé avant l'accord de l'utilisateur.", schema: || obj(json!({"id": n("Id de l'entrée"), "reason": s("Pourquoi")}), &["id"]) },
     Spec { name: "propose_schedule", label: "Proposition de planning", risk: Risk::Approval, description: "Propose un ensemble de changements (créer des sessions, déplacer, supprimer, créer des tâches, estimations, priorités). Le plan est vérifié par le moteur de planning : s'il y a des erreurs (chevauchement, pause manquante, plafond dépassé, hors horaires), rien n'est proposé et l'outil renvoie la liste à corriger. Sinon l'utilisateur voit une carte et décide. Actions : {type:create_session, project?, title, start, end, taskId?}, {type:move_event, id, start, end}, {type:delete_event, id}, {type:create_task, project?, title, estimateMin?, priority?, dueDay?, subtasks?}, {type:set_priority, project, priority}, {type:set_estimate, project, estimateMin}.", schema: || obj(json!({"title": s("Titre court de la proposition"), "rationale": s("Pourquoi ce plan, en 1 à 3 phrases"), "actions": {"type": "array", "items": {"type": "object"}, "description": "Changements"}}), &["title", "actions"]) },
+    Spec { name: "propose_breakdown", label: "Décomposition proposée", risk: Risk::Approval, description: "Propose la décomposition d'un projet en tâches, SANS session de calendrier. L'utilisateur choisit : accepter les tâches, ou les accepter et demander ensuite une proposition de sessions. Intitulés courts (3 à 8 mots), estimations en minutes, sous-tâches si utile. estimateMin = travail restant total du projet.", schema: || obj(json!({"project": s("Clé du projet"), "title": s("Titre court de la proposition"), "tasks": {"type": "array", "items": {"type": "object"}, "description": "[{title, estimateMin?, priority?, dueDay?, subtasks?: [string]}]"}, "estimateMin": n("Travail restant total, en minutes")}), &["project", "tasks"]) },
     Spec { name: "start_focus", label: "Démarrage d'une session", risk: Risk::Reversible, description: "Démarre une session de concentration chronométrée (une seule à la fois). Durées usuelles : 25, 45, 50, 90 min. Une session mixte enchaîne ensuite sur autre chose (thenTitle, thenMinutes). La session s'arrête d'elle-même si personne ne répond après la fin prévue.", schema: || obj(json!({"title": s("Ce sur quoi on travaille"), "project": s("Clé du projet"), "minutes": n("Durée prévue, 5 à 240"), "taskId": n("Tâche liée"), "eventId": n("Entrée du calendrier liée"), "thenTitle": s("Activité suivante (session mixte)"), "thenMinutes": n("Durée de l'activité suivante")}), &["title", "minutes"]) },
     Spec { name: "extend_focus", label: "Prolongation de la session", risk: Risk::Read, description: "Ajoute du temps à la session en cours.", schema: || obj(json!({"minutes": n("Minutes à ajouter, 5 à 120")}), &["minutes"]) },
     Spec { name: "stop_focus", label: "Fin de la session", risk: Risk::Read, description: "Termine la session en cours ; done=true marque aussi sa tâche et son entrée du calendrier comme faites.", schema: || obj(json!({"done": b("Travail terminé")}), &[]) },
     Spec { name: "suggest_plan", label: "Calcul d'un planning", risk: Risk::Approval, description: "Calcule avec le moteur de TekBoard un planning réaliste (pauses, plafond, temps libre, marge et bloc de tests avant chaque rendu) à partir des estimations des projets, et le propose à l'utilisateur. scope : day, week, two_weeks, reorganize (replacer les sessions passées non faites). Plus fiable que de placer les sessions toi-même : utilise-le, puis ajuste avec propose_schedule si besoin.", schema: || obj(json!({"scope": s("day | week | two_weeks | reorganize"), "project": s("Limiter à un projet (clé)")}), &["scope"]) },
-    Spec { name: "start_moulinette", label: "Lancement de la moulinette", risk: Risk::Read, description: "Lance la moulinette de Tika (agent évaluateur dans un bac à sable, sur une copie du projet ; quelques minutes). Renvoie l'id de la tâche : attends-la avec wait_job puis explique les problèmes à partir du rapport.", schema: || obj(json!({"project": s("Clé du projet (dépôt local)")}), &["project"]) },
+    Spec { name: "start_moulinette", label: "Lancement de la moulinette", risk: Risk::Read, description: "Lance la moulinette d'Artix (agent évaluateur dans un bac à sable, sur une copie du projet ; quelques minutes). Renvoie l'id de la tâche : attends-la avec wait_job puis explique les problèmes à partir du rapport.", schema: || obj(json!({"project": s("Clé du projet (dépôt local)")}), &["project"]) },
     Spec { name: "generate_tests", label: "Génération de tests", risk: Risk::Read, description: "Lance la génération de tests unitaires sur une copie du projet (rien n'est écrit dans le projet : l'utilisateur valide le diff). Renvoie l'id de la tâche, à attendre avec wait_job.", schema: || obj(json!({"project": s("Clé du projet (dépôt local)")}), &["project"]) },
     Spec { name: "wait_job", label: "Attente d'une tâche", risk: Risk::Read, description: "Attend qu'une tâche (moulinette, tests) se termine, au plus 240 s, et renvoie son résultat : vérifications, verdict, rapport. Rappelle-le si elle tourne encore.", schema: || obj(json!({"id": n("Id de la tâche"), "seconds": n("Attente maximale, 10 à 240")}), &["id"]) },
     Spec { name: "analyze_subject", label: "Lecture du sujet", risk: Risk::Read, description: "Lit le sujet PDF lié à un projet une fois pour toutes et en garde un résumé structuré (exigences, binaire, fonctions autorisées, fonctionnalités estimées, idées de tests). À faire avant de décomposer un projet dont le sujet n'a pas de résumé. Renvoie un id de tâche à attendre avec wait_job.", schema: || obj(json!({"project": s("Clé du projet")}), &["project"]) },
-    Spec { name: "sync_my_epitech", label: "Synchronisation MY Epitech", risk: Risk::Read, description: "Relit MY Epitech (projets, rendus, agenda) et télécharge les nouveaux sujets PDF des projets en cours, rattachés aux dépôts correspondants. Nécessite une session MY Epitech ouverte.", schema: none },
+    Spec { name: "sync_my_epitech", label: "Synchronisation MY Epitech", risk: Risk::Read, description: "Relit MY Epitech (projets, rendus, agenda, logtime), télécharge les nouveaux sujets PDF et les associe aux dépôts. Si la session a expiré, la fenêtre MY Epitech s'ouvre pour que l'utilisateur se connecte.", schema: none },
     Spec { name: "navigate", label: "Navigation", risk: Risk::Read, description: "Ouvre un écran de TekBoard pour l'utilisateur : today, projects, planning, school, stats, resources, settings ; avec un projet, ouvre sa page (onglet : overview, plan, checks, git, libraries, notes).", schema: || obj(json!({"page": s("Écran"), "project": s("Clé du projet"), "tab": s("Onglet de la page projet")}), &["page"]) },
     Spec { name: "list_runs", label: "Historique des vérifications", risk: Risk::Read, description: "Dernières exécutions (tests, Banana, TestRepo, moulinette, analyses) avec leur statut et leur résumé.", schema: || obj(json!({"project": s("Clé du projet"), "kind": s("Type d'exécution"), "limit": n("1 à 20")}), &[]) },
     Spec { name: "get_report", label: "Lecture d'un rapport", risk: Risk::Read, description: "Le rapport complet d'une exécution (id donné par list_runs), avec la fin de son journal.", schema: || obj(json!({"id": n("Id de l'exécution")}), &["id"]) },
@@ -105,7 +108,7 @@ pub fn label(tool: &str) -> Option<String> {
     spec(tool).map(|s| s.label.to_string()).or_else(|| super::agent_tools::label(tool))
 }
 
-/// Tools of the conversation with Tika.
+/// Tools of the conversation with Artix.
 pub fn chat_tools() -> Vec<&'static str> {
     SPECS.iter().map(|s| s.name).collect()
 }
@@ -430,7 +433,7 @@ fn run(state: &AppState, caller: &Caller, name: &str, a: &Value) -> Result<Out> 
                 if !crate::planner::EVENT_KINDS.contains(&kind) {
                     return Err(AppError::new("invalid_args", "kind : session, event, block ou reminder"));
                 }
-                (crate::planner::PlanEvent { id: 0, kind: kind.into(), title: need(a, "title")?.into(), start, end, project: arg(a, "project").map(str::to_string), task_id: arg_i(a, "taskId"), notes: arg(a, "notes").unwrap_or_default().into(), origin: "claude".into(), ..Default::default() }, None)
+                (crate::planner::PlanEvent { id: 0, kind: kind.into(), title: need(a, "title")?.into(), start, end, project: arg(a, "project").map(str::to_string), task_id: arg_i(a, "taskId"), notes: arg(a, "notes").unwrap_or_default().into(), origin: "claude".into(), category: arg(a, "category").map(str::to_string), ..Default::default() }, None)
             };
             let work = event.kind == "session" || event.kind == "task";
             let v = schedule::validate(&[Placement { index: 0, event_id: before.as_ref().map(|e| e.id), start, end, work, title: event.title.clone() }], &w.busy, &w.rhythm, t);
@@ -447,6 +450,38 @@ fn run(state: &AppState, caller: &Caller, name: &str, a: &Value) -> Result<Out> 
                 None => Ok(Out { summary: format!("Ajouté : {} · {when}", saved.title), undo: Some(json!({"op": "delete_event", "id": saved.id})), value: json!({"status": "created", "id": saved.id, "avertissements": warnings}) }),
             }
         }
+        "update_event" => {
+            let id = need_i(a, "id")?;
+            let conn = state.conn();
+            let before = crate::planner::get_event(&conn, id)?;
+            let mut ev = before.clone();
+            if let Some(t) = arg(a, "title") {
+                ev.title = t.into();
+            }
+            if let Some(n) = a.get("notes").and_then(Value::as_str) {
+                ev.notes = n.into();
+            }
+            if let Some(k) = arg(a, "kind") {
+                if !crate::planner::EVENT_KINDS.contains(&k) {
+                    return Err(AppError::new("invalid_args", "kind : session, event, block ou reminder"));
+                }
+                ev.kind = k.into();
+            }
+            if let Some(c) = a.get("category").and_then(Value::as_str) {
+                ev.category = Some(c.trim().to_string()).filter(|c| !c.is_empty());
+            }
+            if let Some(p) = a.get("project").and_then(Value::as_str) {
+                ev.project = Some(p.trim().to_string()).filter(|p| !p.is_empty());
+            }
+            if let Some(d) = a.get("done").and_then(Value::as_bool) {
+                ev.done = d;
+            }
+            let saved = crate::planner::save_event(&conn, &ev, now())?;
+            drop(conn);
+            crate::notify::changed(&["plan", "insights"]);
+            Ok(Out { summary: format!("Modifié : {}", saved.title), undo: Some(json!({"op": "restore_event", "event": before})), value: json!({"status": "updated", "id": saved.id, "categorie": saved.category}) })
+        }
+        "list_categories" => read(json!(crate::planner::categories(&state.conn())?)),
         "delete_event" => {
             let id = need_i(a, "id")?;
             let ev = crate::planner::get_event(&state.conn(), id)?;
@@ -468,6 +503,26 @@ fn run(state: &AppState, caller: &Caller, name: &str, a: &Value) -> Result<Out> 
             let warnings: Vec<String> = v.iter().filter(|x| x.severity == "warning").map(|x| x.message.clone()).collect();
             let pid = propose(state, caller, "schedule", need(a, "title")?, arg(a, "rationale").unwrap_or_default(), &json!({"actions": actions, "warnings": warnings}))?;
             read(json!({"status": "proposed", "proposalId": pid, "avertissements": warnings, "message": "L'utilisateur voit la proposition et peut l'accepter en tout ou partie, ou la refuser. Ne dis pas qu'elle est appliquée."}))
+        }
+        "propose_breakdown" => {
+            let project = need(a, "project")?.to_string();
+            let tasks = a.get("tasks").and_then(Value::as_array).cloned().unwrap_or_default();
+            let mut actions: Vec<crate::planner::Action> = Vec::new();
+            for t in tasks.iter().take(40) {
+                let Some(title) = t.get("title").and_then(Value::as_str).map(str::trim).filter(|x| !x.is_empty()) else { continue };
+                let subtasks = t.get("subtasks").and_then(Value::as_array).map(|v| v.iter().filter_map(Value::as_str).map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()).unwrap_or_default();
+                actions.push(crate::planner::Action::CreateTask { project: Some(project.clone()), title: title.chars().take(120).collect(), estimate_min: arg_i(t, "estimateMin").map(|m| m.clamp(0, 2000 * 60)), priority: arg_i(t, "priority").map(|p| p.clamp(0, 3)), due_day: arg(t, "dueDay").map(str::to_string), subtasks });
+            }
+            if actions.is_empty() {
+                return Err(AppError::new("invalid_args", "Aucune tâche dans la décomposition."));
+            }
+            if let Some(m) = arg_i(a, "estimateMin") {
+                actions.push(crate::planner::Action::SetEstimate { project: project.clone(), estimate_min: m.clamp(0, 2000 * 60) });
+            }
+            let w = world(state)?;
+            let title = arg(a, "title").map(str::to_string).unwrap_or_else(|| format!("Décomposition · {}", project_title(&w, &project)));
+            let pid = propose(state, caller, "breakdown", &title, "", &json!({"actions": actions, "project": project}))?;
+            read(json!({"status": "proposed", "proposalId": pid, "message": "L'utilisateur voit les tâches et choisit : les accepter, ou les accepter et planifier. Ne planifie rien toi-même et ne dis pas qu'elles sont créées."}))
         }
         "start_focus" => {
             let w = world(state)?;
@@ -507,7 +562,7 @@ fn run(state: &AppState, caller: &Caller, name: &str, a: &Value) -> Result<Out> 
             let dir = crate::commands::repo_dir_of(state, need(a, "project")?)?;
             let id = if name == "start_moulinette" { super::agents::moulinette(state, dir.clone())? } else { super::agents::generate_tests(state, dir.clone())? };
             crate::notify::emit("ui-show-job", json!({"id": id, "repo": dir}));
-            read(json!({"status": "started", "jobId": id, "message": "Tâche lancée : l'utilisateur la suit en direct dans Vérifier. Utilise wait_job pour le résultat."}))
+            read(json!({"status": "started", "jobId": id, "message": "Tâche lancée : l'utilisateur la suit en direct dans Tests. Utilise wait_job pour le résultat."}))
         }
         "wait_job" => {
             let id = need_i(a, "id")? as u64;
@@ -529,8 +584,12 @@ fn run(state: &AppState, caller: &Caller, name: &str, a: &Value) -> Result<Out> 
             read(json!({"status": "started", "jobId": job}))
         }
         "sync_my_epitech" => {
-            let r = crate::commands_my::sync_now(state)?;
-            read(json!({"routesLues": r.ok, "echecs": r.failed, "refuse": r.unauthorized, "sujetsImportes": r.subjects_imported, "detail": r.detail}))
+            // Same flow as the Sync button: the MY Epitech window opens only if a sign-in is needed.
+            let r = match crate::notify::app() {
+                Some(app) => crate::commands_my::sync_blocking(app)?,
+                None => crate::commands_my::sync_now(state)?,
+            };
+            read(json!({"routesLues": r.ok, "echecs": r.failed, "refuse": r.unauthorized, "sujetsImportes": r.subjects_imported, "sujetsAssocies": r.subjects_linked, "associationsAValider": r.subjects_to_confirm, "detail": r.detail}))
         }
         "navigate" => {
             let page = need(a, "page")?;
@@ -672,6 +731,10 @@ fn apply_undo(conn: &Connection, u: &Value) -> Result<()> {
             let ev = crate::planner::get_event(conn, id)?;
             crate::planner::save_event(conn, &crate::planner::PlanEvent { start: u["start"].as_i64().unwrap_or(ev.start), end: u["end"].as_i64().unwrap_or(ev.end), ..ev }, now()).map(|_| ())
         }
+        "restore_event" => {
+            let e: crate::planner::PlanEvent = serde_json::from_value(u["event"].clone())?;
+            crate::planner::save_event(conn, &e, now()).map(|_| ())
+        }
         "delete_task" => crate::planner::delete_task(conn, id),
         "restore_task" => {
             let t: crate::planner::Task = serde_json::from_value(u["task"].clone())?;
@@ -732,7 +795,7 @@ mod tests {
 
     #[test]
     fn bulk_and_destructive_changes_always_need_approval() {
-        for name in ["delete_event", "propose_schedule"] {
+        for name in ["delete_event", "propose_schedule", "propose_breakdown", "suggest_plan"] {
             assert_eq!(spec(name).unwrap().risk, Risk::Approval, "{name}");
         }
         for name in ["get_today", "get_calendar", "recall", "list_projects"] {

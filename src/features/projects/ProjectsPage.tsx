@@ -1,29 +1,31 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { ArrowDownUp, FolderGit2, GraduationCap, Play, Plus, RefreshCw, Search } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowDownUp, Eye, EyeOff, FolderGit2, GraduationCap, Play, Plus, RefreshCw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Menu, MenuChoice, MenuLabel } from "../../components/Menu";
 import { Select } from "../../components/Select";
 import { Button, Card, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner, Tag } from "../../components/ui";
-import { asAppError, type RepoInfo } from "../../lib/api";
+import { api, asAppError, type RepoInfo } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { keys, useNow, usePref, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
 import { attention, displayName, filterRepos, lastActivity, moduleOf, modulesOf, SORTS, sortRepos, type RepoFilter, type SortKey } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { BranchLabel, DueBadge, FavoriteButton, ProgressPicker, RepoMenu, StatusChips } from "./RepoBits";
+import { plural, t } from "../../lib/i18n";
 
 const FILTERS: Array<{ id: RepoFilter; label: string; title: string }> = [
-  { id: "active", label: "Actifs", title: "Tout ce qui n'est pas terminé" },
-  { id: "in_progress", label: "En cours", title: "En travail" },
-  { id: "todo", label: "À faire", title: "Pas commencé" },
-  { id: "done", label: "Terminé", title: "Projets terminés. Leur statut peut être changé ici." },
-  { id: "changes", label: "À regarder", title: "Travail non commité, commits à envoyer ou à récupérer, conflits" },
-  { id: "favorites", label: "Favoris", title: "Marqués d'une étoile" },
+  { id: "active", label: t("Actifs"), title: t("Tout ce qui n'est pas terminé") },
+  { id: "in_progress", label: t("En cours"), title: t("En travail") },
+  { id: "todo", label: t("À faire"), title: t("Pas commencé") },
+  { id: "done", label: t("Terminé"), title: t("Projets terminés. Leur statut peut être changé ici.") },
+  { id: "changes", label: t("À regarder"), title: t("Travail non commité, commits à envoyer ou à récupérer, conflits") },
+  { id: "favorites", label: t("Favoris"), title: t("Marqués d'une étoile") },
+  { id: "archived", label: t("Archivés"), title: t("Sortis des listes de tous les jours. Leur dossier n'a pas bougé.") },
 ];
 
 export function ProjectsPage() {
   const settings = useSettings();
   const hasRoots = (settings.data?.roots.length ?? 0) > 0;
-  const repos = useRepos(hasRoots);
+  const repos = useRepos(hasRoots, { all: true });
   const qc = useQueryClient();
   const openLauncher = useUi((s) => s.openLauncher);
   const setPage = useUi((s) => s.setPage);
@@ -32,7 +34,17 @@ export function ProjectsPage() {
   // Remembered between sessions.
   const [filter, setFilter] = usePref<RepoFilter>("projects.filter", "active");
   const [sort, setSort] = usePref<SortKey>("projects.sort", "smart");
-  const [epitechOnly, setEpitechOnly] = usePref<boolean>("projects.epitechOnly", false);
+  // "Epitech Projects Only" is the setting of the whole app (Settings → General), switched here too.
+  const epitechOnly = settings.data?.epitechOnly ?? true;
+  const setEpitechOnly = (v: boolean) => {
+    if (!settings.data) return;
+    void api.saveSettings({ ...settings.data, epitechOnly: v }).then((saved) => {
+      qc.setQueryData(keys.settings, saved);
+      void qc.invalidateQueries({ queryKey: keys.repos });
+    });
+  };
+  const hidden = useQuery({ queryKey: ["hidden-repos"], queryFn: api.hiddenRepos, enabled: hasRoots });
+  const [showHidden, setShowHidden] = useState(false);
   const [module, setModule] = usePref<string>("projects.module", "");
 
   const all = repos.data ?? [];
@@ -48,16 +60,16 @@ export function ProjectsPage() {
   return (
     <>
       <PageHeader
-        title="Projets"
+        title={t("Projets")}
         subtitle={hasRoots ? `${all.length} repositor${all.length === 1 ? "y" : "ies"} · ${school} Epitech` : undefined}
         actions={
           hasRoots && (
             <>
               <Button variant="ghost" icon={<RefreshCw className="size-3.5" />} busy={repos.isFetching} onClick={() => void qc.invalidateQueries({ queryKey: keys.repos })}>
-                Relire
+                {t("Relire")}
               </Button>
               <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => openLauncher({ mode: "new" })}>
-                Nouveau projet
+                {t("Nouveau projet")}
               </Button>
             </>
           )
@@ -65,24 +77,24 @@ export function ProjectsPage() {
       />
       {!hasRoots ? (
         <Card>
-          <EmptyState icon={<FolderGit2 className="size-6" />} title="Pas encore de dossier de projets" action={<Button onClick={() => setPage("overview")}>Configurer</Button>}>
-            Dis à TekBoard où sont tes dépôts.
+          <EmptyState icon={<FolderGit2 className="size-6" />} title={t("Pas encore de dossier de projets")} action={<Button onClick={() => setPage("overview")}>{t("Configurer")}</Button>}>
+            {t("Dis à TekBoard où sont tes dépôts.")}
           </EmptyState>
         </Card>
       ) : repos.isLoading ? (
         <p className="flex items-center gap-2 py-16 text-muted">
-          <Spinner /> Lecture…
+          <Spinner /> {t("Lecture…")}
         </p>
       ) : repos.error ? (
-        <ErrorNote title="Impossible de parcourir tes projets">{asAppError(repos.error).message}</ErrorNote>
+        <ErrorNote title={t("Impossible de parcourir tes projets")}>{asAppError(repos.error).message}</ErrorNote>
       ) : (
         <>
           <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
             <div className="relative w-56">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
-              <Input autoFocus className="pl-8" aria-label="Chercher par nom, module ou branche" placeholder="Rechercher" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <Input autoFocus className="pl-8" aria-label={t("Chercher par nom, module ou branche")} placeholder={t("Rechercher")} value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
-            <div className="flex items-center gap-0.5" role="tablist" aria-label="Filtre de statut">
+            <div className="flex items-center gap-0.5" role="tablist" aria-label={t("Filtre de statut")}>
               {FILTERS.map((f) => (
                 <button
                   key={f.id}
@@ -103,12 +115,12 @@ export function ProjectsPage() {
                 type="button"
                 role="switch"
                 aria-checked={epitechOnly}
-                title="Masque les dépôts personnels et ce qui n'est pas du cursus. Le classement d'un dépôt se corrige depuis son menu ⋯."
+                title={t("Masque les dépôts personnels et ce qui n'est pas du cursus. Le classement d'un dépôt se corrige depuis son menu ⋯.")}
                 onClick={() => setEpitechOnly(!epitechOnly)}
                 className={cn("flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors duration-150", epitechOnly ? "border-transparent bg-accent-soft text-accent-strong" : "border-white/8 text-muted hover:border-line-strong hover:text-fg")}
               >
                 <GraduationCap className="size-3.5" />
-                Epitech seulement
+                Epitech Projects Only
               </button>
               {modules.length > 1 && (
                 <Select
@@ -123,13 +135,13 @@ export function ProjectsPage() {
               )}
               <Menu
                 trigger={
-                  <button type="button" title="Ordre de tri" className="flex h-7 items-center gap-1.5 rounded-md border border-white/8 px-2.5 text-xs text-muted transition-colors duration-150 hover:border-line-strong hover:text-fg">
+                  <button type="button" title={t("Ordre de tri")} className="flex h-7 items-center gap-1.5 rounded-md border border-white/8 px-2.5 text-xs text-muted transition-colors duration-150 hover:border-line-strong hover:text-fg">
                     <ArrowDownUp className="size-3.5" />
                     {sortLabel}
                   </button>
                 }
               >
-                <MenuLabel>Trier par</MenuLabel>
+                <MenuLabel>{t("Trier par")}</MenuLabel>
                 {SORTS.map((s) => (
                   <MenuChoice key={s.id} checked={sort === s.id} onSelect={() => setSort(s.id)} hint={s.hint}>
                     {s.label}
@@ -140,8 +152,8 @@ export function ProjectsPage() {
           </div>
           <Card>
             {shown.length === 0 ? (
-              <EmptyState title={all.length === 0 ? "No repository found" : "Nothing matches"}>
-                {all.length === 0 ? "Your projects folders contain no git repository yet." : epitechOnly || activeModule ? "Try another search, or turn off “Epitech only” and the module filter." : "Try another search or filter."}
+              <EmptyState title={all.length === 0 ? t("Aucun dépôt trouvé") : t("Rien ne correspond")}>
+                {all.length === 0 ? t("Tes dossiers de projets ne contiennent encore aucun dépôt git.") : epitechOnly || activeModule ? t("Essaie une autre recherche, ou désactive « Epitech Projects Only » et le filtre de module.") : t("Essaie une autre recherche ou un autre filtre.")}
               </EmptyState>
             ) : (
               <ul>
@@ -151,9 +163,40 @@ export function ProjectsPage() {
               </ul>
             )}
           </Card>
+          {(hidden.data?.length ?? 0) > 0 && (
+            <div className="mt-3">
+              <button type="button" onClick={() => setShowHidden(!showHidden)} className="flex items-center gap-1.5 text-xs text-faint hover:text-muted">
+                <EyeOff className="size-3.5" />
+                {plural(hidden.data!.length, "{n} projet masqué", "{n} projets masqués")}
+              </button>
+              {showHidden && (
+                <Card className="mt-2">
+                  <ul>
+                    {hidden.data!.map((r) => (
+                      <HiddenRow key={r.path} repo={r} />
+                    ))}
+                  </ul>
+                </Card>
+              )}
+            </div>
+          )}
         </>
       )}
     </>
+  );
+}
+
+/** A hidden project: where it is, and the way back. */
+function HiddenRow({ repo }: { repo: RepoInfo }) {
+  const act = useProjectActions();
+  return (
+    <li className="flex h-10 items-center gap-3 border-b border-white/6 px-4 text-[13px] last:border-b-0">
+      <span className="min-w-0 flex-1 truncate text-muted">{displayName(repo)}</span>
+      <span className="selectable min-w-0 flex-[2] truncate font-mono text-[11px] text-faint">{repo.path}</span>
+      <Button size="sm" variant="ghost" icon={<Eye className="size-3.5" />} busy={act.visibility.isPending} onClick={() => act.visibility.mutate({ repo, visibility: null })}>
+        {t("Restaurer")}
+      </Button>
+    </li>
   );
 }
 
@@ -170,6 +213,11 @@ function RepoRow({ repo, now, showStatus }: { repo: RepoInfo; now: Date; showSta
       <button type="button" onClick={() => openSheet(repo.path)} className="flex min-w-0 flex-[2] items-baseline gap-2.5 text-left" title={`${repo.path}\n${repo.kind === "epitech" ? "Epitech" : "Personal"}: ${repo.kindReason}${repo.status?.branch ? `\nBranch ${repo.status.branch}` : ""}`}>
         <span className="truncate text-[13px] font-medium">{displayName(repo)}</span>
         {mod ? <Tag title={repo.my?.unitName ?? undefined}>{mod}</Tag> : repo.group && <span className="shrink-0 text-xs text-faint">{repo.group}</span>}
+        {repo.duplicateOf && (
+          <span className="shrink-0 rounded border border-warn/40 px-1.5 text-[11px] text-warn" title={t("Même projet que {p}. Si ce dossier est une copie, masque-le depuis son menu ⋯ : rien n'est supprimé.", { p: repo.duplicateOf })}>
+            {t("copie")}
+          </span>
+        )}
       </button>
       <span className="flex w-32 shrink-0">
         <DueBadge repo={repo} now={now} />
@@ -182,10 +230,10 @@ function RepoRow({ repo, now, showStatus }: { repo: RepoInfo; now: Date; showSta
         <ProgressPicker repo={repo} compact={!showStatus} />
       </span>
       <span className="hidden w-24 shrink-0 text-right text-xs text-faint lg:block" title={repo.lastCommit?.subject}>
-        {active > 0 ? timeAgo(Math.floor(active / 1000)) : "no commit"}
+        {active > 0 ? timeAgo(Math.floor(active / 1000)) : t("aucun commit")}
       </span>
       <span className="flex shrink-0 items-center">
-        <IconButton label="Ouvrir l'espace de travail (IDE + terminal)" className="hover:text-accent-strong" onClick={() => act.workspace.mutate(repo)}>
+        <IconButton label={t("Ouvrir l'espace de travail (IDE + terminal)")} className="hover:text-accent-strong" onClick={() => act.workspace.mutate(repo)}>
           <Play className="size-4" />
         </IconButton>
         <RepoMenu repo={repo} />

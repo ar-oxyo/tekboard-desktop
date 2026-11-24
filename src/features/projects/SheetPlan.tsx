@@ -7,11 +7,12 @@ import type { RepoInfo } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { useNow, useProjectActions } from "../../lib/hooks";
 import { durInput, fmtDur, hhmm, parseDur, PRIORITY, taskProgress } from "../../lib/plan";
-import { suggestPlan } from "../tika/suggest";
+import { suggestPlan } from "../artix/suggest";
 import { useUi } from "../../lib/store";
 import { startFocus } from "../planning/Focus";
 import { useLoads, usePlanActions, usePlanData } from "../planning/usePlan";
 import { BranchLabel, StatusChips } from "./RepoBits";
+import { locale, t as tr } from "../../lib/i18n";
 
 const RISK_TONE = { late: "danger", risk: "warn", ok: "ok", unknown: "neutral" } as const;
 
@@ -38,20 +39,20 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
   const saveEstimate = () => {
     if (estimate === null) return;
     const m = estimate.trim() === "" ? null : parseDur(estimate);
-    if (estimate.trim() !== "" && m === null) return useUi.getState().toast({ kind: "error", title: "Écris le travail restant comme 12h, 1h30 ou 45m" });
+    if (estimate.trim() !== "" && m === null) return useUi.getState().toast({ kind: "error", title: tr("Écris le travail restant comme 12h, 1h30 ou 45m") });
     act.setProject.mutate({ key, estimateMin: m });
     setEstimate(null);
   };
   const planSessions = () => {
     if (!project) return;
-    if (project.estimateMin === null) return useUi.getState().toast({ kind: "info", title: "Indique d'abord le travail restant" });
+    if (project.estimateMin === null) return useUi.getState().toast({ kind: "info", title: tr("Indique d'abord le travail restant") });
     void suggestPlan("two_weeks", key);
   };
 
   return (
     <div className="grid grid-cols-2 gap-4">
       <section className="flex flex-col gap-3 rounded-lg border border-white/7 p-4">
-        <SectionLabel>Où tu en es</SectionLabel>
+        <SectionLabel>{tr("Où tu en es")}</SectionLabel>
         {(my?.tooManyAbsences || my?.nonCompliant) && (
           <p className="-mt-1 rounded-md border border-warn/30 bg-warn/10 px-2.5 py-1.5 text-xs text-warn">
             MY Epitech flags this group: {[my.tooManyAbsences && "too many absences", my.nonCompliant && "non compliant"].filter(Boolean).join(", ")}. Check with the module's staff.
@@ -67,11 +68,11 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
           </span>
         </div>
         <dl className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-x-3 gap-y-2 text-[13px]">
-          <dt className="text-muted">Travail restant</dt>
+          <dt className="text-muted">{tr("Travail restant")}</dt>
           <dd>
             {estimate === null ? (
-              <button type="button" className="rounded px-1 -mx-1 hover:bg-hover" onClick={() => setEstimate(durInput(project?.estimateMin ?? null))} title="Ton estimation. Le temps enregistré en session en est déduit.">
-                {project?.estimateMin != null ? fmtDur(project.estimateMin) : <span className="text-faint">donner une estimation</span>}
+              <button type="button" className="rounded px-1 -mx-1 hover:bg-hover" onClick={() => setEstimate(durInput(project?.estimateMin ?? null))} title={tr("Ton estimation. Le temps enregistré en session en est déduit.")}>
+                {project?.estimateMin != null ? fmtDur(project.estimateMin) : <span className="text-faint">{tr("donner une estimation")}</span>}
               </button>
             ) : (
               <Input autoFocus className="h-7 w-28" placeholder="12h" value={estimate} onChange={(e) => setEstimate(e.target.value)} onBlur={saveEstimate} onKeyDown={(e) => e.key === "Enter" && saveEstimate()} />
@@ -79,9 +80,9 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
           </dd>
           <dt className="text-muted">Planifié</dt>
           <dd>{fmtDur(load?.planned ?? 0)} in the calendar</dd>
-          <dt className="text-muted">Temps passé</dt>
-          <dd>{logged > 0 ? fmtDur(logged) : <span className="text-faint">rien d'enregistré</span>}</dd>
-          <dt className="text-muted">Priorité</dt>
+          <dt className="text-muted">{tr("Temps passé")}</dt>
+          <dd>{logged > 0 ? fmtDur(logged) : <span className="text-faint">{tr("rien d'enregistré")}</span>}</dd>
+          <dt className="text-muted">{tr("Priorité")}</dt>
           <dd className="flex gap-1">
             {PRIORITY.map((label, i) => (
               <button key={label} type="button" aria-pressed={(project?.priority ?? 0) === i} onClick={() => act.setProject.mutate({ key, priority: i })} className={cn("h-6 rounded-md px-2 text-xs transition-colors duration-150", (project?.priority ?? 0) === i ? "bg-raised text-fg" : "text-faint hover:text-fg")}>
@@ -92,21 +93,21 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
           {my?.quota && (
             <>
               <dt className="text-muted">Moulinette</dt>
-              <dd className={cn(my.quota[1] <= 1 && "text-warn")} title="Exécutions de tests automatiques que ton groupe peut encore demander, d'après MY Epitech">
+              <dd className={cn(my.quota[1] <= 1 && "text-warn")} title={tr("Exécutions de tests automatiques que ton groupe peut encore demander, d'après MY Epitech")}>
                 {my.quota[1]} of {my.quota[0]} runs left
               </dd>
             </>
           )}
           {my?.delivery && (
             <>
-              <dt className="text-muted">Rendu</dt>
-              <dd className="flex min-w-0 items-center gap-2" title="La dernière révision poussée par ton groupe : ce que la moulinette teste">
+              <dt className="text-muted">{tr("Rendu")}</dt>
+              <dd className="flex min-w-0 items-center gap-2" title={tr("La dernière révision poussée par ton groupe : ce que la moulinette teste")}>
                 <span className="font-mono text-xs">{my.delivery.commit.slice(0, 7)}</span>
                 <span className="truncate text-xs text-faint">
                   {my.delivery.branch ?? ""}
                   {my.delivery.pushedAt ? ` · ${timeAgo(my.delivery.pushedAt)}` : ""}
                 </span>
-                {undelivered && <Dot tone="warn">ton dernier commit n'est pas rendu</Dot>}
+                {undelivered && <Dot tone="warn">{tr("ton dernier commit n'est pas rendu")}</Dot>}
               </dd>
             </>
           )}
@@ -132,26 +133,26 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
           {next ? (
             <>
               <span className="min-w-0 flex-1 truncate">
-                {new Date(next.start * 1000).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "short" })}, {hhmm(next.start * 1000)} – {hhmm(next.end * 1000)}
+                {new Date(next.start * 1000).toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "short" })}, {hhmm(next.start * 1000)} – {hhmm(next.end * 1000)}
               </span>
-              <IconButton label="Démarrer cette session maintenant" onClick={() => startFocus({ title: next.title, project: key, taskId: next.taskId, eventId: next.id, plannedMin: Math.round((next.end - next.start) / 60) })}>
+              <IconButton label={tr("Démarrer cette session maintenant")} onClick={() => startFocus({ title: next.title, project: key, taskId: next.taskId, eventId: next.id, plannedMin: Math.round((next.end - next.start) / 60) })}>
                 <Play className="size-3.5" />
               </IconButton>
             </>
           ) : (
-            <span className="text-muted">Aucune session prévue</span>
+            <span className="text-muted">{tr("Aucune session prévue")}</span>
           )}
         </div>
         <ul className="flex flex-col">
           {open.slice(0, 6).map((t) => (
             <li key={t.id} className="group flex h-8 items-center gap-2 text-[13px]">
-              <input type="checkbox" aria-label="Fait" className="accent-(--color-accent)" checked={false} onChange={() => act.toggleTask(t)} />
+              <input type="checkbox" aria-label={tr("Fait")} className="accent-(--color-accent)" checked={false} onChange={() => act.toggleTask(t)} />
               <button type="button" className="min-w-0 flex-1 truncate text-left hover:text-accent-strong" onClick={() => useUi.getState().editTask(t)}>
                 {t.title}
               </button>
               {t.estimateMin !== null && <span className="shrink-0 text-xs text-faint">{fmtDur(t.estimateMin)}</span>}
               {tasks.some((s) => s.parentId === t.id) && <span className="shrink-0 text-xs text-faint">{tasks.filter((s) => s.parentId === t.id && s.doneAt !== null).length}/{tasks.filter((s) => s.parentId === t.id).length}</span>}
-              <IconButton label="Supprimer la tâche" className="opacity-0 group-hover:opacity-100" onClick={() => act.removeTask.mutate(t.id)}>
+              <IconButton label={tr("Supprimer la tâche")} className="opacity-0 group-hover:opacity-100" onClick={() => act.removeTask.mutate(t.id)}>
                 <Trash2 className="size-3.5" />
               </IconButton>
             </li>
@@ -159,7 +160,7 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
           {open.length > 6 && <li className="text-xs text-faint">{open.length - 6} more in Planning → Inbox</li>}
         </ul>
         <Input
-          placeholder="Ajoute une tâche puis Entrée"
+          placeholder={tr("Ajoute une tâche puis Entrée")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => {
@@ -169,8 +170,8 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
           }}
         />
         <div className="mt-auto flex flex-wrap gap-2 pt-2">
-          <Button size="sm" icon={<CalendarPlus className="size-3.5" />} onClick={planSessions} title="Répartit le travail restant sur ton temps libre avant le rendu, avec pauses et marge. À valider avant tout enregistrement.">
-            Planifier des sessions
+          <Button size="sm" icon={<CalendarPlus className="size-3.5" />} onClick={planSessions} title={tr("Répartit le travail restant sur ton temps libre avant le rendu, avec pauses et marge. À valider avant tout enregistrement.")}>
+            {tr("Planifier des sessions")}
           </Button>
           <Button
             size="sm"
@@ -180,9 +181,9 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
               useUi.getState().closeSheet();
               useUi.getState().openAssistant({ text: "#breakdown", project: key });
             }}
-            title="Tika propose des tâches et des sessions ; tu valides d'abord"
+            title={tr("Artix propose des tâches et des sessions ; tu valides d'abord")}
           >
-            Décomposer avec Tika
+            {tr("Décomposer avec Artix")}
           </Button>
         </div>
       </section>
@@ -217,10 +218,10 @@ export function GitTab({ repo }: { repo: RepoInfo }) {
           Indexer, commiter et synchroniser
         </Button>
         <Button icon={<Globe className="size-3.5" />} disabled={!repo.remoteUrl} onClick={() => act.remote.mutate(repo)} title={repo.remoteUrl ?? "This repository has no remote"}>
-          Ouvrir sur GitHub
+          {tr("Ouvrir sur GitHub")}
         </Button>
         <Button variant="ghost" icon={<Copy className="size-3.5" />} disabled={!repo.remoteUrl} onClick={() => act.copyUrl(repo)}>
-          Copier l'URL distante
+          {tr("Copier l'URL distante")}
         </Button>
       </div>
     </div>

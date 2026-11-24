@@ -1,5 +1,6 @@
 // Pure helpers over repository data. No I/O: covered by unit tests.
 import type { RepoInfo } from "./api";
+import { locale, t } from "./i18n";
 
 
 /** Short name. A folder renamed after cloning ("… (Copy)") keeps its suffix so two copies stay distinguishable. */
@@ -31,11 +32,11 @@ export function attention(repo: RepoInfo): Attention[] {
   if (changes > 0) out.push({ level: "warn", label: `${changes} non commité${changes > 1 ? "s" : ""}` });
   if (s.ahead > 0) out.push({ level: "info", label: `${s.ahead} à envoyer` });
   if (s.behind > 0) out.push({ level: "info", label: `${s.behind} à récupérer` });
-  if (repo.remoteUrl && s.branch && !s.upstream && !s.unborn) out.push({ level: "info", label: "Branche non publiée" });
+  if (repo.remoteUrl && s.branch && !s.upstream && !s.unborn) out.push({ level: "info", label: t("Branche non publiée") });
   return out;
 }
 
-export type RepoFilter = "active" | "todo" | "in_progress" | "done" | "changes" | "favorites";
+export type RepoFilter = "active" | "todo" | "in_progress" | "done" | "changes" | "favorites" | "archived";
 
 export interface FilterOptions {
   /** Hide repositories that are not part of the curriculum. */
@@ -54,7 +55,11 @@ export function isDone(repo: RepoInfo): boolean {
 }
 
 export function matchesFilter(repo: RepoInfo, filter: RepoFilter): boolean {
+  // Archived projects only show under their own filter.
+  if ((filter === "archived") !== (repo.meta.visibility === "archived")) return false;
   switch (filter) {
+    case "archived":
+      return true;
     // Finished projects leave the working list; they stay reachable under "Done", and their status can be changed back there.
     case "active":
       return !isDone(repo);
@@ -144,7 +149,7 @@ export interface Due {
   time: string | null;
 }
 
-const hhmm = (t: number) => new Date(t).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", hour12: false });
+const hhmm = (t: number) => new Date(t).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit", hour12: false });
 
 /** State and wording of a hand-in date right now. With an exact hour, "late" starts when it passes, not at midnight. */
 export function due(day: string | null, at: string | null, now: Date = new Date()): Due {
@@ -197,13 +202,13 @@ export function deadlines(repos: RepoInfo[], now: Date = new Date()): Deadline[]
 export type SortKey = "smart" | "deadline" | "added" | "activity" | "name" | "status" | "module";
 
 export const SORTS: Array<{ id: SortKey; label: string; hint: string }> = [
-  { id: "smart", label: "Intelligent", hint: "Travail en cours, rendu le plus proche d'abord" },
-  { id: "deadline", label: "Rendu", hint: "Rendu le plus proche d'abord, sans date à la fin" },
-  { id: "activity", label: "Activité récente", hint: "Dernier commit ou dernière ouverture" },
-  { id: "added", label: "Date d'ajout", hint: "Le plus récent sur cet ordinateur d'abord" },
-  { id: "name", label: "Nom", hint: "De A à Z" },
-  { id: "status", label: "Statut", hint: "En cours, à faire, terminé" },
-  { id: "module", label: "Module", hint: "Par code de module" },
+  { id: "smart", label: "Intelligent", hint: t("Travail en cours, rendu le plus proche d'abord") },
+  { id: "deadline", label: t("Rendu"), hint: t("Rendu le plus proche d'abord, sans date à la fin") },
+  { id: "activity", label: t("Activité récente"), hint: t("Dernier commit ou dernière ouverture") },
+  { id: "added", label: t("Date d'ajout"), hint: t("Le plus récent sur cet ordinateur d'abord") },
+  { id: "name", label: "Nom", hint: t("De A à Z") },
+  { id: "status", label: t("Statut"), hint: t("En cours, à faire, terminé") },
+  { id: "module", label: "Module", hint: t("Par code de module") },
 ];
 
 /** Last sign of life, in ms: the latest of the last commit and the last time it was opened here. */

@@ -1,5 +1,5 @@
 //! The planning engine: one source of truth for what a realistic day looks like, used by the
-//! planning screen, by Tika's tools and to check any plan before it is shown.
+//! planning screen, by Artix's tools and to check any plan before it is shown.
 //!
 //! A realistic day is not a full day:
 //! - work only inside the working hours of working days, never over protected times (meals);

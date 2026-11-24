@@ -1,0 +1,40 @@
+name: Signaler un bug
+description: Quelque chose ne marche pas comme prévu.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Ce qui se passe
+      description: Ce que tu as fait, ce que tu attendais, ce qui s'est passé à la place. Une capture d'écran aide beaucoup.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version de Tekboard
+      description: Réglages → Mises à jour → Version installée.
+      placeholder: "0.6.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installé avec
+      options:
+        - Paquet .deb
+        - AppImage
+        - Compilé depuis les sources
+    validations:
+      required: true
+  - type: input
+    id: distro
+    attributes:
+      label: Distribution
+      placeholder: "Ubuntu 24.04"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Message d'erreur (facultatif)
+      description: Copie le message affiché. N'y mets jamais de mot de passe, de jeton ni de cookie.
+      render: text

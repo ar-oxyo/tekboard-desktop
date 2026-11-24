@@ -37,6 +37,47 @@ export interface Settings {
   terminalRunCmd: string;
   mySyncMinutes: number;
   myAutoReconnect: boolean;
+  /** Interface language. */
+  language: "fr" | "en";
+  /** Only Epitech projects in lists, planning and Artix. */
+  epitechOnly: boolean;
+  /** Step of the first-run assistant reached so far ("" = not started). */
+  onboardingStep: string;
+  /** Look for a new release now and then. */
+  updateCheck: boolean;
+}
+
+/** One of Tekboard's folders. */
+export interface DataLocation {
+  kind: "data" | "session" | "cache";
+  path: string;
+  bytes: number;
+}
+export interface ExportSummary {
+  path: string;
+  bytes: number;
+  files: number;
+}
+export interface BackupManifest {
+  app: string;
+  format: number;
+  version: string;
+  schema: number;
+  createdAt: number;
+  dataDir: string;
+}
+export interface UpdateInfo {
+  version: string;
+  install: "appimage" | "deb" | "manual";
+  canInstall: boolean;
+  needsPassword: boolean;
+  releasesUrl: string;
+}
+export interface UpdateAvailable {
+  version: string;
+  current: string;
+  notes: string | null;
+  date: string | null;
 }
 
 export interface RootSuggestion {
@@ -94,6 +135,8 @@ export interface RepoMeta {
   myProjectId: number | null;
   runBin: string | null;
   runArgs: string | null;
+  /** `hidden` (a copy, a zombie) or `archived`; null = shown. The folder is never touched. */
+  visibility: "hidden" | "archived" | null;
 }
 /** What MY Epitech says about the project behind a repository. */
 export interface MyLink {
@@ -140,6 +183,8 @@ export interface RepoInfo {
   kindReason: string;
   deadlineState: DeadlineState;
   my: MyLink | null;
+  /** Another folder holds the same project: this one looks like the copy. */
+  duplicateOf: string | null;
 }
 /** One line of the dashboard's deadlines: a repository, or a MY Epitech project not cloned yet. */
 export interface BoardItem {
@@ -320,6 +365,17 @@ export interface Subject {
   size: number;
   repoPath: string | null;
   addedAt: number;
+  myProjectId: number | null;
+  /** `manual` (chosen by the user, never changed automatically), `auto`, or null. */
+  linkSource: "manual" | "auto" | null;
+  main: boolean;
+}
+
+/** A link TekBoard is not sure about: the user accepts or refuses it. */
+export interface SubjectSuggestion {
+  subjectId: number;
+  repoPath: string;
+  reason: string;
 }
 
 export interface SubjectCandidate {
@@ -787,6 +843,8 @@ export interface AgendaItem {
   status: string | null;
   /** MY Epitech session id. */
   eventId: number | null;
+  /** Planning key of its project (repository path or `my:<id>`). */
+  projectKey: string | null;
 }
 export interface Agenda {
   items: AgendaItem[];
@@ -825,6 +883,8 @@ export interface MySyncReport {
   unauthorized: boolean;
   detail: string;
   subjectsImported: number;
+  subjectsLinked: number;
+  subjectsToConfirm: number;
 }
 
 // ───────────────────────────── planning ─────────────────────────────
@@ -860,6 +920,25 @@ export interface PlanEvent {
   notes: string;
   origin: "me" | "auto" | "claude";
   done: boolean;
+  /** Category chosen by the user; null = the category of its kind. */
+  category: string | null;
+}
+export interface PlanCategory {
+  id: string;
+  name: string;
+  color: string;
+  /** One of the five kinds: renamed and recoloured, never deleted. */
+  builtin: boolean;
+}
+export interface Logtime {
+  goalHours: number;
+  /** The current week first. */
+  weeks: Array<{ start: string; end: string; seconds: number; days: number[]; promoSeconds: number | null }>;
+  lastDay: string | null;
+  fetchedAt: number | null;
+  unavailable: string | null;
+  today: string;
+  weekday: number;
 }
 export interface ProjectPlan {
   key: string;
@@ -867,6 +946,8 @@ export interface ProjectPlan {
   /** Work still to do, in minutes. */
   estimateMin: number | null;
   color: string | null;
+  /** Left out of the calendar (school items of that project). */
+  calendarHidden: boolean;
 }
 export interface WorkLog {
   id: number;
@@ -898,7 +979,7 @@ export interface PlanApplied {
   projects: number;
 }
 
-// ── Tika (assistant), memory, work sessions
+// ── Artix (assistant), memory, work sessions
 export interface Screen {
   page: string;
   project?: string | null;
@@ -1037,6 +1118,22 @@ export const api = {
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),
   suggestRoots: () => invoke<RootSuggestion[]>("suggest_roots"),
+  startupNotices: () => invoke<string[]>("startup_notices"),
+  dataLocations: () => invoke<DataLocation[]>("data_locations"),
+  dataOpen: (kind: "data" | "cache") => invoke<void>("data_open", { kind }),
+  dataExport: (path: string) => invoke<ExportSummary>("data_export", { path }),
+  dataInspect: (path: string) => invoke<BackupManifest>("data_inspect", { path }),
+  /** Restores a backup; returns the backup made of the data it replaced. */
+  dataImport: (path: string) => invoke<string>("data_import", { path }),
+  dataClearCache: () => invoke<number>("data_clear_cache"),
+  settingsReset: () => invoke<Settings>("settings_reset"),
+  appResetAll: (confirm: string) => invoke<void>("app_reset_all", { confirm }),
+  appRestart: () => invoke<void>("app_restart"),
+  updateInfo: () => invoke<UpdateInfo>("update_info"),
+  updateCheck: () => invoke<UpdateAvailable | null>("update_check"),
+  updateInstall: () => invoke<void>("update_install"),
+  updateSavePackage: () => invoke<string>("update_save_package"),
+  updateOpenReleases: () => invoke<void>("update_open_releases"),
   envStatus: () => invoke<EnvStatus>("env_status"),
   testGithubSsh: () => invoke<{ ok: boolean; message: string }>("test_github_ssh"),
 
@@ -1165,6 +1262,17 @@ export const api = {
   myStatus: () => invoke<MyStatus>("my_status"),
   myConnect: () => invoke<void>("my_connect"),
   mySync: () => invoke<MySyncReport>("my_sync"),
+  /** The one Sync button: session in memory, stored session, or sign-in; then syncs. */
+  mySyncAuto: () => invoke<MySyncReport>("my_sync_auto"),
+  myLogtime: () => invoke<Logtime>("my_logtime"),
+  subjectsAssociate: () => invoke<{ linked: number; suggestions: SubjectSuggestion[] }>("subjects_associate"),
+  subjectSuggestionDecide: (id: number, repoPath: string, accept: boolean) => invoke<void>("subject_suggestion_decide", { id, repoPath, accept }),
+  projectSetVisibility: (path: string, visibility: "hidden" | "archived" | null) => invoke<void>("project_set_visibility", { path, visibility }),
+  hiddenRepos: () => invoke<RepoInfo[]>("hidden_repos"),
+  planProjectCalendar: (key: string, hidden: boolean) => invoke<void>("plan_project_calendar", { key, hidden }),
+  planCategories: () => invoke<PlanCategory[]>("plan_categories"),
+  planCategorySave: (id: string | null, name: string, color: string) => invoke<PlanCategory>("plan_category_save", { id, name, color }),
+  planCategoryDelete: (id: string) => invoke<void>("plan_category_delete", { id }),
   myData: () => invoke<{ entries: MyEntry[]; history: Array<{ at: number; ok: number; failed: number; detail: string }> }>("my_data"),
   myForget: (eraseCache: boolean) => invoke<void>("my_forget", { eraseCache }),
 
@@ -1186,7 +1294,7 @@ export const api = {
   aiActions: (limit?: number) => invoke<AiAction[]>("ai_actions", { limit: limit ?? null }),
   aiProposals: (status?: string | null) => invoke<AiProposal[]>("ai_proposals", { status: status ?? null }),
   aiProposalDecide: (id: number, accept: boolean, keep: number[] | null) => invoke<unknown>("ai_proposal_decide", { id, accept, keep }),
-  aiTool: (name: string, args: Record<string, unknown>) => invoke<Record<string, unknown>>("ai_tool", { name, args }),
+  aiTool: (name: string, args: Record<string, unknown>, thread: number | null = null) => invoke<Record<string, unknown>>("ai_tool", { name, args, thread }),
   memoryList: (scope?: string | null, archived?: boolean) => invoke<Memory[]>("memory_list", { scope: scope ?? null, archived: archived ?? false }),
   memoryAdd: (scope: string, kind: MemoryKind, content: string, pinned: boolean) => invoke<Memory>("memory_add", { scope, kind, content, pinned }),
   memoryUpdate: (id: number, patch: { content?: string; kind?: MemoryKind; pinned?: boolean; archived?: boolean }) => invoke<Memory>("memory_update", { id, patch }),

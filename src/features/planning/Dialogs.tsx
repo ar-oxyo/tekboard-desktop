@@ -7,15 +7,16 @@ import { Select } from "../../components/Select";
 import { Button, cn, Dot, Field, IconButton, Input, SectionLabel } from "../../components/ui";
 import type { PlanEvent, PlanEventKind, PlanTask } from "../../lib/api";
 import { useNow } from "../../lib/hooks";
-import { addDays, dayKey, dayStartOf, durInput, fmtDur, freeSlots, hhmm, hhmmOf, KIND_LABEL, MIN, minutesOf, missed, parseDur, PRIORITY, startOfWeek, type PlanPrefs, type RhythmMode, RHYTHMS, withMode, type PlanProject } from "../../lib/plan";
+import { addDays, dayKey, dayStartOf, durInput, fmtDur, freeSlots, hhmm, hhmmOf, MIN, minutesOf, missed, parseDur, PRIORITY, startOfWeek, type PlanPrefs, type RhythmMode, RHYTHMS, withMode, type PlanProject } from "../../lib/plan";
 import { useUi } from "../../lib/store";
 import { usePlanActions, usePlanData, usePlanPrefs } from "./usePlan";
+import { locale, t as tr } from "../../lib/i18n";
 
 const textarea = "w-full resize-y rounded-md border border-line bg-bg p-2.5 text-[13px] leading-relaxed text-fg placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none";
 
 export function ProjectSelect({ value, onChange, projects, className, size }: { value: string | null; onChange: (key: string | null) => void; projects: PlanProject[]; className?: string; size?: "sm" | "md" }) {
-  const options = useMemo(() => [{ value: "", label: "Aucun projet" }, ...projects.map((p) => ({ value: p.key, label: p.title, hint: p.module ?? undefined }))], [projects]);
-  return <Select label="Projet" className={className} size={size} value={value ?? ""} onChange={(v) => onChange(v || null)} options={options} placeholder="Aucun projet" />;
+  const options = useMemo(() => [{ value: "", label: tr("Aucun projet") }, ...projects.map((p) => ({ value: p.key, label: p.title, hint: p.module ?? undefined }))], [projects]);
+  return <Select label={tr("Projet")} className={className} size={size} value={value ?? ""} onChange={(v) => onChange(v || null)} options={options} placeholder={tr("Aucun projet")} />;
 }
 
 function Segmented<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: Array<[T, string]>; label: string }) {
@@ -32,7 +33,7 @@ function Segmented<T extends string>({ value, onChange, options, label }: { valu
 
 // ───────────────────────────── calendar entry ─────────────────────────────
 
-const KINDS: Array<[PlanEventKind, string]> = [["session", "Session"], ["event", "Événement"], ["block", "Indisponible"], ["reminder", "Rappel"]];
+const KINDS: Array<[PlanEventKind, string]> = [["session", tr("Session")], ["event", tr("Événement")], ["block", tr("Indisponible")], ["reminder", tr("Rappel")]];
 
 export function EventDialog() {
   const draft = useUi((s) => s.eventEdit);
@@ -41,7 +42,7 @@ export function EventDialog() {
 
 function EventForm({ draft }: { draft: Partial<PlanEvent> }) {
   const close = () => useUi.getState().editEvent(null);
-  const { projects, state } = usePlanData();
+  const { projects, state, categories } = usePlanData();
   const act = usePlanActions();
   const start0 = (draft.start ?? Math.floor(Date.now() / 1000)) * 1000;
   const end0 = (draft.end ?? draft.start! + 3600) * 1000;
@@ -53,7 +54,11 @@ function EventForm({ draft }: { draft: Partial<PlanEvent> }) {
   const [to, setTo] = useState(hhmm(end0));
   const [notes, setNotes] = useState(draft.notes ?? "");
   const [done, setDone] = useState(draft.done ?? false);
+  const [category, setCategory] = useState<string | null>(draft.category ?? null);
   const [error, setError] = useState<string | null>(null);
+  // The five base categories are the kinds (their names can be changed in the calendar settings).
+  const kindName = (k: PlanEventKind) => categories.find((c) => c.id === k)?.name ?? KINDS.find(([id]) => id === k)?.[1] ?? k;
+  const custom = categories.filter((c) => !c.builtin);
   const task = draft.taskId ? state.tasks.find((t) => t.id === draft.taskId) : undefined;
   const isNew = !draft.id;
   const work = kind === "session" || kind === "task";
@@ -68,14 +73,14 @@ function EventForm({ draft }: { draft: Partial<PlanEvent> }) {
     const end = b > a ? base + b * MIN : addDays(base, 1) + b * MIN;
     const label = title.trim() || (work ? name : "") || "";
     if (!label) return setError("Give it a title, or pick a project.");
-    act.saveEvent.mutate({ ...draft, kind, title: label, project, notes, done, start: Math.floor(start / 1000), end: Math.floor(end / 1000) }, { onSuccess: close });
+    act.saveEvent.mutate({ ...draft, kind, title: label, project, notes, done, category, start: Math.floor(start / 1000), end: Math.floor(end / 1000) }, { onSuccess: close });
   };
 
   return (
     <Modal
       open
       onClose={close}
-      title={isNew ? "Nouvelle entrée" : KIND_LABEL[kind]}
+      title={isNew ? tr("Nouvelle entrée") : kindName(kind)}
       width="w-[520px]"
       footer={
         <>
@@ -89,7 +94,7 @@ function EventForm({ draft }: { draft: Partial<PlanEvent> }) {
                 close();
               }}
             >
-              Supprimer
+              {tr("Supprimer")}
             </Button>
           )}
           {!isNew && work && !done && (
@@ -99,16 +104,16 @@ function EventForm({ draft }: { draft: Partial<PlanEvent> }) {
                 close();
                 startFocus({ title: draft.title ?? title, project, taskId: draft.taskId ?? null, eventId: draft.id!, plannedMin: Math.round(((draft.end ?? 0) - (draft.start ?? 0)) / 60) });
               }}
-              title="Démarre le chrono et ouvre l'espace de travail du projet"
+              title={tr("Démarre le chrono et ouvre l'espace de travail du projet")}
             >
-              Démarrer la session
+              {tr("Démarrer la session")}
             </Button>
           )}
           <Button variant="ghost" onClick={close}>
-            Annuler
+            {tr("Annuler")}
           </Button>
           <Button variant="primary" icon={<Check className="size-3.5" />} busy={act.saveEvent.isPending} onClick={save}>
-            {isNew ? "Ajouter au calendrier" : "Enregistrer"}
+            {isNew ? tr("Ajouter au calendrier") : tr("Enregistrer")}
           </Button>
         </>
       }
@@ -120,29 +125,40 @@ function EventForm({ draft }: { draft: Partial<PlanEvent> }) {
           save();
         }}
       >
-        {kind !== "task" && <Segmented label="Type" value={kind} onChange={setKind} options={KINDS} />}
-        <Input autoFocus aria-label="Titre" placeholder={work ? (name ?? "Sur quoi vas-tu travailler ?") : kind === "reminder" ? "Me rappeler de…" : "Titre"} value={title} onChange={(e) => setTitle(e.target.value)} />
+        {kind !== "task" && <Segmented label={tr("Type")} value={kind} onChange={setKind} options={KINDS.map(([k]) => [k, kindName(k)] as [PlanEventKind, string])} />}
+        <Input autoFocus aria-label={tr("Titre")} placeholder={work ? (name ?? tr("Sur quoi vas-tu travailler ?")) : kind === "reminder" ? tr("Me rappeler de…") : tr("Titre")} value={title} onChange={(e) => setTitle(e.target.value)} />
         {task && <p className="-mt-1 text-xs text-faint">Holds the task “{task.title}”.</p>}
         <div className="grid grid-cols-[minmax(0,1fr)_110px_110px] gap-2">
-          <Field label="Jour">
+          <Field label={tr("Jour")}>
             <Input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
           </Field>
-          <Field label="De">
+          <Field label={tr("De")}>
             <Input type="time" step={900} value={from} onChange={(e) => setFrom(e.target.value)} />
           </Field>
-          <Field label="À">
+          <Field label={tr("À")}>
             <Input type="time" step={900} value={to} onChange={(e) => setTo(e.target.value)} />
           </Field>
         </div>
-        <Field label="Projet">
-          <ProjectSelect value={project} onChange={setProject} projects={projects} />
-        </Field>
-        <Field label="Notes">
+        <div className="grid grid-cols-2 gap-2">
+          <Field label={tr("Projet")}>
+            <ProjectSelect value={project} onChange={setProject} projects={projects} />
+          </Field>
+          <Field label={tr("Catégorie")}>
+            <Select
+              label={tr("Catégorie")}
+              value={category ?? ""}
+              onChange={(v) => setCategory(v || null)}
+              options={[{ value: "", label: kindName(kind), hint: tr("selon le type") }, ...custom.map((c) => ({ value: c.id, label: c.name, icon: <span className="size-2.5 shrink-0 rounded-full" style={{ background: c.color }} /> }))]}
+              emptyState={{ text: tr("Aucune catégorie") }}
+            />
+          </Field>
+        </div>
+        <Field label={tr("Notes")}>
           <textarea className={cn(textarea, "h-20")} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </Field>
         {work && !isNew && (
           <label className="flex items-center gap-2 text-[13px] text-muted">
-            <input type="checkbox" className="accent-(--color-accent)" checked={done} onChange={(e) => setDone(e.target.checked)} /> Fait
+            <input type="checkbox" className="accent-(--color-accent)" checked={done} onChange={(e) => setDone(e.target.checked)} /> {tr("Fait")}
           </label>
         )}
         {error && <p className="text-xs text-danger">{error}</p>}
@@ -200,10 +216,10 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
       onSuccess: (t) => {
         const minutes = t.estimateMin ?? prefs.sessionMinutes;
         const slot = freeSlots(busy, prefs, Date.now() + 10 * MIN, addDays(Date.now(), 14), Math.min(minutes, prefs.sessionMinutes))[0];
-        if (!slot) return toast({ kind: "error", title: "Aucun temps libre ces deux prochaines semaines", detail: "La tâche reste dans l'inbox." });
+        if (!slot) return toast({ kind: "error", title: tr("Aucun temps libre ces deux prochaines semaines"), detail: tr("La tâche reste dans l'inbox.") });
         const end = Math.min(slot.end, slot.start + Math.min(minutes, prefs.sessionMinutes) * MIN);
         act.saveEvent.mutate({ kind: "task", title: t.title, project: t.project, taskId: t.id, start: Math.floor(slot.start / 1000), end: Math.floor(end / 1000) });
-        toast({ kind: "ok", title: "Planifiée", detail: `${new Date(slot.start).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "short" })}, ${hhmm(slot.start)} – ${hhmm(end)}` });
+        toast({ kind: "ok", title: "Planifiée", detail: `${new Date(slot.start).toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "short" })}, ${hhmm(slot.start)} – ${hhmm(end)}` });
         close();
       },
     });
@@ -227,16 +243,16 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
                 close();
               }}
             >
-              Supprimer
+              {tr("Supprimer")}
             </Button>
           )}
           {!idea && (
-            <Button onClick={plan} title="Enregistre la tâche et la place dans le premier temps libre">
-              Enregistrer et planifier
+            <Button onClick={plan} title={tr("Enregistre la tâche et la place dans le premier temps libre")}>
+              {tr("Enregistrer et planifier")}
             </Button>
           )}
           <Button variant="primary" icon={<Check className="size-3.5" />} busy={act.saveTask.isPending} onClick={save}>
-            Enregistrer
+            {tr("Enregistrer")}
           </Button>
         </>
       }
@@ -248,13 +264,13 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
           save();
         }}
       >
-        <Input autoFocus aria-label="Titre" placeholder="Qu'y a-t-il à faire ?" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <Input autoFocus aria-label={tr("Titre")} placeholder={tr("Qu'y a-t-il à faire ?")} value={title} onChange={(e) => setTitle(e.target.value)} />
         <div className="grid grid-cols-2 gap-2">
-          <Field label="Projet">
+          <Field label={tr("Projet")}>
             <ProjectSelect value={project} onChange={setProject} projects={projects} />
           </Field>
-          <Field label="Priorité">
-            <Select label="Priorité" value={priority} onChange={setPriority} options={PRIORITY.map((label, i) => ({ value: String(i), label }))} />
+          <Field label={tr("Priorité")}>
+            <Select label={tr("Priorité")} value={priority} onChange={setPriority} options={PRIORITY.map((label, i) => ({ value: String(i), label }))} />
           </Field>
           <Field label="Estimation" hint="2h, 1h30, 45m">
             <Input placeholder="none" value={estimate} onChange={(e) => setEstimate(e.target.value)} />
@@ -263,7 +279,7 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
             <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
           </Field>
         </div>
-        <Field label="Notes">
+        <Field label={tr("Notes")}>
           <textarea className={cn(textarea, "h-20")} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </Field>
         {!isNew && !idea && (
@@ -274,7 +290,7 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
                 <li key={c.id} className="group flex h-8 items-center gap-2 text-[13px]">
                   <input type="checkbox" className="accent-(--color-accent)" checked={c.doneAt !== null} onChange={() => act.toggleTask(c)} />
                   <span className={cn("min-w-0 flex-1 truncate", c.doneAt !== null && "text-faint line-through")}>{c.title}</span>
-                  <IconButton label="Supprimer la sous-tâche" className="opacity-0 group-hover:opacity-100" onClick={() => act.removeTask.mutate(c.id)}>
+                  <IconButton label={tr("Supprimer la sous-tâche")} className="opacity-0 group-hover:opacity-100" onClick={() => act.removeTask.mutate(c.id)}>
                     <Trash2 className="size-3.5" />
                   </IconButton>
                 </li>
@@ -282,7 +298,7 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
             </ul>
             <Input
               className="mt-1"
-              placeholder="Ajoute une sous-tâche puis Entrée"
+              placeholder={tr("Ajoute une sous-tâche puis Entrée")}
               value={sub}
               onChange={(e) => setSub(e.target.value)}
               onKeyDown={(e) => {
@@ -296,7 +312,7 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
           </div>
         )}
         <label className="flex items-center gap-2 text-[13px] text-muted">
-          <input type="checkbox" className="accent-(--color-accent)" checked={idea} onChange={(e) => setIdea(e.target.checked)} /> Juste une idée : la garder dans l'inbox, ne jamais la planifier
+          <input type="checkbox" className="accent-(--color-accent)" checked={idea} onChange={(e) => setIdea(e.target.checked)} /> {tr("Juste une idée : la garder dans l'inbox, ne jamais la planifier")}
         </label>
         {error && <p className="text-xs text-danger">{error}</p>}
         <button type="submit" hidden />
@@ -335,7 +351,7 @@ function CaptureForm() {
     );
   };
   return (
-    <Modal open onClose={close} title="Capture rapide" description="Entrée l'enregistre dans l'inbox. Ctrl+Entrée enregistre et garde la fenêtre ouverte pour la suivante." width="w-[520px]">
+    <Modal open onClose={close} title={tr("Capture rapide")} description={tr("Entrée l'enregistre dans l'inbox. Ctrl+Entrée enregistre et garde la fenêtre ouverte pour la suivante.")} width="w-[520px]">
       <form
         className="flex flex-col gap-2 pb-1"
         onSubmit={(e) => {
@@ -345,9 +361,9 @@ function CaptureForm() {
       >
         <Input
           autoFocus
-          aria-label="Tâche ou idée"
+          aria-label={tr("Tâche ou idée")}
           className="h-10 text-sm"
-          placeholder="Une tâche, une idée, quelque chose à ne pas oublier…"
+          placeholder={tr("Une tâche, une idée, quelque chose à ne pas oublier…")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => {
@@ -375,13 +391,13 @@ function CaptureForm() {
 
 const WEEK = [1, 2, 3, 4, 5, 6, 0];
 
-/** The rhythm: how much of a day TekBoard and Tika may fill, and how. */
+/** The rhythm: how much of a day TekBoard and Artix may fill, and how. */
 export function PrefsDialog({ onClose }: { onClose: () => void }) {
   const [prefs, setPrefs] = usePlanPrefs();
   const [p, setP] = useState<PlanPrefs>(prefs);
   const [error, setError] = useState<string | null>(null);
   const num = (label: string, value: number, key: "maxMinutesPerDay" | "sessionMinutes" | "breakMinutes" | "longBreakMinutes" | "flexMinutes", hint: string, disabled = false) => (
-    <Field label={label} hint={disabled ? "fixé par le rythme choisi" : hint}>
+    <Field label={label} hint={disabled ? tr("fixé par le rythme choisi") : hint}>
       <Input
         key={`${key}-${value}`}
         disabled={disabled}
@@ -408,16 +424,16 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
     <Modal
       open
       onClose={onClose}
-      title="Ton rythme"
-      description="Ce que TekBoard et Tika peuvent remplir dans une journée. Tes propres entrées vont où tu veux."
+      title={tr("Ton rythme")}
+      description={tr("Ce que TekBoard et Artix peuvent remplir dans une journée. Tes propres entrées vont où tu veux.")}
       width="w-[560px]"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Annuler
+            {tr("Annuler")}
           </Button>
           <Button variant="primary" onClick={save}>
-            Enregistrer
+            {tr("Enregistrer")}
           </Button>
         </>
       }
@@ -426,26 +442,26 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
         <div className="grid grid-cols-4 gap-1.5">
           {(["calm", "balanced", "intense", "custom"] as RhythmMode[]).map((m) => (
             <button key={m} type="button" aria-pressed={p.mode === m} onClick={() => preset(m)} className={cn("flex flex-col items-start gap-0.5 rounded-lg border px-2.5 py-2 text-left transition-colors duration-150", p.mode === m ? "border-accent/50 bg-accent-soft" : "border-white/8 hover:border-white/15")}>
-              <span className="text-[13px] font-medium">{m === "custom" ? "Sur mesure" : RHYTHMS[m].label}</span>
-              <span className="text-[11px] leading-snug text-faint">{m === "custom" ? "tu fixes tout" : RHYTHMS[m].hint}</span>
+              <span className="text-[13px] font-medium">{m === "custom" ? tr("Sur mesure") : RHYTHMS[m].label}</span>
+              <span className="text-[11px] leading-snug text-faint">{m === "custom" ? tr("tu fixes tout") : RHYTHMS[m].hint}</span>
             </button>
           ))}
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <Field label="Travail à partir de">
+          <Field label={tr("Travail à partir de")}>
             <Input type="time" step={900} value={hhmmOf(p.dayStart)} onChange={(e) => setP({ ...p, dayStart: minutesOf(e.target.value) ?? p.dayStart })} />
           </Field>
-          <Field label="Jusqu'à">
+          <Field label={tr("Jusqu'à")}>
             <Input type="time" step={900} value={hhmmOf(p.dayEnd)} onChange={(e) => setP({ ...p, dayEnd: minutesOf(e.target.value) ?? p.dayEnd })} />
           </Field>
         </div>
-        <Field label="Jours travaillés">
+        <Field label={tr("Jours travaillés")}>
           <div className="flex gap-1">
             {WEEK.map((d) => {
               const on = p.workDays.includes(d);
               return (
                 <button key={d} type="button" aria-pressed={on} onClick={() => setP({ ...p, workDays: on ? p.workDays.filter((x) => x !== d) : [...p.workDays, d] })} className={cn("h-8 flex-1 rounded-md border text-xs capitalize transition-colors duration-150", on ? "border-transparent bg-accent-soft text-accent-strong" : "border-white/8 text-muted hover:text-fg")}>
-                  {new Date(2024, 0, d === 0 ? 7 : d).toLocaleDateString("fr-FR", { weekday: "short" })}
+                  {new Date(2024, 0, d === 0 ? 7 : d).toLocaleDateString(locale(), { weekday: "short" })}
                 </button>
               );
             })}
@@ -457,7 +473,7 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
           {num("Pause entre deux", p.breakMinutes, "breakMinutes", "10, 15…")}
           {num("Pause longue", p.longBreakMinutes, "longBreakMinutes", "45, 1h…")}
           {num("Temps libre gardé", p.flexMinutes, "flexMinutes", "60, 2h…", p.mode !== "custom")}
-          <Field label="Marge avant rendu" hint="jours">
+          <Field label={tr("Marge avant rendu")} hint="jours">
             <Input type="number" min={0} max={7} value={p.bufferDays} onChange={(e) => setP({ ...p, bufferDays: Math.max(0, Math.min(7, Number(e.target.value) || 0)) })} />
           </Field>
         </div>
@@ -472,7 +488,7 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
           )}
         </div>
         <label className="flex items-center gap-2 text-[13px] text-muted">
-          <input type="checkbox" className="accent-(--color-accent)" checked={p.morningPlan} onChange={(e) => setP({ ...p, morningPlan: e.target.checked })} /> Proposer un plan pour la journée sur Aujourd'hui quand rien n'est prévu
+          <input type="checkbox" className="accent-(--color-accent)" checked={p.morningPlan} onChange={(e) => setP({ ...p, morningPlan: e.target.checked })} /> {tr("Proposer un plan pour la journée sur Aujourd'hui quand rien n'est prévu")}
         </label>
         <p className="text-xs text-faint">Après {p.blocksBeforeLongBreak} blocs presque d'affilée, une pause longue est imposée. Une pause est gardée avant et après chaque cours ou entrée.</p>
         {error && <p className="text-xs text-danger">{error}</p>}
@@ -489,7 +505,7 @@ export function ReviewDialog({ onClose }: { onClose: () => void }) {
   const [offset, setOffset] = useState(0);
   const from = addDays(startOfWeek(now), offset * 7);
   const to = addDays(from, 7);
-  const name = (key: string | null) => (key ? (projects.find((p) => p.key === key)?.title ?? key.split("/").pop() ?? key) : "Aucun projet");
+  const name = (key: string | null) => (key ? (projects.find((p) => p.key === key)?.title ?? key.split("/").pop() ?? key) : tr("Aucun projet"));
   const color = (key: string | null) => projects.find((p) => p.key === key)?.color ?? "var(--color-faint)";
 
   const logged = state.log.filter((l) => l.startedAt * 1000 >= from && l.startedAt * 1000 < to);
@@ -515,28 +531,28 @@ export function ReviewDialog({ onClose }: { onClose: () => void }) {
   );
 
   return (
-    <Modal open onClose={onClose} title="Bilan de la semaine" width="w-[640px]">
+    <Modal open onClose={onClose} title={tr("Bilan de la semaine")} width="w-[640px]">
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-1">
-          <IconButton label="Semaine précédente" onClick={() => setOffset(offset - 1)}>
+          <IconButton label={tr("Semaine précédente")} onClick={() => setOffset(offset - 1)}>
             <ChevronLeft className="size-4" />
           </IconButton>
-          <IconButton label="Semaine suivante" disabled={offset >= 0} onClick={() => setOffset(offset + 1)}>
+          <IconButton label={tr("Semaine suivante")} disabled={offset >= 0} onClick={() => setOffset(offset + 1)}>
             <ChevronRight className="size-4" />
           </IconButton>
           <span className="ml-1 text-[13px] text-muted">
-            {new Date(from).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} – {new Date(addDays(to, -1)).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+            {new Date(from).toLocaleDateString(locale(), { day: "numeric", month: "long" })} – {new Date(addDays(to, -1)).toLocaleDateString(locale(), { day: "numeric", month: "long" })}
             {offset === 0 && " · this week"}
           </span>
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <Stat label="Temps travaillé" value={fmtDur(totalLogged)} sub={`${logged.length} focus session${logged.length === 1 ? "" : "s"} timed`} />
-          <Stat label="Sessions faites" value={`${doneSessions} / ${past.length}`} sub={`${fmtDur(plannedMin)} planned this week`} />
-          <Stat label="Tâches terminées" value={doneTasks.length} sub={`${open.length} still open`} />
+          <Stat label={tr("Temps travaillé")} value={fmtDur(totalLogged)} sub={`${logged.length} focus session${logged.length === 1 ? "" : "s"} timed`} />
+          <Stat label={tr("Sessions faites")} value={`${doneSessions} / ${past.length}`} sub={`${fmtDur(plannedMin)} planned this week`} />
+          <Stat label={tr("Tâches terminées")} value={doneTasks.length} sub={`${open.length} still open`} />
         </div>
         {perProject.size > 0 && (
           <div>
-            <SectionLabel className="mb-2">Temps par projet</SectionLabel>
+            <SectionLabel className="mb-2">{tr("Temps par projet")}</SectionLabel>
             <ul className="flex flex-col gap-1.5">
               {[...perProject.entries()].sort((a, b) => b[1] - a[1]).map(([key, minutes]) => (
                 <li key={key ?? "none"} className="grid grid-cols-[160px_minmax(0,1fr)_64px] items-center gap-3 text-[13px]">
@@ -550,7 +566,7 @@ export function ReviewDialog({ onClose }: { onClose: () => void }) {
             </ul>
           </div>
         )}
-        {totalLogged === 0 && <p className="text-[13px] text-muted">Aucun temps enregistré cette semaine. Démarre une session pour enregistrer le temps que tu passes vraiment.</p>}
+        {totalLogged === 0 && <p className="text-[13px] text-muted">{tr("Aucun temps enregistré cette semaine. Démarre une session pour enregistrer le temps que tu passes vraiment.")}</p>}
         {doneTasks.length > 0 && (
           <div>
             <SectionLabel className="mb-1">Terminées</SectionLabel>
@@ -567,20 +583,20 @@ export function ReviewDialog({ onClose }: { onClose: () => void }) {
         )}
         {(notDone.length > 0 || handIns.length > 0) && (
           <div>
-            <SectionLabel className="mb-1">Reste à faire</SectionLabel>
+            <SectionLabel className="mb-1">{tr("Reste à faire")}</SectionLabel>
             <ul className="flex flex-col text-[13px]">
               {notDone.slice(0, 8).map((e) => (
                 <li key={e.id} className="flex h-7 items-center gap-2">
                   <Dot tone="warn" />
                   <span className="min-w-0 flex-1 truncate">{e.title}</span>
-                  <span className="shrink-0 text-xs text-faint">planned {new Date(e.start * 1000).toLocaleDateString("fr-FR", { weekday: "short" })}, not marked done</span>
+                  <span className="shrink-0 text-xs text-faint">planned {new Date(e.start * 1000).toLocaleDateString(locale(), { weekday: "short" })}, not marked done</span>
                 </li>
               ))}
               {handIns.map((i) => (
                 <li key={i.id} className="flex h-7 items-center gap-2">
                   <Dot tone="danger" />
                   <span className="min-w-0 flex-1 truncate">{i.title}</span>
-                  <span className="shrink-0 text-xs text-faint">hand-in {new Date(i.end).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "short" })}</span>
+                  <span className="shrink-0 text-xs text-faint">hand-in {new Date(i.end).toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "short" })}</span>
                 </li>
               ))}
             </ul>
@@ -593,7 +609,7 @@ export function ReviewDialog({ onClose }: { onClose: () => void }) {
                   useUi.getState().openAssistant({ text: "#reorganize" });
                 }}
               >
-                Replacer ce qui n'a pas été fait
+                {tr("Replacer ce qui n'a pas été fait")}
               </Button>
             )}
           </div>

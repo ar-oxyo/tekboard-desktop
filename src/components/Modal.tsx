@@ -2,6 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn, IconButton } from "./ui";
+import { t } from "../lib/i18n";
 
 interface ModalProps {
   open: boolean;
@@ -36,7 +37,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
               )}
             </div>
             <Dialog.Close asChild>
-              <IconButton label="Fermer">
+              <IconButton label={t("Fermer")}>
                 <X className="size-4" />
               </IconButton>
             </Dialog.Close>

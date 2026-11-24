@@ -1,4 +1,4 @@
-//! What Tika remembers between conversations.
+//! What Artix remembers between conversations.
 //!
 //! A memory is one short fact with a scope (`global`, or `project:<key>`) and a kind. They are
 //! searched with SQLite FTS5, so a conversation starts with a handful of relevant lines instead

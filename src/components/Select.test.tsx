@@ -36,3 +36,21 @@ describe("Select never fails silently", () => {
     expect(screen.getByRole("combobox").textContent).toContain("Choisir");
   });
 });
+
+describe("Select works with the mouse", () => {
+  it("a click on an option chooses it", async () => {
+    const { fireEvent } = await import("@testing-library/react");
+    let chosen: string | null = null;
+    render(<Select value={null} onChange={(v) => (chosen = v)} options={opts} label="Projet" />);
+    fireEvent.click(screen.getByRole("combobox"));
+    const option = await screen.findByText("b");
+    fireEvent.click(option);
+    expect(chosen).toBe("/p/b");
+  });
+  it("only a real disabled flag greys a row out (cmdk writes data-disabled=\"false\" on every enabled row)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync("src/styles/index.css", "utf8");
+    expect(css).not.toMatch(/\.menu-item\[data-disabled\]\s*[,{]/);
+    expect(css).toMatch(/\.menu-item\[data-disabled="true"\]/);
+  });
+});

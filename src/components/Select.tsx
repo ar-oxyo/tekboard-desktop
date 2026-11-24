@@ -10,6 +10,7 @@ import { Command } from "cmdk";
 import { Check, ChevronsUpDown, Search, TriangleAlert } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { cn } from "./ui";
+import { t } from "../lib/i18n";
 
 export interface Option<T extends string = string> {
   value: T;
@@ -52,7 +53,7 @@ export function display<T extends string>(value: T | null, options: Array<Option
     if (value !== "") return { text: `${value.split("/").filter(Boolean).pop() ?? value} (introuvable)`, tone: "missing" };
   }
   if (options.length === 0 && emptyText) return { text: emptyText, tone: "placeholder" };
-  return { text: placeholder ?? "Choisir", tone: "placeholder" };
+  return { text: placeholder ?? t("Choisir"), tone: "placeholder" };
 }
 
 function groups<T extends string>(options: Array<Option<T>>): Array<[string | undefined, Array<Option<T>>]> {
@@ -79,7 +80,7 @@ export function Select<T extends string = string>({ value, onChange, options, pl
           role="combobox"
           aria-expanded={open}
           aria-label={label}
-          title={reason ?? (shown.tone === "missing" ? "Cette valeur n'est plus dans la liste : choisis-en une autre." : undefined)}
+          title={reason ?? (shown.tone === "missing" ? t("Cette valeur n'est plus dans la liste : choisis-en une autre.") : undefined)}
           className={cn(
             "select-trigger group inline-flex min-w-0 items-center justify-between gap-2 border border-white/8 text-left text-fg",
             "transition-colors duration-100 hover:border-line-strong focus-visible:border-accent focus-visible:outline-none data-[state=open]:border-accent",
@@ -100,7 +101,7 @@ export function Select<T extends string = string>({ value, onChange, options, pl
         <Popover.Content align="start" sideOffset={5} className="menu anim-pop z-[70] w-[max(var(--radix-popover-trigger-width),14rem)] overflow-hidden p-0">
           {options.length === 0 ? (
             <div className="flex flex-col items-start gap-2 px-3 py-3 text-xs text-muted">
-              <span>{emptyState?.text ?? "Aucun choix possible pour l'instant."}</span>
+              <span>{emptyState?.text ?? t("Aucun choix possible pour l'instant.")}</span>
               {emptyState?.action && (
                 <button
                   type="button"
@@ -119,11 +120,11 @@ export function Select<T extends string = string>({ value, onChange, options, pl
               {searchable && (
                 <div className="flex items-center gap-2 border-b border-white/8 px-2.5">
                   <Search className="size-3.5 shrink-0 text-faint" />
-                  <Command.Input autoFocus placeholder="Rechercher" className="h-8 min-w-0 flex-1 bg-transparent text-[13px] text-fg placeholder:text-faint focus:outline-none" />
+                  <Command.Input autoFocus placeholder={t("Rechercher")} className="h-8 min-w-0 flex-1 bg-transparent text-[13px] text-fg placeholder:text-faint focus:outline-none" />
                 </div>
               )}
               <Command.List className="max-h-72 overflow-y-auto p-1">
-                <Command.Empty className="px-2.5 py-3 text-xs text-muted">{empty ?? "Rien ne correspond."}</Command.Empty>
+                <Command.Empty className="px-2.5 py-3 text-xs text-muted">{empty ?? t("Rien ne correspond.")}</Command.Empty>
                 {groups(options).map(([group, items], i) => (
                   <Command.Group key={group ?? `g${i}`} heading={group}>
                     {items.map((o) => (

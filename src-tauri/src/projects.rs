@@ -122,6 +122,38 @@ pub fn classify(repo: &RepoInfo, my: Option<&MyLink>, orgs: &[String], epitech_d
     ("personal", "no link with MY Epitech, an Epitech organisation, a school folder or a module name".into())
 }
 
+/// Copies of a project (a folder copied or moved inside the projects folders): same remote
+/// repository, or no remote but same name and same last commit. In each group the folder kept
+/// is the one named like its remote, else the oldest on this computer; the others point to it.
+pub fn mark_duplicates(repos: &mut [RepoInfo]) {
+    let key = |r: &RepoInfo| -> Option<String> {
+        match &r.remote {
+            Some(rem) => Some(format!("remote:{}/{}/{}", rem.host.to_lowercase(), rem.owner.to_lowercase(), rem.name.to_lowercase().trim_end_matches(".git"))),
+            None => r.last_commit.as_ref().map(|c| format!("local:{}:{}", r.name.to_lowercase(), c.hash)),
+        }
+    };
+    let mut groups: HashMap<String, Vec<usize>> = HashMap::new();
+    for (i, r) in repos.iter().enumerate() {
+        if let Some(k) = key(r) {
+            groups.entry(k).or_default().push(i);
+        }
+    }
+    for idx in groups.into_values().filter(|g| g.len() > 1) {
+        let keep = *idx
+            .iter()
+            .min_by_key(|&&i| {
+                let r = &repos[i];
+                let named = r.remote.as_ref().is_some_and(|rem| rem.name.eq_ignore_ascii_case(r.name.as_str()));
+                (r.meta.visibility.is_some(), !named, r.added_at.unwrap_or(i64::MAX), r.path.len())
+            })
+            .expect("a group has members");
+        let original = repos[keep].path.clone();
+        for &i in idx.iter().filter(|&&i| i != keep) {
+            repos[i].duplicate_of = Some(original.clone());
+        }
+    }
+}
+
 const ACTIVE_DAYS: i64 = 21;
 
 /// The status the user chose, else one that follows the facts: handed in according to
@@ -200,7 +232,8 @@ pub fn board(repos: &[RepoInfo], overview: &Overview, now: DateTime<Utc>) -> Vec
     let local = now.with_timezone(&chrono::Local);
     let mut items: Vec<BoardItem> = Vec::new();
     for r in repos {
-        if r.progress == "done" {
+        // Finished or archived work has no hand-in left to watch.
+        if r.progress == "done" || r.meta.visibility.is_some() {
             continue;
         }
         let has_date = r.meta.deadline.is_some();

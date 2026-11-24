@@ -90,7 +90,7 @@ pub fn get(conn: &Connection, id: i64) -> Result<Focus> {
     conn.query_row(&format!("SELECT {COLS} FROM focus_sessions WHERE id = ?1"), [id], row).map_err(|_| AppError::new("not_found", "Session introuvable"))
 }
 
-/// The running session as Tika sees it.
+/// The running session as Artix sees it.
 pub fn current_json(conn: &Connection) -> Value {
     let now = chrono::Utc::now().timestamp();
     match current(conn).ok().flatten() {

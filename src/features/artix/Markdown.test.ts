@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { blocks } from "./Markdown";
 
-describe("Tika's markdown", () => {
+describe("Artix's markdown", () => {
   it("reads paragraphs, lists, headings and code", () => {
     const b = blocks("# Titre\n\nUn **gras**.\n\n- un\n- deux\n\n1. a\n2. b\n\n```c\nint x;\n```");
     expect(b.map((x) => x.kind)).toEqual(["h", "p", "ul", "ol", "code"]);

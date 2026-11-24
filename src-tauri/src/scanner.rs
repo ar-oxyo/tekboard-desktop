@@ -39,6 +39,9 @@ pub struct RepoInfo {
     pub deadline_state: String,
     /// MY Epitech project this repository corresponds to.
     pub my: Option<crate::projects::MyLink>,
+    /// Another folder holds the same project (same remote, or same name and same last commit):
+    /// this one looks like the copy. A clue for the user, never acted upon alone.
+    pub duplicate_of: Option<String>,
 }
 
 fn added_at(repo: &Path) -> Option<i64> {

@@ -1,11 +1,11 @@
-//! Conversations with Tika.
+//! Conversations with Artix.
 //!
 //! A turn is one Claude Code run (`runner`) with no built-in tool and TekBoard's tools over MCP.
 //! The conversation continues through Claude Code's own session (`--session-id`, then
 //! `--resume`), so earlier turns are not re-sent by TekBoard. Each turn starts with a small
 //! context card (≈ 1–2 k tokens): the screen, the day, the next hand-ins, the running session,
 //! the most useful memories and what the user decided since the last turn. Anything else is
-//! fetched by Tika through its tools, only when needed.
+//! fetched by Artix through its tools, only when needed.
 //!
 //! Messages are kept 30 days (temporary history); durable facts live in `memory`.
 
@@ -119,7 +119,7 @@ fn title_from(text: &str) -> String {
 }
 
 /// What the user decided since the last turn of this thread (proposals, undone actions):
-/// Tika must not believe a proposal was applied when it was refused.
+/// Artix must not believe a proposal was applied when it was refused.
 fn decisions_since(conn: &Connection, thread: i64, since: i64) -> Result<Vec<String>> {
     let mut out = Vec::new();
     let mut st = conn.prepare("SELECT id, title, status, outcome FROM ai_proposals WHERE thread_id = ?1 AND decided_at >= ?2 ORDER BY id")?;
@@ -166,6 +166,9 @@ pub fn context_card(state: &AppState, screen: &Screen, thread: Option<i64>, sinc
         on.push_str(&format!(" · {}", crate::ai::stream::clip(d, 120)));
     }
     lines.push(on);
+    if state.settings().map(|s| s.language == "en").unwrap_or(false) {
+        lines.push("Langue de l'utilisateur : anglais. Réponds en anglais, intitulés de tâches et d'entrées compris.".into());
+    }
     // The day, from the same engine as the tools (cheap: the repository scan is shared).
     if let Ok((repos, overview)) = crate::commands::load_repos(state) {
         let board = crate::projects::board(&repos, &overview, chrono::Utc::now());
@@ -225,7 +228,7 @@ pub fn send(state: &AppState, thread: Option<i64>, text: &str, screen: &Screen) 
     };
     let key = format!("thread:{thread}");
     if state.jobs.active("assistant", Some(&key)).is_some() {
-        return Err(AppError::new("busy", "Tika répond déjà dans cette conversation : attends la réponse ou interromps-la."));
+        return Err(AppError::new("busy", "Artix répond déjà dans cette conversation : attends la réponse ou interromps-la."));
     }
     let card = context_card(state, screen, Some(thread), last_turn)?;
     let (persona, settings) = {
@@ -246,8 +249,8 @@ pub fn send(state: &AppState, thread: Option<i64>, text: &str, screen: &Screen) 
     let session_id = session.unwrap_or_else(runner::new_session_id);
     req.session = if new_session { runner::Session::Start(session_id.clone()) } else { runner::Session::Resume(session_id.clone()) };
     let db = state.db.clone();
-    let title = format!("Tika · {}", title_from(text));
-    let job = state.jobs.start(state.db.clone(), "assistant", Some(key), title, &[("answer", "Tika réfléchit")], move |job| {
+    let title = format!("Artix · {}", title_from(text));
+    let job = state.jobs.start(state.db.clone(), "assistant", Some(key), title, &[("answer", "Artix réfléchit")], move |job| {
         let _grant = grant;
         job.start("answer");
         job.set("threadId", thread);
@@ -281,7 +284,7 @@ pub fn send(state: &AppState, thread: Option<i64>, text: &str, screen: &Screen) 
                 if !new_session && e.to_string().to_lowercase().contains("session") {
                     conn.execute("UPDATE ai_threads SET session_id = NULL WHERE id = ?1", [thread])?;
                 }
-                add_message(&conn, thread, "system", &format!("Tika n'a pas pu répondre : {e}"), &json!({"steps": steps, "proposals": proposals, "actions": actions, "error": true}))?;
+                add_message(&conn, thread, "system", &format!("Artix n'a pas pu répondre : {e}"), &json!({"steps": steps, "proposals": proposals, "actions": actions, "error": true}))?;
                 "failed"
             }
         };

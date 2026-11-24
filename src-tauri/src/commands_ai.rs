@@ -41,7 +41,7 @@ pub fn ai_thread_delete(state: State<'_, AppState>, id: i64) -> Result<()> {
     chat::delete_thread(&state.conn(), id)
 }
 
-/// The context card Tika would receive now (shown in Settings → AI, for transparency).
+/// The context card Artix would receive now (shown in Settings → AI, for transparency).
 #[tauri::command(async)]
 pub fn ai_context_preview(state: State<'_, AppState>, screen: chat::Screen) -> Result<String> {
     chat::context_card(&state, &screen, None, 0)
@@ -114,11 +114,12 @@ pub fn ai_proposal_decide(state: State<'_, AppState>, id: i64, accept: bool, kee
     tools::decide(&state, id, accept, keep)
 }
 
-/// Runs one of Tika's tools from the window (suggestion buttons, palette): same rules,
-/// same journal as when Tika calls it.
+/// Runs one of Artix's tools from the window (suggestion buttons, palette): same rules,
+/// same journal as when Artix calls it.
 #[tauri::command(async)]
-pub fn ai_tool(state: State<'_, AppState>, name: String, args: Value) -> Result<Value> {
-    let caller = tools::Caller { allowed: tools::chat_tools(), ..Default::default() };
+pub fn ai_tool(state: State<'_, AppState>, name: String, args: Value, thread: Option<i64>) -> Result<Value> {
+    // With a conversation, what the tool proposes shows up in it (a breakdown followed by its planning).
+    let caller = tools::Caller { allowed: tools::chat_tools(), thread_id: thread, ..Default::default() };
     tools::call(&state, &caller, &name, &args)
 }
 

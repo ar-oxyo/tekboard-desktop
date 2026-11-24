@@ -5,7 +5,7 @@ import { looksLikeEpitech, repoNameFromUrl, tildify, timeAgo } from "./format";
 
 const clean: RepoStatus = { branch: "main", upstream: "origin/main", ahead: 0, behind: 0, staged: 0, unstaged: 0, untracked: 0, conflicted: 0, unborn: false };
 
-const noMeta: RepoMeta = { favorite: false, archived: false, lastOpenedAt: null, deadline: null, deadlineAt: null, deadlineSource: null, status: null, kindOverride: null, myProjectId: null, runBin: null, runArgs: null };
+const noMeta: RepoMeta = { favorite: false, archived: false, lastOpenedAt: null, deadline: null, deadlineAt: null, deadlineSource: null, status: null, kindOverride: null, myProjectId: null, runBin: null, runArgs: null, visibility: null };
 
 function repo(over: Omit<Partial<RepoInfo>, "status" | "meta"> & { status?: Partial<RepoStatus> | null; meta?: Partial<RepoMeta> }): RepoInfo {
   const { status, meta, ...rest } = over;
@@ -29,6 +29,7 @@ function repo(over: Omit<Partial<RepoInfo>, "status" | "meta"> & { status?: Part
     kindReason: "",
     deadlineState: "unknown",
     my: null,
+    duplicateOf: null,
     ...rest,
   };
 }

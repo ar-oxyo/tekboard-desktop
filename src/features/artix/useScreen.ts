@@ -1,8 +1,9 @@
-// What is on screen, in the words Tika understands. Sent with each message so "this project"
+// What is on screen, in the words Artix understands. Sent with each message so "this project"
 // or "here" mean something, and used to pick the few suggestions the panel offers.
 import { useMemo } from "react";
 import type { Screen } from "../../lib/api";
 import { useUi, type Page } from "../../lib/store";
+import { t } from "../../lib/i18n";
 
 export const SCREEN_OF: Record<Page, string> = {
   overview: "today",
@@ -13,6 +14,7 @@ export const SCREEN_OF: Record<Page, string> = {
   library: "projects",
   templates: "resources",
   myepitech: "school",
+  logtime: "school",
   subjects: "school",
   analytics: "stats",
   cozy: "settings",
@@ -36,7 +38,7 @@ export function useScreen(): Screen {
 
 export const projectName = (key: string | null | undefined) => (key ? (key.startsWith("my:") ? key : (key.split("/").filter(Boolean).pop() ?? key)) : null);
 
-/** Two or three things worth asking here. Plain requests: Tika does the rest with its tools. */
+/** Two or three things worth asking here. Plain requests: Artix does the rest with its tools. */
 export function suggestionsFor(s: Screen, hour: number): string[] {
   const name = projectName(s.project);
   if (name) {
@@ -45,10 +47,10 @@ export function suggestionsFor(s: Screen, hour: number): string[] {
   }
   switch (s.page) {
     case "planning":
-      return ["Réorganise ma semaine en fonction de mes rendus", "Trouve-moi deux heures demain", "Ma semaine est-elle réaliste ?"];
+      return [t("Réorganise ma semaine en fonction de mes rendus"), t("Trouve-moi deux heures demain"), t("Ma semaine est-elle réaliste ?")];
     case "school":
-      return ["Quels sont mes prochains rendus ?", "Télécharge mes nouveaux sujets et ajoute-les à mes projets", "Où j'en suis de mes crédits ?"];
+      return [t("Quels sont mes prochains rendus ?"), t("Télécharge mes nouveaux sujets et ajoute-les à mes projets"), t("Où j'en suis de mes crédits ?")];
     default:
-      return hour >= 17 ? ["Qu'est-ce que j'ai fait aujourd'hui ?", "Prépare ma journée de demain", "J'en ai marre de coder, propose-moi autre chose pendant 20 minutes"] : ["Organise-moi ma journée, mais laisse-moi du temps libre", "Je suis en retard sur un projet, trouve une solution", "Prépare-moi une session de travail de 45 minutes"];
+      return hour >= 17 ? [t("Qu'est-ce que j'ai fait aujourd'hui ?"), t("Prépare ma journée de demain"), t("J'en ai marre de coder, propose-moi autre chose pendant 20 minutes")] : [t("Organise-moi ma journée, mais laisse-moi du temps libre"), t("Je suis en retard sur un projet, trouve une solution"), t("Prépare-moi une session de travail de 45 minutes")];
   }
 }

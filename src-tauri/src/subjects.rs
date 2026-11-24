@@ -27,9 +27,7 @@ pub fn subject_key(file_name: &str) -> String {
         _ => stem,
     };
     // Module prefix: "G-PSU-100_".
-    let b = stem.as_bytes();
-    let has_prefix = b.len() > 10 && b[0].is_ascii_uppercase() && b[1] == b'-' && b[2..5].iter().all(u8::is_ascii_uppercase) && b[5] == b'-' && b[6..9].iter().all(u8::is_ascii_digit) && (b[9] == b'_' || b[9] == b'-');
-    let stem = if has_prefix { &stem[10..] } else { stem };
+    let stem = if module_prefix(stem).is_some() { &stem[10..] } else { stem };
     let mut key = normalize(stem);
     for suffix in ["project", "bootstrap", "subject"] {
         if key.len() > suffix.len() {
@@ -41,32 +39,123 @@ pub fn subject_key(file_name: &str) -> String {
     key
 }
 
+/// How well a subject key fits a project name: 1000 = same name, 500+ = the subject name
+/// ends with the project's, a few points = contains it. 0 = no relation.
+pub fn rank(key: &str, project: &str) -> usize {
+    let p = normalize(project);
+    if p.is_empty() || key.is_empty() {
+        0
+    } else if key == p {
+        1000
+    } else if key.ends_with(&p) && p.len() >= 4 {
+        500 + p.len()
+    } else if key.contains(&p) && p.len() >= 6 {
+        p.len()
+    } else {
+        0
+    }
+}
+
 /// Index of the project a subject most plausibly belongs to, or `None` when unsure.
 /// `projects` holds project names (`settingup`, `cpoolday09`…).
 pub fn best_match(file_name: &str, projects: &[String]) -> Option<usize> {
     let key = subject_key(file_name);
-    if key.is_empty() {
-        return None;
-    }
     let mut best: Option<(usize, usize)> = None; // (rank, index); higher rank wins
     for (i, project) in projects.iter().enumerate() {
-        let p = normalize(project);
-        let rank = if p.is_empty() {
-            0
-        } else if key == p {
-            1000
-        } else if key.ends_with(&p) && p.len() >= 4 {
-            500 + p.len()
-        } else if key.contains(&p) && p.len() >= 6 {
-            p.len()
-        } else {
-            0
-        };
-        if rank > 0 && best.map_or(true, |(r, _)| rank > r) {
-            best = Some((rank, i));
+        let r = rank(&key, project);
+        if r > 0 && best.map_or(true, |(b, _)| r > b) {
+            best = Some((r, i));
         }
     }
     best.map(|(_, i)| i)
+}
+
+/// Module code a subject file name starts with: `G-PSU-100_my_ls.pdf` → `G-PSU-100`.
+pub fn module_prefix(file_name: &str) -> Option<&str> {
+    let b = file_name.as_bytes();
+    let ok = b.len() > 10 && b[0].is_ascii_uppercase() && b[1] == b'-' && b[2..5].iter().all(u8::is_ascii_uppercase) && b[5] == b'-' && b[6..9].iter().all(u8::is_ascii_digit) && (b[9] == b'_' || b[9] == b'-');
+    ok.then(|| &file_name[..9])
+}
+
+/// A link Tekboard is not sure enough about to make alone: shown for the user to accept or refuse.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LinkSuggestion {
+    pub subject_id: i64,
+    pub repo_path: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Association {
+    /// Links made or corrected by this pass.
+    pub linked: usize,
+    pub suggestions: Vec<LinkSuggestion>,
+}
+
+/// A local repository as the matching sees it.
+pub struct Candidate<'a> {
+    pub path: &'a str,
+    /// Names the project is known by: the Epitech project part of the folder name, the folder, the remote.
+    pub names: Vec<&'a str>,
+    pub module: Option<&'a str>,
+}
+
+/// Ties subjects to repositories, and keeps the ties current:
+/// 1. a document downloaded from a MY Epitech project follows that project's repository
+///    (by identifier: the most reliable signal), including when the repository moves;
+/// 2. otherwise, one repository whose name is the subject's own name (and whose module agrees
+///    when the file name carries one) is linked;
+/// 3. anything less certain becomes a suggestion, never a link.
+/// A link chosen by hand is never changed, and a refused pair is never suggested again.
+pub fn associate(conn: &Connection, repos: &[Candidate], my_repo_of: &dyn Fn(i64) -> Option<String>) -> Result<Association> {
+    let mut out = Association::default();
+    let rejects = db::subject_rejects(conn)?;
+    let refused = |id: i64, path: &str| rejects.iter().any(|(s, p)| *s == id && p == path);
+    let exists = |path: &str| repos.iter().any(|r| r.path == path);
+    for subject in db::list_subjects(conn)? {
+        if subject.link_source.as_deref() == Some("manual") {
+            continue;
+        }
+        let current_ok = subject.repo_path.as_deref().is_some_and(exists);
+        // A link from before this version (no source recorded) that still points to a project is kept.
+        if current_ok && subject.link_source.is_none() {
+            continue;
+        }
+        // 1. By MY Epitech identifier.
+        if let Some(target) = subject.my_project_id.and_then(my_repo_of).filter(|p| exists(p) && !refused(subject.id, p)) {
+            if db::link_subject_auto(conn, subject.id, &target)? {
+                out.linked += 1;
+            }
+            continue;
+        }
+        if current_ok {
+            continue;
+        }
+        // 2./3. By name, for documents without a link (or whose repository is gone).
+        let key = subject_key(&subject.name);
+        let module = module_prefix(&subject.name);
+        let mut scored: Vec<(usize, &Candidate)> = repos
+            .iter()
+            .filter(|r| !refused(subject.id, r.path))
+            .map(|r| (r.names.iter().map(|n| rank(&key, n)).max().unwrap_or(0), r))
+            .filter(|(score, r)| *score > 0 && module.is_none_or(|m| r.module.is_none_or(|rm| rm == m)))
+            .collect();
+        scored.sort_by(|a, b| b.0.cmp(&a.0));
+        let Some(&(top, best)) = scored.first() else { continue };
+        let tied = scored.iter().filter(|(s, _)| *s == top).count();
+        let module_agrees = module.is_some() && best.module == module;
+        if top >= 1000 && tied == 1 && (module.is_none() || module_agrees) {
+            if db::link_subject_auto(conn, subject.id, best.path)? {
+                out.linked += 1;
+            }
+        } else {
+            let reason = if tied > 1 { format!("{tied} projets portent ce nom") } else if top >= 1000 { "même nom, module non confirmé".to_string() } else { "nom proche".to_string() };
+            out.suggestions.push(LinkSuggestion { subject_id: subject.id, repo_path: best.path.to_string(), reason });
+        }
+    }
+    Ok(out)
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -209,6 +298,50 @@ mod tests {
         assert_eq!(m("epitech_c_coding_style.pdf"), None);
         assert_eq!(m("Arrêté de modification.pdf"), None);
         assert_eq!(m("cpool_Day02.pdf"), None, "day02 is not day01 or day09");
+    }
+
+    #[test]
+    fn association_is_certain_or_asks() {
+        let tmp = tempfile::tempdir().unwrap();
+        let conn = db::open_in_memory().unwrap();
+        let store = tmp.path().join("subjects");
+        let mk = |name: &str, body: &[u8]| {
+            let f = tmp.path().join(name);
+            fs::write(&f, body).unwrap();
+            import(&conn, &store, &f, None, 1).unwrap().subject.id
+        };
+        let ls = mk("G-PSU-100_my_ls.pdf", b"%PDF-1 ls");
+        let hunter = mk("G-MUL-100_my_hunter.pdf", b"%PDF-1 hunter");
+        let printf = mk("my_printf-bootstrap.pdf", b"%PDF-1 printf");
+        let organized = mk("G-CPE-100_organized.pdf", b"%PDF-1 organized");
+        let from_my = mk("Subject.pdf", b"%PDF-1 radar");
+        db::set_subject_origin(&conn, from_my, Some(42), true).unwrap();
+        let repos = vec![
+            Candidate { path: "/p/myls", names: vec!["my_ls"], module: Some("G-PSU-100") },
+            Candidate { path: "/p/hunter", names: vec!["myhunter"], module: Some("G-MUL-100") },
+            Candidate { path: "/p/hunter-copy", names: vec!["myhunter"], module: Some("G-MUL-100") },
+            Candidate { path: "/p/printf", names: vec!["my_printf"], module: None },
+            Candidate { path: "/p/radar", names: vec!["radar"], module: Some("G-MUL-100") },
+            Candidate { path: "/p/organized", names: vec!["organized"], module: None },
+        ];
+        let my = |id: i64| (id == 42).then(|| "/p/radar".to_string());
+        let a = associate(&conn, &repos, &my).unwrap();
+        let get = |id| db::get_subject(&conn, id).unwrap().unwrap();
+        assert_eq!(get(ls).repo_path.as_deref(), Some("/p/myls"), "same name, same module: linked");
+        assert_eq!(get(from_my).repo_path.as_deref(), Some("/p/radar"), "MY Epitech identifier wins over the name");
+        assert_eq!(get(hunter).repo_path, None, "two repositories with that name: not linked");
+        assert!(a.suggestions.iter().any(|s| s.subject_id == hunter && s.reason.contains("2 projets")));
+        assert_eq!(get(printf).repo_path.as_deref(), Some("/p/printf"), "one repository with that exact name, no module to contradict it");
+        assert_eq!(get(organized).repo_path, None, "the file names a module the repository does not confirm: asked, not linked");
+        assert!(a.suggestions.iter().any(|s| s.subject_id == organized && s.repo_path == "/p/organized"));
+        assert_eq!(a.linked, 3);
+        // A refused suggestion is not offered again; a link made by hand is never moved.
+        db::reject_subject_link(&conn, organized, "/p/organized").unwrap();
+        db::link_subject_by_hand(&conn, ls, Some("/p/printf")).unwrap();
+        let b = associate(&conn, &repos, &my).unwrap();
+        assert!(!b.suggestions.iter().any(|s| s.subject_id == organized));
+        assert_eq!(get(ls).repo_path.as_deref(), Some("/p/printf"));
+        assert_eq!(b.linked, 0, "nothing changes twice");
     }
 
     #[test]

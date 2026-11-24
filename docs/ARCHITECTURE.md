@@ -113,7 +113,7 @@ Database migration v5 adds `status`, `deadline_at`, `deadline_source`, `kind_ove
 
 **MY Epitech background work** (`commands_my::start_background`): optional hidden reopening of the stored session at startup, and a sync every N minutes while a valid token is in memory. A failed sync is logged and not retried before the next interval; a refused session stops it and is reported.
 
-## Added in 0.5 — Tika
+## Added in 0.5 — the assistant (Tika, renamed Artix)
 
 | Module | Role |
 |---|---|
@@ -134,6 +134,21 @@ Database migration v5 adds `status`, `deadline_at`, `deadline_source`, `kind_ove
 
 Migrations v7 (assistant tables, FTS5) and v8 (`focus_sessions`, `plan_events.dedupe_key`, `work_log.event_id`) are additive.
 
+## Added after 0.5
+
+| Piece | Role |
+|---|---|
+| `commands_my::my_sync_auto` | The one **Sync** button: token in memory, else the stored session reopened hidden (12 s), else the MY Epitech window shown for sign-in (5 min); syncs as soon as a token arrives, retries once after a refused token. The window is closed only if this sync opened it; a hidden window found at the start is hidden again. Progress goes out as `my-sync-progress`. Artix's `sync_my_epitech` uses the same flow. |
+| `subjects::associate` | Subject ↔ repository links: by MY Epitech project id first (also when the repository moves), else one repository with the exact same name (module agreeing when the file name carries one); anything less certain is a suggestion the user accepts or refuses (`subject_rejects`). A link set by hand (`link_source = manual`) is never changed; links made before this version are kept. |
+| `projects::mark_duplicates` | Copies of a project (same remote, or same name and last commit): the folder named like its remote, else the oldest, is kept; the others carry `duplicate_of`. MY Epitech matching prefers the original. |
+| `repo_meta.visibility` | `hidden` (out of every list, of planning, of Artix and of MY Epitech matching) or `archived` (out of everyday lists). Folders are never touched. `settings.epitech_only` (default on) drops personal projects from `load_repos`; the window applies the same rule in `useRepos`. |
+| `logtime.rs` | Weekly log time (Monday → Sunday, local) from `/students/logtime`, against 30 h. Missing days after the last one reported are said, never counted as zero. |
+| `planner` categories | `plan_categories`: the five kinds are base categories (renamed, recoloured, never deleted); user categories colour and label entries, `plan_events.category`. `plan_projects.calendar_hidden` stops drawing a project's school items (free time still counts them). |
+| `propose_breakdown` | A breakdown is a proposal of tasks only. The card offers *Accept* (tasks) or *Accept and plan* (tasks, then `suggest_plan` for that project, itself a proposal). |
+| `src/lib/i18n.ts` | French text is the key, `src/locales/en.ts` its English (seeded from the v0.4 English interface). The language lives in the settings; changing it reloads the window. Artix answers in the interface language. |
+
+Migration v9 is additive (`visibility`, `calendar_hidden`, `plan_categories`, `plan_events.category`, `subjects.my_project_id / link_source / main`, `subject_rejects`).
+
 ## Roadmap
 
 1. ~~Foundations, Project Launcher, Templates~~
@@ -141,3 +156,11 @@ Migrations v7 (assistant tables, FTS5) and v8 (`focus_sessions`, `plan_events.de
 3. ~~Git actions (no destructive operation), analytics from local `git log`, Cozy Fox panel~~
 4. Integrated terminal (xterm.js + PTY), calendar import, Epitech connector (manual first)
 5. Automations, command library, notes search, AppImage, release pipeline
+
+## Distribution, updates and data (0.6)
+
+- **Packages**: `.deb` (Ubuntu/Debian, recommended) and AppImage, both signed with the updater key. `.github/workflows/release.yml` runs on a `vX.Y.Z` tag: checks versions and changelog (`scripts/release.mjs check`), tests, builds on Ubuntu 22.04, writes `latest.json` (one entry per format: `linux-x86_64-deb`, `linux-x86_64-appimage`), `SHA256SUMS`, a provenance attestation, and creates a **draft** release.
+- **Updates** (`updates.rs`, `tauri-plugin-updater`): the endpoint is `releases/latest/download/latest.json`, so only a published release is seen. The format comes from the bundle type patched into the binary: AppImage → replaced in place; .deb → `dpkg -i` through pkexec (or zenity/kdialog), else the verified .deb is saved to Downloads; built by hand → check only. `TEKBOARD_UPDATE_URL` points the check at a test server; the signature is still verified against the built-in key.
+- **Data** (`datamgmt.rs`, Settings → Données): backup = zip of `manifest.json`, a `VACUUM INTO` snapshot, `templates/`, `subjects/`, `libraries/` (never `my-session/` nor the cache). Restore checks the manifest (newer schema refused), extracts with `enclosed_name`, runs `integrity_check`, migrates, moves library paths to this computer, saves the current data to `backups/before-import-*.zip`, then swaps the shared connection. Full reset erases only inside the data and cache folders (checked by name) and keeps any projects folder inside them.
+- **Start** (`lib.rs::start`): an unreadable database is renamed `tekboard.db.corrupt-<date>`; a database from a newer version is left alone and the user told; damaged settings keep the fields that still read (`settings::repair`); an unwritable data folder shows a native dialog. Data and cache folders are `0700`.
+- **First run**: `index.html` draws the launch screen before any script, removed when settings are read (`lib/splash.ts`). `features/onboarding/OnboardingFlow.tsx` replaces the app while `onboarded` is false; the step is saved in `settings.onboardingStep`.

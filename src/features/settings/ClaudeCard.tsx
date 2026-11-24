@@ -8,12 +8,13 @@ import { api, asAppError, type ClaudeReport } from "../../lib/api";
 import { tildify } from "../../lib/format";
 import { useHome } from "../../lib/hooks";
 import { useUi } from "../../lib/store";
+import { t } from "../../lib/i18n";
 
 const STATE: Record<ClaudeReport["state"], { label: string; tone: "ok" | "danger" | "warn" }> = {
   ready: { label: "Prêt", tone: "ok" },
   not_found: { label: "Introuvable", tone: "danger" },
-  not_executable: { label: "Mauvais chemin", tone: "danger" },
-  version_failed: { label: "Ne répond pas", tone: "warn" },
+  not_executable: { label: t("Mauvais chemin"), tone: "danger" },
+  version_failed: { label: t("Ne répond pas"), tone: "warn" },
 };
 
 const SOURCE: Record<NonNullable<ClaudeReport["source"]>, string> = {
@@ -46,7 +47,7 @@ export function ClaudeCard({ configured, onPick, saving }: { configured: string 
     void qc.invalidateQueries({ queryKey: ["testing-info"] });
   };
   async function browse() {
-    const file = await open({ multiple: false, directory: false, title: "Choisis l'exécutable de Claude Code (claude)" });
+    const file = await open({ multiple: false, directory: false, title: t("Choisis l'exécutable de Claude Code (claude)") });
     if (typeof file === "string") {
       setTyped(null);
       onPick(file);
@@ -81,12 +82,12 @@ export function ClaudeCard({ configured, onPick, saving }: { configured: string 
             </dd>
             <dt className="text-xs text-faint">Version</dt>
             <dd className="selectable text-xs">{d.version ?? <span className="text-muted">—</span>}</dd>
-            <dt className="text-xs text-faint">Trouvé dans</dt>
+            <dt className="text-xs text-faint">{t("Trouvé dans")}</dt>
             <dd className="text-xs text-muted">{d.source ? SOURCE[d.source] : "—"}</dd>
           </dl>
           {d.detail && <ErrorNote>{d.detail}</ErrorNote>}
           <div>
-            <span className="mb-1 block text-xs font-medium text-muted">Exécutable à utiliser</span>
+            <span className="mb-1 block text-xs font-medium text-muted">{t("Exécutable à utiliser")}</span>
             <form
               className="flex gap-2"
               onSubmit={(e) => {
@@ -95,27 +96,27 @@ export function ClaudeCard({ configured, onPick, saving }: { configured: string 
                 setTyped(null);
               }}
             >
-              <Input className="font-mono text-xs" placeholder="Trouvé automatiquement, ou choisis le programme claude" value={value} onChange={(e) => setTyped(e.target.value)} />
+              <Input className="font-mono text-xs" placeholder={t("Trouvé automatiquement, ou choisis le programme claude")} value={value} onChange={(e) => setTyped(e.target.value)} />
               {typed !== null && typed !== (configured ?? "") && (
                 <Button busy={saving} onClick={() => { onPick(value.trim() || null); setTyped(null); }}>
                   Utiliser
                 </Button>
               )}
               <Button icon={<FolderSearch className="size-3.5" />} onClick={() => void browse()}>
-                Parcourir…
+                {t("Parcourir…")}
               </Button>
               {configured && (
-                <Button variant="ghost" icon={<X className="size-3.5" />} title="Revenir à la détection automatique" onClick={() => { setTyped(null); onPick(null); }}>
+                <Button variant="ghost" icon={<X className="size-3.5" />} title={t("Revenir à la détection automatique")} onClick={() => { setTyped(null); onPick(null); }}>
                   Auto
                 </Button>
               )}
             </form>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" icon={<Play className="size-3.5" />} busy={check.isPending} disabled={d.state !== "ready"} onClick={() => check.mutate()} title="Envoie une courte question à Claude Code, sans fenêtre, dans un dossier vide, avec les mêmes options que les vraies tâches. Compte dans ton usage de Claude.">
+            <Button size="sm" icon={<Play className="size-3.5" />} busy={check.isPending} disabled={d.state !== "ready"} onClick={() => check.mutate()} title={t("Envoie une courte question à Claude Code, sans fenêtre, dans un dossier vide, avec les mêmes options que les vraies tâches. Compte dans ton usage de Claude.")}>
               Lancer un test
             </Button>
-            {check.isPending && <span className="text-xs text-muted">Question à Claude Code… quelques secondes.</span>}
+            {check.isPending && <span className="text-xs text-muted">{t("Question à Claude Code… quelques secondes.")}</span>}
             {check.data && (
               <span className={`selectable min-w-0 text-xs ${check.data.ok ? "text-ok" : "text-danger"}`}>
                 {check.data.ok ? `Answered “${check.data.answer}” in ${(check.data.durationMs / 1000).toFixed(1)} s${check.data.costUsd !== null ? ` · $${check.data.costUsd.toFixed(3)}` : ""}` : check.data.error}
@@ -135,7 +136,7 @@ export function ClaudeCard({ configured, onPick, saving }: { configured: string 
                 </p>
                 {missing.length > 0 ? (
                   <>
-                    <p className="mt-1.5 text-fg">Dans le PATH de ton shell mais pas dans celui de l'application :</p>
+                    <p className="mt-1.5 text-fg">{t("Dans le PATH de ton shell mais pas dans celui de l'application :")}</p>
                     <ul className="selectable mt-0.5 font-mono text-[11px]">{missing.map((p) => <li key={p}>{tildify(p, home)}</li>)}</ul>
                   </>
                 ) : (

@@ -180,13 +180,24 @@ pub fn match_repo<'a>(repos: &'a [RepoInfo], id: i64, unit_code: &str, name: &st
     let free = |r: &&RepoInfo| r.meta.my_project_id.is_none();
     if let Some((owner, repo_name)) = repo_link.and_then(owner_name) {
         let hits: Vec<&RepoInfo> = repos.iter().filter(free).filter(|r| r.remote.as_ref().is_some_and(|x| x.owner.to_lowercase() == owner && x.name.to_lowercase() == repo_name)).collect();
-        if hits.len() == 1 {
-            return Some((hits[0], "repository link"));
+        if let Some(r) = single(&hits) {
+            return Some((r, "repository link"));
         }
     }
     let wanted = norm(name);
     let hits: Vec<&RepoInfo> = repos.iter().filter(free).filter(|r| r.epitech.as_ref().is_some_and(|e| e.module == unit_code && norm(&e.project) == wanted)).collect();
-    (hits.len() == 1 && !wanted.is_empty()).then(|| (hits[0], "module and name"))
+    single(&hits).filter(|_| !wanted.is_empty()).map(|r| (r, "module and name"))
+}
+
+/// The one hit, or the one that is not a copy of another (see `projects::mark_duplicates`).
+fn single<'a>(hits: &[&'a RepoInfo]) -> Option<&'a RepoInfo> {
+    match hits {
+        [one] => Some(*one),
+        many => {
+            let originals: Vec<&'a RepoInfo> = many.iter().copied().filter(|r| r.duplicate_of.is_none()).collect();
+            (originals.len() == 1).then(|| originals[0])
+        }
+    }
 }
 
 /// Organisations (lowercased) that host this account's school repositories: from the

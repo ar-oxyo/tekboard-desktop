@@ -1,5 +1,5 @@
 //! Reading a subject once: the PDF text goes to Claude Code (no tool at all) with a JSON
-//! schema, and the digest is kept (`project_briefs`) for every later use — Tika's answers,
+//! schema, and the digest is kept (`project_briefs`) for every later use — Artix's answers,
 //! the planning (an estimate when none was given), the moulinette. A new version of the
 //! subject marks the digest out of date instead of silently keeping it.
 
@@ -31,7 +31,7 @@ pub fn analyze(state: &AppState, subject_id: i64) -> Result<u64> {
     let model = super::chat::AiSettings::load(&state.conn()).chat_model;
     let dir = state.cache_dir.join("assistant");
     std::fs::create_dir_all(&dir)?;
-    Ok(state.jobs.start(state.db.clone(), "subject", Some(s.hash.clone()), format!("Lecture du sujet · {}", s.name), &[("read", "Tika lit le sujet")], move |job| {
+    Ok(state.jobs.start(state.db.clone(), "subject", Some(s.hash.clone()), format!("Lecture du sujet · {}", s.name), &[("read", "Artix lit le sujet")], move |job| {
         job.start("read");
         let mut req = runner::Request::new(format!("{PROMPT}{text}\n--- FIN ---"), runner::Tools::None, Duration::from_secs(300));
         req.json_schema = Some(SCHEMA.into());

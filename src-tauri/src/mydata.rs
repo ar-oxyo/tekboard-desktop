@@ -64,6 +64,9 @@ pub struct AgendaItem {
     pub status: Option<String>,
     /// MY Epitech session id, to look up its free slots on demand.
     pub event_id: Option<i64>,
+    /// Planning key of the project the item belongs to (repository path, or `my:<id>` when it
+    /// is not cloned): what "leave this project out of the calendar" applies to.
+    pub project_key: Option<String>,
 }
 
 /// `not_registered` → `not registered`.
@@ -110,12 +113,12 @@ pub fn agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Ag
             Some("manual") => "hand-in, typed by you",
             _ => "hand-in",
         };
-        a.items.push(AgendaItem { kind: "deadline", title: b.title.clone(), day: day.clone(), start: b.at.clone(), end: None, module: b.module.clone(), detail: Some(if b.cloned { origin.to_string() } else { format!("{origin} · not cloned") }), mine: true, mandatory: true, exam: false, repo_path: b.repo_path.clone(), until: None, status: None, event_id: None });
+        a.items.push(AgendaItem { kind: "deadline", title: b.title.clone(), day: day.clone(), start: b.at.clone(), end: None, module: b.module.clone(), detail: Some(if b.cloned { origin.to_string() } else { format!("{origin} · not cloned") }), mine: true, mandatory: true, exam: false, repo_path: b.repo_path.clone(), until: None, status: None, event_id: None, project_key: b.repo_path.clone().or_else(|| b.my_id.map(|i| format!("my:{i}"))) });
     }
     // Projects that open later.
     for p in overview.projects.iter().filter(|p| p.upcoming) {
         if let Some(due) = p.start.as_deref().and_then(deadlines::from_instant) {
-            a.items.push(AgendaItem { kind: "start", title: format!("{} opens", p.name), day: due.day, start: due.at, end: None, module: Some(p.unit_code.clone()).filter(|u| !u.is_empty()), detail: p.unit_name.clone(), mine: true, mandatory: false, exam: false, repo_path: p.repo_path.clone(), until: None, status: None, event_id: None });
+            a.items.push(AgendaItem { kind: "start", title: format!("{} opens", p.name), day: due.day, start: due.at, end: None, module: Some(p.unit_code.clone()).filter(|u| !u.is_empty()), detail: p.unit_name.clone(), mine: true, mandatory: false, exam: false, repo_path: p.repo_path.clone(), until: None, status: None, event_id: None, project_key: Some(p.repo_path.clone().unwrap_or_else(|| format!("my:{}", p.id))) });
         }
     }
     // Your attendance per session, from the activities of your projects: `registered`,
@@ -163,6 +166,7 @@ pub fn agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Ag
                 until: None,
                 status,
                 event_id: id,
+                project_key: project.map(|p| p.repo_path.clone().unwrap_or_else(|| format!("my:{}", p.id))),
             });
         }
     }
@@ -175,7 +179,7 @@ pub fn agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Ag
             continue;
         }
         let status = s(&x["status"]);
-        a.items.push(AgendaItem { kind: "activity", title, day, start: Some(start), end: s(&x["endDate"]), module: Some(p.unit_code.clone()).filter(|u| !u.is_empty()), detail: status.as_deref().map(status_text).map(str::to_string), mine: true, mandatory: x["mandatory"].as_bool().unwrap_or(false), exam: false, repo_path: p.repo_path.clone(), until: None, status, event_id: x["eventId"].as_i64() });
+        a.items.push(AgendaItem { kind: "activity", title, day, start: Some(start), end: s(&x["endDate"]), module: Some(p.unit_code.clone()).filter(|u| !u.is_empty()), detail: status.as_deref().map(status_text).map(str::to_string), mine: true, mandatory: x["mandatory"].as_bool().unwrap_or(false), exam: false, repo_path: p.repo_path.clone(), until: None, status, event_id: x["eventId"].as_i64(), project_key: Some(p.repo_path.clone().unwrap_or_else(|| format!("my:{}", p.id))) });
     }
     // Sessions listed for the campus in the synced window.
     match cached(conn, EVENTS) {
@@ -206,6 +210,7 @@ pub fn agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Ag
                     until: None,
                     status: None,
                     event_id: e["id"].as_i64(),
+                    project_key: None,
                 });
             }
         }
@@ -219,7 +224,7 @@ pub fn agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Ag
                 if NaiveDate::parse_from_str(&from, "%Y-%m-%d").is_err() {
                     continue;
                 }
-                a.items.push(AgendaItem { kind: "holiday", title: s(&x["name"]).unwrap_or_else(|| "Public holiday".into()), day: from.clone(), start: None, end: None, module: None, detail: None, mine: true, mandatory: false, exam: false, repo_path: None, until: Some(to).filter(|t| *t != from), status: None, event_id: None });
+                a.items.push(AgendaItem { kind: "holiday", title: s(&x["name"]).unwrap_or_else(|| "Public holiday".into()), day: from.clone(), start: None, end: None, module: None, detail: None, mine: true, mandatory: false, exam: false, repo_path: None, until: Some(to).filter(|t| *t != from), status: None, event_id: None, project_key: None });
             }
         }
     }

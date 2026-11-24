@@ -1,7 +1,8 @@
 // Planning logic, computed locally: what is on the calendar, where the free time is, how to
 // spread the remaining work before each hand-in. No call to Claude and no network here.
-import type { AgendaItem, BoardItem, ScheduleAction, PlanEvent, PlanState, PlanTask, Progress, RepoInfo } from "./api";
+import type { AgendaItem, BoardItem, ScheduleAction, PlanCategory, PlanEvent, PlanState, PlanTask, Progress, RepoInfo } from "./api";
 import { displayName, dueTime, moduleOf } from "./repos";
+import { locale, t } from "./i18n";
 
 export const MIN = 60_000;
 export const DAY = 86_400_000;
@@ -160,7 +161,7 @@ export interface CalItem {
   agenda?: AgendaItem;
 }
 
-export const KIND_LABEL: Record<CalKind, string> = { session: "Session de travail", task: "Tâche", event: "Événement", reminder: "Rappel", block: "Indisponible", deadline: "Rendu", activity: "Ta séance", campus: "Séance du campus", holiday: "Vacances", start: "Ouverture du projet" };
+export const KIND_LABEL: Record<CalKind, string> = { session: t("Session de travail"), task: t("Tâche"), event: t("Événement"), reminder: t("Rappel"), block: t("Indisponible"), deadline: t("Rendu"), activity: t("Ta séance"), campus: t("Séance du campus"), holiday: t("Vacances"), start: t("Ouverture du projet") };
 /** Neutral colours of entries that belong to no project. */
 export const KIND_COLOR: Record<CalKind, string> = { session: "#8b7cf6", task: "#8b7cf6", event: "#5fb4e8", reminder: "#e2a93b", block: "#6b7280", deadline: "#e5646a", activity: "#7f8aa3", campus: "#6b7280", holiday: "#4cc38a", start: "#5fb4e8" };
 
@@ -169,14 +170,30 @@ export const DEFAULT_FILTERS: Filters = { work: true, personal: true, handins: t
 const FILTER_OF: Record<CalKind, keyof Filters> = { session: "work", task: "work", event: "personal", reminder: "personal", block: "personal", deadline: "handins", start: "handins", activity: "school", campus: "campus", holiday: "holidays" };
 export const visible = (i: CalItem, f: Filters) => f[FILTER_OF[i.kind]];
 
-export function calItems(state: PlanState | undefined, agenda: AgendaItem[], projects: PlanProject[]): CalItem[] {
+/** Colour of one of your entries: its own, its category's, its project's, then its kind's. */
+export function entryColor(e: PlanEvent, project: PlanProject | undefined, categories: PlanCategory[]): string {
+  const own = e.category ? categories.find((c) => c.id === e.category) : undefined;
+  const base = categories.find((c) => c.id === e.kind);
+  return e.color ?? own?.color ?? project?.color ?? base?.color ?? KIND_COLOR[e.kind];
+}
+
+/** Planning keys of the projects left out of the calendar. */
+export const calendarHidden = (state: PlanState | undefined): Set<string> => new Set((state?.projects ?? []).filter((p) => p.calendarHidden).map((p) => p.key));
+
+/** `hideProjects`: leave out the school items of projects hidden from the calendar (display only:
+ *  free time is computed with them, they are still real constraints). */
+export function calItems(state: PlanState | undefined, agenda: AgendaItem[], projects: PlanProject[], categories: PlanCategory[] = [], hideProjects = true): CalItem[] {
   const byKey = new Map(projects.map((p) => [p.key, p]));
+  const hidden = hideProjects ? calendarHidden(state) : new Set<string>();
   const out: CalItem[] = [];
   for (const e of state?.events ?? []) {
     const p = e.project ? byKey.get(e.project) : undefined;
-    out.push({ id: `p${e.id}`, source: "plan", kind: e.kind, title: e.title, start: e.start * 1000, end: e.end * 1000, allDay: e.allDay, project: e.project, color: e.color ?? p?.color ?? KIND_COLOR[e.kind], detail: e.notes || null, module: p?.module ?? null, done: e.done, exam: false, unregistered: false, event: e });
+    out.push({ id: `p${e.id}`, source: "plan", kind: e.kind, title: e.title, start: e.start * 1000, end: e.end * 1000, allDay: e.allDay, project: e.project, color: entryColor(e, p, categories), detail: e.notes || null, module: p?.module ?? null, done: e.done, exam: false, unregistered: false, event: e });
   }
   agenda.forEach((a, n) => {
+    // A project left out of the calendar (a year-long one, say): its school items are not drawn.
+    // Its data and the sessions you planned for it stay.
+    if (a.projectKey && hidden.has(a.projectKey)) return;
     const kind: CalKind = a.kind === "event" ? (a.mine ? "activity" : "campus") : a.kind;
     const day = dayStartOf(a.day);
     const at = a.start ? Date.parse(a.start) : Number.NaN;
@@ -264,7 +281,7 @@ export function projectLoad(p: PlanProject, events: PlanEvent[], busy: Span[], p
   let why = "";
   if (p.dueMs !== null && p.dueMs < now) {
     risk = "late";
-    why = "rendu dépassé";
+    why = t("rendu dépassé");
   } else if (p.dueMs !== null) {
     const left = p.dueMs - now;
     if (p.estimateMin !== null) {
@@ -277,11 +294,11 @@ export function projectLoad(p: PlanProject, events: PlanEvent[], busy: Span[], p
         why = `${fmtDur(unplanned)} non planifiées, rendu proche`;
       } else {
         risk = "ok";
-        why = unplanned > 0 ? `${fmtDur(unplanned)} encore à planifier` : p.estimateMin === 0 ? "plus rien à faire" : "tout le travail est planifié";
+        why = unplanned > 0 ? `${fmtDur(unplanned)} encore à planifier` : p.estimateMin === 0 ? t("plus rien à faire") : t("tout le travail est planifié");
       }
     } else if (left < 3 * DAY && planned === 0) {
       risk = "risk";
-      why = "rendu proche, sans estimation ni session";
+      why = t("rendu proche, sans estimation ni session");
     }
   }
   return { remaining: p.estimateMin, planned, unplanned, next, risk, why };
@@ -394,7 +411,7 @@ export function unplanned(tasks: PlanTask[], events: PlanEvent[], now: number): 
   const held = new Set(events.filter((e) => e.taskId !== null && e.end * 1000 > now && !e.done).map((e) => e.taskId));
   return openTasks(tasks).filter((t) => !held.has(t.id) && t.kind === "task");
 }
-export const PRIORITY = ["Aucune priorité", "Basse", "Moyenne", "Haute"];
+export const PRIORITY = [t("Aucune priorité"), "Basse", "Moyenne", "Haute"];
 
 /** Done / total of a project's tasks (sub-tasks count), or `null` when it has none. */
 export function taskProgress(tasks: PlanTask[], key: string): { done: number; total: number } | null {
@@ -436,19 +453,19 @@ export function describeAction(a: ScheduleAction, projects: PlanProject[], event
   const name = (key: string | null) => (key ? (projects.find((p) => p.key === key)?.title ?? key.split("/").pop() ?? key) : null);
   const span = (start: string, end: string) => {
     const [s, e] = [fromLocalIso(start), fromLocalIso(end)];
-    return `${new Date(s).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })} · ${hhmm(s)} – ${hhmm(e)}`;
+    return `${new Date(s).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" })} · ${hhmm(s)} – ${hhmm(e)}`;
   };
   switch (a.type) {
     case "create_session":
-      return { verb: "Ajouter", text: a.title || name(a.project) || "Session de travail", when: span(a.start, a.end) };
+      return { verb: t("Ajouter"), text: a.title || name(a.project) || t("Session de travail"), when: span(a.start, a.end) };
     case "move_event":
       return { verb: "Déplacer", text: events.find((e) => e.id === a.id)?.title ?? `entrée ${a.id}`, when: span(a.start, a.end) };
     case "delete_event":
       return { verb: "Retirer", text: events.find((e) => e.id === a.id)?.title ?? `entrée ${a.id}`, when: null };
     case "create_task":
-      return { verb: "Tâche", text: `${a.title}${a.subtasks?.length ? ` (+${a.subtasks.length} sous-tâches)` : ""}`, when: [name(a.project), a.estimateMin ? fmtDur(a.estimateMin) : null].filter(Boolean).join(" · ") || null };
+      return { verb: t("Tâche"), text: `${a.title}${a.subtasks?.length ? ` (+${a.subtasks.length} sous-tâches)` : ""}`, when: [name(a.project), a.estimateMin ? fmtDur(a.estimateMin) : null].filter(Boolean).join(" · ") || null };
     case "set_priority":
-      return { verb: "Priorité", text: name(a.project) ?? "", when: PRIORITY[a.priority] ?? String(a.priority) };
+      return { verb: t("Priorité"), text: name(a.project) ?? "", when: PRIORITY[a.priority] ?? String(a.priority) };
     case "set_estimate":
       return { verb: "Estimation", text: name(a.project) ?? "", when: `reste ${fmtDur(a.estimateMin)}` };
   }

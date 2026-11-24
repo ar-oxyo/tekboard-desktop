@@ -1,16 +1,20 @@
 import { create } from "zustand";
 import type { PlanEvent, PlanTask } from "./api";
 
-export type Page = "overview" | "projects" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "myepitech" | "cozy" | "settings" | "prompts" | "agenda";
+export type Page = "overview" | "projects" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "myepitech" | "logtime" | "cozy" | "settings" | "prompts" | "agenda";
 
 /** Sidebar order. Ctrl+1 to Ctrl+9 open the first nine. */
-export const PAGES: Page[] = ["overview", "projects", "agenda", "git", "testing", "library", "templates", "myepitech", "subjects", "analytics", "cozy", "settings", "prompts"];
+export const PAGES: Page[] = ["overview", "projects", "agenda", "git", "testing", "library", "templates", "myepitech", "logtime", "subjects", "analytics", "cozy", "settings", "prompts"];
 
 export interface Toast {
   id: number;
   kind: "ok" | "error" | "info";
   title: string;
   detail?: string;
+  /** One button in the toast (e.g. "Voir"). */
+  action?: { label: string; run: () => void };
+  /** Stays longer than usual (ms). */
+  duration?: number;
 }
 
 /** What the launcher dialog starts from. */
@@ -52,6 +56,10 @@ interface UiState {
   closeLauncher: () => void;
   /** Run the Claude Code test prompt as soon as its card is ready (`--run claude-check`). */
   claudeAutoCheck: boolean;
+  /** Settings tab to open once (a toast's "Voir"). */
+  settingsTab: string | null;
+  /** `tekboard --run update`: check, then install what is found. */
+  updateAuto: boolean;
   /** Design forced for this run by `--theme` (preview). */
   themeOverride: string | null;
   /** Planning assistant panel, over any screen. `ask` is a request to send as soon as it opens. */
@@ -59,10 +67,10 @@ interface UiState {
   assistantAsk: { text: string; project?: string | null } | null;
   openAssistant: (ask?: { text: string; project?: string | null }) => void;
   closeAssistant: () => void;
-  /** Conversation shown in Tika's panel, and the turn being answered. */
-  tikaThread: number | null;
-  tikaJob: number | null;
-  setTika: (t: { thread?: number | null; job?: number | null }) => void;
+  /** Conversation shown in Artix's panel, and the turn being answered. */
+  artixThread: number | null;
+  artixJob: number | null;
+  setArtix: (t: { thread?: number | null; job?: number | null }) => void;
   /** Calendar entry being created or edited (`id` absent = new). */
   eventEdit: Partial<PlanEvent> | null;
   editEvent: (e: Partial<PlanEvent> | null) => void;
@@ -105,26 +113,29 @@ export const useUi = create<UiState>((set, get) => ({
   openLauncher: (launch) => set({ launch, paletteOpen: false, sheetPath: null }),
   closeLauncher: () => set({ launch: null }),
   claudeAutoCheck: false,
+  settingsTab: null,
+  updateAuto: false,
   themeOverride: null,
   assistantOpen: false,
   assistantAsk: null,
   openAssistant: (ask) => set({ assistantOpen: true, assistantAsk: ask ?? null, paletteOpen: false }),
   closeAssistant: () => set({ assistantOpen: false, assistantAsk: null }),
-  tikaThread: (() => {
-    const v = Number(localStorage.getItem("tekboard.tikaThread"));
+  artixThread: (() => {
+    // `tekboard.tikaThread`: the same conversation, saved before the assistant was renamed.
+    const v = Number(localStorage.getItem("tekboard.artixThread") ?? localStorage.getItem("tekboard.tikaThread"));
     return Number.isFinite(v) && v > 0 ? v : null;
   })(),
-  tikaJob: null,
-  setTika: (t) =>
+  artixJob: null,
+  setArtix: (t) =>
     set((s) => {
-      const thread = t.thread !== undefined ? t.thread : s.tikaThread;
+      const thread = t.thread !== undefined ? t.thread : s.artixThread;
       try {
-        if (thread) localStorage.setItem("tekboard.tikaThread", String(thread));
-        else localStorage.removeItem("tekboard.tikaThread");
+        if (thread) localStorage.setItem("tekboard.artixThread", String(thread));
+        else localStorage.removeItem("tekboard.artixThread");
       } catch {
         /* kept for this window */
       }
-      return { tikaThread: thread, tikaJob: t.job !== undefined ? t.job : s.tikaJob };
+      return { artixThread: thread, artixJob: t.job !== undefined ? t.job : s.artixJob };
     }),
   eventEdit: null,
   editEvent: (eventEdit) => set({ eventEdit }),
@@ -138,7 +149,7 @@ export const useUi = create<UiState>((set, get) => ({
   toast: (t) => {
     const id = nextToast++;
     set({ toasts: [...get().toasts, { ...t, id }] });
-    window.setTimeout(() => get().dismissToast(id), t.kind === "error" ? 9000 : 4000);
+    window.setTimeout(() => get().dismissToast(id), t.duration ?? (t.kind === "error" ? 9000 : 4000));
   },
   dismissToast: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),
 }));

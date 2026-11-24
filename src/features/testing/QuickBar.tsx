@@ -8,6 +8,7 @@ import { Menu, MenuItem, MenuLabel, MenuSeparator } from "../../components/Menu"
 import { cn, IconButton, Spinner } from "../../components/ui";
 import { api, asAppError } from "../../lib/api";
 import { useUi } from "../../lib/store";
+import { t } from "../../lib/i18n";
 
 export const PRESETS = ["make", "make re", "make clean", "make fclean"] as const;
 /** Presets shown as buttons next to the main one; the others stay in its menu. */
@@ -55,15 +56,15 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
   const recent = (history.data ?? []).filter((c) => !(PRESETS as readonly string[]).includes(c));
   const chip = "flex h-7 shrink-0 items-center rounded-md border border-white/8 px-2.5 font-mono text-xs text-muted transition-colors hover:border-line-strong hover:text-fg disabled:cursor-not-allowed disabled:opacity-45";
   return (
-    <div className="card flex flex-wrap items-center gap-1.5 px-2.5 py-2" role="toolbar" aria-label="Commandes rapides">
+    <div className="card flex flex-wrap items-center gap-1.5 px-2.5 py-2" role="toolbar" aria-label={t("Commandes rapides")}>
       <div className="flex shrink-0">
-        <button type="button" disabled={busy} onClick={() => start("make")} className={cn(chip, "rounded-r-none border-r-0 text-fg")} title="Lancer make dans ce dépôt">
+        <button type="button" disabled={busy} onClick={() => start("make")} className={cn(chip, "rounded-r-none border-r-0 text-fg")} title={t("Lancer make dans ce dépôt")}>
           make
         </button>
         <Menu
           align="start"
           trigger={
-            <button type="button" aria-label="Raccourcis et commandes récentes" className={cn(chip, "rounded-l-none px-1.5")}>
+            <button type="button" aria-label={t("Raccourcis et commandes récentes")} className={cn(chip, "rounded-l-none px-1.5")}>
               <ChevronDown className="size-3.5" />
             </button>
           }
@@ -77,7 +78,7 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
           {recent.length > 0 && (
             <>
               <MenuSeparator />
-              <MenuLabel>Récentes dans ce dépôt</MenuLabel>
+              <MenuLabel>{t("Récentes dans ce dépôt")}</MenuLabel>
               {recent.map((c) => (
                 <MenuItem key={c} icon={<History className="size-3.5" />} disabled={busy} onSelect={() => start(c)} title={c}>
                   <span className="font-mono">{c}</span>
@@ -92,7 +93,7 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
           {c}
         </button>
       ))}
-      <button type="button" onClick={onClear} className={chip} title="Vide le journal affiché ici. Rien n'est lancé.">
+      <button type="button" onClick={onClear} className={chip} title={t("Vide le journal affiché ici. Rien n'est lancé.")}>
         <Eraser className="mr-1.5 size-3.5" />
         clear
       </button>
@@ -110,20 +111,20 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
             spellCheck={false}
             autoComplete="off"
             list={`quick-${repo}`}
-            aria-label="Commande libre"
+            aria-label={t("Commande libre")}
             placeholder="./my_hunter -h"
             title={"A program and its arguments, run in the repository folder without a shell.\nQuotes group words; pipes, && and redirections are refused."}
             className="field h-7 w-full border border-white/8 px-2.5 pr-7 font-mono text-xs text-fg placeholder:font-sans placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none"
           />
           {custom !== "" && (
-            <button type="button" aria-label="Vider le champ" onClick={() => setCustom("")} className="absolute top-1/2 right-1.5 -translate-y-1/2 text-faint hover:text-fg">
+            <button type="button" aria-label={t("Vider le champ")} onClick={() => setCustom("")} className="absolute top-1/2 right-1.5 -translate-y-1/2 text-faint hover:text-fg">
               <X className="size-3.5" />
             </button>
           )}
           <datalist id={`quick-${repo}`}>{recent.map((c) => <option key={c} value={c} />)}</datalist>
         </div>
         {running !== null ? (
-          <button type="button" onClick={() => onStop(running)} className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-danger/30 bg-danger/15 px-2.5 text-xs text-danger hover:bg-danger/25" title="Arrête la commande et tout ce qu'elle a lancé">
+          <button type="button" onClick={() => onStop(running)} className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-danger/30 bg-danger/15 px-2.5 text-xs text-danger hover:bg-danger/25" title={t("Arrête la commande et tout ce qu'elle a lancé")}>
             <Square className="size-3" fill="currentColor" /> Arrêter
           </button>
         ) : (
@@ -133,8 +134,8 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
         )}
       </form>
       {recent.length > 0 && (
-        <Menu label="Commandes récentes" trigger={<IconButton label="Commandes récentes"><History className="size-4" /></IconButton>}>
-          <MenuLabel>Clic pour relancer · ✕ pour oublier</MenuLabel>
+        <Menu label={t("Commandes récentes")} trigger={<IconButton label={t("Commandes récentes")}><History className="size-4" /></IconButton>}>
+          <MenuLabel>{t("Clic pour relancer · ✕ pour oublier")}</MenuLabel>
           {recent.map((c) => (
             <div key={c} className="flex items-center">
               <div className="min-w-0 flex-1">

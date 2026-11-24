@@ -8,18 +8,19 @@ import { api, asAppError, type Companion, type Settings } from "../../lib/api";
 import { tildify } from "../../lib/format";
 import { keys, useHome, useSettings } from "../../lib/hooks";
 import { useUi } from "../../lib/store";
+import { t } from "../../lib/i18n";
 
 const PLAY: Array<{ cmd: string; label: string; hint: string }> = [
-  { cmd: "ball", label: "Balle", hint: "Lui lancer une balle" },
-  { cmd: "zoomies", label: "Folie", hint: "Une course effrénée" },
-  { cmd: "spin", label: "Toupie", hint: "Courir après sa queue" },
-  { cmd: "pounce", label: "Bond", hint: "Saut de chasseur" },
-  { cmd: "glass", label: "Saut sur fenêtre", hint: "Sauter sur une fenêtre" },
-  { cmd: "bird", label: "Oiseau", hint: "Un oiseau passe" },
-  { cmd: "mail", label: "Courrier", hint: "Il traverse l'écran avec une lettre" },
-  { cmd: "water", label: "Pause eau", hint: "Le rappel d'eau, maintenant" },
-  { cmd: "laser", label: "Laser", hint: "Activer le pointeur laser (aussi Super+Alt+L)" },
-  { cmd: "pilot", label: "Mode pilote", hint: "Prends le contrôle du renard : clavier et souris vont à lui jusqu'à l'arrêt (aussi Super+Alt+F)" },
+  { cmd: "ball", label: "Balle", hint: t("Lui lancer une balle") },
+  { cmd: "zoomies", label: "Folie", hint: t("Une course effrénée") },
+  { cmd: "spin", label: "Toupie", hint: t("Courir après sa queue") },
+  { cmd: "pounce", label: "Bond", hint: t("Saut de chasseur") },
+  { cmd: "glass", label: t("Saut sur fenêtre"), hint: t("Sauter sur une fenêtre") },
+  { cmd: "bird", label: "Oiseau", hint: t("Un oiseau passe") },
+  { cmd: "mail", label: "Courrier", hint: t("Il traverse l'écran avec une lettre") },
+  { cmd: "water", label: t("Pause eau"), hint: t("Le rappel d'eau, maintenant") },
+  { cmd: "laser", label: "Laser", hint: t("Activer le pointeur laser (aussi Super+Alt+L)") },
+  { cmd: "pilot", label: t("Mode pilote"), hint: t("Prends le contrôle du renard : clavier et souris vont à lui jusqu'à l'arrêt (aussi Super+Alt+F)") },
 ];
 
 const PREVIEW: Array<{ cmd: string; label: string }> = [
@@ -27,11 +28,11 @@ const PREVIEW: Array<{ cmd: string; label: string }> = [
   { cmd: "wx-snow", label: "Neige" },
   { cmd: "wx-sun", label: "Soleil" },
   { cmd: "wx-cold", label: "Froid" },
-  { cmd: "wx-auto", label: "Météo réelle" },
+  { cmd: "wx-auto", label: t("Météo réelle") },
   { cmd: "season-halloween", label: "Halloween" },
   { cmd: "season-christmas", label: "Noël" },
   { cmd: "season-spring", label: "Printemps" },
-  { cmd: "season-auto", label: "Saison réelle" },
+  { cmd: "season-auto", label: t("Saison réelle") },
 ];
 
 export function CozyPage() {
@@ -48,7 +49,7 @@ export function CozyPage() {
     mutationFn: (name: string) => api.cozyRestore(name),
     onSuccess: (s) => {
       qc.setQueryData(["cozy"], s);
-      toast({ kind: "ok", title: "Configuration précédente restaurée" });
+      toast({ kind: "ok", title: t("Configuration précédente restaurée") });
     },
     onError: fail("Could not restore"),
   });
@@ -69,7 +70,7 @@ export function CozyPage() {
       <>
         <PageHeader title="Cozy Fox" />
         <Card>
-          <EmptyState icon={<PawPrint className="size-6" />} title="Cozy Fox n'est pas installé ici">
+          <EmptyState icon={<PawPrint className="size-6" />} title={t("Cozy Fox n'est pas installé ici")}>
             <span className="selectable">
               TekBoard cherche la configuration de Cozy Glass dans <Code>{tildify(s.widgetsPath, home)}</Code> et ne l'a pas trouvée. Rien n'a été créé.
             </span>
@@ -84,20 +85,20 @@ export function CozyPage() {
 
   return (
     <>
-      <PageHeader title="Cozy Fox" subtitle="Ton compagnon de bureau. Les changements s'appliquent tout de suite ; la configuration précédente est sauvegardée à chaque fois." />
+      <PageHeader title="Cozy Fox" subtitle={t("Ton compagnon de bureau. Les changements s'appliquent tout de suite ; la configuration précédente est sauvegardée à chaque fois.")} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div className="flex flex-col gap-4">
           <Card>
-            <CardTitle right={update.isPending ? <Spinner /> : undefined}>Réglages</CardTitle>
+            <CardTitle right={update.isPending ? <Spinner /> : undefined}>{t("Réglages")}</CardTitle>
             <div className="py-1">
-              <Toggle label="Renard sur le bureau" checked={on} onChange={(v) => update.mutate({ enabled: v })} />
-              <Toggle label="Tenues" hint="Toutes : météo et saison" checked={c.outfits ?? true} onChange={(v) => update.mutate({ outfits: v })} />
-              <Toggle label="Tenues météo" hint="Parapluie, écharpe, lunettes de soleil" checked={c.weatherOutfits ?? true} onChange={(v) => update.mutate({ weatherOutfits: v })} />
-              <Toggle label="Tenues de saison" hint="Chapeaux, fleur, citrouille" checked={(c.season ?? "auto") !== "none"} onChange={(v) => update.mutate({ season: v ? "auto" : "none" })} />
+              <Toggle label={t("Renard sur le bureau")} checked={on} onChange={(v) => update.mutate({ enabled: v })} />
+              <Toggle label="Tenues" hint={t("Toutes : météo et saison")} checked={c.outfits ?? true} onChange={(v) => update.mutate({ outfits: v })} />
+              <Toggle label={t("Tenues météo")} hint={t("Parapluie, écharpe, lunettes de soleil")} checked={c.weatherOutfits ?? true} onChange={(v) => update.mutate({ weatherOutfits: v })} />
+              <Toggle label={t("Tenues de saison")} hint={t("Chapeaux, fleur, citrouille")} checked={(c.season ?? "auto") !== "none"} onChange={(v) => update.mutate({ season: v ? "auto" : "none" })} />
               <NumberRow label="Taille" unit="×" value={c.scale} fallback="default" min={1} max={6} step={1} onCommit={(v) => update.mutate({ scale: v })} />
               <NumberRow label="Vitesse" unit="×" value={c.speed} fallback="default" min={0.25} max={3} step={0.25} onCommit={(v) => update.mutate({ speed: v })} />
-              <NumberRow label="Rappel d'eau" unit="min" hint="0 le désactive" value={c.water} fallback="default" min={0} max={240} step={5} onCommit={(v) => update.mutate({ water: v })} />
-              <NumberRow label="Visites d'oiseaux" unit="min" hint="Intervalle moyen" value={c.birdEvery} fallback="default" min={1} max={120} step={1} onCommit={(v) => update.mutate({ birdEvery: v })} />
+              <NumberRow label={t("Rappel d'eau")} unit="min" hint={t("0 le désactive")} value={c.water} fallback="default" min={0} max={240} step={5} onCommit={(v) => update.mutate({ water: v })} />
+              <NumberRow label={t("Visites d'oiseaux")} unit="min" hint={t("Intervalle moyen")} value={c.birdEvery} fallback="default" min={1} max={120} step={1} onCommit={(v) => update.mutate({ birdEvery: v })} />
             </div>
             <p className="selectable border-t border-white/6 px-4 py-2.5 text-xs text-faint">
               Écrit dans le bloc <Code>companion</Code> block of <Code>{tildify(s.widgetsPath, home)}</Code>. “default” means the key is absent and the fox uses its own value.
@@ -105,10 +106,10 @@ export function CozyPage() {
           </Card>
 
           <Card>
-            <CardTitle>TekBoard → renard</CardTitle>
+            <CardTitle>{t("TekBoard → renard")}</CardTitle>
             <Toggle
-              label="Réagir aux compilations et aux push faits depuis TekBoard"
-              hint="Content ou boudeur après une compilation, fusée après un push"
+              label={t("Réagir aux compilations et aux push faits depuis TekBoard")}
+              hint={t("Content ou boudeur après une compilation, fusée après un push")}
               checked={settings.data?.foxSignals ?? false}
               onChange={(v) => settings.data && saveSettings.mutate({ ...settings.data, foxSignals: v })}
             />
@@ -118,7 +119,7 @@ export function CozyPage() {
         <div className="flex flex-col gap-4">
           <Card>
             <CardTitle>Jouer</CardTitle>
-            {!on && <p className="px-4 pt-3 text-xs text-warn">Le renard est éteint : les commandes partent mais il n'apparaîtra pas.</p>}
+            {!on && <p className="px-4 pt-3 text-xs text-warn">{t("Le renard est éteint : les commandes partent mais il n'apparaîtra pas.")}</p>}
             <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-3">
               {PLAY.map((p) => (
                 <Button key={p.cmd} title={p.hint} disabled={send.isPending} onClick={() => send.mutate(p.cmd)}>
@@ -127,7 +128,7 @@ export function CozyPage() {
               ))}
             </div>
             <div className="border-t border-white/6 px-4 py-3">
-              <p className="mb-2 text-xs text-muted">Aperçu des tenues, jusqu'au prochain rechargement</p>
+              <p className="mb-2 text-xs text-muted">{t("Aperçu des tenues, jusqu'au prochain rechargement")}</p>
               <div className="flex flex-wrap gap-1.5">
                 {PREVIEW.map((p) => (
                   <Button key={p.cmd} size="sm" variant="ghost" onClick={() => send.mutate(p.cmd)}>
@@ -137,7 +138,7 @@ export function CozyPage() {
               </div>
             </div>
             <div className="flex items-center justify-between border-t border-white/6 px-4 py-3">
-              <span className="text-xs text-muted">Aperçu de la fusée et rechargement du code</span>
+              <span className="text-xs text-muted">{t("Aperçu de la fusée et rechargement du code")}</span>
               <span className="flex gap-1.5">
                 <Button size="sm" variant="ghost" onClick={() => send.mutate("push")}>
                   Push réussi
@@ -145,7 +146,7 @@ export function CozyPage() {
                 <Button size="sm" variant="ghost" onClick={() => send.mutate("push-fail")}>
                   Push refusé
                 </Button>
-                <Button size="sm" variant="ghost" title="Recharge le code du renard sans fermer la session" onClick={() => send.mutate("reload")}>
+                <Button size="sm" variant="ghost" title={t("Recharge le code du renard sans fermer la session")} onClick={() => send.mutate("reload")}>
                   Recharger le renard
                 </Button>
               </span>
@@ -153,16 +154,16 @@ export function CozyPage() {
           </Card>
 
           <Card>
-            <CardTitle>Configurations sauvegardées</CardTitle>
+            <CardTitle>{t("Configurations sauvegardées")}</CardTitle>
             {s.backups.length === 0 ? (
-              <p className="px-4 py-4 text-[13px] text-muted">Une copie de widgets.json est sauvegardée ici avant chaque changement fait depuis TekBoard.</p>
+              <p className="px-4 py-4 text-[13px] text-muted">{t("Une copie de widgets.json est sauvegardée ici avant chaque changement fait depuis TekBoard.")}</p>
             ) : (
               <ul className="max-h-48 overflow-y-auto py-1">
                 {s.backups.slice(0, 20).map((name) => (
                   <li key={name} className="flex h-9 items-center gap-3 pr-2 pl-4">
                     <span className="selectable min-w-0 flex-1 truncate font-mono text-xs text-muted">{backupLabel(name)}</span>
                     <Button size="sm" variant="ghost" icon={<RotateCcw className="size-3.5" />} busy={restore.isPending && restore.variables === name} onClick={() => restore.mutate(name)}>
-                      Restaurer
+                      {t("Restaurer")}
                     </Button>
                   </li>
                 ))}

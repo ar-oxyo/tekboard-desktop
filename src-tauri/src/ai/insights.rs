@@ -1,7 +1,7 @@
 //! Things worth saying before being asked, found by plain rules (no model, no cost).
 //!
 //! Each insight has a stable key, so it is said once: it can be acted on (its buttons run a
-//! tool or hand a request to Tika), put off, or dismissed for good. An insight whose cause
+//! tool or hand a request to Artix), put off, or dismissed for good. An insight whose cause
 //! disappears is withdrawn by itself. How often the window shows one as a nudge is limited
 //! there; the rest waits in the suggestions box.
 
@@ -89,7 +89,7 @@ pub fn detect(f: &Facts) -> Vec<Insight> {
                 kind: "tests",
                 title: format!("{} n'a pas été testé cette semaine", b.title),
                 body: format!("Le rendu est dans {}. Une moulinette maintenant évite les mauvaises surprises.", hours(left)),
-                actions: json!([ask("Lancer une moulinette", &format!("Lance une moulinette sur {} (clé {key}) et explique les problèmes.", b.title)), tool("Ouvrir les vérifications", "navigate", json!({"page": "projects", "project": key, "tab": "checks"}))]),
+                actions: json!([ask("Lancer une moulinette", &format!("Lance une moulinette sur {} (clé {key}) et explique les problèmes.", b.title)), tool("Ouvrir les tests", "navigate", json!({"page": "projects", "project": key, "tab": "checks"}))]),
             });
         }
         // A project that stopped moving while its hand-in comes.
@@ -139,7 +139,7 @@ pub fn detect(f: &Facts) -> Vec<Insight> {
             key: format!("subject:{id}"),
             kind: "subject",
             title: format!("Nouveau sujet : {name}"),
-            body: "Tika peut le lire une fois pour toutes, en tirer les exigences et une estimation.".into(),
+            body: "Artix peut le lire une fois pour toutes, en tirer les exigences et une estimation.".into(),
             actions: json!([ask("Analyser", &format!("Analyse le sujet {name}{} et dis-moi ce qu'il faut faire.", project.as_ref().map(|p| format!(" du projet {p}")).unwrap_or_default()))]),
         });
     }

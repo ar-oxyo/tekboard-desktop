@@ -10,6 +10,7 @@ import { formatBytes, tildify } from "../../lib/format";
 import { keys, useHome, useRepos, useSettings, useTemplates } from "../../lib/hooks";
 import { repoOptions } from "../../lib/repos";
 import { useUi } from "../../lib/store";
+import { t } from "../../lib/i18n";
 
 export function TemplatesPage() {
   const templates = useTemplates();
@@ -22,7 +23,7 @@ export function TemplatesPage() {
   const selected = list.find((t) => t.id === selectedId) ?? list[0] ?? null;
 
   async function browse() {
-    const dir = await open({ directory: true, multiple: false, title: "Importer un dossier comme modèle" });
+    const dir = await open({ directory: true, multiple: false, title: t("Importer un dossier comme modèle") });
     if (typeof dir === "string") setImporting(dir);
   }
 
@@ -33,11 +34,11 @@ export function TemplatesPage() {
   return (
     <>
       <PageHeader
-        title="Modèles"
-        subtitle="Des squelettes de projet réutilisables. Appliquer un modèle copie des fichiers ; rien n'y est jamais exécuté."
+        title={t("Modèles")}
+        subtitle={t("Des squelettes de projet réutilisables. Appliquer un modèle copie des fichiers ; rien n'y est jamais exécuté.")}
         actions={
           <Button variant="primary" icon={<FolderInput className="size-4" />} onClick={() => void browse()}>
-            Importer un dossier…
+            {t("Importer un dossier…")}
           </Button>
         }
       />
@@ -49,20 +50,20 @@ export function TemplatesPage() {
             Squelette existant trouvé dans <span className="selectable font-mono text-xs">{tildify(dir, home)}</span>
           </p>
           <Button size="sm" onClick={() => setImporting(dir)}>
-            Importer comme modèle
+            {t("Importer comme modèle")}
           </Button>
         </div>
       ))}
 
       {templates.isLoading ? (
         <p className="flex items-center gap-2 py-16 text-muted">
-          <Spinner /> Chargement…
+          <Spinner /> {t("Chargement…")}
         </p>
       ) : templates.error ? (
         <ErrorNote>{asAppError(templates.error).message}</ErrorNote>
       ) : list.length === 0 ? (
         <Card>
-          <EmptyState icon={<LayoutTemplate className="size-6" />} title="Aucun modèle" action={<Button onClick={() => void browse()}>Importer un dossier…</Button>}>
+          <EmptyState icon={<LayoutTemplate className="size-6" />} title={t("Aucun modèle")} action={<Button onClick={() => void browse()}>{t("Importer un dossier…")}</Button>}>
             Importe n'importe quel dossier (un ancien projet, ton propre squelette) pour le réutiliser au prochain.
           </EmptyState>
         </Card>
@@ -96,7 +97,7 @@ function TemplateCard({ template, active, onSelect }: { template: TemplateSummar
     >
       <span className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{template.name}</span>
-        {isDefault && <Star className="size-3.5 text-accent" fill="currentColor" aria-label="Modèle par défaut" />}
+        {isDefault && <Star className="size-3.5 text-accent" fill="currentColor" aria-label={t("Modèle par défaut")} />}
       </span>
       <span className="mt-1 flex items-center gap-1.5">
         <Badge>{template.fileCount} files</Badge>
@@ -156,18 +157,18 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-[15px] font-medium">{template.name}</h2>
           {template.variables.map((v) => (
-            <Badge key={v} mono title="Variable remplacée quand le modèle est appliqué">
+            <Badge key={v} mono title={t("Variable remplacée quand le modèle est appliqué")}>
               {`{{${v}}}`}
             </Badge>
           ))}
         </div>
         {template.description && <p className="selectable mt-1 text-[13px] text-muted">{template.description}</p>}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Select className="w-56" value={null} label="Appliquer à un projet" placeholder="Appliquer à un projet" search onChange={(path) => path && openLauncher({ mode: "existing", path, templateId: template.id })} options={repoOptions(repos.data ?? [])} />
+          <Select className="w-56" value={null} label={t("Appliquer à un projet")} placeholder={t("Appliquer à un projet")} search onChange={(path) => path && openLauncher({ mode: "existing", path, templateId: template.id })} options={repoOptions(repos.data ?? [])} />
           <Button size="sm" variant="ghost" icon={<Star className="size-3.5" fill={isDefault ? "currentColor" : "none"} />} onClick={() => setDefault.mutate()}>
             {isDefault ? "Default for new projects" : "Set as default"}
           </Button>
-          <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} title="Ouvre le dossier du modèle dans ton IDE" onClick={() => edit.mutate()}>
+          <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} title={t("Ouvre le dossier du modèle dans ton IDE")} onClick={() => edit.mutate()}>
             Modifier les fichiers
           </Button>
           <Button size="sm" variant="ghost" icon={<Copy className="size-3.5" />} busy={duplicate.isPending} onClick={() => duplicate.mutate()}>
@@ -179,12 +180,12 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
                 Supprimer définitivement
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setArmed(false)}>
-                Garder
+                {t("Garder")}
               </Button>
             </>
           ) : (
             <Button size="sm" variant="ghost" icon={<Trash2 className="size-3.5" />} onClick={() => setArmed(true)}>
-              Supprimer
+              {t("Supprimer")}
             </Button>
           )}
         </div>
@@ -194,7 +195,7 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
         <ul className="overflow-y-auto border-r border-white/6 py-1">
           {files.isLoading && (
             <li className="flex items-center gap-2 px-3 py-2 text-xs text-muted">
-              <Spinner /> Chargement…
+              <Spinner /> {t("Chargement…")}
             </li>
           )}
           {(files.data ?? []).map((f) => (
@@ -216,7 +217,7 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
         <div className="min-w-0 overflow-auto bg-bg">
           {preview.isLoading ? (
             <p className="flex items-center gap-2 p-4 text-xs text-muted">
-              <Spinner /> Chargement…
+              <Spinner /> {t("Chargement…")}
             </p>
           ) : preview.error ? (
             <div className="p-3">
@@ -255,13 +256,13 @@ function ImportDialog({ source, onClose, onImported }: { source: string; onClose
     <Modal
       open
       onClose={onClose}
-      title="Importer comme modèle"
-      description="Le dossier est copié dans la bibliothèque de TekBoard. L'original n'est pas modifié ; .git est laissé de côté."
+      title={t("Importer comme modèle")}
+      description={t("Le dossier est copié dans la bibliothèque de TekBoard. L'original n'est pas modifié ; .git est laissé de côté.")}
       width="w-[520px]"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Annuler
+            {t("Annuler")}
           </Button>
           <Button variant="primary" busy={run.isPending} disabled={!name.trim()} onClick={() => run.mutate()}>
             Importer
@@ -274,7 +275,7 @@ function ImportDialog({ source, onClose, onImported }: { source: string; onClose
         <Field label="Nom">
           <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && name.trim() && run.mutate()} />
         </Field>
-        <Field label="Description (facultatif)">
+        <Field label={t("Description (facultatif)")}>
           <Input value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
         {run.error && <ErrorNote>{asAppError(run.error).message}</ErrorNote>}

@@ -1,6 +1,8 @@
-// Tika, docked on the right of every screen. It knows what is on screen, offers two or three
-// things worth asking here, shows what it does while it does it (real tool calls), and puts
-// every change it proposes in a card you accept or refuse. What it did can be undone.
+// Artix, docked on the right of every screen. It knows what is on screen, offers two or three
+// things worth asking here, does what is asked when it is clear (every action can be undone),
+// and puts larger changes in a card you accept or refuse. A request made from another screen
+// (break a project down, a suggestion) opens its own conversation instead of mixing into the
+// one in progress.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Brain, Check, ChevronDown, CircleAlert, History, LoaderCircle, MessageSquarePlus, Send, Square, Trash2, Undo2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,35 +11,38 @@ import { api, asAppError, type AiAction, type AiMessage, type AiProposal, type A
 import { useJob } from "../../lib/jobs";
 import { freeSlots, addDays, startOfDay, hhmm } from "../../lib/plan";
 import { useUi } from "../../lib/store";
+import { locale, t } from "../../lib/i18n";
+
+const tr = t;
 import { usePlanData } from "../planning/usePlan";
 import { InsightList, useInsights } from "./Insights";
 import { Markdown } from "./Markdown";
 import { MemoryView } from "./MemoryView";
-import { Orb, type OrbState } from "./Orb";
+import { Artix, type ArtixState } from "./Artix";
 import { ProposalCard } from "./ProposalCard";
 import { suggestPlan } from "./suggest";
 import { projectName, suggestionsFor, useScreen } from "./useScreen";
 
-export function TikaPanel() {
+export function ArtixPanel() {
   const open = useUi((s) => s.assistantOpen);
   return open ? <Panel /> : null;
 }
 
 type View = "chat" | "history" | "memory";
 
-const PAGE_LABEL: Record<string, string> = { today: "Aujourd'hui", projects: "Projets", planning: "Planning", school: "École", stats: "Stats", resources: "Ressources", settings: "Réglages" };
+const PAGE_LABEL: Record<string, string> = { today: t("Aujourd'hui"), projects: t("Projets"), planning: t("Planning"), school: t("École"), stats: "Stats", resources: "Ressources", settings: t("Réglages") };
 
 function greeting() {
   const h = new Date().getHours();
-  return h < 6 ? "Encore debout ?" : h < 12 ? "Bonjour !" : h < 18 ? "Salut !" : "Bonsoir !";
+  return h < 6 ? tr("Encore debout ?") : h < 12 ? tr("Bonjour !") : h < 18 ? tr("Salut !") : t("Bonsoir !");
 }
 
 function Panel() {
   const qc = useQueryClient();
   const screen = useScreen();
-  const thread = useUi((s) => s.tikaThread);
-  const jobId = useUi((s) => s.tikaJob);
-  const setTika = useUi((s) => s.setTika);
+  const thread = useUi((s) => s.artixThread);
+  const jobId = useUi((s) => s.artixJob);
+  const setArtix = useUi((s) => s.setArtix);
   const ask = useUi((s) => s.assistantAsk);
   const toast = useUi((s) => s.toast);
   const [view, setView] = useState<View>("chat");
@@ -56,32 +61,35 @@ function Panel() {
   // The turn ended: the conversation is re-read from the database (it holds the answer).
   useEffect(() => {
     if (job.data && job.data.status !== "running") {
-      setTika({ job: null });
+      setArtix({ job: null });
       setPendingText(null);
       void qc.invalidateQueries({ queryKey: ["ai-thread"] });
       void qc.invalidateQueries({ queryKey: ["ai-proposals"] });
       void qc.invalidateQueries({ queryKey: ["ai-actions"] });
     }
-  }, [job.data, qc, setTika]);
+  }, [job.data, qc, setArtix]);
 
   const send = useMutation({
-    mutationFn: (q: string) => api.aiSend(thread, q, screen),
-    onMutate: (q) => setPendingText(q),
+    mutationFn: ({ q, fresh }: { q: string; fresh?: boolean }) => api.aiSend(fresh ? null : thread, q, screen),
+    onMutate: ({ q }) => setPendingText(q),
     onSuccess: (r) => {
-      setTika({ thread: r.threadId, job: r.jobId });
+      setArtix({ thread: r.threadId, job: r.jobId });
       void qc.invalidateQueries({ queryKey: ["ai-thread", r.threadId] });
     },
     onError: (e) => {
       setPendingText(null);
-      toast({ kind: "error", title: "Tika n'a pas pu partir", detail: asAppError(e).message });
+      toast({ kind: "error", title: t("Artix n'a pas pu partir"), detail: asAppError(e).message });
     },
   });
-  const submit = (q: string) => {
-    const t = q.trim();
-    if (!t || running || send.isPending) return;
+  /** `fresh`: a request from another screen gets a conversation of its own. */
+  const submit = (q: string, fresh = false) => {
+    const text = q.trim();
+    if (!text || running || send.isPending) return;
     setText("");
     setView("chat");
-    send.mutate(t);
+    const separate = fresh && thread !== null && (messages.data?.length ?? 0) > 0;
+    if (separate) setArtix({ thread: null, job: null });
+    send.mutate({ q: text, fresh: separate });
   };
 
   // Requests handed over by other screens. `#…` are TekBoard's own instant computations.
@@ -94,12 +102,12 @@ function Panel() {
     else if (ask.text === "#reorganize") void suggestPlan("reorganize");
 else if (ask.text === "#free") {
       const slots = freeSlots(data.busy, data.prefs, now, addDays(startOfDay(now), 3), 60).slice(0, 6);
-      setText(slots.length ? `Planifie une session dans un de ces créneaux : ${slots.map((s) => `${new Date(s.start).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" })} ${hhmm(s.start)}–${hhmm(s.end)}`).join(", ")}` : "Je n'ai aucun créneau d'une heure ces trois jours : que puis-je alléger ?");
+      setText(slots.length ? `Planifie une session dans un de ces créneaux : ${slots.map((s) => `${new Date(s.start).toLocaleDateString(locale(), { weekday: "short", day: "numeric" })} ${hhmm(s.start)}–${hhmm(s.end)}`).join(", ")}` : "Je n'ai aucun créneau d'une heure ces trois jours : que puis-je alléger ?");
       input.current?.focus();
     } else if (ask.text === "#breakdown") {
-      const name = projectName(ask.project ?? null) ?? "ce projet";
-      submit(`Décompose ${name}${ask.project ? ` (clé ${ask.project})` : ""} en tâches concrètes estimées, fixe le travail restant et propose des sessions avant le rendu, avec des tests et une marge.`);
-    } else submit(ask.text);
+      const name = projectName(ask.project ?? null) ?? t("ce projet");
+      submit(t("Décompose {name} en tâches.", { name: `${name}${ask.project ? ` (${ask.project})` : ""}` }), true);
+    } else submit(ask.text, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ask, data.loading]);
 
@@ -111,36 +119,47 @@ else if (ask.text === "#free") {
   const pendingElsewhere = (proposals.data ?? []).filter((p) => p.status === "pending" && p.threadId !== thread);
 
   const liveTool = job.data?.events.filter((e) => e.kind === "tool" && e.status === "running").at(-1);
-  const orb: OrbState = running ? (liveTool ? "acting" : "thinking") : send.isPending ? "thinking" : (proposals.data ?? []).some((p) => p.status === "pending") || (insights.data?.length ?? 0) > 0 ? "attention" : "idle";
-  const status = running ? (liveTool ? `${String(liveTool.label)}…` : "réfléchit…") : orb === "attention" ? ((proposals.data ?? []).some((p) => p.status === "pending") ? "une proposition t'attend" : "j'ai remarqué quelque chose") : "à ton écoute";
   const msgs = messages.data ?? [];
+  // A turn that just ended shows on Artix's face for a moment: done, or a problem.
+  const last = msgs.at(-1);
+  const [flash, setFlash] = useState<{ id: number; state: ArtixState } | null>(null);
+  useEffect(() => {
+    if (!last || last.role === "user" || Date.now() / 1000 - last.createdAt > 20) return;
+    const state: ArtixState = last.role === "system" && last.meta.error ? "error" : last.role === "assistant" ? "success" : "idle";
+    setFlash({ id: last.id, state });
+    const id = window.setTimeout(() => setFlash(null), state === "error" ? 6000 : 2600);
+    return () => window.clearTimeout(id);
+  }, [last?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pending = (proposals.data ?? []).some((p) => p.status === "pending");
+  const face: ArtixState = running ? (liveTool ? "working" : "thinking") : send.isPending ? "thinking" : flash?.id === last?.id && flash ? flash.state : pending || (insights.data?.length ?? 0) > 0 ? "attention" : "idle";
+  const status = running ? (liveTool ? `${String(liveTool.label)}…` : t("réfléchit…")) : face === "success" ? t("c'est fait") : face === "error" ? t("un problème") : face === "attention" ? (pending ? t("une proposition t'attend") : t("j'ai remarqué quelque chose")) : t("à ton écoute");
   const empty = msgs.length === 0 && !pendingText;
   const suggestions = suggestionsFor(screen, new Date().getHours());
 
   return (
-    <aside className="tika-panel anim-slide relative z-[30] flex h-full w-[400px] max-w-[42vw] shrink-0 flex-col" aria-label="Tika">
+    <aside className="artix-panel anim-slide relative z-[30] flex h-full w-[400px] max-w-[42vw] shrink-0 flex-col" aria-label="Artix">
       <header className="flex h-14 shrink-0 items-center gap-2.5 border-b border-white/6 px-3.5">
-        <Orb state={orb} />
+        <Artix state={face} />
         <div className="min-w-0 flex-1 leading-tight">
-          <p className="display text-[14px] font-medium">Tika</p>
+          <p className="display text-[14px] font-medium">Artix</p>
           <p className="truncate text-[11px] text-faint">{status}</p>
         </div>
-        <IconButton label="Nouvelle conversation (Ctrl+Maj+J)" onClick={() => (setTika({ thread: null, job: null }), setView("chat"), input.current?.focus())}>
+        <IconButton label={t("Nouvelle conversation (Ctrl+Maj+J)")} onClick={() => (setArtix({ thread: null, job: null }), setView("chat"), input.current?.focus())}>
           <MessageSquarePlus className="size-4" />
         </IconButton>
-        <IconButton label="Conversations" active={view === "history"} onClick={() => setView(view === "history" ? "chat" : "history")}>
+        <IconButton label={t("Conversations")} active={view === "history"} onClick={() => setView(view === "history" ? "chat" : "history")}>
           <History className="size-4" />
         </IconButton>
-        <IconButton label="Ce que je sais (mémoire)" active={view === "memory"} onClick={() => setView(view === "memory" ? "chat" : "memory")}>
+        <IconButton label={t("Ce que je sais (mémoire)")} active={view === "memory"} onClick={() => setView(view === "memory" ? "chat" : "memory")}>
           <Brain className="size-4" />
         </IconButton>
-        <IconButton label="Fermer (Ctrl+J)" onClick={() => useUi.getState().closeAssistant()}>
+        <IconButton label={t("Fermer (Ctrl+J)")} onClick={() => useUi.getState().closeAssistant()}>
           <X className="size-4" />
         </IconButton>
       </header>
 
       {view === "memory" && <MemoryView project={screen.project ?? null} />}
-      {view === "history" && <Threads current={thread} onOpen={(id) => (setTika({ thread: id, job: null }), setView("chat"))} />}
+      {view === "history" && <Threads current={thread} onOpen={(id) => (setArtix({ thread: id, job: null }), setView("chat"))} />}
 
       {view === "chat" && (
         <>
@@ -148,7 +167,7 @@ else if (ask.text === "#free") {
             {empty && (
               <div className="flex flex-col gap-3 pt-3">
                 <p className="display text-[17px] font-medium">{greeting()}</p>
-                <p className="text-[13px] text-muted">Je vois tes projets, ton planning, tes sessions et tes tests. Demande-moi en langage normal : je lis, je propose, et je ne change rien d'important sans ton accord.</p>
+                <p className="text-[13px] text-muted">{t("Dis-moi ce que tu as à faire : je m'en occupe. Les gros changements attendent ton accord.")}</p>
                 <InsightList compact />
                 <div className="mt-1 flex flex-col gap-1.5">
                   {suggestions.map((s) => (
@@ -209,16 +228,16 @@ else if (ask.text === "#free") {
                     submit(text);
                   }
                 }}
-                placeholder={running ? "Tika répond…" : "Demande à Tika…"}
-                aria-label="Message pour Tika"
+                placeholder={running ? tr("Artix répond…") : t("Demande à Artix…")}
+                aria-label={t("Message pour Artix")}
                 className="max-h-40 min-h-8 flex-1 resize-none bg-transparent px-1.5 py-1.5 text-[13px] text-fg placeholder:text-faint focus:outline-none focus-visible:outline-none"
               />
               {running ? (
-                <IconButton label="Interrompre" className="size-8" onClick={() => jobId !== null && void api.jobCancel(jobId)}>
+                <IconButton label={t("Interrompre")} className="size-8" onClick={() => jobId !== null && void api.jobCancel(jobId)}>
                   <Square className="size-3.5" />
                 </IconButton>
               ) : (
-                <IconButton label="Envoyer (Entrée)" className="size-8" disabled={!text.trim() || send.isPending} onClick={() => submit(text)}>
+                <IconButton label={t("Envoyer (Entrée)")} className="size-8" disabled={!text.trim() || send.isPending} onClick={() => submit(text)}>
                   <Send className="size-4" />
                 </IconButton>
               )}
@@ -236,7 +255,7 @@ function stepIcon(status: string) {
   return <Check className="size-3 text-ok" />;
 }
 
-/** What Tika is doing right now: the real tool calls of the run, then the text being written. */
+/** What Artix is doing right now: the real tool calls of the run, then the text being written. */
 function Live({ events, partial, onStop }: { events: JobEvent[]; partial: string; onStop: () => void }) {
   const tools = events.filter((e) => e.kind === "tool");
   return (
@@ -253,12 +272,12 @@ function Live({ events, partial, onStop }: { events: JobEvent[]; partial: string
         </ul>
       )}
       {partial ? (
-        <Markdown text={partial} className="tika-caret selectable text-[13px] leading-relaxed" />
+        <Markdown text={partial} className="artix-caret selectable text-[13px] leading-relaxed" />
       ) : (
         <span className="flex items-center gap-2 text-xs text-faint">
-          <LoaderCircle className="anim-spin size-3" /> {tools.length ? "Tika enchaîne…" : "Tika réfléchit…"}
+          <LoaderCircle className="anim-spin size-3" /> {tools.length ? tr("Artix enchaîne…") : t("Artix réfléchit…")}
           <button type="button" className="ml-auto hover:text-fg" onClick={onStop}>
-            Interrompre
+            {t("Interrompre")}
           </button>
         </span>
       )}
@@ -316,10 +335,10 @@ function MessageView({ m, proposals, actions }: { m: AiMessage; proposals: Map<n
   );
 }
 
-/** Something Tika really did, with a way back. */
+/** Something Artix really did, with a way back. */
 function ActionChip({ a }: { a: AiAction }) {
   const toast = useUi((s) => s.toast);
-  const undo = useMutation({ mutationFn: () => api.aiUndo(a.id), onSuccess: (s) => toast({ kind: "ok", title: "Annulé", detail: s }), onError: (e) => toast({ kind: "error", title: "Pas annulé", detail: asAppError(e).message }) });
+  const undo = useMutation({ mutationFn: () => api.aiUndo(a.id), onSuccess: (s) => toast({ kind: "ok", title: t("Annulé"), detail: s }), onError: (e) => toast({ kind: "error", title: t("Pas annulé"), detail: asAppError(e).message }) });
   const done = a.status === "done";
   return (
     <div className={cn("flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs", done ? "border-ok/25 bg-ok/6" : "border-white/6 text-faint line-through")}>
@@ -327,7 +346,7 @@ function ActionChip({ a }: { a: AiAction }) {
       <span className="min-w-0 flex-1 truncate">{a.summary}</span>
       {done && (
         <button type="button" disabled={undo.isPending} onClick={() => undo.mutate()} className="shrink-0 text-muted hover:text-fg">
-          Annuler
+          {t("Annuler")}
         </button>
       )}
     </div>
@@ -336,39 +355,67 @@ function ActionChip({ a }: { a: AiAction }) {
 
 function BackendProposal({ p }: { p: AiProposal }) {
   const toast = useUi((s) => s.toast);
+  const breakdown = p.kind === "breakdown";
+  const project = (p.payload as { project?: string }).project ?? null;
   const decide = useMutation({
-    mutationFn: ({ accept, keep }: { accept: boolean; keep: number[] }) => api.aiProposalDecide(p.id, accept, accept ? keep : null),
-    onSuccess: (_r, v) => toast({ kind: v.accept ? "ok" : "info", title: v.accept ? "Plan appliqué" : "Proposition refusée", detail: v.accept ? `${v.keep.length} changement(s).` : "Tika le saura au prochain message." }),
-    onError: (e) => toast({ kind: "error", title: "Non appliqué : rien n'a changé", detail: asAppError(e).message }),
+    mutationFn: async ({ accept, keep, plan }: { accept: boolean; keep: number[]; plan?: boolean }) => {
+      await api.aiProposalDecide(p.id, accept, accept ? keep : null);
+      // Option B: the tasks are saved, then sessions are proposed (nothing reaches the calendar before "Appliquer").
+      if (accept && plan && project) return api.aiTool("suggest_plan", { scope: "two_weeks", project }, p.threadId);
+      return null;
+    },
+    onSuccess: (r, v) => {
+      if (!v.accept) return toast({ kind: "info", title: t("Proposition refusée") });
+      if (v.plan) {
+        const nothing = r && r.status === "nothing";
+        return toast({ kind: nothing ? "info" : "ok", title: t("Tâches enregistrées"), detail: nothing ? t("Aucune session à proposer : rien à placer, ou pas de créneau libre.") : t("Sessions proposées : valide-les avant qu'elles arrivent dans le calendrier.") });
+      }
+      toast({ kind: "ok", title: breakdown ? t("Tâches enregistrées") : t("Plan appliqué"), detail: breakdown ? t("Aucune session n'a été créée.") : undefined });
+    },
+    onError: (e) => toast({ kind: "error", title: t("Non appliqué : rien n'a changé"), detail: asAppError(e).message }),
   });
   const outcome = p.outcome?.accepted && p.outcome.kept !== undefined ? `${p.outcome.kept}/${p.outcome.of}` : null;
-  return <ProposalCard title={p.title} rationale={p.rationale} warnings={p.payload.warnings} actions={p.payload.actions ?? []} origin="claude" status={p.status} outcome={outcome} busy={decide.isPending} onDecide={(accept, keep) => decide.mutate({ accept, keep })} />;
+  return (
+    <ProposalCard
+      title={p.title}
+      rationale={p.rationale}
+      warnings={p.payload.warnings}
+      actions={p.payload.actions ?? []}
+      origin="claude"
+      status={p.status}
+      outcome={outcome}
+      busy={decide.isPending}
+      onDecide={(accept, keep) => decide.mutate({ accept, keep })}
+      acceptLabel={breakdown ? t("Accepter") : undefined}
+      alternate={breakdown && project ? { label: t("Accepter et planifier"), onAccept: (keep) => decide.mutate({ accept: true, keep, plan: true }) } : undefined}
+    />
+  );
 }
 
 function Threads({ current, onOpen }: { current: number | null; onOpen: (id: number) => void }) {
   const threads = useQuery({ queryKey: ["ai-threads"], queryFn: api.aiThreads });
   const remove = useMutation({ mutationFn: (id: number) => api.aiThreadDelete(id) });
-  const setTika = useUi((s) => s.setTika);
+  const setArtix = useUi((s) => s.setArtix);
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-3">
-      <p className="px-1 pb-2 text-xs text-faint">Les conversations sont gardées 30 jours. Ce qui doit durer va dans la mémoire.</p>
-      {threads.data?.length === 0 && <p className="px-1 text-[13px] text-muted">Aucune conversation pour l'instant.</p>}
+      <p className="px-1 pb-2 text-xs text-faint">{t("Les conversations sont gardées 30 jours. Ce qui doit durer va dans la mémoire.")}</p>
+      {threads.data?.length === 0 && <p className="px-1 text-[13px] text-muted">{t("Aucune conversation pour l'instant.")}</p>}
       <ul className="flex flex-col gap-0.5">
         {threads.data?.map((t) => (
           <li key={t.id} className={cn("group row-hover flex items-center gap-2 rounded-lg px-2.5 py-2", t.id === current && "bg-white/4")}>
             <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onOpen(t.id)}>
               <span className="block truncate text-[13px]">{t.title}</span>
               <span className="text-[11px] text-faint">
-                {new Date(t.updatedAt * 1000).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · {t.messages} message{t.messages > 1 ? "s" : ""}
+                {new Date(t.updatedAt * 1000).toLocaleString(locale(), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · {t.messages} message{t.messages > 1 ? "s" : ""}
               </span>
             </button>
             <IconButton
-              label="Supprimer la conversation"
+              label={tr("Supprimer la conversation")}
               className="opacity-0 group-hover:opacity-100"
               onClick={() =>
                 remove.mutate(t.id, {
                   onSuccess: () => {
-                    if (t.id === current) setTika({ thread: null, job: null });
+                    if (t.id === current) setArtix({ thread: null, job: null });
                   },
                 })
               }

@@ -6,6 +6,7 @@ import { CodeView } from "../../components/DiffView";
 import { Badge, Button, cn, Spinner } from "../../components/ui";
 import type { JobEvent, JobStatus, JobStep, RunKind, RunSummary, StepStatus } from "../../lib/api";
 import { AgentView } from "./AgentView";
+import { t } from "../../lib/i18n";
 
 export interface ReportData {
   kind: RunKind;
@@ -23,9 +24,9 @@ export interface ReportData {
   id?: number;
 }
 
-export const STATUS_LABEL: Record<JobStatus, string> = { running: "En cours", success: "Réussi", warning: "Avertissement", failed: "Échec", cancelled: "Annulé", interrupted: "Interrompu" };
+export const STATUS_LABEL: Record<JobStatus, string> = { running: t("En cours"), success: "Réussi", warning: "Avertissement", failed: "Échec", cancelled: t("Annulé"), interrupted: "Interrompu" };
 export const STATUS_TONE: Record<JobStatus, "info" | "ok" | "warn" | "danger" | "neutral"> = { running: "info", success: "ok", warning: "warn", failed: "danger", cancelled: "neutral", interrupted: "neutral" };
-export const KIND_LABEL: Record<RunKind, string> = { tests: "Tests du projet", testrepo: "Simulation de rendu", banana: "Banana", moulinette: "Vérifications rapides", moulinette_ai: "Moulinette de Tika", gen_tests: "Tests générés", readme: "README", build: "Compilation", command: "Commande", analysis: "Analyse du dépôt", assistant: "Tika" };
+export const KIND_LABEL: Record<RunKind, string> = { tests: t("Tests du projet"), testrepo: t("Simulation de rendu"), banana: "Banana", moulinette: t("Vérifications rapides"), moulinette_ai: "Moulinette d'Artix", gen_tests: "Tests générés", readme: "README", build: "Compilation", command: "Commande", analysis: "Analyse du dépôt", assistant: "Artix" };
 
 export function duration(ms: number): string {
   if (ms < 1000) return `${ms} ms`;
@@ -93,15 +94,15 @@ function Tests({ tests }: { tests: Record<string, unknown> }) {
   const bad = (num(tests.failed) ?? 0) + (num(tests.crashed) ?? 0);
   const failures = arr(tests.failures).map(rec);
   const coverage = num(tests.coverage);
-  if (total === null && failures.length === 0) return <p className="text-xs text-muted">La commande n'a affiché aucun résumé de tests reconnu (Criterion, CTest). Son code de sortie est le seul résultat : voir les étapes et le journal.</p>;
+  if (total === null && failures.length === 0) return <p className="text-xs text-muted">{t("La commande n'a affiché aucun résumé de tests reconnu (Criterion, CTest). Son code de sortie est le seul résultat : voir les étapes et le journal.")}</p>;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
         {total !== null && <Stat label="Tests" value={total} />}
         {passed !== null && <Stat label="Réussis" value={passed} tone="ok" />}
         <Stat label="Échoués" value={bad} tone={bad > 0 ? "danger" : undefined} />
-        {total !== null && passed !== null && total > 0 && <Stat label="Taux de réussite" value={`${((passed / total) * 100).toFixed(1)}%`} />}
-        {coverage !== null && <Stat label="Couverture des lignes" value={`${coverage}%`} />}
+        {total !== null && passed !== null && total > 0 && <Stat label={t("Taux de réussite")} value={`${((passed / total) * 100).toFixed(1)}%`} />}
+        {coverage !== null && <Stat label={t("Couverture des lignes")} value={`${coverage}%`} />}
       </div>
       {failures.length > 0 && (
         <ul className="rounded-lg border border-danger/25 bg-danger/5 py-1">
@@ -155,17 +156,17 @@ function TestRepo({ s, steps, envActions }: { s: RunSummary; steps: JobStep[]; e
         <Row label="Compilation" tone={tone("build")}>{word("build")}{str(s.buildCommand) && <span className="font-mono text-muted"> · {str(s.buildCommand)}</span>}</Row>
         {num(build.warnings) !== null && <Row label="Avertissements" tone={(num(build.warnings) ?? 0) > 0 ? "warn" : undefined}>{num(build.warnings)}</Row>}
         <Row label="Exécutable" tone={tone("executable")}>{step("executable")?.status === "success" ? `FOUND · ${str(exe.expected) ?? arr(exe.found).join(", ")}` : step("executable")?.status === "warning" ? `MISSING · ${str(exe.expected) ?? ""}` : "—"}</Row>
-        <Row label="Tests du projet" tone={tone("tests")}>{num(tests.total) !== null ? `${num(tests.passed)}/${num(tests.total)}` : step("tests")?.status === "skipped" ? "not requested" : word("tests")}</Row>
+        <Row label={t("Tests du projet")} tone={tone("tests")}>{num(tests.total) !== null ? `${num(tests.passed)}/${num(tests.total)}` : step("tests")?.status === "skipped" ? "not requested" : word("tests")}</Row>
       </div>
       {arr(s.differences).length > 0 && (
         <div className="rounded-lg border border-warn/25 bg-warn/5 px-3 py-2 text-xs text-warn">
-          <p className="mb-0.5 font-medium">Les versions locale et clonée diffèrent</p>
+          <p className="mb-0.5 font-medium">{t("Les versions locale et clonée diffèrent")}</p>
           {arr(s.differences).map((d, i) => <p key={i}>{String(d)}</p>)}
         </div>
       )}
       {referenced.length > 0 && (
         <div className="rounded-lg border border-danger/25 bg-danger/5 px-3 py-2 text-xs">
-          <p className="mb-0.5 font-medium text-danger">Fichiers cités par ta compilation qui n'existent que sur cet ordinateur</p>
+          <p className="mb-0.5 font-medium text-danger">{t("Fichiers cités par ta compilation qui n'existent que sur cet ordinateur")}</p>
           {referenced.map((l, i) => <p key={i} className="selectable font-mono">{String(l.path)} <span className="font-sans text-muted">— {l.kind === "ignored" ? "ignored by Git" : "not added to Git"}</span></p>)}
         </div>
       )}
@@ -178,8 +179,8 @@ function TestRepo({ s, steps, envActions }: { s: RunSummary; steps: JobStep[]; e
       {num(tests.total) !== null && <Tests tests={tests} />}
       {envName && envActions && (
         <div className="flex items-center gap-2">
-          <Button size="sm" icon={<SquareTerminal className="size-3.5" />} onClick={() => envActions(envName, true)}>Terminal dans le clone</Button>
-          <Button size="sm" variant="ghost" icon={<FolderOpen className="size-3.5" />} onClick={() => envActions(envName, false)}>Ouvrir le dossier</Button>
+          <Button size="sm" icon={<SquareTerminal className="size-3.5" />} onClick={() => envActions(envName, true)}>{t("Terminal dans le clone")}</Button>
+          <Button size="sm" variant="ghost" icon={<FolderOpen className="size-3.5" />} onClick={() => envActions(envName, false)}>{t("Ouvrir le dossier")}</Button>
           <span className="selectable min-w-0 truncate font-mono text-[11px] text-faint">{envDir}</span>
         </div>
       )}
@@ -202,7 +203,7 @@ function Banana({ s }: { s: RunSummary }) {
         <Stat label="Majeure" value={num(sev.Major) ?? 0} tone={(num(sev.Major) ?? 0) > 0 ? "danger" : undefined} />
         <Stat label="Mineure" value={num(sev.Minor) ?? 0} tone={(num(sev.Minor) ?? 0) > 0 ? "warn" : undefined} />
         <Stat label="Info" value={num(sev.Info) ?? 0} />
-        <Stat label="Fichiers vérifiés" value={num(s.filesChecked) ?? 0} />
+        <Stat label={t("Fichiers vérifiés")} value={num(s.filesChecked) ?? 0} />
       </div>
       {rules.length > 0 && <div className="flex flex-wrap gap-1.5">{rules.map(([r, n]) => <Badge key={r} mono>{r || "?"} × {String(n)}</Badge>)}</div>}
       {incomplete.length > 0 && <p className="text-xs text-warn">Only partly checked, because a compile error stopped the parser: {incomplete.join(", ")}</p>}
@@ -233,7 +234,7 @@ const RESULT: Record<string, { label: string; tone: "ok" | "warn" | "danger" | "
   warning: { label: "WARNING", tone: "warn" },
   fail: { label: "FAIL", tone: "danger" },
   partial: { label: "PARTIAL", tone: "info" },
-  not_run: { label: "NON LANCÉ", tone: "neutral" },
+  not_run: { label: t("NON LANCÉ"), tone: "neutral" },
 };
 const EVIDENCE: Record<string, string> = { auto: "measured", ai: "AI opinion", none: "not checked" };
 
@@ -276,7 +277,7 @@ function Moulinette({ s }: { s: RunSummary }) {
           );
         })}
       </ul>
-      <p className="text-[11px] text-faint">Une vérification personnelle, pas la moulinette d'Epitech : pas de note, et aucune prédiction. Les lignes « mesuré » viennent d'outils lancés sur cet ordinateur ; « avis de l'IA » est la lecture du code par Claude ; « non vérifié » n'a pas été vérifié du tout.</p>
+      <p className="text-[11px] text-faint">{t("Une vérification personnelle, pas la moulinette d'Epitech : pas de note, et aucune prédiction. Les lignes « mesuré » viennent d'outils lancés sur cet ordinateur ; « avis de l'IA » est la lecture du code par Claude ; « non vérifié » n'a pas été vérifié du tout.")}</p>
     </div>
   );
 }
@@ -311,7 +312,7 @@ export function Report({ data, onCancel, envActions, onClear }: { data: ReportDa
         <Badge tone={STATUS_TONE[data.status]}>{running && <Spinner className="size-3" />}{STATUS_LABEL[data.status]}</Badge>
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{data.title}</span>
         <span className="text-xs text-faint">{duration(data.durationMs)}</span>
-        {running && onCancel && <Button size="sm" variant="danger" onClick={onCancel}>{data.kind === "command" ? "Arrêter" : "Annuler"}</Button>}
+        {running && onCancel && <Button size="sm" variant="danger" onClick={onCancel}>{data.kind === "command" ? "Arrêter" : t("Annuler")}</Button>}
       </div>
       {data.kind === "moulinette_ai" || data.kind === "gen_tests" ? (
         <>
@@ -329,7 +330,7 @@ export function Report({ data, onCancel, envActions, onClear }: { data: ReportDa
       {data.kind === "moulinette" && <Moulinette s={s} />}
       {data.kind === "analysis" && str(s.report) && (
         <div>
-          <p className="mb-1 text-xs font-medium text-muted">Analyse de Claude : sa lecture du code, à vérifier, ni une mesure ni une note</p>
+          <p className="mb-1 text-xs font-medium text-muted">{t("Analyse de Claude : sa lecture du code, à vérifier, ni une mesure ni une note")}</p>
           <div className="selectable max-h-[30rem] overflow-auto rounded-lg border border-line bg-bg px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap">{str(s.report)}</div>
         </div>
       )}
@@ -338,8 +339,8 @@ export function Report({ data, onCancel, envActions, onClear }: { data: ReportDa
         <div className="mb-1 flex items-center justify-between">
           <p className="text-xs text-muted">Journal</p>
           <span className="flex items-center gap-3">
-            {lines.length > 300 && <button type="button" className="text-xs text-muted hover:text-fg" onClick={() => setFull(!full)}>{full ? "N'afficher que la fin" : `Show all ${lines.length} lines`}</button>}
-            {onClear && <button type="button" className="text-xs text-muted hover:text-fg" onClick={onClear} title="Vide cette vue. Le journal complet reste dans l'historique.">Effacer</button>}
+            {lines.length > 300 && <button type="button" className="text-xs text-muted hover:text-fg" onClick={() => setFull(!full)}>{full ? t("N'afficher que la fin") : `Show all ${lines.length} lines`}</button>}
+            {onClear && <button type="button" className="text-xs text-muted hover:text-fg" onClick={onClear} title={t("Vide cette vue. Le journal complet reste dans l'historique.")}>Effacer</button>}
           </span>
         </div>
         <div ref={logRef} className="max-h-80 overflow-auto rounded-md">
