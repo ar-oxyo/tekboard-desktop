@@ -82,7 +82,7 @@ export function AgentView({ kind, status, events, summary, repo, runId }: { kind
           ))}
         </ol>
       )}
-      {running && lastPhaseText && <p className="text-[13px] text-muted">{String(lastPhaseText)}…</p>}
+      {running && lastPhaseText && <p className="text-sm text-muted">{String(lastPhaseText)}…</p>}
       {checks.length > 0 && (
         <>
           <div className="flex flex-wrap gap-2 text-xs">
@@ -91,17 +91,17 @@ export function AgentView({ kind, status, events, summary, repo, runId }: { kind
             {count("warning") > 0 && <Badge tone="warn">{count("warning")} à surveiller</Badge>}
             {count("planned") > 0 && <Badge>{count("planned")} prévue{count("planned") > 1 ? "s" : ""}</Badge>}
           </div>
-          <ul className="flex flex-col divide-y divide-white/5 rounded-lg border border-white/7">
+          <ul className="flex flex-col divide-y divide-ink/5 rounded-lg border border-ink/7">
             {checks.map((c) => (
               <CheckRow key={String(c.id)} c={c} running={running} />
             ))}
           </ul>
         </>
       )}
-      {verdict && <p className="text-[14px] font-medium">{verdict}</p>}
+      {verdict && <p className="text-base font-medium">{verdict}</p>}
       {report && !running && (
-        <div className="rounded-lg border border-white/7 bg-black/15 px-4 py-3">
-          <Markdown text={report} className="selectable text-[13px] leading-relaxed" />
+        <div className="rounded-lg border border-ink/7 bg-well px-4 py-3">
+          <Markdown text={report} className="selectable text-sm leading-relaxed" />
         </div>
       )}
       {kind === "gen_tests" && !running && <Changes summary={summary} repo={repo} runId={runId} />}
@@ -119,8 +119,8 @@ function CheckRow({ c, running }: { c: JobEvent; running: boolean }) {
       <button type="button" disabled={!detail} onClick={() => setOpen(!open)} className="flex w-full items-start gap-2.5 px-3 py-2 text-left">
         <CheckIcon status={status} />
         <span className="min-w-0 flex-1">
-          <span className="text-[13px]">{String(c.title)}</span>
-          <span className="ml-2 text-[11px] text-faint">{PHASES[String(c.category)] ?? String(c.category ?? "")}</span>
+          <span className="text-sm">{String(c.title)}</span>
+          <span className="ml-2 text-2xs text-faint">{PHASES[String(c.category)] ?? String(c.category ?? "")}</span>
         </span>
         {typeof c.severity === "string" && status === "failed" && <Badge tone={c.severity === "critical" ? "danger" : "warn"}>{c.severity === "critical" ? "critique" : c.severity === "major" ? "majeur" : "mineur"}</Badge>}
       </button>
@@ -147,7 +147,7 @@ function Activity({ items, running }: { items: JobEvent[]; running: boolean }) {
       <button type="button" onClick={() => setOpen(!open)} className="mb-1 text-xs text-muted hover:text-fg">
         Ce que Artix a fait ({items.length} action{items.length > 1 ? "s" : ""}) {open ? "· réduire" : "· tout voir"}
       </button>
-      <ul className="flex flex-col gap-0.5 rounded-lg bg-black/20 p-2 font-mono text-[11.5px]">
+      <ul className="flex flex-col gap-0.5 rounded-lg bg-well p-2 font-mono text-2xs">
         {shown.map((e, i) => (
           <li key={String(e.id ?? i)} className="flex items-start gap-2">
             <span className={cn("mt-0.5", e.status === "error" ? "text-danger" : e.status === "running" ? "text-accent" : "text-ok")}>{e.status === "running" ? "…" : e.status === "error" ? "✗" : "✓"}</span>
@@ -173,21 +173,21 @@ function Changes({ summary, repo, runId }: { summary: RunSummary; repo: string |
     onSuccess: (n) => (setDone(true), toast({ kind: "ok", title: `${n} fichier(s) écrit(s) dans ton projet`, detail: "Les fichiers remplacés sont sauvegardés. Rien n'est commité." })),
     onError: (e) => toast({ kind: "error", title: "Non appliqué", detail: asAppError(e).message }),
   });
-  if (!changes.length) return <p className="text-[13px] text-muted">Aucun fichier de test n'a été écrit.</p>;
+  if (!changes.length) return <p className="text-sm text-muted">Aucun fichier de test n'a été écrit.</p>;
   const cur = changes.find((c) => c.path === shown);
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-white/7">
-      <div className="flex items-center gap-2 border-b border-white/6 px-3 py-2">
+    <div className="flex flex-col gap-2 rounded-lg border border-ink/7">
+      <div className="flex items-center gap-2 border-b border-ink/6 px-3 py-2">
         <FlaskConical className="size-4 text-accent" />
-        <span className="flex-1 text-[13px]">Fichiers écrits par Artix : rien n'est encore dans ton projet</span>
+        <span className="flex-1 text-sm">Fichiers écrits par Artix : rien n'est encore dans ton projet</span>
         <Button size="sm" variant="primary" disabled={done || !repo || runId === null || changes.every((c) => off.has(c.path))} busy={apply.isPending} onClick={() => apply.mutate()} title={runId === null ? "Disponible quand l'exécution est enregistrée" : undefined}>
           {done ? t("Appliqué") : "Appliquer au projet"}
         </Button>
       </div>
       <div className="flex min-h-0">
-        <ul className="w-56 shrink-0 border-r border-white/6 py-1">
+        <ul className="w-56 shrink-0 border-r border-ink/6 py-1">
           {changes.map((c) => (
-            <li key={c.path} className={cn("flex items-center gap-2 px-3 py-1 text-xs", shown === c.path && "bg-white/4")}>
+            <li key={c.path} className={cn("flex items-center gap-2 px-3 py-1 text-xs", shown === c.path && "bg-ink/4")}>
               <input type="checkbox" className="accent-(--color-accent)" checked={!off.has(c.path)} onChange={() => setOff((s) => (s.has(c.path) ? new Set([...s].filter((x) => x !== c.path)) : new Set([...s, c.path])))} />
               <button type="button" className="min-w-0 flex-1 truncate text-left font-mono" onClick={() => setShown(c.path)}>
                 {c.path}

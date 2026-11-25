@@ -307,9 +307,9 @@ export default function BoardEditor({ source, onClose, connect }: { source: Boar
           <ArrowLeft className="size-4" />
         </IconButton>
         {local ? (
-          <Input className="h-8 w-48 text-[13px] font-medium" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} onBlur={() => local && name.trim() && void api.boardRename(local, name)} aria-label={t("Nom du tableau")} />
+          <Input className="h-8 w-48 text-sm font-medium" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} onBlur={() => local && name.trim() && void api.boardRename(local, name)} aria-label={t("Nom du tableau")} />
         ) : (
-          <span className="text-[13px] font-medium text-fg">{name}</span>
+          <span className="text-sm font-medium text-fg">{name}</span>
         )}
         {local && <span className="w-20 text-xs text-faint">{dirty ? t("enregistrement…") : t("enregistré")}</span>}
         {session && (
@@ -383,7 +383,7 @@ export default function BoardEditor({ source, onClose, connect }: { source: Boar
         </ErrorNote>
       )}
       {preview && (
-        <div className="flex items-center gap-2 rounded-md border border-accent/40 bg-accent-soft/40 px-3 py-2 text-[13px]">
+        <div className="flex items-center gap-2 rounded-md border border-accent/40 bg-accent-soft/40 px-3 py-2 text-sm">
           <Sparkles className="size-4 text-accent" />
           <span className="flex-1 text-fg">{t("Proposition d'Artix ({n} éléments, sélectionnés) : garde-la ou annule-la.", { n: preview.length })}</span>
           <Button size="sm" variant="primary" icon={<Check className="size-3.5" />} onClick={() => acceptPreview(true)}>
@@ -419,7 +419,7 @@ export default function BoardEditor({ source, onClose, connect }: { source: Boar
       {dialog === "shapes" && <ShapesDialog onClose={() => setDialog(null)} onInsert={(s) => { insert(s); setDialog(null); }} />}
       {dialog === "code" && (
         <Modal open onClose={() => setDialog(null)} title={codeEdit.id ? t("Modifier le bloc de code") : t("Bloc de code")} description={t("Coloré comme dans l'éditeur ; le code reste modifiable sur le tableau.")} width="w-[760px]" footer={<Button variant="primary" onClick={() => insertCode(codeEdit.code)}>{codeEdit.id ? t("Mettre à jour") : t("Ajouter au tableau")}</Button>}>
-          <div className="h-80 overflow-hidden rounded-md border border-white/8">
+          <div className="h-80 overflow-hidden rounded-md border border-ink/8">
             <Suspense fallback={<Spinner />}>
               <CodeEditor value={codeEdit.code} onChange={(code) => setCodeEdit((c) => ({ ...c, code }))} className="h-full" label={t("Code")} />
             </Suspense>
@@ -434,7 +434,7 @@ export default function BoardEditor({ source, onClose, connect }: { source: Boar
           <div className="space-y-4">
             <ul className="space-y-1">
               {session.participants.map((p) => (
-                <li key={p.fp} className="flex items-center gap-2 text-[13px]">
+                <li key={p.fp} className="flex items-center gap-2 text-sm">
                   <span className="size-2.5 rounded-full" style={{ background: p.color }} />
                   <span className="flex-1 text-fg">{p.nick}</span>
                   {p.fp === me?.fp ? (
@@ -455,7 +455,7 @@ export default function BoardEditor({ source, onClose, connect }: { source: Boar
             <section>
               <h3 className="mb-1.5 text-xs text-faint">{t("Inviter")}</h3>
               {people.length === 0 ? (
-                <p className="text-[13px] text-muted">{t("Aucun contact connecté.")}</p>
+                <p className="text-sm text-muted">{t("Aucun contact connecté.")}</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {people.filter((p) => !session.participants.some((x) => x.fp === p.fp)).map((p) => (
@@ -483,7 +483,7 @@ function ShapesDialog({ onClose, onInsert }: { onClose: () => void; onInsert: (s
         <ul className="space-y-0.5">
           {SHAPES.map((s) => (
             <li key={s.kind}>
-              <button type="button" onClick={() => { setKind(s.kind); setInput(s.example); }} className={cn("w-full rounded-md px-2 py-1.5 text-left text-[13px]", kind === s.kind ? "bg-accent-soft text-fg" : "text-muted hover:bg-hover hover:text-fg")}>
+              <button type="button" onClick={() => { setKind(s.kind); setInput(s.example); }} className={cn("w-full rounded-md px-2 py-1.5 text-left text-sm", kind === s.kind ? "bg-accent-soft text-fg" : "text-muted hover:bg-hover hover:text-fg")}>
                 {t(s.label)}
               </button>
             </li>
@@ -491,7 +491,7 @@ function ShapesDialog({ onClose, onInsert }: { onClose: () => void; onInsert: (s
         </ul>
         <label className="block">
           <span className="mb-1 block text-xs text-muted">{t(def.input)}</span>
-          {def.multiline ? <textarea className="field h-48 w-full border border-white/8 p-2 font-mono text-xs text-fg" value={input} onChange={(e) => setInput(e.target.value)} /> : <Input className="font-mono text-xs" value={input} onChange={(e) => setInput(e.target.value)} />}
+          {def.multiline ? <textarea className="field h-48 w-full border border-ink/8 p-2 font-mono text-xs text-fg" value={input} onChange={(e) => setInput(e.target.value)} /> : <Input className="font-mono text-xs" value={input} onChange={(e) => setInput(e.target.value)} />}
         </label>
       </div>
     </Modal>
@@ -506,11 +506,11 @@ function HistoryDialog({ id, onClose, onRestored }: { id: string; onClose: () =>
       {!list ? (
         <Spinner />
       ) : list.length === 0 ? (
-        <p className="text-[13px] text-muted">{t("Pas encore de version enregistrée.")}</p>
+        <p className="text-sm text-muted">{t("Pas encore de version enregistrée.")}</p>
       ) : (
         <ul className="max-h-[50vh] space-y-0.5 overflow-y-auto">
           {list.map((v) => (
-            <li key={v.at} className="row-hover flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px]">
+            <li key={v.at} className="row-hover flex items-center gap-2 rounded-md px-2 py-1.5 text-sm">
               <span className="flex-1 text-fg">{new Date(v.at * 1000).toLocaleString(locale())}</span>
               <span className="text-xs text-faint">{t("{n} éléments", { n: v.elements })} · {timeAgo(v.at)}</span>
               <Button size="sm" onClick={() => void api.boardRestore(id, v.at).then(onRestored)}>
@@ -604,7 +604,7 @@ function AiDialog({ api: ex, onClose, onPreview }: { api: Api; onClose: () => vo
               </Button>
             </div>
             <textarea
-              className="field h-28 w-full border border-white/8 p-2 text-[13px] text-fg"
+              className="field h-28 w-full border border-ink/8 p-2 text-sm text-fg"
               placeholder={kind === "diagram" ? t("Ex. : l'organigramme de mon get_next_line, l'architecture client-serveur de mon projet, une liste doublement chaînée…") : t("Facultatif : ce sur quoi insister")}
               value={request}
               onChange={(e) => setRequest(e.target.value)}

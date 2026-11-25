@@ -37,9 +37,9 @@ export function CaptureApp() {
   const hide = (then: string | null = null) => void api.captureClose(then);
 
   return (
-    <div className="flex h-screen flex-col gap-2 overflow-hidden border border-white/10 bg-bg p-3 select-none">
+    <div className="flex h-screen flex-col gap-2 overflow-hidden border border-ink/10 bg-bg p-3 select-none">
       <header data-tauri-drag-region className="flex items-center gap-2">
-        <span data-tauri-drag-region className="flex-1 text-[12px] font-medium text-muted">
+        <span data-tauri-drag-region className="flex-1 text-xs font-medium text-muted">
           {t("Capture rapide")}
         </span>
         <IconButton label={t("Ouvrir l'Inbox")} onClick={() => hide("inbox")}>

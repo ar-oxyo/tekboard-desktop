@@ -89,9 +89,9 @@ function ThisWeek({ l }: { l: Logtime }) {
             ) : (
               <p className="display text-4xl font-medium tabular-nums">{hours(left)}</p>
             )}
-            <p className="mt-1 text-[13px] text-muted">{reached ? t("{d} faites cette semaine, sur {g}.", { d: hours(done), g: hours(goal) }) : t("restantes pour atteindre {g}", { g: hours(goal) })}</p>
+            <p className="mt-1 text-sm text-muted">{reached ? t("{d} faites cette semaine, sur {g}.", { d: hours(done), g: hours(goal) }) : t("restantes pour atteindre {g}", { g: hours(goal) })}</p>
           </div>
-          <div className="text-[13px] text-muted">
+          <div className="text-sm text-muted">
             <p>
               <span className="font-medium text-fg tabular-nums">{hours(done)}</span> {t("faites")}
             </p>
@@ -99,10 +99,10 @@ function ThisWeek({ l }: { l: Logtime }) {
           </div>
         </div>
         <div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-white/6" role="progressbar" aria-valuemin={0} aria-valuemax={l.goalHours} aria-valuenow={Math.round((done / HOUR) * 10) / 10} aria-label={t("Logtime de la semaine")}>
+          <div className="h-2.5 overflow-hidden rounded-full bg-ink/6" role="progressbar" aria-valuemin={0} aria-valuemax={l.goalHours} aria-valuenow={Math.round((done / HOUR) * 10) / 10} aria-label={t("Logtime de la semaine")}>
             <div className={cn("h-full rounded-full transition-[width] duration-500", reached ? "bg-ok" : "bg-accent")} style={{ width: `${pct}%` }} />
           </div>
-          <div className="mt-1 flex justify-between text-[11px] text-faint tabular-nums">
+          <div className="mt-1 flex justify-between text-2xs text-faint tabular-nums">
             <span>0 h</span>
             <span>{hours(goal)}</span>
           </div>
@@ -113,11 +113,11 @@ function ThisWeek({ l }: { l: Logtime }) {
             const future = i > l.weekday;
             return (
               <div key={name} className="flex flex-col items-center gap-1.5" title={future ? t("à venir") : hours(sec)}>
-                <div className="flex h-24 w-full items-end justify-center rounded-md bg-white/3 px-2">
+                <div className="flex h-24 w-full items-end justify-center rounded-md bg-ink/3 px-2">
                   {sec > 0 && <div className={cn("w-full max-w-7 rounded-t-[4px]", i === l.weekday ? "bg-accent" : "bg-accent/55")} style={{ height: `${Math.max(4, (sec / max) * 100)}%` }} />}
                 </div>
-                <span className={cn("text-[11px] capitalize", i === l.weekday ? "font-medium text-fg" : future ? "text-faint/60" : "text-faint")}>{name}</span>
-                <span className="text-[11px] text-muted tabular-nums">{future ? "" : hours(sec)}</span>
+                <span className={cn("text-2xs capitalize", i === l.weekday ? "font-medium text-fg" : future ? "text-faint/60" : "text-faint")}>{name}</span>
+                <span className="text-2xs text-muted tabular-nums">{future ? "" : hours(sec)}</span>
               </div>
             );
           })}
@@ -138,7 +138,7 @@ function History({ l }: { l: Logtime }) {
     <Card>
       <CardTitle>{t("Semaines précédentes")}</CardTitle>
       {past.length === 0 ? (
-        <p className="px-4 py-4 text-[13px] text-muted">{t("Pas encore d'historique : MY Epitech n'a transmis que cette semaine.")}</p>
+        <p className="px-4 py-4 text-sm text-muted">{t("Pas encore d'historique : MY Epitech n'a transmis que cette semaine.")}</p>
       ) : (
         <ul className="py-1">
           {past.map((w) => {
@@ -146,9 +146,9 @@ function History({ l }: { l: Logtime }) {
             // After the last day MY Epitech reported, an empty week is missing data, not zero.
             const unknown = w.seconds === 0 && l.lastDay !== null && w.start > l.lastDay;
             return (
-              <li key={w.start} className="flex h-10 items-center gap-3 px-4 text-[13px]" title={unknown ? t("Pas encore transmis par MY Epitech") : `${weekLabel(w)} : ${hours(w.seconds)}`}>
+              <li key={w.start} className="flex h-10 items-center gap-3 px-4 text-sm" title={unknown ? t("Pas encore transmis par MY Epitech") : `${weekLabel(w)} : ${hours(w.seconds)}`}>
                 <span className="w-24 shrink-0 text-muted">{weekLabel(w)}</span>
-                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/6">
+                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink/6">
                   <span className={cn("block h-full rounded-full", ok ? "bg-ok" : "bg-accent/70")} style={{ width: `${Math.min(100, (w.seconds / goal) * 100)}%` }} />
                 </span>
                 <span className={cn("w-16 shrink-0 text-right tabular-nums", unknown && "text-faint")}>{unknown ? t("non transmis") : hours(w.seconds)}</span>

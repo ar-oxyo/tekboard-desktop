@@ -69,12 +69,12 @@ export function ShareDialog({ resource }: { resource: ShareResource }) {
             </p>
             {c.preview && <CodeView text={c.preview} className="max-h-40 rounded-md" />}
             {c.blocked.map((b, i) => (
-              <p key={i} className="flex gap-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-[13px] text-danger">
+              <p key={i} className="flex gap-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
                 <ShieldAlert className="mt-0.5 size-4 shrink-0" /> {b}
               </p>
             ))}
             {c.school && (
-              <label className="flex gap-2 rounded-md border border-warn/30 bg-warn/10 px-3 py-2 text-[13px] text-warn">
+              <label className="flex gap-2 rounded-md border border-warn/30 bg-warn/10 px-3 py-2 text-sm text-warn">
                 <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={school} onChange={(e) => setSchool(e.target.checked)} />
                 <span>
                   <AlertTriangle className="mr-1 inline size-3.5" />
@@ -87,23 +87,23 @@ export function ShareDialog({ resource }: { resource: ShareResource }) {
         <section>
           <h3 className="mb-2 text-xs text-faint">{t("À qui")}</h3>
           {!connect.data?.running ? (
-            <p className="text-[13px] text-muted">
+            <p className="text-sm text-muted">
               {t("TekBoard Connect est désactivé.")}{" "}
               <button type="button" className="text-accent hover:underline" onClick={() => { close(); setPage("connect"); }}>
                 {t("L'activer")}
               </button>
             </p>
           ) : people.length === 0 ? (
-            <p className="text-[13px] text-muted">{t("Aucun contact connecté pour l'instant. Seules les personnes appairées et en ligne peuvent recevoir.")}</p>
+            <p className="text-sm text-muted">{t("Aucun contact connecté pour l'instant. Seules les personnes appairées et en ligne peuvent recevoir.")}</p>
           ) : (
             <ul className="grid grid-cols-2 gap-1.5">
               {people.map((p) => (
                 <li key={p.fp}>
-                  <button type="button" aria-pressed={to.has(p.fp)} onClick={() => setTo((cur) => { const n = new Set(cur); if (n.has(p.fp)) n.delete(p.fp); else n.add(p.fp); return n; })} className={cn("flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left", to.has(p.fp) ? "border-accent/60 bg-accent-soft/40" : "border-white/8 hover:bg-hover")}>
+                  <button type="button" aria-pressed={to.has(p.fp)} onClick={() => setTo((cur) => { const n = new Set(cur); if (n.has(p.fp)) n.delete(p.fp); else n.add(p.fp); return n; })} className={cn("flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left", to.has(p.fp) ? "border-accent/60 bg-accent-soft/40" : "border-ink/8 hover:bg-hover")}>
                     <Avatar profile={p.profile} fp={p.fp} size={28} online />
                     <span className="min-w-0">
-                      <span className="block truncate text-[13px] text-fg">{p.profile.nick}</span>
-                      <span className="block text-[11px] text-faint">{STATUS[p.profile.status]?.label}</span>
+                      <span className="block truncate text-sm text-fg">{p.profile.nick}</span>
+                      <span className="block text-2xs text-faint">{STATUS[p.profile.status]?.label}</span>
                     </span>
                   </button>
                 </li>

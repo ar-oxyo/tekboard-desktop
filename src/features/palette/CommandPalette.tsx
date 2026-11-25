@@ -17,7 +17,7 @@ import { t } from "../../lib/i18n";
 import { CTYPE_LABEL, KIND_LABEL } from "../../lib/brain";
 
 const itemClass =
-  "flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-[13px] text-muted data-[selected=true]:bg-accent-soft data-[selected=true]:text-fg";
+  "flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-sm text-muted data-[selected=true]:bg-accent-soft data-[selected=true]:text-fg";
 const groupClass = "[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-normal [&_[cmdk-group-heading]]:text-faint ";
 
 const ic = "size-4";
@@ -73,11 +73,11 @@ export function CommandPalette() {
         <Dialog.Overlay className="scrim anim-fade fixed inset-0 z-40" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="glass anim-pop fixed top-[42%] left-1/2 z-50 w-[600px] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-hidden border border-white/10 focus:outline-none"
+          className="glass anim-pop fixed top-[42%] left-1/2 z-50 w-[600px] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-hidden border border-ink/10 focus:outline-none"
         >
           <Dialog.Title className="sr-only">Palette de commandes</Dialog.Title>
           <Command loop label="Palette de commandes">
-            <Command.Input autoFocus value={search} onValueChange={setSearch} aria-label={t("Rechercher un projet, un sujet, une action, ou demander à Artix")} placeholder={t("Rechercher, ou demander à Artix…")} className="h-12 w-full border-b border-white/6 bg-transparent px-4 text-sm text-fg placeholder:text-faint focus:outline-none" />
+            <Command.Input autoFocus value={search} onValueChange={setSearch} aria-label={t("Rechercher un projet, un sujet, une action, ou demander à Artix")} placeholder={t("Rechercher, ou demander à Artix…")} className="h-12 w-full border-b border-ink/6 bg-transparent px-4 text-sm text-fg placeholder:text-faint focus:outline-none" />
             <Command.List className="max-h-[380px] overflow-y-auto p-1.5">
               {search.trim().length > 2 && (
                 <Command.Group heading="Artix" className={groupClass}>
@@ -86,7 +86,7 @@ export function CommandPalette() {
                     <span className="min-w-0 flex-1 truncate">
                       {t("Demander à Artix :")} <span className="text-fg">{search.trim()}</span>
                     </span>
-                    <span className="text-[11px] text-faint">Entrée</span>
+                    <span className="text-2xs text-faint">Entrée</span>
                   </Command.Item>
                 </Command.Group>
               )}
@@ -99,7 +99,7 @@ export function CommandPalette() {
                         <Lightbulb className="size-4" />
                       </span>
                       <span className="min-w-0 flex-1 truncate">{c.title}</span>
-                      <span className="text-[11px] text-faint">{c.kind === "idea" ? CTYPE_LABEL[c.ctype || "idea"] : KIND_LABEL[c.kind]}</span>
+                      <span className="text-2xs text-faint">{c.kind === "idea" ? CTYPE_LABEL[c.ctype || "idea"] : KIND_LABEL[c.kind]}</span>
                     </Command.Item>
                   ))}
                 </Command.Group>
@@ -248,7 +248,7 @@ function Item({ icon, children, onSelect, hint }: { icon: ReactNode; children: R
     <Command.Item onSelect={onSelect} className={itemClass}>
       <span className="shrink-0 text-faint">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{children}</span>
-      {hint && <span className="text-[11px] text-faint">{hint}</span>}
+      {hint && <span className="text-2xs text-faint">{hint}</span>}
     </Command.Item>
   );
 }

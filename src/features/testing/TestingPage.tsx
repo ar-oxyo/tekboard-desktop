@@ -117,7 +117,7 @@ export function TestingPage() {
                 <Select size="sm" className="w-40" label={t("Type d'exécution")} value={kind} onChange={(v) => setKind(v as RunKind | "all")} options={[{ value: "all", label: t("Tout") }, ...(Object.keys(KIND_LABEL) as RunKind[]).map((k) => ({ value: k as string, label: KIND_LABEL[k] }))]} />
               }>Historique</CardTitle>
               {(runs.data?.length ?? 0) === 0 ? (
-                <p className="px-4 py-4 text-[13px] text-muted">{t("Rien n'a encore été lancé sur ce projet. Compilations, tests et vérifications s'affichent ici avec leur journal.")}</p>
+                <p className="px-4 py-4 text-sm text-muted">{t("Rien n'a encore été lancé sur ce projet. Compilations, tests et vérifications s'affichent ici avec leur journal.")}</p>
               ) : (
                 <ul className="max-h-72 overflow-y-auto py-1">
                   {runs.data!.map((r) => (
@@ -126,7 +126,7 @@ export function TestingPage() {
                         <span className="flex w-20 shrink-0">
                           <Dot tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Dot>
                         </span>
-                        <span className="w-28 shrink-0 truncate text-[13px]">{KIND_LABEL[r.kind] ?? r.kind}</span>
+                        <span className="w-28 shrink-0 truncate text-sm">{KIND_LABEL[r.kind] ?? r.kind}</span>
                         <span className="min-w-0 flex-1 truncate text-xs text-muted">{headline(r.kind, r.summary) ?? r.title.split(" — ").pop()}</span>
                         <span className="shrink-0 text-xs text-faint">{duration(r.durationMs)} · {timeAgo(r.startedAt)}</span>
                       </button>
@@ -139,7 +139,7 @@ export function TestingPage() {
             <Card>
               <CardTitle>{t("Environnements de test")}</CardTitle>
               {(envs.data?.length ?? 0) === 0 ? (
-                <p className="px-4 py-4 text-[13px] text-muted">{t("Les clones de la simulation de rendu restent ici jusqu'à ce que tu les supprimes : tu peux y ouvrir un terminal et essayer le programme.")}</p>
+                <p className="px-4 py-4 text-sm text-muted">{t("Les clones de la simulation de rendu restent ici jusqu'à ce que tu les supprimes : tu peux y ouvrir un terminal et essayer le programme.")}</p>
               ) : (
                 <ul className="max-h-56 overflow-y-auto py-1">
                   {envs.data!.map((e) => (
@@ -172,7 +172,7 @@ export function TestingPage() {
             {data ? (
               <Report data={data} onCancel={busy && jobId !== null ? () => cancel.mutate(jobId) : undefined} envActions={(n, t) => void openEnv(n, t)} onClear={clearLog} />
             ) : (runId !== null && run.isLoading) || (jobId !== null && job.isLoading) ? (
-              <p className="flex items-center gap-2 px-4 py-8 text-[13px] text-muted"><Spinner /> {t("Chargement…")}</p>
+              <p className="flex items-center gap-2 px-4 py-8 text-sm text-muted"><Spinner /> {t("Chargement…")}</p>
             ) : job.error && jobId !== null ? (
               <div className="p-4"><ErrorNote>{asAppError(job.error).message}</ErrorNote></div>
             ) : (
@@ -227,11 +227,11 @@ function Seg<T extends string>({ value, options, onChange }: { value: T; options
 function Tile({ id, icon, title, children, action, folded, onToggle }: { id: string; icon: ReactNode; title: string; children: ReactNode; action: ReactNode; folded: string[]; onToggle: (id: string) => void }) {
   const closed = folded.includes(id);
   return (
-    <div className="border-b border-white/6 px-4 py-2 last:border-b-0">
+    <div className="border-b border-ink/6 px-4 py-2 last:border-b-0">
       <div className="flex h-8 items-center gap-3">
         <button type="button" aria-expanded={!closed} onClick={() => onToggle(id)} className="group flex min-w-0 flex-1 items-center gap-3 text-left" title={closed ? "Show the options" : "Hide the options"}>
           <span className="flex w-4 shrink-0 justify-center text-faint">{icon}</span>
-          <h3 className="min-w-0 truncate text-[13px] font-medium">{title}</h3>
+          <h3 className="min-w-0 truncate text-sm font-medium">{title}</h3>
           <ChevronDown className={cn("size-3.5 shrink-0 text-faint transition-transform duration-150 group-hover:text-fg", closed && "-rotate-90")} />
         </button>
         {action}

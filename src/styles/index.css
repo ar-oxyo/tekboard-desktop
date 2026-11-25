@@ -32,6 +32,33 @@
   --color-danger: #e5646a;
   --color-info: #7aa7e6;
 
+  /* Translucent tints: white on dark grounds, near-black on light ones (`bg-ink/5`). */
+  --color-ink: #ffffff;
+  /* Sunken wells: code, logs, editors. */
+  --color-well: rgb(0 0 0 / 0.22);
+
+  /* Type scale. 13px is the body; hierarchy comes from weight and tone first. */
+  --text-3xs: 10px;
+  --text-3xs--line-height: 14px;
+  --text-2xs: 11px;
+  --text-2xs--line-height: 15px;
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-sm: 13px;
+  --text-sm--line-height: 19px;
+  --text-base: 14px;
+  --text-base--line-height: 20px;
+  --text-md: 15px;
+  --text-md--line-height: 21px;
+  --text-lg: 18px;
+  --text-lg--line-height: 24px;
+  --text-xl: 22px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 34px;
+  --text-3xl: 34px;
+  --text-3xl--line-height: 40px;
+
   --radius-card: 12px;
   --shadow-pop: 0 24px 60px -16px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.06);
 }

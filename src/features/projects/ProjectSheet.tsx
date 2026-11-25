@@ -149,7 +149,7 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
   const binary = draft.runBin ?? bin?.detected ?? null;
   const source = !draft.deadline ? null : dirty && (draft.deadline !== saved.deadline || draft.deadlineTime !== saved.deadlineTime) ? "will be saved as typed by you" : stored.deadlineSource === "my" ? "from MY Epitech" : stored.deadlineSource === "manual" ? "typed by you" : null;
   const buildState = build.data && (
-    <span className={cn("flex items-center gap-1.5 text-[13px]", build.data.code === 0 ? "text-ok" : "text-danger")}>
+    <span className={cn("flex items-center gap-1.5 text-sm", build.data.code === 0 ? "text-ok" : "text-danger")}>
       {build.data.code === 0 ? <CircleCheck className="size-4" /> : <CircleX className="size-4" />}
       {build.data.timedOut ? "Stopped after 5 minutes" : build.data.code === 0 ? "Build succeeded" : `Build failed (exit ${build.data.code ?? "?"})`}
       <span className="text-faint">· {(build.data.durationMs / 1000).toFixed(1)} s</span>
@@ -191,9 +191,9 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
           )}
         </div>
       )}
-      <div className="flex gap-5 border-b border-white/6">
+      <div className="flex gap-5 border-b border-ink/6">
         {TABS.map(([id, label]) => (
-          <button key={id} type="button" onClick={() => setTab(id)} className={cn("-mb-px h-9 border-b-2 px-1 text-[13px] whitespace-nowrap transition-colors duration-150", tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
+          <button key={id} type="button" onClick={() => setTab(id)} className={cn("-mb-px h-9 border-b-2 px-1 text-sm whitespace-nowrap transition-colors duration-150", tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
             {label}
           </button>
         ))}

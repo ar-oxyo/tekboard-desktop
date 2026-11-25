@@ -62,11 +62,11 @@ function Inbox({ initial }: { initial: { view: CaptureView; query: string; focus
         <div className="flex w-[340px] shrink-0 flex-col gap-2">
           <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
-            <Input autoFocus={!initial.focus} className="h-8 pl-8 text-[13px]" placeholder={t("Rechercher une idée…")} value={query} onChange={(e) => setQuery(e.target.value)} />
+            <Input autoFocus={!initial.focus} className="h-8 pl-8 text-sm" placeholder={t("Rechercher une idée…")} value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
           <div className="flex flex-wrap gap-1">
             {VIEWS.map((v) => (
-              <button key={v.id} type="button" onClick={() => setView(v.id)} className={cn("h-6 rounded-md px-2 text-[11.5px] transition-colors duration-150", view === v.id ? "bg-accent-soft text-accent-strong" : "text-faint hover:bg-white/5 hover:text-fg")}>
+              <button key={v.id} type="button" onClick={() => setView(v.id)} className={cn("h-6 rounded-md px-2 text-2xs transition-colors duration-150", view === v.id ? "bg-accent-soft text-accent-strong" : "text-faint hover:bg-ink/5 hover:text-fg")}>
                 {v.label}
                 {v.id === "inbox" && (count.data ?? 0) > 0 && <span className="ml-1 tabular-nums opacity-70">{count.data}</span>}
               </button>
@@ -89,13 +89,13 @@ function Inbox({ initial }: { initial: { view: CaptureView; query: string; focus
                       setSelected(c.id);
                       setWriting(false);
                     }}
-                    className={cn("flex w-full flex-col gap-0.5 rounded-lg border px-2.5 py-2 text-left transition-colors duration-150", current?.id === c.id ? "border-accent/35 bg-accent-soft/40" : "border-transparent hover:bg-white/4")}
+                    className={cn("flex w-full flex-col gap-0.5 rounded-lg border px-2.5 py-2 text-left transition-colors duration-150", current?.id === c.id ? "border-accent/35 bg-accent-soft/40" : "border-transparent hover:bg-ink/4")}
                   >
                     <span className="flex items-center gap-1.5">
                       {c.pinned && <Pin className="size-3 shrink-0 text-accent-strong" />}
-                      <span className="truncate text-[13px] text-fg">{c.title}</span>
+                      <span className="truncate text-sm text-fg">{c.title}</span>
                     </span>
-                    <span className="flex items-center gap-1.5 text-[11px] text-faint">
+                    <span className="flex items-center gap-1.5 text-2xs text-faint">
                       <span>{c.kind === "idea" ? CTYPE_LABEL[c.ctype || "idea"] : KIND_LABEL[c.kind]}</span>
                       <span>·</span>
                       <span>{when(c.createdAt)}</span>
@@ -114,10 +114,10 @@ function Inbox({ initial }: { initial: { view: CaptureView; query: string; focus
             {t("Nouvelle capture")}
           </Button>
         </div>
-        <div className="min-w-0 flex-1 overflow-y-auto border-l border-white/6 pl-4">
+        <div className="min-w-0 flex-1 overflow-y-auto border-l border-ink/6 pl-4">
           {writing ? (
             <div className="flex h-full flex-col gap-2">
-              <p className="text-[13px] font-medium text-fg">{t("Nouvelle capture")}</p>
+              <p className="text-sm font-medium text-fg">{t("Nouvelle capture")}</p>
               <CaptureEditor
                 onClose={() => setWriting(false)}
                 onSaved={(c, keep) => {
@@ -207,7 +207,7 @@ function Detail({ c, onGone }: { c: Capture; onGone: () => void }) {
                 {projectName(c.project)}
               </button>
             )}
-            <span className="text-[11px] text-faint">{new Date(c.createdAt * 1000).toLocaleString(locale(), { dateStyle: "medium", timeStyle: "short" })}</span>
+            <span className="text-2xs text-faint">{new Date(c.createdAt * 1000).toLocaleString(locale(), { dateStyle: "medium", timeStyle: "short" })}</span>
           </div>
         </div>
         <IconButton label={c.pinned ? t("Désépingler") : t("Épingler")} active={c.pinned} onClick={() => void run(api.brainPin(c.id, !c.pinned))}>
@@ -269,7 +269,7 @@ function Detail({ c, onGone }: { c: Capture; onGone: () => void }) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={8}
-            className="selectable w-full resize-y rounded-lg border border-white/8 bg-black/15 px-3 py-2.5 font-[inherit] text-[13px] leading-relaxed text-fg focus:border-accent/50 focus:outline-none"
+            className="selectable w-full resize-y rounded-lg border border-ink/8 bg-well px-3 py-2.5 font-[inherit] text-sm leading-relaxed text-fg focus:border-accent/50 focus:outline-none"
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
@@ -326,7 +326,7 @@ function Detail({ c, onGone }: { c: Capture; onGone: () => void }) {
             setTagInput(null);
           }}
         >
-          <Input autoFocus className="h-8 flex-1 text-[13px]" placeholder={t("tags séparés par des espaces")} value={tagInput} onChange={(e) => setTagInput(e.target.value)} />
+          <Input autoFocus className="h-8 flex-1 text-sm" placeholder={t("tags séparés par des espaces")} value={tagInput} onChange={(e) => setTagInput(e.target.value)} />
           <Button size="sm" type="submit" icon={<Check className="size-3.5" />}>
             {t("Enregistrer")}
           </Button>
@@ -345,7 +345,7 @@ function Detail({ c, onGone }: { c: Capture; onGone: () => void }) {
       )}
 
       {c.kind !== "task" && !c.archivedAt && (
-        <div className="border-t border-white/6 pt-3">
+        <div className="border-t border-ink/6 pt-3">
           {artixJob === null ? (
             <Button size="sm" variant="ghost" icon={<Sparkles className="size-3.5" />} disabled={!aiReady} disabledReason={t("Choisis un fournisseur d'IA dans Réglages → Artix")} onClick={() => void askArtix()}>
               {t("Demander à Artix de ranger cette capture")}
@@ -410,7 +410,7 @@ function ArtixSuggestion({ job, c, projectName, onDone }: { job: number; c: Capt
     }
   };
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-white/8 bg-white/3 p-3">
+    <div className="flex flex-col gap-2 rounded-lg border border-ink/8 bg-ink/3 p-3">
       <p className="flex items-center gap-1.5 text-xs font-medium text-fg">
         <Sparkles className="size-3.5 text-accent-strong" /> {t("Suggestions d'Artix")} <span className="font-normal text-faint">· {CTYPE_LABEL[s.ctype] ?? s.ctype}</span>
       </p>
@@ -421,7 +421,7 @@ function ArtixSuggestion({ job, c, projectName, onDone }: { job: number; c: Capt
         {s.asTask && <Chip icon={<ListTodo className="size-3.5" />} onClick={() => void apply(() => api.brainConvert(c.id, "task"))}>{t("Transformer en tâche")}</Chip>}
         {s.similarId && <Chip icon={<InboxIcon className="size-3.5" />} onClick={() => useUi.getState().openInbox({ view: "all", focus: s.similarId! })}>{t("Voir l'idée proche")}</Chip>}
       </div>
-      <button type="button" className="self-start text-[11px] text-faint hover:text-fg" onClick={onDone}>
+      <button type="button" className="self-start text-2xs text-faint hover:text-fg" onClick={onDone}>
         {t("Ignorer")}
       </button>
     </div>

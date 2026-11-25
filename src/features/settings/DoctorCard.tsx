@@ -88,7 +88,7 @@ export function DoctorCard({ compact = false }: { compact?: boolean }) {
         <span className="flex items-center gap-2"><Stethoscope className="size-4 text-accent" /> TekBoard Doctor</span>
       </CardTitle>
       <div className="flex flex-col gap-4 p-4">
-        {report.isLoading && <p className="flex items-center gap-2 text-[13px] text-muted"><Spinner /> {t("Diagnostic en cours…")}</p>}
+        {report.isLoading && <p className="flex items-center gap-2 text-sm text-muted"><Spinner /> {t("Diagnostic en cours…")}</p>}
         {report.error && <ErrorNote>{asAppError(report.error).message}</ErrorNote>}
         {report.data && !compact && (
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
@@ -102,11 +102,11 @@ export function DoctorCard({ compact = false }: { compact?: boolean }) {
         {categories.map((cat) => (
           <section key={cat}>
             <h3 className="mb-1.5 text-xs font-medium text-muted">{cat}</h3>
-            <ul className="flex flex-col divide-y divide-white/5 rounded-lg border border-line">
+            <ul className="flex flex-col divide-y divide-ink/5 rounded-lg border border-line">
               {shown.filter((c) => c.category === cat).map((c) => {
                 const L = LOOK[c.status];
                 return (
-                  <li key={c.id} className="anim-fade flex items-start gap-3 px-3 py-2 text-[13px]">
+                  <li key={c.id} className="anim-fade flex items-start gap-3 px-3 py-2 text-sm">
                     <L.icon className={cn("mt-0.5 size-4 shrink-0", L.tone)} aria-label={L.label} />
                     <div className="min-w-0 flex-1">
                       <p className="flex flex-wrap items-baseline gap-x-2">
@@ -140,7 +140,7 @@ export function DoctorCard({ compact = false }: { compact?: boolean }) {
           </>
         }
       >
-        <p className="px-5 pb-4 text-[13px] text-muted">{confirm?.detail}</p>
+        <p className="px-5 pb-4 text-sm text-muted">{confirm?.detail}</p>
       </Modal>
       <Modal
         open={exported !== null}
@@ -157,7 +157,7 @@ export function DoctorCard({ compact = false }: { compact?: boolean }) {
           </>
         }
       >
-        <pre className="selectable mx-5 mb-4 max-h-[55vh] overflow-auto rounded-lg bg-black/25 p-3 font-mono text-xs whitespace-pre-wrap">{exported}</pre>
+        <pre className="selectable mx-5 mb-4 max-h-[55vh] overflow-auto rounded-lg bg-well p-3 font-mono text-xs whitespace-pre-wrap">{exported}</pre>
       </Modal>
     </Card>
   );

@@ -284,14 +284,14 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
       )}
 
       {phase === "working" && (
-        <p className="flex items-center gap-2.5 py-10 text-[13px] text-muted">
+        <p className="flex items-center gap-2.5 py-10 text-sm text-muted">
           <Spinner className="size-4 text-accent" /> {working}
         </p>
       )}
 
       {phase === "preview" && template && (
         <div className="flex flex-col gap-4">
-          {alreadyPresent && <p className="rounded-md border border-line bg-raised px-3 py-2 text-[13px] text-muted">{t("Ce dépôt était déjà cloné ici. Rien n'a été téléchargé.")}</p>}
+          {alreadyPresent && <p className="rounded-md border border-line bg-raised px-3 py-2 text-sm text-muted">{t("Ce dépôt était déjà cloné ici. Rien n'a été téléchargé.")}</p>}
           {template.variables.length > 0 && (
             <div className="grid grid-cols-2 gap-3">
               {template.variables
@@ -309,11 +309,11 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
 
       {phase === "done" && done && (
         <div className="flex flex-col gap-3 py-1">
-          <p className="flex items-center gap-2 text-[15px] font-medium">
+          <p className="flex items-center gap-2 text-md font-medium">
             <CircleCheck className="size-5 text-ok" /> {isNew ? "Project ready" : "Template applied"}
           </p>
           <p className="selectable font-mono text-xs text-muted">{tildify(done.path, home)}</p>
-          <ul className="space-y-1 text-[13px] text-muted">
+          <ul className="space-y-1 text-sm text-muted">
             {isNew && <li>· {done.alreadyPresent ? "Already cloned — nothing downloaded" : "Repository cloned"}</li>}
             {done.report && (
               <li>
@@ -329,12 +329,12 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
           {done.staged > 0 && (
             <div className="mt-1 rounded-lg border border-line bg-surface p-3">
               {done.committed ? (
-                <p className="flex items-center gap-2 text-[13px] text-ok">
+                <p className="flex items-center gap-2 text-sm text-ok">
                   <Check className="size-4" /> Commité localement. Rien n'a été envoyé.
                 </p>
               ) : (
                 <>
-                  <p className="mb-2 text-[13px] text-muted">
+                  <p className="mb-2 text-sm text-muted">
                     {done.staged} file{done.staged === 1 ? " is" : "s are"} staged. Commit now, or do it later yourself — TekBoard never pushes.
                   </p>
                   <div className="flex items-center gap-2">
@@ -395,13 +395,13 @@ function CandidateList({ state, loading, error, items, selectedUrl, onPick }: { 
   if (state !== "ready") return null;
   if (loading) {
     return (
-      <p className="flex items-center gap-2 text-[13px] text-muted">
+      <p className="flex items-center gap-2 text-sm text-muted">
         <Spinner /> {t("Recherche des dépôts pas encore clonés…")}
       </p>
     );
   }
-  if (error) return <p className="text-[13px] text-muted">GitHub list unavailable ({asAppError(error).message}). Paste a URL below.</p>;
-  if (items.length === 0) return <p className="text-[13px] text-muted">{t("Tous tes dépôts sont déjà clonés. Colle une URL ci-dessous pour un autre.")}</p>;
+  if (error) return <p className="text-sm text-muted">GitHub list unavailable ({asAppError(error).message}). Paste a URL below.</p>;
+  if (items.length === 0) return <p className="text-sm text-muted">{t("Tous tes dépôts sont déjà clonés. Colle une URL ci-dessous pour un autre.")}</p>;
   return (
     <div>
       <span className="mb-1 block text-xs font-medium text-muted">{t("Pas encore clonés")}</span>
@@ -410,7 +410,7 @@ function CandidateList({ state, loading, error, items, selectedUrl, onPick }: { 
           const active = c.repo.sshUrl === selectedUrl;
           return (
             <li key={c.repo.fullName}>
-              <button type="button" onClick={() => onPick(c)} title={c.reasons.join("\n")} className={cn("flex h-9 w-full items-center gap-2.5 px-3 text-left text-[13px]", active ? "bg-accent-soft" : "hover:bg-raised")}>
+              <button type="button" onClick={() => onPick(c)} title={c.reasons.join("\n")} className={cn("flex h-9 w-full items-center gap-2.5 px-3 text-left text-sm", active ? "bg-accent-soft" : "hover:bg-raised")}>
                 <span className="min-w-0 flex-1 truncate">
                   <span className="font-medium">{c.epitech?.project ?? c.repo.name}</span>
                   <span className="ml-2 font-mono text-xs text-faint">{c.repo.owner}</span>

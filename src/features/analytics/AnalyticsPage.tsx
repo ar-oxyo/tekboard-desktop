@@ -92,14 +92,14 @@ function Body({ a }: { a: Analytics }) {
             Commits par projet
           </CardTitle>
           <RepoBars repos={a.repos} />
-          <p className="border-t border-white/6 px-4 py-2.5 text-xs text-faint">
+          <p className="border-t border-ink/6 px-4 py-2.5 text-xs text-faint">
             {a.soloRepos} solo · {a.sharedRepos} shared. A commit count compares volume, not the value of each contribution.
           </p>
         </Card>
         <Card className="self-start">
           <CardTitle>Langages</CardTitle>
           <Languages a={a} />
-          <p className="border-t border-white/6 px-4 py-2.5 text-xs text-faint">
+          <p className="border-t border-ink/6 px-4 py-2.5 text-xs text-faint">
             Lines in tracked files of repositories you committed to{topLang ? "" : " (none found)"}. A line of code is not a unit of productivity.
           </p>
         </Card>
@@ -118,7 +118,7 @@ export function Stat({ label, value, note }: { label: string; value: string; not
   return (
     <Card className="px-4 py-4">
       <p className="text-xs text-muted">{label}</p>
-      <p className="display number-gradient mt-1 text-[30px] leading-tight font-medium">{value}</p>
+      <p className="display number-gradient mt-1 text-2xl leading-tight font-medium">{value}</p>
       {note && <p className="mt-0.5 truncate text-xs text-faint">{note}</p>}
     </Card>
   );
@@ -162,7 +162,7 @@ function heatStep(count: number, max: number): number {
 
 function HeatLegend() {
   return (
-    <span className="flex items-center gap-1 text-[11px] text-faint">
+    <span className="flex items-center gap-1 text-2xs text-faint">
       fewer
       {HEAT.map((c) => (
         <span key={c} className="size-2.5 rounded-[3px]" style={{ background: c }} />
@@ -206,12 +206,12 @@ function Heatmap({ days }: { days: DayCount[] }) {
     <div data-chart className="relative" style={{ width }}>
       <svg width={width} height={height} role="img" aria-label={t("Commits par jour sur les 53 dernières semaines")}>
         {months.map((m) => (
-          <text key={m.col} x={left + m.col * (size + gap)} y={10} className="fill-(--color-faint) text-[10px]">
+          <text key={m.col} x={left + m.col * (size + gap)} y={10} className="fill-(--color-faint) text-3xs">
             {m.label}
           </text>
         ))}
         {["Mon", "Wed", "Fri"].map((d, i) => (
-          <text key={d} x={0} y={top + (i * 2) * (size + gap) + 10} className="fill-(--color-faint) text-[10px]">
+          <text key={d} x={0} y={top + (i * 2) * (size + gap) + 10} className="fill-(--color-faint) text-3xs">
             {d}
           </text>
         ))}
@@ -252,14 +252,14 @@ export function Columns({ data, everyLabel }: { data: Array<{ key: string; label
           </div>
         ))}
       </div>
-      <div className="mt-1.5 flex gap-[2px] border-t border-white/6 pt-1">
+      <div className="mt-1.5 flex gap-[2px] border-t border-ink/6 pt-1">
         {data.map((d, i) => (
-          <span key={d.key} className="min-w-0 flex-1 text-center text-[10px] text-faint">
+          <span key={d.key} className="min-w-0 flex-1 text-center text-3xs text-faint">
             {i % everyLabel === 0 ? d.label : ""}
           </span>
         ))}
       </div>
-      <span className="absolute top-0 right-0 text-[10px] text-faint">max {max}</span>
+      <span className="absolute top-0 right-0 text-3xs text-faint">max {max}</span>
       {tip.node}
     </div>
   );
@@ -276,7 +276,7 @@ function RepoBars({ repos }: { repos: RepoStat[] }) {
           const people = r.contributors.slice(0, 5).map((c) => `${c.name}${c.me ? " (you)" : ""}: ${c.commits}`).join(" · ");
           return (
             <li key={r.path} className="flex h-8 items-center gap-3 px-4" onMouseEnter={(e) => tip.show(e, people)} onMouseLeave={tip.hide}>
-              <span className="w-36 shrink-0 truncate text-[13px]">{r.name}</span>
+              <span className="w-36 shrink-0 truncate text-sm">{r.name}</span>
               <span className="flex h-3 min-w-0 flex-1 items-center gap-[2px]">
                 {r.mine > 0 && <span className="h-full rounded-[4px]" style={{ width: `${(r.mine / max) * 100}%`, background: YOU, minWidth: 3 }} />}
                 {r.others > 0 && <span className="h-full rounded-[4px]" style={{ width: `${(r.others / max) * 100}%`, background: OTHERS, minWidth: 3 }} />}
@@ -299,12 +299,12 @@ function Languages({ a }: { a: Analytics }) {
   const total = a.languages.reduce((n, l) => n + l.lines, 0);
   const shown = a.languages.slice(0, 8);
   const max = Math.max(1, ...shown.map((l) => l.lines));
-  if (shown.length === 0) return <p className="px-4 py-4 text-[13px] text-muted">{t("Aucun fichier source reconnu.")}</p>;
+  if (shown.length === 0) return <p className="px-4 py-4 text-sm text-muted">{t("Aucun fichier source reconnu.")}</p>;
   return (
     <ul className="py-2">
       {shown.map((l) => (
         <li key={l.name} className="flex h-8 items-center gap-3 px-4" title={`${l.files} file${l.files === 1 ? "" : "s"}`}>
-          <span className="w-24 shrink-0 truncate text-[13px]">{l.name}</span>
+          <span className="w-24 shrink-0 truncate text-sm">{l.name}</span>
           <span className="flex h-3 min-w-0 flex-1 items-center">
             <span className="h-full rounded-[4px]" style={{ width: `${(l.lines / max) * 100}%`, background: YOU, minWidth: 3 }} />
           </span>

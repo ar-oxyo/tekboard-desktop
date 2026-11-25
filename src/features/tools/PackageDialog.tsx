@@ -65,12 +65,12 @@ export function PackageDialog({ repo }: { repo: string }) {
         <div className="grid grid-cols-3 gap-2">
           {MODES.map((m) => (
             <button key={m.id} type="button" onClick={() => { setMode(m.id); create.reset(); }} className={cn("rounded-lg border px-3 py-2 text-left transition-colors", mode === m.id ? "border-accent/50 bg-accent-soft" : "border-line hover:border-line-strong")}>
-              <span className="block text-[13px] font-medium">{m.label}</span>
+              <span className="block text-sm font-medium">{m.label}</span>
               <span className="mt-0.5 block text-xs text-muted">{m.hint}</span>
             </button>
           ))}
         </div>
-        {create.data && <p className="rounded-md border border-ok/30 bg-ok/10 px-3 py-2 text-[13px] text-ok">Archive created: {create.data.files} files, {formatBytes(create.data.size)}. It stays on this computer until you share it yourself.</p>}
+        {create.data && <p className="rounded-md border border-ok/30 bg-ok/10 px-3 py-2 text-sm text-ok">Archive created: {create.data.files} files, {formatBytes(create.data.size)}. It stays on this computer until you share it yourself.</p>}
         {preview.error && <ErrorNote>{asAppError(preview.error).message}</ErrorNote>}
         {p && p.sensitive > 0 && (
           <p className="flex items-start gap-2 rounded-md border border-warn/30 bg-warn/10 px-3 py-2 text-xs text-warn">

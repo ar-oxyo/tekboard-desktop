@@ -46,7 +46,7 @@ export function TemplatesPage() {
       {offers.map((dir) => (
         <div key={dir} className="mb-3 flex items-center gap-3 rounded-lg border border-accent/25 bg-accent-soft px-4 py-2.5">
           <LayoutTemplate className="size-4 shrink-0 text-accent" />
-          <p className="min-w-0 flex-1 truncate text-[13px]">
+          <p className="min-w-0 flex-1 truncate text-sm">
             Squelette existant trouvé dans <span className="selectable font-mono text-xs">{tildify(dir, home)}</span>
           </p>
           <Button size="sm" onClick={() => setImporting(dir)}>
@@ -96,7 +96,7 @@ function TemplateCard({ template, active, onSelect }: { template: TemplateSummar
       className="card card-interactive w-full px-3.5 py-3 text-left"
     >
       <span className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{template.name}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{template.name}</span>
         {isDefault && <Star className="size-3.5 text-accent" fill="currentColor" aria-label={t("Modèle par défaut")} />}
       </span>
       <span className="mt-1 flex items-center gap-1.5">
@@ -153,16 +153,16 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
 
   return (
     <Card className="min-w-0">
-      <div className="border-b border-white/6 px-4 py-3.5">
+      <div className="border-b border-ink/6 px-4 py-3.5">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-[15px] font-medium">{template.name}</h2>
+          <h2 className="text-md font-medium">{template.name}</h2>
           {template.variables.map((v) => (
             <Badge key={v} mono title={t("Variable remplacée quand le modèle est appliqué")}>
               {`{{${v}}}`}
             </Badge>
           ))}
         </div>
-        {template.description && <p className="selectable mt-1 text-[13px] text-muted">{template.description}</p>}
+        {template.description && <p className="selectable mt-1 text-sm text-muted">{template.description}</p>}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Select className="w-56" value={null} label={t("Appliquer à un projet")} placeholder={t("Appliquer à un projet")} search onChange={(path) => path && openLauncher({ mode: "existing", path, templateId: template.id })} options={repoOptions(repos.data ?? [])} />
           <Button size="sm" variant="ghost" icon={<Star className="size-3.5" fill={isDefault ? "currentColor" : "none"} />} onClick={() => setDefault.mutate()}>
@@ -195,7 +195,7 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
       </div>
 
       <div className="grid h-[440px] grid-cols-[220px_minmax(0,1fr)]">
-        <ul className="overflow-y-auto border-r border-white/6 py-1">
+        <ul className="overflow-y-auto border-r border-ink/6 py-1">
           {files.isLoading && (
             <li className="flex items-center gap-2 px-3 py-2 text-xs text-muted">
               <Spinner /> {t("Chargement…")}

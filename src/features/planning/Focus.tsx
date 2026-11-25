@@ -78,11 +78,11 @@ export function FocusBar() {
     stop.mutate(true, { onSuccess: () => then.title && startFocus({ title: then.title, project: null, taskId: null, eventId: null, plannedMin: then.minutes }, false) });
   };
   return (
-    <div className="glass anim-pop fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 flex-col overflow-hidden border border-white/10" role="status" aria-live="polite">
+    <div className="glass anim-pop fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 flex-col overflow-hidden border border-ink/10" role="status" aria-live="polite">
       <div className="flex items-center gap-3 py-2 pr-2 pl-3.5">
         <Timer className={cn("size-4", due ? "text-warn" : paused ? "text-faint" : "text-accent")} />
         <div className="min-w-0">
-          <p className="max-w-64 truncate text-[13px] font-medium">{f.title}</p>
+          <p className="max-w-64 truncate text-sm font-medium">{f.title}</p>
           <p className="font-mono text-xs text-muted">
             {clock(elapsed)} <span className={due ? "text-warn" : "text-faint"}>/ {fmtDur(f.plannedMin)}</span>
             {paused && <span className="ml-1.5 font-sans text-faint">{t("en pause")}</span>}
@@ -125,11 +125,11 @@ export function FocusBar() {
         )}
       </div>
       {hint && !due && (
-        <button type="button" onClick={() => setHint(null)} className="border-t border-white/6 px-3.5 py-1.5 text-left text-xs text-muted hover:text-fg">
+        <button type="button" onClick={() => setHint(null)} className="border-t border-ink/6 px-3.5 py-1.5 text-left text-xs text-muted hover:text-fg">
           {hint} <span className="text-faint">· ok</span>
         </button>
       )}
-      <span className="h-0.5 bg-white/5">
+      <span className="h-0.5 bg-ink/5">
         <span className={cn("block h-full", due ? "bg-warn" : "bg-accent")} style={{ width: `${pct}%` }} />
       </span>
     </div>

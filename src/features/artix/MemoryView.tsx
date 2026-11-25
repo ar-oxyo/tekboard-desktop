@@ -20,7 +20,7 @@ export function MemoryView({ project }: { project: string | null }) {
   const add = useMutation({ mutationFn: () => api.memoryAdd(project && onlyHere ? `project:${project}` : "global", "preference", draft, false), onSuccess: () => setDraft(""), onError: (e) => toast({ kind: "error", title: t("Non gardé"), detail: asAppError(e).message }) });
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-2 border-b border-white/6 px-4 py-2.5 text-xs text-muted">
+      <div className="flex items-center gap-2 border-b border-ink/6 px-4 py-2.5 text-xs text-muted">
         <span className="flex-1">{t("Ce que Artix retient d'une conversation à l'autre. Jamais de secret.")}</span>
         {project && (
           <label className="flex items-center gap-1.5">
@@ -29,11 +29,11 @@ export function MemoryView({ project }: { project: string | null }) {
         )}
       </div>
       <ul className="min-h-0 flex-1 overflow-y-auto p-3">
-        {list.data?.length === 0 && <li className="px-1 text-[13px] text-muted">{t("Rien pour l'instant. Dis par exemple à Artix : « retiens que je ne travaille pas le dimanche ».")}</li>}
+        {list.data?.length === 0 && <li className="px-1 text-sm text-muted">{t("Rien pour l'instant. Dis par exemple à Artix : « retiens que je ne travaille pas le dimanche ».")}</li>}
         {list.data?.map((m) => <Row key={m.id} m={m} />)}
       </ul>
-      <form className="flex gap-2 border-t border-white/6 p-3" onSubmit={(e) => (e.preventDefault(), draft.trim() && add.mutate())}>
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("Ajouter une préférence…")} className="field h-8 flex-1 rounded-lg border border-white/8 px-2.5 text-[13px] focus:border-accent focus:outline-none" />
+      <form className="flex gap-2 border-t border-ink/6 p-3" onSubmit={(e) => (e.preventDefault(), draft.trim() && add.mutate())}>
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("Ajouter une préférence…")} className="field h-8 flex-1 rounded-lg border border-ink/8 px-2.5 text-sm focus:border-accent focus:outline-none" />
       </form>
     </div>
   );
@@ -48,11 +48,11 @@ function Row({ m }: { m: Memory }) {
   return (
     <li className="group row-hover flex items-start gap-2 rounded-lg px-2 py-2">
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] text-faint">
+        <p className="text-2xs text-faint">
           {KIND_LABEL[m.kind]} · {m.scope === "global" ? "général" : projectName(m.scope.slice(8))}
           {m.expiresAt && ` · expire le ${new Date(m.expiresAt * 1000).toLocaleDateString(locale())}`}
         </p>
-        <textarea rows={1} value={text} onChange={(e) => setText(e.target.value)} onBlur={() => text.trim() !== m.content && save.mutate({ content: text })} className="selectable w-full resize-none bg-transparent text-[13px] focus:outline-none" />
+        <textarea rows={1} value={text} onChange={(e) => setText(e.target.value)} onBlur={() => text.trim() !== m.content && save.mutate({ content: text })} className="selectable w-full resize-none bg-transparent text-sm focus:outline-none" />
       </div>
       <IconButton label={m.pinned ? "Désépingler" : t("Épingler (toujours dans le contexte)")} active={m.pinned} onClick={() => save.mutate({ pinned: !m.pinned })}>
         <Pin className={cn("size-3.5", m.pinned && "fill-current")} />

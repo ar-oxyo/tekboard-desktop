@@ -18,7 +18,7 @@ const shortDay = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(loc
 function Meter({ value, total }: { value: number; total: number }) {
   const pct = total > 0 ? Math.min(100, (value / total) * 100) : 0;
   return (
-    <span className="block h-1.5 w-full overflow-hidden rounded-full bg-white/8" role="img" aria-label={`${value} of ${total}`}>
+    <span className="block h-1.5 w-full overflow-hidden rounded-full bg-ink/8" role="img" aria-label={`${value} of ${total}`}>
       <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: "#7c6ef2" }} />
     </span>
   );
@@ -61,7 +61,7 @@ function Filled({ a }: { a: Academic }) {
       </div>
       {(a.creditsLost.length > 0 || a.creditsAtRisk.length > 0 || a.globalAlert || a.level !== null) && (
         <Card>
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 text-[13px]">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 text-sm">
             {a.globalAlert && (
               <span className="flex items-center gap-2">
                 <span className="text-muted">MY Epitech alert level</span>
@@ -87,7 +87,7 @@ function Filled({ a }: { a: Academic }) {
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Card>
           <CardTitle>Unités</CardTitle>
-          {a.units.length === 0 ? <p className="px-4 py-4 text-[13px] text-muted">{t("Aucune unité dans les données synchronisées.")}</p> : <ul className="py-1">{a.units.map((u) => <UnitRow key={u.title} u={u} />)}</ul>}
+          {a.units.length === 0 ? <p className="px-4 py-4 text-sm text-muted">{t("Aucune unité dans les données synchronisées.")}</p> : <ul className="py-1">{a.units.map((u) => <UnitRow key={u.title} u={u} />)}</ul>}
         </Card>
         <div className="flex flex-col gap-4">
           {a.tests.length > 0 && (
@@ -96,16 +96,16 @@ function Filled({ a }: { a: Academic }) {
               <ul className="py-1.5">
                 {a.tests.map((t) => (
                   <li key={t.project} className="px-4 py-1.5" title={`${t.runs} run${t.runs > 1 ? "s" : ""}${t.date ? `, latest ${new Date(t.date).toLocaleString()}` : ""} · coding style: ${t.styleMajor} major, ${t.styleMinor} minor`}>
-                    <div className="mb-1 flex items-baseline gap-2 text-[13px]">
+                    <div className="mb-1 flex items-baseline gap-2 text-sm">
                       <span className="min-w-0 flex-1 truncate">{t.project}</span>
-                      <span className="font-mono text-[11px] text-faint">{t.module}</span>
+                      <span className="font-mono text-2xs text-faint">{t.module}</span>
                       <span className="text-xs text-muted">{t.passed}/{t.total}</span>
                     </div>
                     <Meter value={t.passed} total={t.total} />
                   </li>
                 ))}
               </ul>
-              <p className="border-t border-white/6 px-4 py-2.5 text-xs text-faint">{t("Tests réussis à la dernière exécution automatique. Pas une note.")}</p>
+              <p className="border-t border-ink/6 px-4 py-2.5 text-xs text-faint">{t("Tests réussis à la dernière exécution automatique. Pas une note.")}</p>
             </Card>
           )}
           {a.competencies.length > 0 && (
@@ -113,13 +113,13 @@ function Filled({ a }: { a: Academic }) {
               <CardTitle>{t("Blocs de compétences")}</CardTitle>
               <ul className="py-1">
                 {a.competencies.map((c) => (
-                  <li key={c.name} className="flex min-h-9 items-center gap-2.5 px-4 text-[13px]">
+                  <li key={c.name} className="flex min-h-9 items-center gap-2.5 px-4 text-sm">
                     <span className="min-w-0 flex-1 truncate">{c.name}</span>
                     <span className="shrink-0 text-xs text-muted">{c.secure ?? "—"} secured · {c.reachable ?? "—"} reachable · {c.available ?? "—"} available</span>
                   </li>
                 ))}
               </ul>
-              <p className="border-t border-white/6 px-4 py-2.5 text-xs text-faint">{t("Crédits par bloc, comme MY Epitech les compte.")}</p>
+              <p className="border-t border-ink/6 px-4 py-2.5 text-xs text-faint">{t("Crédits par bloc, comme MY Epitech les compte.")}</p>
             </Card>
           )}
           {a.exams.length > 0 && (
@@ -127,7 +127,7 @@ function Filled({ a }: { a: Academic }) {
               <CardTitle>Examens</CardTitle>
               <ul className="py-1">
                 {a.exams.map((e) => (
-                  <li key={e.label} className="flex min-h-9 items-center gap-2.5 px-4 text-[13px]">
+                  <li key={e.label} className="flex min-h-9 items-center gap-2.5 px-4 text-sm">
                     <span className="min-w-0 flex-1 truncate">{e.label}</span>
                     <span className="text-xs text-muted">{e.best ?? "—"}{e.required !== null ? ` · required ${e.required}` : ""}{e.max !== null ? ` / ${e.max}` : ""}</span>
                     {e.best !== null && e.required !== null && <Badge tone={e.best >= e.required ? "ok" : "warn"}>{e.best >= e.required ? "reached" : "below"}</Badge>}
@@ -141,7 +141,7 @@ function Filled({ a }: { a: Academic }) {
               <CardTitle>{t("Notes")}</CardTitle>
               <ul className="py-1">
                 {a.marks.slice(0, 12).map((m, i) => (
-                  <li key={`${m.title}-${m.date ?? i}`} title={[m.evaluator && `By ${m.evaluator}`, m.comment].filter(Boolean).join("\n") || undefined} className="flex min-h-9 items-center gap-2.5 px-4 text-[13px]">
+                  <li key={`${m.title}-${m.date ?? i}`} title={[m.evaluator && `By ${m.evaluator}`, m.comment].filter(Boolean).join("\n") || undefined} className="flex min-h-9 items-center gap-2.5 px-4 text-sm">
                     <span className="min-w-0 flex-1 truncate">{m.title}</span>
                     {m.date && <span className="shrink-0 text-xs text-faint">{new Date(m.date).toLocaleDateString(locale(), { day: "numeric", month: "short" })}</span>}
                     <span className="w-10 shrink-0 text-right font-mono text-xs">{m.mark ?? "—"}</span>
@@ -169,11 +169,11 @@ function Filled({ a }: { a: Academic }) {
 function UnitRow({ u }: { u: Academic["units"][number] }) {
   const [open, setOpen] = useState(false);
   return (
-    <li className="border-b border-white/6 last:border-b-0">
+    <li className="border-b border-ink/6 last:border-b-0">
       <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="row-hover flex w-full items-center gap-2.5 px-4 py-2 text-left">
         {open ? <ChevronDown className="size-3.5 shrink-0 text-faint" /> : <ChevronRight className="size-3.5 shrink-0 text-faint" />}
         <span className="min-w-0 flex-1">
-          <span className="mb-1 flex items-baseline gap-2 text-[13px]">
+          <span className="mb-1 flex items-baseline gap-2 text-sm">
             <span className="min-w-0 flex-1 truncate">{u.title}</span>
             <span className="shrink-0 text-xs text-muted">{u.validated}/{u.total} outcomes</span>
             {u.credits !== null && <span className="w-14 shrink-0 text-right text-xs text-faint">{u.credits} cr.</span>}

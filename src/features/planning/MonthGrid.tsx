@@ -60,7 +60,7 @@ export function MonthGrid({ date, items, now, onOpen, onMove, onPickDay }: Props
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="grid shrink-0 grid-cols-7 border-b border-white/6">
+      <div className="grid shrink-0 grid-cols-7 border-b border-ink/6">
         {days.slice(0, 7).map((d) => (
           <div key={d} className="flex h-9 items-center justify-center text-xs text-muted capitalize">
             {new Date(d).toLocaleDateString(locale(), { weekday: "short" })}
@@ -73,18 +73,18 @@ export function MonthGrid({ date, items, now, onOpen, onMove, onPickDay }: Props
           const here = items.filter((i) => i.start < end && i.end > d && i.id !== drag?.item.id).sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start - b.start);
           const other = new Date(d).getMonth() !== month;
           return (
-            <div key={d} data-day={d} onClick={(e) => e.target === e.currentTarget && onPickDay(d)} className={cn("flex min-h-0 flex-col gap-0.5 overflow-hidden border-t border-l border-white/6 p-1 transition-colors duration-150", other && "opacity-45", drag?.over === d && "bg-accent-soft")}>
+            <div key={d} data-day={d} onClick={(e) => e.target === e.currentTarget && onPickDay(d)} className={cn("flex min-h-0 flex-col gap-0.5 overflow-hidden border-t border-l border-ink/6 p-1 transition-colors duration-150", other && "opacity-45", drag?.over === d && "bg-accent-soft")}>
               <button type="button" onClick={() => onPickDay(d)} title={t("Ouvrir ce jour")} className={cn("mb-0.5 flex h-5 min-w-5 items-center justify-center self-end rounded-full px-1 text-xs", d === today ? "bg-accent font-medium text-on-accent" : "text-muted hover:text-fg")}>
                 {new Date(d).getDate()}
               </button>
               {here.slice(0, MAX).map((i) => (
                 <button key={i.id} type="button" title={itemTitle(i)} onPointerDown={(e) => grab(e, i)} className="cal-chip flex items-center gap-1 text-left" data-my={i.source === "my" || undefined} data-done={i.done || undefined} style={{ "--c": i.color } as CSSProperties}>
-                  {i.kind === "deadline" ? <Flag className="size-3 shrink-0" /> : !i.allDay && <span className="shrink-0 font-mono text-[10px] opacity-70">{hhmm(i.start)}</span>}
+                  {i.kind === "deadline" ? <Flag className="size-3 shrink-0" /> : !i.allDay && <span className="shrink-0 font-mono text-3xs opacity-70">{hhmm(i.start)}</span>}
                   <span className="truncate">{i.title}</span>
                 </button>
               ))}
               {here.length > MAX && (
-                <button type="button" onClick={() => onPickDay(d)} className="text-left text-[10px] text-faint hover:text-fg">
+                <button type="button" onClick={() => onPickDay(d)} className="text-left text-3xs text-faint hover:text-fg">
                   {here.length - MAX} more
                 </button>
               )}

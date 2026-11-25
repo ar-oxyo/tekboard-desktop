@@ -63,7 +63,7 @@ export function Sidebar() {
     const n = SECTIONS.indexOf(s) + 1;
     const on = current === s.id;
     return (
-      <button key={s.id} type="button" aria-current={on ? "page" : undefined} onClick={() => setPage(entryOf(s))} title={`Ctrl+${n}`} className={cn("nav-item flex h-8 shrink-0 items-center gap-2.5 px-2.5 text-[13px]", on ? "font-medium" : "text-muted hover:bg-white/4 hover:text-fg")}>
+      <button key={s.id} type="button" aria-current={on ? "page" : undefined} onClick={() => setPage(entryOf(s))} title={`Ctrl+${n}`} className={cn("nav-item flex h-8 shrink-0 items-center gap-2.5 px-2.5 text-sm", on ? "font-medium" : "text-muted hover:bg-ink/4 hover:text-fg")}>
         <span className={cn("flex w-4 shrink-0 justify-center", on ? "text-accent" : "text-faint")}>{ICONS[s.id]}</span>
         {s.label}
       </button>
@@ -74,29 +74,29 @@ export function Sidebar() {
     <aside className="sidebar flex w-56 shrink-0 flex-col">
       <div className="flex h-16 items-center gap-2.5 px-5">
         <Logo className="logo-glow size-6" />
-        <span className="display text-[15px] font-medium">TekBoard</span>
+        <span className="display text-md font-medium">TekBoard</span>
       </div>
-      <button type="button" onClick={() => setPaletteOpen(true)} className="mx-3 flex h-8 items-center gap-2.5 rounded-(--btn-radius) border border-white/7 bg-white/3 px-2.5 text-faint transition-colors duration-150 hover:border-white/12 hover:text-muted">
+      <button type="button" onClick={() => setPaletteOpen(true)} className="mx-3 flex h-8 items-center gap-2.5 rounded-(--btn-radius) border border-ink/7 bg-ink/3 px-2.5 text-faint transition-colors duration-150 hover:border-ink/12 hover:text-muted">
         <Search className="size-4" />
-        <span className="flex-1 text-left text-[13px]">{t("Rechercher")}</span>
+        <span className="flex-1 text-left text-sm">{t("Rechercher")}</span>
         <Kbd>Ctrl K</Kbd>
       </button>
       <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 pt-5 pb-3" aria-label="Navigation">
         {MAIN.map(row)}
-        <button type="button" onClick={() => (artixOpen ? useUi.getState().closeAssistant() : useUi.getState().openAssistant())} title="Ctrl+J" className={cn("nav-item mt-4 flex h-9 shrink-0 items-center gap-2.5 px-2 text-[13px]", artixOpen ? "font-medium" : "text-muted hover:bg-white/4 hover:text-fg")}>
+        <button type="button" onClick={() => (artixOpen ? useUi.getState().closeAssistant() : useUi.getState().openAssistant())} title="Ctrl+J" className={cn("nav-item mt-4 flex h-9 shrink-0 items-center gap-2.5 px-2 text-sm", artixOpen ? "font-medium" : "text-muted hover:bg-ink/4 hover:text-fg")}>
           <Artix size={20} />
           Artix
           <Kbd>Ctrl J</Kbd>
         </button>
-        <button type="button" onClick={() => useUi.getState().openInbox()} title={t("Captures à ranger (Ctrl+I pour noter)")} className={cn("nav-item flex h-8 shrink-0 items-center gap-2.5 px-2.5 text-[13px]", inboxOpen ? "font-medium" : "text-muted hover:bg-white/4 hover:text-fg")}>
+        <button type="button" onClick={() => useUi.getState().openInbox()} title={t("Captures à ranger (Ctrl+I pour noter)")} className={cn("nav-item flex h-8 shrink-0 items-center gap-2.5 px-2.5 text-sm", inboxOpen ? "font-medium" : "text-muted hover:bg-ink/4 hover:text-fg")}>
           <span className="flex w-4 shrink-0 justify-center text-faint">
             <Inbox className="size-4" />
           </span>
           {t("Inbox")}
-          {(inbox.data ?? 0) > 0 && <span className="ml-auto rounded-full bg-accent-soft px-1.5 text-[11px] text-accent-strong tabular-nums">{inbox.data}</span>}
+          {(inbox.data ?? 0) > 0 && <span className="ml-auto rounded-full bg-accent-soft px-1.5 text-2xs text-accent-strong tabular-nums">{inbox.data}</span>}
         </button>
       </nav>
-      <div className="flex flex-col gap-0.5 border-t border-white/6 px-3 py-3">
+      <div className="flex flex-col gap-0.5 border-t border-ink/6 px-3 py-3">
         {FOOT.map(row)}
         <button type="button" onClick={() => setPage("settings")} title={t("Ouvrir les réglages")} className="mt-2 flex w-full flex-col gap-1 px-2.5 text-left text-xs text-faint transition-colors duration-150 hover:text-muted">
           <Status ok={env.data ? missing === 0 : null} label={env.data ? (missing === 0 ? t("Outils prêts") : `${missing} outil${missing > 1 ? "s" : ""} manquant${missing > 1 ? "s" : ""}`) : t("Vérification des outils…")} />
@@ -125,9 +125,9 @@ export function SectionTabs() {
   const s = sectionOf(page);
   if (s.pages.length < 2) return null;
   return (
-    <div className="mb-5 flex items-center gap-1 border-b border-white/6" role="tablist" aria-label={s.label}>
+    <div className="mb-5 flex items-center gap-1 border-b border-ink/6" role="tablist" aria-label={s.label}>
       {s.pages.map((p) => (
-        <button key={p.page} type="button" role="tab" aria-selected={p.page === page} onClick={() => setPage(p.page)} className={cn("-mb-px border-b-2 px-3 py-2 text-[13px] transition-colors duration-150", p.page === page ? "border-accent font-medium text-fg" : "border-transparent text-muted hover:text-fg")}>
+        <button key={p.page} type="button" role="tab" aria-selected={p.page === page} onClick={() => setPage(p.page)} className={cn("-mb-px border-b-2 px-3 py-2 text-sm transition-colors duration-150", p.page === page ? "border-accent font-medium text-fg" : "border-transparent text-muted hover:text-fg")}>
           {p.label}
         </button>
       ))}

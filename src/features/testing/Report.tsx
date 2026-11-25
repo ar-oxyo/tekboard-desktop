@@ -68,9 +68,9 @@ export function Stepper({ steps }: { steps: JobStep[] }) {
           {i < steps.length - 1 && <span aria-hidden className="absolute top-5 left-[9.5px] h-[calc(100%-18px)] w-px bg-line" />}
           <StepIcon status={s.status} />
           <div className="min-w-0 flex-1">
-            <p className={cn("flex items-baseline gap-2 text-[13px]", s.status === "pending" || s.status === "skipped" ? "text-muted" : "text-fg")}>
+            <p className={cn("flex items-baseline gap-2 text-sm", s.status === "pending" || s.status === "skipped" ? "text-muted" : "text-fg")}>
               <span>{s.label}</span>
-              {s.durationMs !== null && s.status !== "skipped" && <span className="text-[11px] text-faint">{duration(s.durationMs)}</span>}
+              {s.durationMs !== null && s.status !== "skipped" && <span className="text-2xs text-faint">{duration(s.durationMs)}</span>}
             </p>
             {s.detail && <p className={cn("selectable text-xs", s.status === "failed" ? "text-danger" : s.status === "warning" ? "text-warn" : "text-muted")}>{s.detail}</p>}
           </div>
@@ -122,7 +122,7 @@ function Tests({ tests }: { tests: Record<string, unknown> }) {
 
 function Row({ label, children, tone }: { label: string; children: ReactNode; tone?: "ok" | "warn" | "danger" }) {
   return (
-    <div className="flex items-baseline gap-3 py-1 text-[13px]">
+    <div className="flex items-baseline gap-3 py-1 text-sm">
       <span className="w-36 shrink-0 text-muted">{label}</span>
       <span className={cn("selectable min-w-0 flex-1 break-words", tone === "ok" && "text-ok", tone === "warn" && "text-warn", tone === "danger" && "text-danger")}>{children}</span>
     </div>
@@ -147,7 +147,7 @@ function TestRepo({ s, steps, envActions }: { s: RunSummary; steps: JobStep[]; e
   const commit = str(s.commit);
   return (
     <div className="flex flex-col gap-3">
-      {str(s.verdict) && <p className="display text-[15px] font-medium">{str(s.verdict)}</p>}
+      {str(s.verdict) && <p className="display text-md font-medium">{str(s.verdict)}</p>}
       <div className="rounded-lg border border-line bg-bg px-3 py-1.5">
         <Row label="Source">{s.mode === "remote" ? "Remote clone" : "Local Git snapshot"}{str(s.source) && <span className="text-muted"> · {str(s.source)}</span>}</Row>
         <Row label="Branche">{str(s.branch) ?? "detached"}</Row>
@@ -182,7 +182,7 @@ function TestRepo({ s, steps, envActions }: { s: RunSummary; steps: JobStep[]; e
         <div className="flex items-center gap-2">
           <Button size="sm" icon={<SquareTerminal className="size-3.5" />} onClick={() => envActions(envName, true)}>{t("Terminal dans le clone")}</Button>
           <Button size="sm" variant="ghost" icon={<FolderOpen className="size-3.5" />} onClick={() => envActions(envName, false)}>{t("Ouvrir le dossier")}</Button>
-          <span className="selectable min-w-0 truncate font-mono text-[11px] text-faint">{envDir}</span>
+          <span className="selectable min-w-0 truncate font-mono text-2xs text-faint">{envDir}</span>
         </div>
       )}
     </div>
@@ -223,7 +223,7 @@ function Banana({ s }: { s: RunSummary }) {
           </ul>
         </div>
       ))}
-      <p className="selectable text-[11px] text-faint">
+      <p className="selectable text-2xs text-faint">
         banana-check-repo {str(tool.repoChecker) ? `${str(tool.version) ?? ""} (${str(tool.repoChecker)})` : "not installed"} · epiclang Banana plugin {tool.plugin === true ? "present" : "not found"} · tests/ and bonus/ are skipped, as the official tool does.
       </p>
     </div>
@@ -259,7 +259,7 @@ function Moulinette({ s }: { s: RunSummary }) {
             <li key={id}>
               <button type="button" disabled={items.length === 0} onClick={() => setOpen(open === id ? null : id)} className="flex w-full items-center gap-2 px-3 py-1.5 text-left disabled:cursor-default">
                 {items.length > 0 ? open === id ? <ChevronDown className="size-3.5 text-faint" /> : <ChevronRight className="size-3.5 text-faint" /> : <span className="size-3.5" />}
-                <span className="w-44 shrink-0 text-[13px]">{String(sec.label)}</span>
+                <span className="w-44 shrink-0 text-sm">{String(sec.label)}</span>
                 <Badge tone={r.tone} mono>{r.label}</Badge>
                 <Badge tone={sec.evidence === "ai" ? "accent" : "neutral"}>{EVIDENCE[String(sec.evidence)] ?? "not checked"}</Badge>
               </button>
@@ -278,7 +278,7 @@ function Moulinette({ s }: { s: RunSummary }) {
           );
         })}
       </ul>
-      <p className="text-[11px] text-faint">{t("Une vérification personnelle, pas la moulinette d'Epitech : pas de note, et aucune prédiction. Les lignes « mesuré » viennent d'outils lancés sur cet ordinateur ; « avis de l'IA » est la lecture du code par Claude ; « non vérifié » n'a pas été vérifié du tout.")}</p>
+      <p className="text-2xs text-faint">{t("Une vérification personnelle, pas la moulinette d'Epitech : pas de note, et aucune prédiction. Les lignes « mesuré » viennent d'outils lancés sur cet ordinateur ; « avis de l'IA » est la lecture du code par Claude ; « non vérifié » n'a pas été vérifié du tout.")}</p>
     </div>
   );
 }
@@ -311,7 +311,7 @@ export function Report({ data, onCancel, envActions, onClear }: { data: ReportDa
     <div className="flex flex-col gap-4 p-4">
       <div className="flex items-center gap-2.5">
         <Badge tone={STATUS_TONE[data.status]}>{running && <Spinner className="size-3" />}{STATUS_LABEL[data.status]}</Badge>
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{data.title}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{data.title}</span>
         <span className="text-xs text-faint">{duration(data.durationMs)}</span>
         {running && onCancel && <Button size="sm" variant="danger" onClick={onCancel}>{data.kind === "command" ? "Arrêter" : t("Annuler")}</Button>}
       </div>
@@ -332,10 +332,10 @@ export function Report({ data, onCancel, envActions, onClear }: { data: ReportDa
       {data.kind === "analysis" && str(s.report) && (
         <div>
           <p className="mb-1 text-xs font-medium text-muted">{t("Analyse de Claude : sa lecture du code, à vérifier, ni une mesure ni une note")}</p>
-          <div className="selectable max-h-[30rem] overflow-auto rounded-lg border border-line bg-bg px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap">{str(s.report)}</div>
+          <div className="selectable max-h-[30rem] overflow-auto rounded-lg border border-line bg-bg px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap">{str(s.report)}</div>
         </div>
       )}
-      {data.kind === "build" && <p className="selectable text-[13px] text-muted"><span className="font-mono text-fg">{str(s.command)}</span> · exit {String(s.exitCode ?? "?")} · {num(s.warnings) ?? 0} warning(s){str(s.commit) && <> · commit <span className="font-mono">{str(s.commit)}</span></>}</p>}
+      {data.kind === "build" && <p className="selectable text-sm text-muted"><span className="font-mono text-fg">{str(s.command)}</span> · exit {String(s.exitCode ?? "?")} · {num(s.warnings) ?? 0} warning(s){str(s.commit) && <> · commit <span className="font-mono">{str(s.commit)}</span></>}</p>}
       <div>
         <div className="mb-1 flex items-center justify-between">
           <p className="text-xs text-muted">Journal</p>

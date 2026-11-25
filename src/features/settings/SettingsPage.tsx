@@ -117,9 +117,9 @@ export function SettingsPage() {
         </div>
       )}
 
-      <div className="mb-6 flex items-center gap-5 border-b border-white/6" role="tablist" aria-label={t("Sections des réglages")}>
+      <div className="mb-6 flex items-center gap-5 border-b border-ink/6" role="tablist" aria-label={t("Sections des réglages")}>
         {TABS.map(([id, label]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => (setTab(id), setPending(null))} className={`-mb-px h-9 border-b-2 px-1 text-[13px] transition-colors duration-150 ${tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg"}`}>
+          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => (setTab(id), setPending(null))} className={`-mb-px h-9 border-b-2 px-1 text-sm transition-colors duration-150 ${tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg"}`}>
             {label}
           </button>
         ))}
@@ -149,7 +149,7 @@ export function SettingsPage() {
               <label className="flex items-start gap-3 pt-5">
                 <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={draft.epitechOnly} onChange={(e) => set({ epitechOnly: e.target.checked })} />
                 <span>
-                  <span className="block text-[13px]">Epitech Projects Only</span>
+                  <span className="block text-sm">Epitech Projects Only</span>
                   <span className="block text-xs text-faint">{t("Seuls les projets Epitech apparaissent dans les listes, le planning et pour Artix. Décoche pour voir aussi tes projets personnels.")}</span>
                 </span>
               </label>
@@ -181,7 +181,7 @@ export function SettingsPage() {
               {t("Dossiers de projets")}
             </CardTitle>
             {draft.roots.length === 0 ? (
-              <p className="px-4 py-4 text-[13px] text-muted">{t("Aucun dossier. TekBoard liste les dépôts trouvés dans les dossiers ajoutés ici.")}</p>
+              <p className="px-4 py-4 text-sm text-muted">{t("Aucun dossier. TekBoard liste les dépôts trouvés dans les dossiers ajoutés ici.")}</p>
             ) : (
               <ul className="py-1">
                 {draft.roots.map((root) => (
@@ -194,12 +194,12 @@ export function SettingsPage() {
                 ))}
               </ul>
             )}
-            <div className="border-t border-white/6 px-4 py-3">
+            <div className="border-t border-ink/6 px-4 py-3">
               <Field label={t("Cloner les nouveaux projets dans")} hint={t("Automatique : à côté des dépôts du même type (Epitech avec Epitech).")}>
                 <Select label={t("Dossier de clonage")} mono value={draft.cloneDir ?? ""} onChange={(v) => set({ cloneDir: v || null })} options={[{ value: "", label: t("Automatique") }, ...targets.map((t) => ({ value: t, label: tildify(t, home) }))]} />
               </Field>
             </div>
-            <div className="border-t border-white/6 px-4 py-3">
+            <div className="border-t border-ink/6 px-4 py-3">
               <div className="mb-1 flex items-center justify-between">
                 <span className="text-xs text-muted">{t("Dossiers d'école")}</span>
                 <Button size="sm" variant="ghost" icon={<FolderPlus className="size-3.5" />} onClick={() => void addSchoolDir()}>
@@ -298,7 +298,7 @@ export function SettingsPage() {
               <label className="flex items-start gap-3">
                 <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={draft.myAutoReconnect} onChange={(e) => set({ myAutoReconnect: e.target.checked })} />
                 <span>
-                  <span className="block text-[13px]">{t("Se reconnecter au démarrage de TekBoard")}</span>
+                  <span className="block text-sm">{t("Se reconnecter au démarrage de TekBoard")}</span>
                   <span className="block text-xs text-faint">{t("Rouvre dans une fenêtre cachée la session MY Epitech gardée sur cet ordinateur. Si le site redemande une connexion, rien n'est forcé : l'état l'indique et tu ouvres la fenêtre toi-même.")}</span>
                 </span>
               </label>
@@ -326,7 +326,7 @@ export function SettingsPage() {
             <label className="flex items-center gap-3 px-4 py-4">
               <input type="checkbox" className="accent-(--color-accent)" checked={draft.glassEffects} onChange={(e) => set({ glassEffects: e.target.checked })} />
               <span>
-                <span className="block text-[13px]">{t("Effet verre sur les dialogues")}</span>
+                <span className="block text-sm">{t("Effet verre sur les dialogues")}</span>
                 <span className="block text-xs text-faint">{t("Flou derrière la palette et les dialogues. Désactive-le si le défilement ou la saisie paraissent lents.")}</span>
               </span>
             </label>
@@ -354,7 +354,7 @@ export function ThemePicker({ current, onPick }: { current: string; onPick: (id:
         return (
           <button key={t.id} type="button" role="radio" aria-checked={active} onClick={() => !active && onPick(t.id)} className="group text-left">
             <span
-              className={`block h-[84px] overflow-hidden border p-2.5 transition-colors duration-150 ${active ? "border-accent" : "border-white/10 group-hover:border-white/25"}`}
+              className={`block h-[84px] overflow-hidden border p-2.5 transition-colors duration-150 ${active ? "border-accent" : "border-ink/10 group-hover:border-ink/25"}`}
               style={{ background: t.bg, borderRadius: t.radius + 4 }}
             >
               <span className="block h-full p-2" style={{ background: t.card, borderRadius: t.radius, border: "1px solid rgb(255 255 255 / 0.08)" }}>
@@ -363,7 +363,7 @@ export function ThemePicker({ current, onPick }: { current: string; onPick: (id:
                 <span className="mt-2.5 block h-3.5 w-14" style={{ background: t.accent, borderRadius: Math.max(2, t.radius - 3) }} />
               </span>
             </span>
-            <span className="mt-1.5 flex items-center gap-1.5 text-[13px] font-medium">
+            <span className="mt-1.5 flex items-center gap-1.5 text-sm font-medium">
               {t.name}
               {active && <Check className="size-3.5 text-accent" />}
             </span>
@@ -393,7 +393,7 @@ function EnvironmentCard() {
         Environnement
       </CardTitle>
       {env.isLoading || !env.data ? (
-        <p className="flex items-center gap-2 px-4 py-5 text-[13px] text-muted">
+        <p className="flex items-center gap-2 px-4 py-5 text-sm text-muted">
           <Spinner /> {t("Vérification…")}
         </p>
       ) : (
@@ -408,7 +408,7 @@ function EnvironmentCard() {
               </li>
             ))}
           </ul>
-          <div className="space-y-2.5 border-t border-white/6 px-4 py-3 text-[13px]">
+          <div className="space-y-2.5 border-t border-ink/6 px-4 py-3 text-sm">
             <Row label={t("Identité git")}>
               {env.data.identity.name && env.data.identity.email ? (
                 <span className="selectable text-muted">

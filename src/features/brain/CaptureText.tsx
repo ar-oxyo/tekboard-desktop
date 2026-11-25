@@ -17,8 +17,8 @@ export function CaptureImage({ id, className }: { id: string; className?: string
         <ImageOff className="size-3.5" /> {t("Image introuvable")}
       </span>
     );
-  if (!q.data) return <span className={cn("block h-24 w-40 animate-pulse rounded-md bg-white/5", className)} />;
-  return <img src={q.data} alt="" className={cn("max-h-64 max-w-full rounded-md border border-white/8 object-contain", className)} />;
+  if (!q.data) return <span className={cn("block h-24 w-40 animate-pulse rounded-md bg-ink/5", className)} />;
+  return <img src={q.data} alt="" className={cn("max-h-64 max-w-full rounded-md border border-ink/8 object-contain", className)} />;
 }
 
 /** Text blocks and image lines, in order. */
@@ -44,7 +44,7 @@ function parts(text: string): Array<{ kind: "text"; text: string } | { kind: "im
 
 export function CaptureText({ text, className }: { text: string; className?: string }) {
   return (
-    <div className={cn("text-[13px] leading-relaxed text-muted", className)}>
+    <div className={cn("text-sm leading-relaxed text-muted", className)}>
       {parts(text).map((p, i) => (
         <Fragment key={i}>{p.kind === "image" ? <CaptureImage id={p.id} className="my-1.5" /> : <Markdown text={p.text} />}</Fragment>
       ))}

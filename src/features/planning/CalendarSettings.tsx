@@ -34,7 +34,7 @@ export function CalendarSettingsDialog({ onClose }: { onClose: () => void }) {
     <Modal open onClose={onClose} title={t("Réglages du calendrier")} width="w-[560px]" footer={<Button variant="primary" onClick={onClose}>{t("Terminé")}</Button>}>
       <div className="flex flex-col gap-5">
         <section>
-          <h3 className="mb-1 text-[13px] font-medium">{t("Catégories")}</h3>
+          <h3 className="mb-1 text-sm font-medium">{t("Catégories")}</h3>
           <p className="mb-2 text-xs text-faint">{t("Les catégories de base se renomment et changent de couleur ; les tiennes se suppriment (leurs entrées reviennent à leur catégorie de base).")}</p>
           <ul className="flex flex-col gap-1">
             {data.categories.map((c) => (
@@ -55,18 +55,18 @@ export function CalendarSettingsDialog({ onClose }: { onClose: () => void }) {
           </form>
         </section>
         <section>
-          <h3 className="mb-1 text-[13px] font-medium">{t("Projets affichés")}</h3>
+          <h3 className="mb-1 text-sm font-medium">{t("Projets affichés")}</h3>
           <p className="mb-2 text-xs text-faint">{t("Décoche un projet qui encombre le calendrier : ses rendus et séances ne sont plus dessinés. Il reste dans Projets, et ses données ne changent pas.")}</p>
           {projects.length === 0 ? (
-            <p className="text-[13px] text-muted">{t("Aucun projet pour l'instant.")}</p>
+            <p className="text-sm text-muted">{t("Aucun projet pour l'instant.")}</p>
           ) : (
-            <ul className="max-h-64 overflow-y-auto rounded-lg border border-white/7 py-1">
+            <ul className="max-h-64 overflow-y-auto rounded-lg border border-ink/7 py-1">
               {projects.map((p) => (
                 <li key={p.key}>
-                  <label className="row-hover flex h-9 cursor-pointer items-center gap-2.5 px-3 text-[13px]">
+                  <label className="row-hover flex h-9 cursor-pointer items-center gap-2.5 px-3 text-sm">
                     <input type="checkbox" className="accent-(--color-accent)" checked={!hidden.has(p.key)} onChange={(e) => hide.mutate({ key: p.key, hidden: !e.target.checked })} />
                     <span className="min-w-0 flex-1 truncate">{p.title}</span>
-                    {p.module && <span className="shrink-0 font-mono text-[11px] text-faint">{p.module}</span>}
+                    {p.module && <span className="shrink-0 font-mono text-2xs text-faint">{p.module}</span>}
                   </label>
                 </li>
               ))}
@@ -87,10 +87,10 @@ function CategoryRow({ c, onSave, onDelete }: { c: PlanCategory; onSave: (name: 
   };
   return (
     <li className="flex items-center gap-2">
-      <input type="color" aria-label={t("Couleur de {name}", { name: c.name })} value={c.color} onChange={(e) => commit(name, e.target.value)} className="size-7 shrink-0 cursor-pointer rounded border border-white/10 bg-transparent p-0.5" />
+      <input type="color" aria-label={t("Couleur de {name}", { name: c.name })} value={c.color} onChange={(e) => commit(name, e.target.value)} className="size-7 shrink-0 cursor-pointer rounded border border-ink/10 bg-transparent p-0.5" />
       <Input className="h-8 flex-1" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => commit()} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} aria-label={t("Nom de la catégorie")} />
       {c.builtin ? (
-        <span className="w-8 shrink-0 text-center text-[10px] text-faint" title={t("Catégorie de base : elle se renomme mais ne se supprime pas")}>
+        <span className="w-8 shrink-0 text-center text-3xs text-faint" title={t("Catégorie de base : elle se renomme mais ne se supprime pas")}>
           {t("base")}
         </span>
       ) : (

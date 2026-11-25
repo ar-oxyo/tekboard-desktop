@@ -63,7 +63,7 @@ export function MenuLabel({ children }: { children: ReactNode }) {
 }
 
 export function MenuSeparator() {
-  return <DM.Separator className="mx-1 my-1 h-px bg-white/8" />;
+  return <DM.Separator className="mx-1 my-1 h-px bg-ink/8" />;
 }
 
 export function SubMenu({ icon, label, children }: { icon?: ReactNode; label: ReactNode; children: ReactNode }) {

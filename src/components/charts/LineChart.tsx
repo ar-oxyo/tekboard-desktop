@@ -66,7 +66,7 @@ export function LineChart({ series, xLabel, yLabel, formatY, logX, logY, height 
   return (
     <div className={cn("relative", className)}>
       {series.length > 1 && (
-        <ul className="mb-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted">
+        <ul className="mb-1 flex flex-wrap gap-x-4 gap-y-1 text-2xs text-muted">
           {series.map((s) => (
             <li key={s.id} className="flex items-center gap-1.5">
               <svg width="18" height="6" aria-hidden>
@@ -126,7 +126,7 @@ export function LineChart({ series, xLabel, yLabel, formatY, logX, logY, height 
         </svg>
       </div>
       {hx !== null && (
-        <div className="pointer-events-none absolute top-6 rounded-md border border-line bg-raised px-2.5 py-1.5 text-[11px] shadow-lg" style={{ left: `${Math.min(70, (sx(hx) / width) * 100)}%` }}>
+        <div className="pointer-events-none absolute top-6 rounded-md border border-line bg-raised px-2.5 py-1.5 text-2xs shadow-lg" style={{ left: `${Math.min(70, (sx(hx) / width) * 100)}%` }}>
           <p className="mb-0.5 text-faint">
             {xLabel} = {compact(hx)}
           </p>

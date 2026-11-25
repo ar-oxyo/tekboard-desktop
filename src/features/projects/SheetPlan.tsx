@@ -51,7 +51,7 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
 
   return (
     <div className="grid grid-cols-2 gap-4">
-      <section className="flex flex-col gap-3 rounded-lg border border-white/7 p-4">
+      <section className="flex flex-col gap-3 rounded-lg border border-ink/7 p-4">
         <SectionLabel>{tr("Où tu en es")}</SectionLabel>
         {(my?.tooManyAbsences || my?.nonCompliant) && (
           <p className="-mt-1 rounded-md border border-warn/30 bg-warn/10 px-2.5 py-1.5 text-xs text-warn">
@@ -59,15 +59,15 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
           </p>
         )}
         <div>
-          <div className="mb-1.5 flex items-baseline justify-between text-[13px]">
+          <div className="mb-1.5 flex items-baseline justify-between text-sm">
             <span>{progress ? `${progress.done} of ${progress.total} tasks done` : "No task yet"}</span>
             {load && load.risk !== "unknown" && <Dot tone={RISK_TONE[load.risk]}>{load.why}</Dot>}
           </div>
-          <span className="block h-1.5 overflow-hidden rounded-full bg-white/6">
+          <span className="block h-1.5 overflow-hidden rounded-full bg-ink/6">
             <span className="block h-full rounded-full transition-all duration-300" style={{ width: `${progress ? (progress.done / progress.total) * 100 : 0}%`, background: project?.color ?? "var(--color-accent)" } as CSSProperties} />
           </span>
         </div>
-        <dl className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-x-3 gap-y-2 text-[13px]">
+        <dl className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-x-3 gap-y-2 text-sm">
           <dt className="text-muted">{tr("Travail restant")}</dt>
           <dd>
             {estimate === null ? (
@@ -126,9 +126,9 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
         )}
       </section>
 
-      <section className="flex flex-col gap-2 rounded-lg border border-white/7 p-4">
+      <section className="flex flex-col gap-2 rounded-lg border border-ink/7 p-4">
         <SectionLabel>Ensuite</SectionLabel>
-        <div className="flex items-center gap-2 text-[13px]">
+        <div className="flex items-center gap-2 text-sm">
           <CalendarClock className="size-4 shrink-0 text-faint" />
           {next ? (
             <>
@@ -145,7 +145,7 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
         </div>
         <ul className="flex flex-col">
           {open.slice(0, 6).map((t) => (
-            <li key={t.id} className="group flex h-8 items-center gap-2 text-[13px]">
+            <li key={t.id} className="group flex h-8 items-center gap-2 text-sm">
               <input type="checkbox" aria-label={tr("Fait")} className="accent-(--color-accent)" checked={false} onChange={() => act.toggleTask(t)} />
               <button type="button" className="min-w-0 flex-1 truncate text-left hover:text-accent-strong" onClick={() => useUi.getState().editTask(t)}>
                 {t.title}
@@ -197,7 +197,7 @@ export function GitTab({ repo }: { repo: RepoInfo }) {
   const s = repo.status;
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px]">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
         <BranchLabel repo={repo} />
         <StatusChips repo={repo} max={4} />
         {s && s.upstream && (
@@ -207,7 +207,7 @@ export function GitTab({ repo }: { repo: RepoInfo }) {
         )}
       </div>
       {repo.lastCommit && (
-        <p className="flex min-w-0 items-center gap-2 text-[13px] text-muted">
+        <p className="flex min-w-0 items-center gap-2 text-sm text-muted">
           <GitCommitHorizontal className="size-4 shrink-0 text-faint" />
           <span className="selectable truncate">{repo.lastCommit.subject}</span>
           <span className="shrink-0 text-faint">{timeAgo(repo.lastCommit.date)}</span>
@@ -234,7 +234,7 @@ export function AdvancedTab({ repo }: { repo: RepoInfo }) {
   const openLauncher = useUi((s) => s.openLauncher);
   const row = (icon: ReactNode, label: string, hint: string, onClick: () => void, active?: boolean) => (
     <li>
-      <button type="button" onClick={onClick} className={cn("row-hover flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left text-[13px]", active && "text-accent-strong")}>
+      <button type="button" onClick={onClick} className={cn("row-hover flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left text-sm", active && "text-accent-strong")}>
         <span className="flex w-4 justify-center text-faint">{icon}</span>
         <span className="flex-1">{label}</span>
         <span className="text-xs text-faint">{hint}</span>

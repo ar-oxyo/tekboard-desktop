@@ -60,15 +60,15 @@ export function Onboarding({ embedded, onSaved, extra: below }: { embedded?: boo
           <FolderSearch className="size-5" />
           <h2 className="display text-lg font-medium text-fg">{t("Où sont tes projets ?")}</h2>
         </div>
-        <p className="text-[13px] text-muted">{t("TekBoard lit seulement ces dossiers pour lister tes dépôts. Rien n'est déplacé ni modifié.")}</p>
+        <p className="text-sm text-muted">{t("TekBoard lit seulement ces dossiers pour lister tes dépôts. Rien n'est déplacé ni modifié.")}</p>
 
         <div className="mt-4">
           {suggestions.isLoading ? (
-            <p className="flex items-center gap-2 py-4 text-[13px] text-muted">
+            <p className="flex items-center gap-2 py-4 text-sm text-muted">
               <Spinner /> {t("Recherche de dépôts dans ton dossier personnel…")}
             </p>
           ) : (suggestions.data?.length ?? 0) === 0 && extra.length === 0 ? (
-            <p className="py-3 text-[13px] text-muted">{t("Aucun dossier contenant plusieurs dépôts n'a été trouvé. Choisis-en un toi-même.")}</p>
+            <p className="py-3 text-sm text-muted">{t("Aucun dossier contenant plusieurs dépôts n'a été trouvé. Choisis-en un toi-même.")}</p>
           ) : (
             <ul className="rounded-lg border border-line bg-bg py-1">
               {(suggestions.data ?? []).map((s) => (

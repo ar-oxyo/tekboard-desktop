@@ -87,7 +87,7 @@ export function PromptsPage() {
               {list.data!.map((p) => (
                 <li key={p.id}>
                   <button type="button" role="option" aria-selected={p.id === current.id} onClick={() => setId(p.id)} className={cn("flex w-full flex-col gap-0.5 px-4 py-2 text-left row-hover", p.id === current.id && "bg-accent-soft")}>
-                    <span className="flex items-center gap-2 text-[13px] font-medium">
+                    <span className="flex items-center gap-2 text-sm font-medium">
                       <span className="min-w-0 flex-1 truncate">{p.title}</span>
                       {p.active !== null && <Badge tone="accent">custom</Badge>}
                     </span>
@@ -96,7 +96,7 @@ export function PromptsPage() {
                 </li>
               ))}
             </ul>
-            <p className="flex gap-2 border-t border-white/6 px-4 py-3 text-xs text-faint">
+            <p className="flex gap-2 border-t border-ink/6 px-4 py-3 text-xs text-faint">
               <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
               Un prompt n'est que du texte. Ce que Claude Code peut lire ou écrire est fixé par TekBoard pour chaque tâche et ne se change pas ici ; il n'a jamais de shell.
             </p>
@@ -188,9 +188,9 @@ function PromptEditor({ def }: { def: PromptDef }) {
           )}
           {inUse && <Badge tone="ok">utilisé</Badge>}
         </div>
-        <div className="flex items-center gap-1 border-b border-white/6">
+        <div className="flex items-center gap-1 border-b border-ink/6">
           {(["edit", "default", "preview"] as const).map((t) => (
-            <button key={t} type="button" onClick={() => setTab(t)} className={cn("-mb-px flex h-8 items-center gap-1.5 border-b-2 px-3 text-[13px] transition-colors", tab === t ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
+            <button key={t} type="button" onClick={() => setTab(t)} className={cn("-mb-px flex h-8 items-center gap-1.5 border-b-2 px-3 text-sm transition-colors", tab === t ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
               {t === "preview" && <Eye className="size-3.5" />}
               {t === "edit" ? (preset === DEFAULT ? "Text" : "Edit") : t === "default" ? "Par défaut" : "Preview"}
             </button>
@@ -230,7 +230,7 @@ function PromptEditor({ def }: { def: PromptDef }) {
           <ul className="flex flex-wrap gap-1.5">
             {def.vars.map((v) => (
               <li key={v.name}>
-                <button type="button" title={`${v.description}${v.required ? "\nRequired: the prompt cannot work without it." : ""}\nExample: ${v.sample.slice(0, 160)}`} onClick={() => insert(v.name)} className={cn("flex h-6 items-center gap-1 rounded-md border px-2 font-mono text-[11px] transition-colors hover:border-accent/50 hover:text-accent-strong", body.includes(`{{${v.name}}}`) ? "border-accent/30 bg-accent-soft text-accent-strong" : "border-white/10 text-muted")}>
+                <button type="button" title={`${v.description}${v.required ? "\nRequired: the prompt cannot work without it." : ""}\nExample: ${v.sample.slice(0, 160)}`} onClick={() => insert(v.name)} className={cn("flex h-6 items-center gap-1 rounded-md border px-2 font-mono text-2xs transition-colors hover:border-accent/50 hover:text-accent-strong", body.includes(`{{${v.name}}}`) ? "border-accent/30 bg-accent-soft text-accent-strong" : "border-ink/10 text-muted")}>
                   {`{{${v.name}}}`}
                   {v.required && <span className="font-sans text-warn">required</span>}
                 </button>

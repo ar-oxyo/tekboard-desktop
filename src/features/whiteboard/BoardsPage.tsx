@@ -111,7 +111,7 @@ function BoardList() {
       {invites.length > 0 && (
         <div className="space-y-1.5">
           {invites.map((i) => (
-            <div key={i.session} className="flex items-center gap-2 rounded-md border border-accent/40 bg-accent-soft/40 px-3 py-2 text-[13px]">
+            <div key={i.session} className="flex items-center gap-2 rounded-md border border-accent/40 bg-accent-soft/40 px-3 py-2 text-sm">
               <Users className="size-4 text-accent" />
               <span className="flex-1 text-fg">{t("{n} t'invite sur son tableau « {b} »", { n: i.hostNick, b: i.name })}</span>
               <Button size="sm" variant="primary" onClick={() => joinBoard(i)}>
@@ -183,13 +183,13 @@ export function BoardGrid({ boards, onOpen, menu, projectName, compact }: { boar
       {boards.map((b) => (
         <li key={b.id} className="card group relative overflow-hidden">
           <button type="button" className="block w-full text-left" onClick={() => onOpen(b.id)}>
-            <div className={cn("flex items-center justify-center bg-white/[0.03]", compact ? "h-24" : "h-36")}>
+            <div className={cn("flex items-center justify-center bg-ink/3", compact ? "h-24" : "h-36")}>
               {b.thumb ? <img src={b.thumb} alt="" className="max-h-full max-w-full object-contain p-2" /> : <PenTool className="size-6 text-faint" />}
             </div>
             <div className="space-y-0.5 px-3 py-2">
               <div className="flex items-center gap-1.5">
                 {b.position > 0 && <Pin className="size-3 shrink-0 text-accent" />}
-                <span className="truncate text-[13px] font-medium text-fg">{b.name}</span>
+                <span className="truncate text-sm font-medium text-fg">{b.name}</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-faint">
                 <span>{timeAgo(b.updatedAt)}</span>
@@ -230,12 +230,12 @@ export function ProjectBoards({ repo }: { repo: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-[13px] text-muted">{t("Schémas de ce projet. Ils restent dans TekBoard ; « Exporter → Dans un projet » en copie un dans docs/boards/.")}</p>
+        <p className="text-sm text-muted">{t("Schémas de ce projet. Ils restent dans TekBoard ; « Exporter → Dans un projet » en copie un dans docs/boards/.")}</p>
         <Button size="sm" icon={<Plus className="size-3.5" />} busy={busy} onClick={() => void create()}>
           {t("Nouveau tableau")}
         </Button>
       </div>
-      {!boards.data ? <Spinner /> : boards.data.length === 0 ? <p className="text-[13px] text-faint">{t("Aucun tableau pour ce projet.")}</p> : <BoardGrid compact boards={sortBoards(boards.data, "recent")} onOpen={openBoard} />}
+      {!boards.data ? <Spinner /> : boards.data.length === 0 ? <p className="text-sm text-faint">{t("Aucun tableau pour ce projet.")}</p> : <BoardGrid compact boards={sortBoards(boards.data, "recent")} onOpen={openBoard} />}
     </div>
   );
 }

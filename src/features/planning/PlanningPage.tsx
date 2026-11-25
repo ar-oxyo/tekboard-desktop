@@ -113,8 +113,8 @@ export function PlanningPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/6 px-6 py-3">
-        <h1 className="display mr-2 text-[20px] font-medium">{t("Planning")}</h1>
+      <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-ink/6 px-6 py-3">
+        <h1 className="display mr-2 text-xl font-medium">{t("Planning")}</h1>
         <Button size="sm" onClick={() => setDate(now)}>
           {t("Aujourd'hui")}
         </Button>
@@ -124,10 +124,10 @@ export function PlanningPage() {
         <IconButton label="Suivant" onClick={() => step(1)}>
           <ChevronRight className="size-4" />
         </IconButton>
-        <span className="min-w-0 truncate text-[13px] capitalize">{label}</span>
+        <span className="min-w-0 truncate text-sm capitalize">{label}</span>
         {data.fetching && <Spinner />}
         <div className="ml-auto flex items-center gap-1.5">
-          <div role="tablist" aria-label="Vue" className="flex gap-0.5 rounded-(--btn-radius) border border-white/8 p-0.5">
+          <div role="tablist" aria-label="Vue" className="flex gap-0.5 rounded-(--btn-radius) border border-ink/8 p-0.5">
             {(["day", "week", "month"] as View[]).map((v) => (
               <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)} className={cn("h-6 rounded-[calc(var(--btn-radius)-3px)] px-2.5 text-xs capitalize transition-colors duration-150", view === v ? "bg-raised text-fg" : "text-muted hover:text-fg")}>
                 {v === "day" ? t("Jour") : v === "week" ? t("Semaine") : t("Mois")}
@@ -203,10 +203,10 @@ export function PlanningPage() {
             <TimeGrid days={days} items={shown} now={now} prefs={data.prefs} ghost={ghost} onCreate={create} onOpen={open} onMove={move} onPickDay={(d) => (setDate(d), setView("day"))} />
           )}
         </div>
-        <aside className="flex w-[300px] shrink-0 flex-col border-l border-white/6">
-          <div role="tablist" className="flex shrink-0 gap-4 border-b border-white/6 px-4">
+        <aside className="flex w-[300px] shrink-0 flex-col border-l border-ink/6">
+          <div role="tablist" className="flex shrink-0 gap-4 border-b border-ink/6 px-4">
             {([["inbox", t("À placer")], ["projects", t("Projets")]] as const).map(([id, text]) => (
-              <button key={id} type="button" role="tab" aria-selected={side === id} onClick={() => setSide(id)} className={cn("-mb-px h-10 border-b-2 text-[13px] transition-colors duration-150", side === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
+              <button key={id} type="button" role="tab" aria-selected={side === id} onClick={() => setSide(id)} className={cn("-mb-px h-10 border-b-2 text-sm transition-colors duration-150", side === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
                 {text}
               </button>
             ))}
@@ -214,7 +214,7 @@ export function PlanningPage() {
           <div className="min-h-0 flex-1 overflow-y-auto">
             {side === "inbox" ? <InboxPanel data={data} onDrag={dragTask} now={now} /> : <ProjectsPanel projects={data.projects} loads={loads} now={nowDate} />}
           </div>
-          <p className="shrink-0 border-t border-white/6 px-4 py-2 text-[11px] text-faint">
+          <p className="shrink-0 border-t border-ink/6 px-4 py-2 text-2xs text-faint">
             {data.agenda?.syncedAt ? t("MY Epitech synchronisé {when} · ses entrées sont en lecture seule", { when: timeAgo(data.agenda.syncedAt) }) : t("MY Epitech pas synchronisé : seules tes propres entrées sont affichées.")}{" "}
             <button type="button" className="hover:text-fg" onClick={() => invalidate(qc, ["plan", "repos", "my"])}>
               Actualiser
@@ -244,7 +244,7 @@ function InboxPanel({ data, onDrag, now }: { data: ReturnType<typeof usePlanData
         </Button>
       </div>
       {tasks.length === 0 && (
-        <p className="flex flex-col items-center gap-2 px-4 py-8 text-center text-[13px] text-muted">
+        <p className="flex flex-col items-center gap-2 px-4 py-8 text-center text-sm text-muted">
           <Inbox className="size-5 text-faint" />
           {t("Les tâches sans horaire arrivent ici. Ctrl+I en note une depuis n'importe quel écran.")}
         </p>
@@ -253,8 +253,8 @@ function InboxPanel({ data, onDrag, now }: { data: ReturnType<typeof usePlanData
         <div key={t.id} onPointerDown={(e) => onDrag(e, t)} className="group row-hover flex cursor-grab items-start gap-2 rounded-md px-2 py-1.5 active:cursor-grabbing" style={{ touchAction: "none" }}>
           <input type="checkbox" aria-label={tr("Fait")} className="mt-0.5 accent-(--color-accent)" checked={false} onPointerDown={(e) => e.stopPropagation()} onChange={() => act.toggleTask(t)} />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13px]">{t.title}</span>
-            <span className="flex items-center gap-2 text-[11px] text-faint">
+            <span className="block truncate text-sm">{t.title}</span>
+            <span className="flex items-center gap-2 text-2xs text-faint">
               {t.project && (
                 <span className="flex min-w-0 items-center gap-1 truncate">
                   <span className="size-1.5 shrink-0 rounded-full" style={{ background: color(t.project) }} />
@@ -274,7 +274,7 @@ function InboxPanel({ data, onDrag, now }: { data: ReturnType<typeof usePlanData
             <Lightbulb className="size-3.5" /> Idées
           </p>
           {ideas.map((t) => (
-            <button key={t.id} type="button" onClick={() => useUi.getState().editTask(t)} className="row-hover truncate rounded-md px-2 py-1 text-left text-[13px] text-muted">
+            <button key={t.id} type="button" onClick={() => useUi.getState().editTask(t)} className="row-hover truncate rounded-md px-2 py-1 text-left text-sm text-muted">
               {t.title}
             </button>
           ))}
@@ -288,7 +288,7 @@ const RISK: Record<Load["risk"], { tone: "danger" | "warn" | "ok" | "neutral"; t
 
 export function ProjectsPanel({ projects, loads, now }: { projects: PlanProject[]; loads: Map<string, Load>; now: Date }) {
   const withDate = projects.filter((p) => p.dueMs !== null || p.estimateMin !== null);
-  if (withDate.length === 0) return <p className="p-6 text-center text-[13px] text-muted">{t("Aucun projet avec date de rendu ou estimation. Synchronise MY Epitech, ou fixe un rendu dans la fiche d'un projet.")}</p>;
+  if (withDate.length === 0) return <p className="p-6 text-center text-sm text-muted">{t("Aucun projet avec date de rendu ou estimation. Synchronise MY Epitech, ou fixe un rendu dans la fiche d'un projet.")}</p>;
   return (
     <ul className="flex flex-col gap-1 p-3">
       {withDate.map((p) => {
@@ -301,19 +301,19 @@ export function ProjectsPanel({ projects, loads, now }: { projects: PlanProject[
             <button type="button" onClick={() => useUi.getState().openSheet(p.repoPath ?? "")} disabled={!p.repoPath} className="row-hover flex w-full flex-col gap-1.5 rounded-md px-2 py-2 text-left disabled:cursor-default">
               <span className="flex w-full items-center gap-2">
                 <span className="size-2 shrink-0 rounded-full" style={{ background: p.color }} />
-                <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{p.title}</span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">{p.title}</span>
                 {d.state !== "unknown" && <Countdown tone={d.tone}>{d.label}</Countdown>}
               </span>
-              <span className="flex w-full items-center gap-2 pl-4 text-[11px] text-faint">
+              <span className="flex w-full items-center gap-2 pl-4 text-2xs text-faint">
                 {p.module && <Tag>{p.module}</Tag>}
                 <span className="ml-auto">{l && <Dot tone={RISK[l.risk].tone}>{RISK[l.risk].text}</Dot>}</span>
               </span>
               {p.estimateMin !== null && (
                 <span className="flex w-full items-center gap-2 pl-4" title={l?.why}>
-                  <span className="h-1 flex-1 overflow-hidden rounded-full bg-white/6">
+                  <span className="h-1 flex-1 overflow-hidden rounded-full bg-ink/6">
                     <span className="block h-full rounded-full" style={{ width: `${total ? (Math.min(planned, total) / total) * 100 : 100}%`, background: p.color } as CSSProperties} />
                   </span>
-                  <span className="shrink-0 font-mono text-[10px] text-muted">
+                  <span className="shrink-0 font-mono text-3xs text-muted">
                     {fmtDur(planned)} / {fmtDur(p.estimateMin)}
                   </span>
                 </span>

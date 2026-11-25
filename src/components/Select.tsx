@@ -82,10 +82,10 @@ export function Select<T extends string = string>({ value, onChange, options, pl
           aria-label={label}
           title={reason ?? (shown.tone === "missing" ? t("Cette valeur n'est plus dans la liste : choisis-en une autre.") : undefined)}
           className={cn(
-            "select-trigger group inline-flex min-w-0 items-center justify-between gap-2 border border-white/8 text-left text-fg",
+            "select-trigger group inline-flex min-w-0 items-center justify-between gap-2 border border-ink/8 text-left text-fg",
             "transition-colors duration-100 hover:border-line-strong focus-visible:border-accent focus-visible:outline-none data-[state=open]:border-accent",
             "disabled:cursor-not-allowed disabled:opacity-50",
-            size === "sm" ? "h-7 px-2 text-xs" : "h-8 px-2.5 text-[13px]",
+            size === "sm" ? "h-7 px-2 text-xs" : "h-8 px-2.5 text-sm",
             mono && "font-mono",
             !has("w-") && "w-full",
             shown.tone === "missing" && "border-warn/50",
@@ -118,9 +118,9 @@ export function Select<T extends string = string>({ value, onChange, options, pl
           ) : (
             <Command loop>
               {searchable && (
-                <div className="flex items-center gap-2 border-b border-white/8 px-2.5">
+                <div className="flex items-center gap-2 border-b border-ink/8 px-2.5">
                   <Search className="size-3.5 shrink-0 text-faint" />
-                  <Command.Input autoFocus placeholder={t("Rechercher")} className="h-8 min-w-0 flex-1 bg-transparent text-[13px] text-fg placeholder:text-faint focus:outline-none" />
+                  <Command.Input autoFocus placeholder={t("Rechercher")} className="h-8 min-w-0 flex-1 bg-transparent text-sm text-fg placeholder:text-faint focus:outline-none" />
                 </div>
               )}
               <Command.List className="max-h-72 overflow-y-auto p-1">
@@ -157,7 +157,7 @@ export function Select<T extends string = string>({ value, onChange, options, pl
   return (
     <span className={cn("flex min-w-0 flex-col gap-1", !has("w-") && "w-full")}>
       {trigger}
-      <span className="text-[11px] text-faint">{reason}</span>
+      <span className="text-2xs text-faint">{reason}</span>
     </span>
   );
 }

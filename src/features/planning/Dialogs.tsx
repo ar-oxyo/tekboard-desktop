@@ -13,7 +13,7 @@ import { usePlanActions, usePlanData, usePlanPrefs } from "./usePlan";
 import { locale, t as tr } from "../../lib/i18n";
 import { CaptureEditor } from "../brain/CaptureEditor";
 
-const textarea = "w-full resize-y rounded-md border border-line bg-bg p-2.5 text-[13px] leading-relaxed text-fg placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none";
+const textarea = "w-full resize-y rounded-md border border-line bg-bg p-2.5 text-sm leading-relaxed text-fg placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none";
 
 export function ProjectSelect({ value, onChange, projects, className, size }: { value: string | null; onChange: (key: string | null) => void; projects: PlanProject[]; className?: string; size?: "sm" | "md" }) {
   const options = useMemo(() => [{ value: "", label: tr("Aucun projet") }, ...projects.map((p) => ({ value: p.key, label: p.title, hint: p.module ?? undefined }))], [projects]);
@@ -22,7 +22,7 @@ export function ProjectSelect({ value, onChange, projects, className, size }: { 
 
 function Segmented<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: Array<[T, string]>; label: string }) {
   return (
-    <div role="radiogroup" aria-label={label} className="flex gap-0.5 rounded-(--btn-radius) border border-white/8 p-0.5">
+    <div role="radiogroup" aria-label={label} className="flex gap-0.5 rounded-(--btn-radius) border border-ink/8 p-0.5">
       {options.map(([id, text]) => (
         <button key={id} type="button" role="radio" aria-checked={value === id} onClick={() => onChange(id)} className={cn("h-7 flex-1 rounded-[calc(var(--btn-radius)-3px)] px-2.5 text-xs whitespace-nowrap transition-colors duration-150", value === id ? "bg-raised text-fg" : "text-muted hover:text-fg")}>
           {text}
@@ -158,7 +158,7 @@ function EventForm({ draft }: { draft: Partial<PlanEvent> }) {
           <textarea className={cn(textarea, "h-20")} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </Field>
         {work && !isNew && (
-          <label className="flex items-center gap-2 text-[13px] text-muted">
+          <label className="flex items-center gap-2 text-sm text-muted">
             <input type="checkbox" className="accent-(--color-accent)" checked={done} onChange={(e) => setDone(e.target.checked)} /> {tr("Fait")}
           </label>
         )}
@@ -288,7 +288,7 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
             <SectionLabel className="mb-1.5">Sous-tâches</SectionLabel>
             <ul className="flex flex-col">
               {children.map((c) => (
-                <li key={c.id} className="group flex h-8 items-center gap-2 text-[13px]">
+                <li key={c.id} className="group flex h-8 items-center gap-2 text-sm">
                   <input type="checkbox" className="accent-(--color-accent)" checked={c.doneAt !== null} onChange={() => act.toggleTask(c)} />
                   <span className={cn("min-w-0 flex-1 truncate", c.doneAt !== null && "text-faint line-through")}>{c.title}</span>
                   <IconButton label={tr("Supprimer la sous-tâche")} className="opacity-0 group-hover:opacity-100" onClick={() => act.removeTask.mutate(c.id)}>
@@ -312,7 +312,7 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
             />
           </div>
         )}
-        <label className="flex items-center gap-2 text-[13px] text-muted">
+        <label className="flex items-center gap-2 text-sm text-muted">
           <input type="checkbox" className="accent-(--color-accent)" checked={idea} onChange={(e) => setIdea(e.target.checked)} /> {tr("Juste une idée : la garder dans l'inbox, ne jamais la planifier")}
         </label>
         {error && <p className="text-xs text-danger">{error}</p>}
@@ -404,9 +404,9 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
       <div className="flex flex-col gap-3.5">
         <div className="grid grid-cols-4 gap-1.5">
           {(["calm", "balanced", "intense", "custom"] as RhythmMode[]).map((m) => (
-            <button key={m} type="button" aria-pressed={p.mode === m} onClick={() => preset(m)} className={cn("flex flex-col items-start gap-0.5 rounded-lg border px-2.5 py-2 text-left transition-colors duration-150", p.mode === m ? "border-accent/50 bg-accent-soft" : "border-white/8 hover:border-white/15")}>
-              <span className="text-[13px] font-medium">{m === "custom" ? tr("Sur mesure") : RHYTHMS[m].label}</span>
-              <span className="text-[11px] leading-snug text-faint">{m === "custom" ? tr("tu fixes tout") : RHYTHMS[m].hint}</span>
+            <button key={m} type="button" aria-pressed={p.mode === m} onClick={() => preset(m)} className={cn("flex flex-col items-start gap-0.5 rounded-lg border px-2.5 py-2 text-left transition-colors duration-150", p.mode === m ? "border-accent/50 bg-accent-soft" : "border-ink/8 hover:border-ink/15")}>
+              <span className="text-sm font-medium">{m === "custom" ? tr("Sur mesure") : RHYTHMS[m].label}</span>
+              <span className="text-2xs leading-snug text-faint">{m === "custom" ? tr("tu fixes tout") : RHYTHMS[m].hint}</span>
             </button>
           ))}
         </div>
@@ -423,7 +423,7 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
             {WEEK.map((d) => {
               const on = p.workDays.includes(d);
               return (
-                <button key={d} type="button" aria-pressed={on} onClick={() => setP({ ...p, workDays: on ? p.workDays.filter((x) => x !== d) : [...p.workDays, d] })} className={cn("h-8 flex-1 rounded-md border text-xs capitalize transition-colors duration-150", on ? "border-transparent bg-accent-soft text-accent-strong" : "border-white/8 text-muted hover:text-fg")}>
+                <button key={d} type="button" aria-pressed={on} onClick={() => setP({ ...p, workDays: on ? p.workDays.filter((x) => x !== d) : [...p.workDays, d] })} className={cn("h-8 flex-1 rounded-md border text-xs capitalize transition-colors duration-150", on ? "border-transparent bg-accent-soft text-accent-strong" : "border-ink/8 text-muted hover:text-fg")}>
                   {new Date(2024, 0, d === 0 ? 7 : d).toLocaleDateString(locale(), { weekday: "short" })}
                 </button>
               );
@@ -440,7 +440,7 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
             <Input type="number" min={0} max={7} value={p.bufferDays} onChange={(e) => setP({ ...p, bufferDays: Math.max(0, Math.min(7, Number(e.target.value) || 0)) })} />
           </Field>
         </div>
-        <div className="flex items-center gap-2 text-[13px] text-muted">
+        <div className="flex items-center gap-2 text-sm text-muted">
           <input type="checkbox" className="accent-(--color-accent)" checked={lunch !== null} onChange={(e) => setP({ ...p, protected: e.target.checked ? [[750, 810]] : [] })} />
           Protéger le déjeuner
           {lunch && (
@@ -450,7 +450,7 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
             </>
           )}
         </div>
-        <label className="flex items-center gap-2 text-[13px] text-muted">
+        <label className="flex items-center gap-2 text-sm text-muted">
           <input type="checkbox" className="accent-(--color-accent)" checked={p.morningPlan} onChange={(e) => setP({ ...p, morningPlan: e.target.checked })} /> {tr("Proposer un plan pour la journée sur Aujourd'hui quand rien n'est prévu")}
         </label>
         <p className="text-xs text-faint">Après {p.blocksBeforeLongBreak} blocs presque d'affilée, une pause longue est imposée. Une pause est gardée avant et après chaque cours ou entrée.</p>
@@ -486,7 +486,7 @@ export function ReviewDialog({ onClose }: { onClose: () => void }) {
   const max = Math.max(1, ...perProject.values());
 
   const Stat = ({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) => (
-    <div className="rounded-lg border border-white/7 px-3 py-2.5">
+    <div className="rounded-lg border border-ink/7 px-3 py-2.5">
       <p className="text-xs text-faint">{label}</p>
       <p className="display mt-0.5 text-xl font-medium">{value}</p>
       {sub && <p className="text-xs text-muted">{sub}</p>}
@@ -503,7 +503,7 @@ export function ReviewDialog({ onClose }: { onClose: () => void }) {
           <IconButton label={tr("Semaine suivante")} disabled={offset >= 0} onClick={() => setOffset(offset + 1)}>
             <ChevronRight className="size-4" />
           </IconButton>
-          <span className="ml-1 text-[13px] text-muted">
+          <span className="ml-1 text-sm text-muted">
             {new Date(from).toLocaleDateString(locale(), { day: "numeric", month: "long" })} – {new Date(addDays(to, -1)).toLocaleDateString(locale(), { day: "numeric", month: "long" })}
             {offset === 0 && " · this week"}
           </span>
@@ -518,9 +518,9 @@ export function ReviewDialog({ onClose }: { onClose: () => void }) {
             <SectionLabel className="mb-2">{tr("Temps par projet")}</SectionLabel>
             <ul className="flex flex-col gap-1.5">
               {[...perProject.entries()].sort((a, b) => b[1] - a[1]).map(([key, minutes]) => (
-                <li key={key ?? "none"} className="grid grid-cols-[160px_minmax(0,1fr)_64px] items-center gap-3 text-[13px]">
+                <li key={key ?? "none"} className="grid grid-cols-[160px_minmax(0,1fr)_64px] items-center gap-3 text-sm">
                   <span className="truncate">{name(key)}</span>
-                  <span className="h-1.5 overflow-hidden rounded-full bg-white/6">
+                  <span className="h-1.5 overflow-hidden rounded-full bg-ink/6">
                     <span className="block h-full rounded-full" style={{ width: `${(minutes / max) * 100}%`, background: color(key) }} />
                   </span>
                   <span className="text-right font-mono text-xs text-muted">{fmtDur(minutes)}</span>
@@ -529,11 +529,11 @@ export function ReviewDialog({ onClose }: { onClose: () => void }) {
             </ul>
           </div>
         )}
-        {totalLogged === 0 && <p className="text-[13px] text-muted">{tr("Aucun temps enregistré cette semaine. Démarre une session pour enregistrer le temps que tu passes vraiment.")}</p>}
+        {totalLogged === 0 && <p className="text-sm text-muted">{tr("Aucun temps enregistré cette semaine. Démarre une session pour enregistrer le temps que tu passes vraiment.")}</p>}
         {doneTasks.length > 0 && (
           <div>
             <SectionLabel className="mb-1">Terminées</SectionLabel>
-            <ul className="flex flex-col text-[13px]">
+            <ul className="flex flex-col text-sm">
               {doneTasks.slice(0, 12).map((t) => (
                 <li key={t.id} className="flex h-7 items-center gap-2">
                   <Check className="size-3.5 shrink-0 text-ok" />
@@ -547,7 +547,7 @@ export function ReviewDialog({ onClose }: { onClose: () => void }) {
         {(notDone.length > 0 || handIns.length > 0) && (
           <div>
             <SectionLabel className="mb-1">{tr("Reste à faire")}</SectionLabel>
-            <ul className="flex flex-col text-[13px]">
+            <ul className="flex flex-col text-sm">
               {notDone.slice(0, 8).map((e) => (
                 <li key={e.id} className="flex h-7 items-center gap-2">
                   <Dot tone="warn" />

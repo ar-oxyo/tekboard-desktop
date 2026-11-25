@@ -54,7 +54,7 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
     if (!busy) run.mutate(c);
   };
   const recent = (history.data ?? []).filter((c) => !(PRESETS as readonly string[]).includes(c));
-  const chip = "flex h-7 shrink-0 items-center rounded-md border border-white/8 px-2.5 font-mono text-xs text-muted transition-colors hover:border-line-strong hover:text-fg disabled:cursor-not-allowed disabled:opacity-45";
+  const chip = "flex h-7 shrink-0 items-center rounded-md border border-ink/8 px-2.5 font-mono text-xs text-muted transition-colors hover:border-line-strong hover:text-fg disabled:cursor-not-allowed disabled:opacity-45";
   return (
     <div className="card flex flex-wrap items-center gap-1.5 px-2.5 py-2" role="toolbar" aria-label={t("Commandes rapides")}>
       <div className="flex shrink-0">
@@ -114,7 +114,7 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
             aria-label={t("Commande libre")}
             placeholder="./my_hunter -h"
             title={"A program and its arguments, run in the repository folder without a shell.\nQuotes group words; pipes, && and redirections are refused."}
-            className="field h-7 w-full border border-white/8 px-2.5 pr-7 font-mono text-xs text-fg placeholder:font-sans placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none"
+            className="field h-7 w-full border border-ink/8 px-2.5 pr-7 font-mono text-xs text-fg placeholder:font-sans placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none"
           />
           {custom !== "" && (
             <button type="button" aria-label={t("Vider le champ")} onClick={() => setCustom("")} className="absolute top-1/2 right-1.5 -translate-y-1/2 text-faint hover:text-fg">

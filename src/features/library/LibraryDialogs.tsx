@@ -75,7 +75,7 @@ export function AddLibraryDialog({ onClose, onAdded }: { onClose: () => void; on
         <Field label="Nom">
           <Input value={name} placeholder="MyLib C" onChange={(e) => setName(e.target.value)} />
         </Field>
-        <div className="flex flex-col gap-2 text-[13px]">
+        <div className="flex flex-col gap-2 text-sm">
           <label className="flex items-start gap-2.5">
             <input type="radio" name="mode" className="mt-1 accent-(--color-accent)" checked={copy} onChange={() => setCopy(true)} />
             <span>
@@ -153,16 +153,16 @@ export function ImportDialog({ libraries, libraryId, paths, onClose, onImported 
             <Select label="Bibliothèque" value={String(target)} onChange={(v) => setTarget(Number(v))} options={libraries.map((l) => ({ value: String(l.id), label: l.name }))} />
           </Field>
         )}
-        {analysis.isLoading && <p className="flex items-center gap-2 py-6 text-[13px] text-muted"><Spinner /> {t("Lecture des fichiers…")}</p>}
+        {analysis.isLoading && <p className="flex items-center gap-2 py-6 text-sm text-muted"><Spinner /> {t("Lecture des fichiers…")}</p>}
         {analysis.error && <ErrorNote>{asAppError(analysis.error).message}</ErrorNote>}
-        {analysis.data && analysis.data.candidates.length === 0 && <p className="py-4 text-[13px] text-muted">{t("Aucun fichier .c ou .h dans ce que tu as déposé.")}</p>}
+        {analysis.data && analysis.data.candidates.length === 0 && <p className="py-4 text-sm text-muted">{t("Aucun fichier .c ou .h dans ce que tu as déposé.")}</p>}
         {analysis.data && analysis.data.candidates.length > 0 && (
           <ul className="flex flex-col gap-2">
             {analysis.data.candidates.map((c) => rows[c.source] && <CandidateRow key={c.source} c={c} row={rows[c.source]} dirs={analysis.data.dirs} existing={analysis.data.existing} onChange={(p) => set(c.source, p)} />)}
           </ul>
         )}
         {anyUndeclared && analysis.data && analysis.data.headers.length > 0 && (
-          <label className="flex items-center gap-2.5 rounded-lg border border-line bg-bg px-3 py-2 text-[13px]">
+          <label className="flex items-center gap-2.5 rounded-lg border border-line bg-bg px-3 py-2 text-sm">
             <input type="checkbox" className="accent-(--color-accent)" checked={declare} onChange={(e) => setDeclare(e.target.checked)} />
             <span className="flex-1">{t("Ajouter les prototypes des nouvelles fonctions à")}</span>
             <Select size="sm" mono className="w-40" label="En-tête" value={header} onChange={setHeader} disabled={!declare} options={analysis.data.headers.map((h) => ({ value: h, label: h }))} />
@@ -186,7 +186,7 @@ function CandidateRow({ c, row, dirs, existing, onChange }: { c: ImportCandidate
     <li className={cn("rounded-lg border px-3 py-2.5", row.on ? "border-line bg-bg" : "border-line/50 opacity-60")}>
       <div className="flex items-center gap-2.5">
         <input type="checkbox" className="size-4 accent-(--color-accent)" checked={row.on} onChange={(e) => onChange({ on: e.target.checked })} aria-label={`Import ${c.name}`} />
-        <span className="font-mono text-[13px] font-medium">{c.name}</span>
+        <span className="font-mono text-sm font-medium">{c.name}</span>
         {c.isHeader ? <Badge>header</Badge> : c.functions.length === 0 ? <Badge tone="warn" title={t("Aucune fonction exportée dans ce fichier")}>{t("aucune fonction")}</Badge> : null}
         {exists && <Badge tone="warn" title={t("Un fichier de ce nom existe déjà à cet endroit de la bibliothèque")}>already exists</Badge>}
         {c.parseErrors && <Badge tone="warn" title={t("L'analyseur n'a pas compris toutes les lignes ; les fonctions listées ont quand même été trouvées")}>partly parsed</Badge>}
@@ -268,7 +268,7 @@ export function FileDetailDialog({ catalog, rel, repo, libDir, state, onClose, o
             {t("Partager")}
           </Button>
           {file.functions.map((f) => (
-            <span key={f.name} className="selectable rounded-md border border-line bg-bg px-2 py-1 font-mono text-[11.5px]" title={f.doc ?? undefined}>
+            <span key={f.name} className="selectable rounded-md border border-line bg-bg px-2 py-1 font-mono text-2xs" title={f.doc ?? undefined}>
               {f.signature}
               {f.header ? <span className="text-faint"> · {f.header}</span> : <span className="text-warn"> {t("· pas de prototype")}</span>}
             </span>
@@ -294,16 +294,16 @@ export function FileDetailDialog({ catalog, rel, repo, libDir, state, onClose, o
             </div>
           </div>
         )}
-        <div className="flex gap-1 border-b border-white/6">
+        <div className="flex gap-1 border-b border-ink/6">
           {tabs.map(([id, label]) => (
-            <button key={id} type="button" onClick={() => setTab(id)} className={cn("-mb-px h-8 border-b-2 px-3 text-[13px] transition-colors", tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>{label}</button>
+            <button key={id} type="button" onClick={() => setTab(id)} className={cn("-mb-px h-8 border-b-2 px-3 text-sm transition-colors", tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>{label}</button>
           ))}
         </div>
         {tab === "code" && (source.isLoading ? <p className="flex items-center gap-2 py-4 text-muted"><Spinner /> {t("Lecture…")}</p> : source.error ? <ErrorNote>{asAppError(source.error).message}</ErrorNote> : <CodeView numbered text={(source.data ?? "").replace(/\n$/, "")} className="max-h-[46vh] rounded-md" />)}
         {tab === "diff" && (diff.isLoading ? <p className="flex items-center gap-2 py-4 text-muted"><Spinner /> {t("Comparaison…")}</p> : diff.error ? <ErrorNote>{asAppError(diff.error).message}</ErrorNote> : (
           <>
             <p className="text-xs text-muted"><span className="text-danger">−</span> {t("copie de ton projet ·")} <span className="text-ok">+</span> {t("version de la bibliothèque")}</p>
-            {(diff.data ?? "").trim() === "" ? <p className="py-3 text-[13px] text-muted">Les deux fichiers sont identiques.</p> : <DiffView text={diff.data!} className="max-h-[42vh] rounded-md" />}
+            {(diff.data ?? "").trim() === "" ? <p className="py-3 text-sm text-muted">Les deux fichiers sont identiques.</p> : <DiffView text={diff.data!} className="max-h-[42vh] rounded-md" />}
           </>
         ))}
         {tab === "details" && (
@@ -325,7 +325,7 @@ export function FileDetailDialog({ catalog, rel, repo, libDir, state, onClose, o
           </div>
         )}
         {tab === "history" && (backups.isLoading ? <p className="flex items-center gap-2 py-4 text-muted"><Spinner /> {t("Recherche…")}</p> : (backups.data?.length ?? 0) === 0 ? (
-          <p className="py-3 text-[13px] text-muted">{t("Aucune version sauvegardée de")} <code className="font-mono text-xs">{path}</code>{t(". Une version est gardée chaque fois que TekBoard remplace ou retire ce fichier.")}</p>
+          <p className="py-3 text-sm text-muted">{t("Aucune version sauvegardée de")} <code className="font-mono text-xs">{path}</code>{t(". Une version est gardée chaque fois que TekBoard remplace ou retire ce fichier.")}</p>
         ) : (
           <ul className="rounded-lg border border-line bg-bg py-1">
             {backups.data!.map((b) => (

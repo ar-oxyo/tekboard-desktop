@@ -39,8 +39,8 @@ export function TodayCard() {
     hero = (
       <>
         <p className="text-xs text-faint">{next.kind === "now" ? `Now · until ${hhmm(i.end)}` : `Next · ${hhmm(i.start)}, in ${fmtDur((i.start - now) / MIN)}`}</p>
-        <h3 className="display mt-2 truncate text-[28px] leading-[1.15] font-medium">{i.title}</h3>
-        <p className="mt-1 text-[13px] text-muted">{[i.module, fmtDur((i.end - i.start) / MIN), i.detail].filter(Boolean).join(" · ")}</p>
+        <h3 className="display mt-2 truncate text-2xl leading-[1.15] font-medium">{i.title}</h3>
+        <p className="mt-1 text-sm text-muted">{[i.module, fmtDur((i.end - i.start) / MIN), i.detail].filter(Boolean).join(" · ")}</p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Button variant="primary" icon={<Play className="size-3.5" />} onClick={() => startFocus({ title: i.title, project: i.project, taskId: i.event?.taskId ?? null, eventId: i.event?.id ?? null, plannedMin: Math.round((i.end - Math.max(now, i.start)) / MIN) })}>
             Démarrer
@@ -56,10 +56,10 @@ export function TodayCard() {
       <>
         <p className="text-xs text-faint">{next.kind === "plan" ? "Needs time in your calendar" : "Nearest hand-in"}</p>
         <div className="mt-2 flex flex-wrap items-baseline gap-x-3">
-          <h3 className="display truncate text-[28px] leading-[1.15] font-medium">{p.title}</h3>
+          <h3 className="display truncate text-2xl leading-[1.15] font-medium">{p.title}</h3>
           {p.module && <Tag>{p.module}</Tag>}
         </div>
-        <p className="mt-1 flex flex-wrap items-center gap-3 text-[13px] text-muted">
+        <p className="mt-1 flex flex-wrap items-center gap-3 text-sm text-muted">
           {d.state !== "unknown" && <Countdown tone={d.tone}>{d.label}</Countdown>}
           <span>{next.load.why || (p.estimateMin === null ? "no estimate of the work left yet" : "")}</span>
         </p>
@@ -78,8 +78,8 @@ export function TodayCard() {
     hero = (
       <>
         <p className="text-xs text-faint">{t("Rien d'urgent")}</p>
-        <h3 className="display mt-2 text-[28px] leading-[1.15] font-medium">{t("Ta journée est libre")}</h3>
-        <p className="mt-1 text-[13px] text-muted">{t("Aucune session prévue et aucun rendu proche. Note ce que tu veux faire, ou choisis un projet.")}</p>
+        <h3 className="display mt-2 text-2xl leading-[1.15] font-medium">{t("Ta journée est libre")}</h3>
+        <p className="mt-1 text-sm text-muted">{t("Aucune session prévue et aucun rendu proche. Note ce que tu veux faire, ou choisis un projet.")}</p>
         <div className="mt-5 flex gap-2">
           <Button icon={<Plus className="size-3.5" />} onClick={() => ui().setCaptureOpen(true)}>
             {t("Noter une tâche")}
@@ -99,7 +99,7 @@ export function TodayCard() {
         <div className="mt-3">{hero}</div>
       </div>
       {register.length > 0 && (
-        <div className="flex items-start gap-3 border-t border-white/6 px-6 py-3 text-[13px]">
+        <div className="flex items-start gap-3 border-t border-ink/6 px-6 py-3 text-sm">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warn" />
           <div className="min-w-0 flex-1">
             <p className="text-muted">Mandatory {register.length === 1 ? "session" : "sessions"} you are not registered to. Register on MY Epitech.</p>
@@ -116,7 +116,7 @@ export function TodayCard() {
         </div>
       )}
       {peerTodo.length > 0 && (
-        <div className="flex items-center gap-3 border-t border-white/6 px-6 py-3 text-[13px]">
+        <div className="flex items-center gap-3 border-t border-ink/6 px-6 py-3 text-sm">
           <ClipboardCheck className="size-4 shrink-0 text-warn" />
           <span className="min-w-0 flex-1 truncate text-muted">
             {peerTodo.length} peer evaluation{peerTodo.length > 1 ? "s" : ""} to submit: <span className="text-fg">{[...new Set(peerTodo)].join(", ")}</span>
@@ -124,7 +124,7 @@ export function TodayCard() {
         </div>
       )}
       {suggestion && (
-        <div className="flex items-center gap-3 border-t border-white/6 px-6 py-3 text-[13px]">
+        <div className="flex items-center gap-3 border-t border-ink/6 px-6 py-3 text-sm">
           <Sun className="size-4 shrink-0 text-accent" />
           <span className="min-w-0 flex-1 text-muted">{t("Rien de prévu aujourd'hui. TekBoard peut te proposer une journée réaliste, avec pauses et temps libre.")}</span>
           <Button size="sm" onClick={() => void suggestPlan("day")}>
@@ -132,7 +132,7 @@ export function TodayCard() {
           </Button>
         </div>
       )}
-      <div className="border-t border-white/6 px-6 py-3">
+      <div className="border-t border-ink/6 px-6 py-3">
         <div className="mb-1 flex items-center justify-between">
           <span className="text-xs text-faint">{t("Aujourd'hui")}</span>
           <button type="button" className="flex items-center gap-1 text-xs text-muted hover:text-fg" onClick={() => ui().openPlanning(now)}>
@@ -140,7 +140,7 @@ export function TodayCard() {
           </button>
         </div>
         {today.length === 0 ? (
-          <p className="py-2 text-[13px] text-muted">{t("Rien au calendrier aujourd'hui.")}</p>
+          <p className="py-2 text-sm text-muted">{t("Rien au calendrier aujourd'hui.")}</p>
         ) : (
           <ul>
             {today.map((i) => (
@@ -159,7 +159,7 @@ function TodayRow({ i, now }: { i: CalItem; now: number }) {
   const ui = useUi.getState;
   return (
     <li>
-      <button type="button" onClick={() => (i.event ? ui().editEvent(i.event) : i.project ? ui().openSheet(i.project) : ui().openPlanning(now))} className={cn("row-hover -mx-2 flex min-h-9 w-[calc(100%+1rem)] items-center gap-3 rounded-md px-2 text-left text-[13px]", past && "opacity-50")}>
+      <button type="button" onClick={() => (i.event ? ui().editEvent(i.event) : i.project ? ui().openSheet(i.project) : ui().openPlanning(now))} className={cn("row-hover -mx-2 flex min-h-9 w-[calc(100%+1rem)] items-center gap-3 rounded-md px-2 text-left text-sm", past && "opacity-50")}>
         <span className="w-24 shrink-0 font-mono text-xs text-muted">{i.allDay ? "all day" : i.kind === "deadline" ? hhmm(i.end) : `${hhmm(i.start)} – ${hhmm(i.end)}`}</span>
         <span className="h-4 w-1 shrink-0 rounded-full" style={{ background: i.color } as CSSProperties} />
         <span className={cn("min-w-0 flex-1 truncate", i.done && "line-through", current && "font-medium")}>{i.title}</span>
@@ -187,7 +187,7 @@ export function WorkloadCard() {
             <li key={d.day}>
               <button type="button" onClick={() => useUi.getState().openPlanning(d.day)} className="grid w-full grid-cols-[72px_minmax(0,1fr)_64px] items-center gap-3 text-left text-xs" title={`${t("École")} ${fmtDur(d.school)} · ${t("travail")} ${fmtDur(d.work)} · ${t("autre")} ${fmtDur(d.other)}${d.handIns.length ? `\n${t("Rendu")} : ${d.handIns.join(", ")}` : ""}`}>
                 <span className={cn("capitalize", d.day === startOfDay(now) ? "font-medium text-fg" : "text-muted")}>{new Date(d.day).toLocaleDateString(locale(), { weekday: "short", day: "numeric" })}</span>
-                <span className="relative flex h-2 overflow-hidden rounded-full bg-white/6">
+                <span className="relative flex h-2 overflow-hidden rounded-full bg-ink/6">
                   <span className="h-full bg-info/70" style={{ width: `${Math.min(100, (d.school / span) * 100)}%` }} />
                   <span className="h-full bg-accent" style={{ width: `${Math.min(100, (d.work / span) * 100)}%` }} />
                   <span className="h-full bg-faint/60" style={{ width: `${Math.min(100, (d.other / span) * 100)}%` }} />
@@ -201,7 +201,7 @@ export function WorkloadCard() {
           );
         })}
       </ul>
-      <p className="flex gap-4 border-t border-white/6 px-4 py-2 text-[11px] text-faint">
+      <p className="flex gap-4 border-t border-ink/6 px-4 py-2 text-2xs text-faint">
         <span className="flex items-center gap-1.5">
           <span className="size-1.5 rounded-full bg-info/70" /> {t("école")}
         </span>
@@ -221,7 +221,7 @@ export function QuickActionsCard() {
   const [review, setReview] = useState(false);
   const inboxCount = useQuery({ queryKey: ["brain-count"], queryFn: api.brainCount, staleTime: 60_000 }).data ?? 0;
   const row = (icon: ReactNode, label: string, hint: string, onClick: () => void) => (
-    <button type="button" onClick={onClick} className="row-hover flex h-10 w-full items-center gap-3 px-4 text-left text-[13px]">
+    <button type="button" onClick={onClick} className="row-hover flex h-10 w-full items-center gap-3 px-4 text-left text-sm">
       <span className="flex w-4 justify-center text-faint">{icon}</span>
       <span className="flex-1">{label}</span>
       <span className="text-xs text-faint">{hint}</span>
@@ -260,7 +260,7 @@ function FreeSlots({ eventId }: { eventId: number }) {
         </button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content align="end" sideOffset={6} collisionPadding={8} className="menu anim-pop z-[70] max-h-80 w-72 overflow-y-auto p-3 text-[13px]">
+        <Popover.Content align="end" sideOffset={6} collisionPadding={8} className="menu anim-pop z-[70] max-h-80 w-72 overflow-y-auto p-3 text-sm">
           {q.isLoading ? (
             <p className="flex items-center gap-2 text-muted">
               <Spinner /> {t("Demande à MY Epitech…")}

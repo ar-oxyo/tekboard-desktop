@@ -78,7 +78,7 @@ function MoreSection({ repos }: { repos: RepoInfo[] }) {
   const flagged = repos.filter((r) => r.progress !== "done" && attention(r).length > 0).length;
   return (
     <section className="mt-6">
-      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="mb-3 flex items-center gap-1.5 text-[13px] text-muted hover:text-fg">
+      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="mb-3 flex items-center gap-1.5 text-sm text-muted hover:text-fg">
         {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
         {t("Dépôts et activité")}
         {flagged > 0 && <span className="text-xs text-faint">· {plural(flagged, "{n} à regarder", "{n} à regarder")}</span>}
@@ -127,7 +127,7 @@ function FocusCard({ repo }: { repo: RepoInfo | null }) {
           <span>{repo.meta.lastOpenedAt ? `opened ${timeAgo(repo.meta.lastOpenedAt)}` : "most recent commit"}</span>
         </div>
         <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h3 className="display selectable truncate text-[20px] leading-[1.15] font-medium">{displayName(repo)}</h3>
+          <h3 className="display selectable truncate text-xl leading-[1.15] font-medium">{displayName(repo)}</h3>
           {(repo.my?.unitCode ?? repo.epitech?.module) && <Tag>{repo.my?.unitCode ?? repo.epitech?.module}</Tag>}
         </div>
         <p className="selectable mt-1 truncate font-mono text-xs text-faint">{tildify(repo.path, home)}</p>
@@ -139,13 +139,13 @@ function FocusCard({ repo }: { repo: RepoInfo | null }) {
         </div>
 
         {repo.lastCommit ? (
-          <p className="mt-3 flex min-w-0 items-center gap-2 text-[13px] text-muted">
+          <p className="mt-3 flex min-w-0 items-center gap-2 text-sm text-muted">
             <GitCommitHorizontal className="size-4 shrink-0 text-faint" />
             <span className="selectable truncate">{repo.lastCommit.subject}</span>
             <span className="shrink-0 text-faint">{timeAgo(repo.lastCommit.date)}</span>
           </p>
         ) : (
-          <p className="mt-3 text-[13px] text-faint">{t("Aucun commit")}</p>
+          <p className="mt-3 text-sm text-faint">{t("Aucun commit")}</p>
         )}
 
         <div className="mt-6 flex flex-wrap items-center gap-2">
@@ -181,12 +181,12 @@ function AttentionCard({ repos }: { repos: RepoInfo[] }) {
         {t("À regarder")}
       </CardTitle>
       {shown.length === 0 ? (
-        <p className="px-4 py-5 text-[13px] text-muted">{t("Tout est commité et à jour avec le dépôt distant.")}</p>
+        <p className="px-4 py-5 text-sm text-muted">{t("Tout est commité et à jour avec le dépôt distant.")}</p>
       ) : (
         <ul>
           {shown.map((repo) => (
-            <li key={repo.path} className="group row-hover flex h-10 items-center gap-3 border-b border-white/6 pr-2 pl-4 last:border-b-0">
-              <button type="button" onClick={() => openSheet(repo.path)} className="min-w-0 flex-1 truncate text-left text-[13px]">
+            <li key={repo.path} className="group row-hover flex h-10 items-center gap-3 border-b border-ink/6 pr-2 pl-4 last:border-b-0">
+              <button type="button" onClick={() => openSheet(repo.path)} className="min-w-0 flex-1 truncate text-left text-sm">
                 {displayName(repo)}
               </button>
               <StatusChips repo={repo} max={2} />
@@ -228,18 +228,18 @@ function DeadlinesCard() {
         type="button"
         onClick={() => (i.repoPath ? openSheet(i.repoPath) : i.repoExpected ? openLauncher({ mode: "new" }) : setPage("myepitech"))}
         title={i.repoPath ? `${i.repoPath}\n${i.source === "my" ? t("Date donnée par MY Epitech") : i.source === "manual" ? t("Date saisie par toi") : t("Date enregistrée plus tôt")}${i.myDay ? `\n${t("MY Epitech indique {d}", { d: i.myDay })}` : ""}` : i.repoExpected ? t("Listé par MY Epitech, pas encore de dépôt local. Clique pour le cloner.") : t("Listé par MY Epitech. Aucun dépôt n'est attendu pour ce projet.")}
-        className="row-hover flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left text-[13px]"
+        className="row-hover flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left text-sm"
       >
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
             <span className="truncate">{i.title}</span>
             {!i.cloned && i.repoExpected && (
-              <span className="flex shrink-0 items-center gap-1 text-[11px] text-info">
+              <span className="flex shrink-0 items-center gap-1 text-2xs text-info">
                 <CloudDownload className="size-3" /> {t("pas cloné")}
               </span>
             )}
           </span>
-          {i.module && <span className="block truncate font-mono text-[11px] text-faint">{i.module}{i.starts ? ` · starts ${dayText(i.starts.slice(0, 10))}` : ""}</span>}
+          {i.module && <span className="block truncate font-mono text-2xs text-faint">{i.module}{i.starts ? ` · starts ${dayText(i.starts.slice(0, 10))}` : ""}</span>}
         </span>
         {i.day && <span className="shrink-0 text-xs text-faint">{dayText(i.day)}</span>}
         {d.state !== "unknown" && (
@@ -258,11 +258,11 @@ function DeadlinesCard() {
           <ErrorNote title={t("Les dates de rendu n'ont pas pu être lues")}>{asAppError(board.error).message}</ErrorNote>
         </div>
       ) : board.isLoading ? (
-        <p className="flex items-center gap-2 px-4 py-4 text-[13px] text-muted">
+        <p className="flex items-center gap-2 px-4 py-4 text-sm text-muted">
           <Spinner /> {t("Lecture des dates de rendu…")}
         </p>
       ) : items.length === 0 ? (
-        <p className="flex items-start gap-2 px-4 py-4 text-[13px] text-muted">
+        <p className="flex items-start gap-2 px-4 py-4 text-sm text-muted">
           <CalendarClock className="mt-0.5 size-4 shrink-0 text-faint" />
           <span>
             No hand-in date is known. Sync{" "}
@@ -291,10 +291,10 @@ function DeadlinesCard() {
               )}
             </>
           )}
-          {overdue.length + coming.length === 0 && <p className="px-4 py-2 text-[13px] text-muted">{t("Aucun rendu prévu.")}</p>}
+          {overdue.length + coming.length === 0 && <p className="px-4 py-2 text-sm text-muted">{t("Aucun rendu prévu.")}</p>}
           {unknown.length > 0 && (
             <>
-              <button type="button" aria-expanded={showUnknown} onClick={() => setShowUnknown(!showUnknown)} className="mt-1 flex h-8 w-full items-center gap-1 border-t border-white/6 px-4 text-xs text-muted hover:text-fg" title={t("Projets d'école pas terminés et sans date de rendu, ni saisie ni donnée par MY Epitech.")}>
+              <button type="button" aria-expanded={showUnknown} onClick={() => setShowUnknown(!showUnknown)} className="mt-1 flex h-8 w-full items-center gap-1 border-t border-ink/6 px-4 text-xs text-muted hover:text-fg" title={t("Projets d'école pas terminés et sans date de rendu, ni saisie ni donnée par MY Epitech.")}>
                 {showUnknown ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />} {plural(unknown.length, "{n} sans date connue", "{n} sans date connue")}
               </button>
               {showUnknown && <ul>{unknown.map(row)}</ul>}
@@ -320,7 +320,7 @@ function NextProjectCard() {
   let body;
   if (!gh) {
     body = (
-      <p className="flex items-center gap-2 px-4 py-5 text-[13px] text-muted">
+      <p className="flex items-center gap-2 px-4 py-5 text-sm text-muted">
         <Spinner /> {t("Vérification de GitHub…")}
       </p>
     );
@@ -340,14 +340,14 @@ function NextProjectCard() {
     body = <Hint>GitHub could not be reached: {gh.message}</Hint>;
   } else if (candidates.isLoading) {
     body = (
-      <p className="flex items-center gap-2 px-4 py-5 text-[13px] text-muted">
+      <p className="flex items-center gap-2 px-4 py-5 text-sm text-muted">
         <Spinner /> {t("Recherche des dépôts pas encore clonés…")}
       </p>
     );
   } else if (candidates.error) {
     body = <Hint>Could not list your repositories: {asAppError(candidates.error).message}</Hint>;
   } else if (!top) {
-    body = <p className="px-4 py-5 text-[13px] text-muted">{t("Tous les dépôts auxquels tu as accès sont déjà clonés ici.")}</p>;
+    body = <p className="px-4 py-5 text-sm text-muted">{t("Tous les dépôts auxquels tu as accès sont déjà clonés ici.")}</p>;
   } else {
     body = (
       <div className="px-4 py-4">
@@ -390,7 +390,7 @@ function NextProjectCard() {
 }
 
 function Hint({ children }: { children: React.ReactNode }) {
-  return <p className="selectable px-4 py-4 text-[13px] leading-relaxed text-muted">{children}</p>;
+  return <p className="selectable px-4 py-4 text-sm leading-relaxed text-muted">{children}</p>;
 }
 
 const ACTIVITY_LABEL: Record<string, string> = {
@@ -422,13 +422,13 @@ function ActivityCard({ repos }: { repos: RepoInfo[] }) {
           <ErrorNote>{asAppError(activity.error).message}</ErrorNote>
         </div>
       ) : (activity.data?.length ?? 0) === 0 ? (
-        <p className="px-4 py-5 text-[13px] text-muted">{t("Ce que tu fais depuis TekBoard apparaîtra ici.")}</p>
+        <p className="px-4 py-5 text-sm text-muted">{t("Ce que tu fais depuis TekBoard apparaîtra ici.")}</p>
       ) : (
         <ul className="py-1">
           {(all ? activity.data! : activity.data!.slice(0, 5)).map((a) => {
             const { verb, name } = label(a);
             return (
-              <li key={a.id} className="flex h-8 items-center gap-2 px-4 text-[13px]">
+              <li key={a.id} className="flex h-8 items-center gap-2 px-4 text-sm">
                 <span className="shrink-0 text-muted">{verb}</span>
                 <span className="selectable min-w-0 flex-1 truncate">{name}</span>
                 <span className="shrink-0 text-xs text-faint">{timeAgo(a.ts)}</span>

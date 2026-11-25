@@ -18,10 +18,10 @@ export function CaptureCard({ draft, set }: { draft: Settings; set: (p: Partial<
       <CardTitle>{t("Capture rapide")}</CardTitle>
       <div className="flex flex-col gap-4 p-4">
         {s?.wayland ? (
-          <div className="flex flex-col gap-2 text-[13px] text-muted">
+          <div className="flex flex-col gap-2 text-sm text-muted">
             <p>{t("Sous Wayland, aucune application ne peut capter un raccourci global : associe cette commande à un raccourci dans les réglages du système.")}</p>
             <div className="flex items-center gap-2">
-              <code className="selectable min-w-0 flex-1 truncate rounded-md bg-black/25 px-2 py-1.5 font-mono text-xs text-fg">{s.captureCommand}</code>
+              <code className="selectable min-w-0 flex-1 truncate rounded-md bg-well px-2 py-1.5 font-mono text-xs text-fg">{s.captureCommand}</code>
               <Button size="sm" icon={<Copy className="size-3.5" />} onClick={() => copy(s.captureCommand)}>
                 {t("Copier")}
               </Button>
@@ -33,7 +33,7 @@ export function CaptureCard({ draft, set }: { draft: Settings; set: (p: Partial<
             <Input className="font-mono text-xs" placeholder="Ctrl+Alt+Space" value={draft.captureShortcut} onChange={(e) => set({ captureShortcut: e.target.value })} />
           </Field>
         )}
-        <label className="flex items-start gap-2 text-[13px]">
+        <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" className="mt-0.5 accent-(--color-accent)" disabled={s ? !s.trayAvailable : false} checked={draft.trayIcon} onChange={(e) => set({ trayIcon: e.target.checked })} />
           <span>
             {t("Icône dans la zone de notification")}

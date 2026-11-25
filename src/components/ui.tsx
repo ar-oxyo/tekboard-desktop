@@ -39,7 +39,7 @@ export function Button({ variant = "secondary", size = "md", icon, busy, childre
       className={cn(
         "inline-flex shrink-0 items-center justify-center gap-2 rounded-(--btn-radius) whitespace-nowrap transition-colors duration-150",
         "disabled:cursor-not-allowed disabled:opacity-50",
-        size === "sm" ? "h-7 px-2.5 text-xs" : "h-8 px-3 text-[13px]",
+        size === "sm" ? "h-7 px-2.5 text-xs" : "h-8 px-3 text-sm",
         variants[variant],
         className,
       )}
@@ -84,8 +84,8 @@ export function Card({ children, className, hero }: { children: ReactNode; class
 
 export function CardTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
-    <header className="flex h-11 items-center justify-between gap-3 border-b border-white/6 px-4">
-      <h2 className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-fg">{children}</h2>
+    <header className="flex h-11 items-center justify-between gap-3 border-b border-ink/6 px-4">
+      <h2 className="flex min-w-0 items-center gap-2 text-sm font-medium text-fg">{children}</h2>
       {right}
     </header>
   );
@@ -94,7 +94,7 @@ export function CardTitle({ children, right }: { children: ReactNode; right?: Re
 type Tone = "neutral" | "accent" | "ok" | "warn" | "danger" | "info";
 
 const tones: Record<Tone, string> = {
-  neutral: "bg-white/6 text-muted",
+  neutral: "bg-ink/6 text-muted",
   accent: "bg-accent-soft text-accent-strong",
   ok: "bg-ok/12 text-ok",
   warn: "bg-warn/12 text-warn",
@@ -104,7 +104,7 @@ const tones: Record<Tone, string> = {
 
 export function Badge({ tone = "neutral", children, title, mono }: { tone?: Tone; children: ReactNode; title?: string; mono?: boolean }) {
   return (
-    <span title={title} className={cn("inline-flex h-5 shrink-0 items-center gap-1 rounded-md px-1.5 text-[11px] leading-none whitespace-nowrap", mono && "font-mono", tones[tone])}>
+    <span title={title} className={cn("inline-flex h-5 shrink-0 items-center gap-1 rounded-md px-1.5 text-2xs leading-none whitespace-nowrap", mono && "font-mono", tones[tone])}>
       {children}
     </span>
   );
@@ -126,7 +126,7 @@ export function Dot({ tone = "neutral", children, title, mono, ink }: { tone?: T
 /** Module or unit code (`G-PSU-100`): quiet monospace text, never a pill. */
 export function Tag({ children, title }: { children: ReactNode; title?: string }) {
   return (
-    <span title={title} className="shrink-0 font-mono text-[11px] whitespace-nowrap text-faint">
+    <span title={title} className="shrink-0 font-mono text-2xs whitespace-nowrap text-faint">
       {children}
     </span>
   );
@@ -144,7 +144,7 @@ export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputEleme
       autoComplete="off"
       className={cn(
         sized(className),
-        "field border border-white/8 px-2.5 text-[13px] text-fg placeholder:text-faint",
+        "field border border-ink/8 px-2.5 text-sm text-fg placeholder:text-faint",
         "transition-colors duration-150 hover:border-line-strong focus:border-accent focus:outline-none",
         className,
       )}
@@ -167,8 +167,8 @@ export function EmptyState({ icon, title, children, action }: { icon?: ReactNode
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
       {icon && <div className="mb-1 text-faint">{icon}</div>}
-      <p className="display text-[15px] font-medium text-fg">{title}</p>
-      {children && <div className="max-w-md text-[13px] text-muted">{children}</div>}
+      <p className="display text-md font-medium text-fg">{title}</p>
+      {children && <div className="max-w-md text-sm text-muted">{children}</div>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   );
@@ -176,7 +176,7 @@ export function EmptyState({ icon, title, children, action }: { icon?: ReactNode
 
 export function ErrorNote({ title, children }: { title?: string; children: ReactNode }) {
   return (
-    <div role="alert" className="selectable rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-[13px] text-danger">
+    <div role="alert" className="selectable rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
       {title && <p className="font-medium">{title}</p>}
       <div className="break-words whitespace-pre-wrap opacity-90">{children}</div>
     </div>
@@ -184,7 +184,7 @@ export function ErrorNote({ title, children }: { title?: string; children: React
 }
 
 export function Kbd({ children }: { children: ReactNode }) {
-  return <kbd className="rounded-[5px] border border-white/8 bg-white/5 px-1.5 py-px font-mono text-[11px] text-faint">{children}</kbd>;
+  return <kbd className="rounded-[5px] border border-ink/8 bg-ink/5 px-1.5 py-px font-mono text-2xs text-faint">{children}</kbd>;
 }
 
 export function Code({ children }: { children: ReactNode }) {
@@ -195,8 +195,8 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <div className="mb-6 flex min-h-10 items-center justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="display title-gradient truncate text-[24px] leading-[1.2] font-medium">{title}</h1>
-        {subtitle && <p className="mt-1 truncate text-[13px] text-muted">{subtitle}</p>}
+        <h1 className="display title-gradient truncate text-2xl leading-[1.2] font-medium">{title}</h1>
+        {subtitle && <p className="mt-1 truncate text-sm text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>

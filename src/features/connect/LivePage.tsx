@@ -74,8 +74,8 @@ export function LivePage() {
           <Card hero key={inv.id} className="flex items-center gap-4 p-4">
             <LogIn className="size-6 text-accent" />
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] text-fg">{inv.project ? t("{h} t'invite à coder sur « {p} »", { h: inv.host, p: inv.project }) : t("{h} t'invite à une session de code", { h: inv.host })}</p>
-              <p className="truncate font-mono text-[11px] text-faint">{inv.link}</p>
+              <p className="text-sm text-fg">{inv.project ? t("{h} t'invite à coder sur « {p} »", { h: inv.host, p: inv.project }) : t("{h} t'invite à une session de code", { h: inv.host })}</p>
+              <p className="truncate font-mono text-2xs text-faint">{inv.link}</p>
             </div>
             <Button
               variant="primary"
@@ -111,7 +111,7 @@ export function LivePage() {
           <CardTitle>
             <Puzzle className="size-4 text-faint" /> {t("VS Code")}
           </CardTitle>
-          <div className="space-y-2 p-4 text-[13px]">
+          <div className="space-y-2 p-4 text-sm">
             {!s ? (
               <Spinner />
             ) : (
@@ -127,7 +127,7 @@ export function LivePage() {
           <CardTitle>
             <Info className="size-4 text-faint" /> {t("Bon à savoir")}
           </CardTitle>
-          <ul className="space-y-2 p-4 text-[12px] text-muted">
+          <ul className="space-y-2 p-4 text-xs text-muted">
             <li>{t("La session passe par un relais lancé par TekBoard sur cet ordinateur, sur le réseau local seulement : rien ne passe par Internet ni par un serveur, et rien ne change dans le pare-feu.")}</li>
             <li>{t("P2P Live Share n'a pas de droits par participant : toute personne qui rejoint peut modifier les fichiers du projet. N'invite que des personnes de confiance ; « contacts TekBoard seulement » refuse les autres adresses.")}</li>
             <li>{t("Rien d'autre n'est partagé par défaut : un terminal ou un serveur ne l'est que si tu le partages toi-même dans VS Code.")}</li>
@@ -157,13 +157,13 @@ function StartCard(p: { project: string | null; setProject: (v: string | null) =
         <Users className="size-4 text-faint" /> {t("Collaborer sur un projet")}
       </CardTitle>
       <div className="space-y-3 p-4">
-        <p className="text-[13px] text-muted">{t("TekBoard démarre le relais, ouvre le projet dans VS Code et y prépare P2P Live Share. Dans VS Code, la liste des serveurs s'ouvre avec celui de TekBoard en premier : appuie sur Entrée. Le lien d'invitation apparaît alors ici.")}</p>
+        <p className="text-sm text-muted">{t("TekBoard démarre le relais, ouvre le projet dans VS Code et y prépare P2P Live Share. Dans VS Code, la liste des serveurs s'ouvre avec celui de TekBoard en premier : appuie sur Entrée. Le lien d'invitation apparaît alors ici.")}</p>
         <ProjectPicker value={p.project} onChange={p.setProject} />
-        <label className="flex items-center gap-2 text-[13px] text-muted">
+        <label className="flex items-center gap-2 text-sm text-muted">
           <input type="checkbox" className="accent-(--color-accent)" checked={p.contactsOnly} onChange={(e) => p.setContactsOnly(e.target.checked)} />
           {t("Contacts TekBoard seulement (les autres adresses sont refusées)")}
         </label>
-        <label className="flex items-center gap-2 text-[13px] text-muted">
+        <label className="flex items-center gap-2 text-sm text-muted">
           <input type="checkbox" className="accent-(--color-accent)" checked={p.showProject} onChange={(e) => p.setShowProject(e.target.checked)} />
           {t("Indiquer le nom du projet dans les invitations")}
         </label>
@@ -192,13 +192,13 @@ function SessionCard({ s }: { s: LiveSession }) {
       </CardTitle>
       <div className="space-y-4 p-4">
         {s.state === "waiting" && (
-          <p className="text-[13px] text-muted">
+          <p className="text-sm text-muted">
             {t("Dans VS Code, choisis")} <code className="font-mono text-fg">{s.server}</code> {t("(premier de la liste) et appuie sur Entrée. Si la liste ne s'est pas ouverte, lance « P2P Live Share: Host a Session ».")}
           </p>
         )}
         {s.link && (
           <div className="flex gap-2">
-            <code className="selectable min-w-0 flex-1 truncate rounded bg-raised px-2 py-1.5 font-mono text-[11px] text-fg" title={s.link}>
+            <code className="selectable min-w-0 flex-1 truncate rounded bg-raised px-2 py-1.5 font-mono text-2xs text-fg" title={s.link}>
               {s.link}
             </code>
             <Button size="sm" icon={<Copy className="size-3.5" />} onClick={() => void navigator.clipboard.writeText(s.link!).then(() => toast({ kind: "ok", title: t("Lien copié"), detail: t("Dans VS Code : P2P Live Share → Join, puis colle le lien.") }))}>
@@ -215,15 +215,15 @@ function SessionCard({ s }: { s: LiveSession }) {
         <section>
           <h3 className="mb-2 text-xs text-faint">{t("Inviter des contacts TekBoard")}</h3>
           {people.length === 0 ? (
-            <p className="text-[13px] text-muted">{t("Aucun contact connecté. Active Connect et appaire-toi avec tes amis, ou copie le lien.")}</p>
+            <p className="text-sm text-muted">{t("Aucun contact connecté. Active Connect et appaire-toi avec tes amis, ou copie le lien.")}</p>
           ) : (
             <ul className="grid grid-cols-2 gap-1.5">
               {people.map((p) => {
                 const sent = s.invited.includes(p.fp);
                 return (
-                  <li key={p.fp} className="flex items-center gap-2 rounded-md border border-white/8 px-2.5 py-1.5">
+                  <li key={p.fp} className="flex items-center gap-2 rounded-md border border-ink/8 px-2.5 py-1.5">
                     <Avatar profile={p.profile} fp={p.fp} size={24} online />
-                    <span className="min-w-0 flex-1 truncate text-[13px] text-fg">{p.profile.nick}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-fg">{p.profile.nick}</span>
                     <Button size="sm" variant={sent ? "ghost" : "secondary"} icon={<Send className="size-3" />} disabled={!s.link} disabledReason={t("En attente du lien")} onClick={() => void api.liveInvite(p.fp).then(() => toast({ kind: "ok", title: t("Invitation envoyée à {n}", { n: p.profile.nick }) }), (e) => toast({ kind: "error", title: "TekLive", detail: asAppError(e).message }))}>
                       {sent ? t("Renvoyer") : t("Inviter")}
                     </Button>
@@ -248,9 +248,9 @@ function SessionCard({ s }: { s: LiveSession }) {
 
 function Stat({ n, label }: { n: number; label: string }) {
   return (
-    <div className="rounded-md bg-white/4 py-2">
-      <p className="display text-[20px] text-fg tabular">{n}</p>
-      <p className="text-[11px] text-faint">{label}</p>
+    <div className="rounded-md bg-ink/4 py-2">
+      <p className="display text-xl text-fg tabular">{n}</p>
+      <p className="text-2xs text-faint">{label}</p>
     </div>
   );
 }

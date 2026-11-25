@@ -50,8 +50,8 @@ export default function SpacePage() {
   if (!st.space && mode === "idle") {
     return (
       <Card hero className="mx-auto max-w-xl space-y-3 p-6">
-        <h2 className="display text-[20px] text-fg">TekSpace</h2>
-        <p className="text-[13px] text-muted">{t("Un petit campus en pixel art pour travailler avec tes amis : tables de travail, café, bibliothèque, salle de concentration avec minuteur partagé et ambiances sonores. C'est facultatif et ne consomme rien tant que tu ne l'ouvres pas.")}</p>
+        <h2 className="display text-xl text-fg">TekSpace</h2>
+        <p className="text-sm text-muted">{t("Un petit campus en pixel art pour travailler avec tes amis : tables de travail, café, bibliothèque, salle de concentration avec minuteur partagé et ambiances sonores. C'est facultatif et ne consomme rien tant que tu ne l'ouvres pas.")}</p>
         <Button variant="primary" onClick={() => void configure({ space: true })}>
           {t("Activer TekSpace")}
         </Button>
@@ -85,13 +85,13 @@ function Lobby({ me, connect, onAvatar, onDisable }: { me: { fp: string; nick: s
             <Users className="size-4 text-faint" /> {t("Espaces ouverts par tes contacts")}
           </CardTitle>
           {list.length === 0 ? (
-            <p className="px-4 py-6 text-center text-[13px] text-muted">{t("Aucun pour l'instant. Ouvre le tien : tes contacts connectés le verront apparaître.")}</p>
+            <p className="px-4 py-6 text-center text-sm text-muted">{t("Aucun pour l'instant. Ouvre le tien : tes contacts connectés le verront apparaître.")}</p>
           ) : (
-            <ul className="divide-y divide-white/5">
+            <ul className="divide-y divide-ink/5">
               {list.map((s) => (
                 <li key={s.space} className="flex items-center gap-3 px-4 py-2.5">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] text-fg">{s.name}</p>
+                    <p className="truncate text-sm text-fg">{s.name}</p>
                     <p className="text-xs text-faint">{t("ouvert par {h} · {n} personne(s)", { h: s.hostNick, n: s.count })}</p>
                   </div>
                   {s.v !== 1 ? <Badge tone="warn">{t("autre version")}</Badge> : null}
@@ -104,7 +104,7 @@ function Lobby({ me, connect, onAvatar, onDisable }: { me: { fp: string; nick: s
           )}
         </Card>
         <Card className="space-y-3 p-4">
-          <h3 className="text-[13px] text-fg">{t("Ouvrir mon espace")}</h3>
+          <h3 className="text-sm text-fg">{t("Ouvrir mon espace")}</h3>
           <p className="text-xs text-muted">{t("L'espace tourne dans ton TekBoard : tant qu'il reste ouvert, tes contacts peuvent te rejoindre. Il se ferme quand tu le quittes ou fermes TekBoard.")}</p>
           <div className="flex gap-2">
             <Input placeholder={t("Nom de l'espace (facultatif)")} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
@@ -141,10 +141,10 @@ function AvatarEditor({ value, seed, onSave }: { value: string; seed: string; on
   const changed = encodeLook(look) !== encodeLook(decodeLook(value, seed));
   const row = (label: string, key: keyof Look, options: string[], swatches = false) => (
     <div>
-      <p className="mb-1 text-[11px] text-faint">{label}</p>
+      <p className="mb-1 text-2xs text-faint">{label}</p>
       <div className="flex flex-wrap gap-1">
         {options.map((o, i) => (
-          <button key={o} type="button" aria-pressed={look[key] === i} onClick={() => setLook({ ...look, [key]: i })} className={cn("rounded-md border text-[11px]", swatches ? "size-6" : "px-2 py-0.5", look[key] === i ? "border-accent" : "border-white/10 text-muted hover:text-fg")} style={swatches ? { background: o } : undefined} title={swatches ? undefined : o}>
+          <button key={o} type="button" aria-pressed={look[key] === i} onClick={() => setLook({ ...look, [key]: i })} className={cn("rounded-md border text-2xs", swatches ? "size-6" : "px-2 py-0.5", look[key] === i ? "border-accent" : "border-ink/10 text-muted hover:text-fg")} style={swatches ? { background: o } : undefined} title={swatches ? undefined : o}>
             {swatches ? "" : t(o)}
           </button>
         ))}
@@ -155,7 +155,7 @@ function AvatarEditor({ value, seed, onSave }: { value: string; seed: string; on
     <Card>
       <CardTitle right={changed ? <Button size="sm" variant="primary" onClick={() => onSave(encodeLook(look))}>{t("Enregistrer")}</Button> : null}>{t("Ton personnage")}</CardTitle>
       <div className="space-y-3 p-4">
-        <div className="flex justify-center rounded-md bg-white/4 py-2">
+        <div className="flex justify-center rounded-md bg-ink/4 py-2">
           <AvatarPreview look={look} />
         </div>
         {row(t("Peau"), "skin", SKINS, true)}
@@ -243,7 +243,7 @@ function InSpace({ meFp, connect }: { meFp: string; connect: ConnectState }) {
   return (
     <div className="flex h-[calc(100vh-7.5rem)] min-h-[520px] flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="display text-[16px] text-fg">{space.name}</h2>
+        <h2 className="display text-md text-fg">{space.name}</h2>
         <Badge>{t("{n} présent(s)", { n: people.length })}</Badge>
         {mode === "hosting" && <Badge tone="accent">{t("tu héberges")}</Badge>}
         <span className="text-xs text-faint">{me ? t(roomName(me.x, me.y) ?? "") : ""}</span>
@@ -270,13 +270,13 @@ function InSpace({ meFp, connect }: { meFp: string; connect: ConnectState }) {
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_320px] gap-3">
         <div className="card relative min-h-0 overflow-hidden">
           <canvas ref={canvas} tabIndex={0} className="block size-full outline-none" aria-label={t("Le campus : ZQSD, WASD ou flèches pour marcher, clic pour aller quelque part ou s'asseoir à une table")} />
-          <p className="pointer-events-none absolute bottom-2 left-3 text-[11px] text-white/60">{t("ZQSD / WASD / flèches · clic pour marcher · clic sur une table pour s'asseoir")}</p>
+          <p className="pointer-events-none absolute bottom-2 left-3 text-2xs text-white/60">{t("ZQSD / WASD / flèches · clic pour marcher · clic sur une table pour s'asseoir")}</p>
         </div>
         <div className="min-h-0 space-y-3 overflow-y-auto">
           {table ? (
             <TablePanel space={space} meFp={meFp} def={table.def} state={table.state} dndInFocus={dndInFocus} setDndInFocus={setDndInFocus} />
           ) : (
-            <Card className="space-y-2 p-4 text-[13px] text-muted">
+            <Card className="space-y-2 p-4 text-sm text-muted">
               <p>{focusTable ? t("Direction « {n} »…", { n: t(focusTable.name) }) : t("Clique sur une table pour t'y asseoir : tu y retrouves les objectifs, le minuteur partagé, l'ambiance et les ressources de la table.")}</p>
             </Card>
           )}
@@ -284,17 +284,17 @@ function InSpace({ meFp, connect }: { meFp: string; connect: ConnectState }) {
             <CardTitle>
               <Users className="size-4 text-faint" /> {t("Présents")}
             </CardTitle>
-            <ul className="divide-y divide-white/5">
+            <ul className="divide-y divide-ink/5">
               {people.map((p) => {
                 const where = p.seat ? seatById(p.seat)?.table : null;
                 return (
                   <li key={p.fp} className="flex items-center gap-2 px-3 py-1.5">
                     <AvatarPreview look={decodeLook(p.avatar, p.fp)} size={28} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] text-fg">
-                        {p.nick} {p.fp === space.host && <span className="text-[11px] text-faint">· {t("hôte")}</span>}
+                      <span className="block truncate text-sm text-fg">
+                        {p.nick} {p.fp === space.host && <span className="text-2xs text-faint">· {t("hôte")}</span>}
                       </span>
-                      <span className="block truncate text-[11px] text-faint">
+                      <span className="block truncate text-2xs text-faint">
                         {(STATUS[p.status as keyof typeof STATUS] ?? STATUS.available).label}
                         {where ? ` · ${t(where.name)}` : ""}
                       </span>
@@ -342,7 +342,7 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
       <CardTitle right={<Badge tone={state.privacy === "open" ? "neutral" : "warn"}>{state.privacy === "open" ? t("ouverte") : t("réservée")}</Badge>}>
         {t(def.name)}
       </CardTitle>
-      <div className="space-y-4 p-4 text-[13px]">
+      <div className="space-y-4 p-4 text-sm">
         {owner ? (
           <div className="space-y-2">
             <Input placeholder={t("Sujet ou projet de la table (ex. my_ls)")} value={topic} maxLength={120} onChange={(e) => setTopic(e.target.value)} onBlur={() => topic !== state.topic && tableMsg({ topic })} />
@@ -379,7 +379,7 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
               <li key={fp} className="flex items-center gap-2">
                 <input type="checkbox" className="accent-(--color-accent)" checked={g.done} disabled={fp !== meFp} onChange={(e) => send({ t: "space.goal", space: space.id, table: def.id, text: g.text, done: e.target.checked })} />
                 <span className={cn("min-w-0 flex-1 truncate", g.done ? "text-faint line-through" : "text-fg")}>{g.text}</span>
-                <span className="text-[11px] text-faint">{space.players[fp]?.nick}</span>
+                <span className="text-2xs text-faint">{space.players[fp]?.nick}</span>
               </li>
             ))}
           </ul>
@@ -391,7 +391,7 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
           </h3>
           {state.focus ? (
             <div className="flex items-center gap-3">
-              <span className={cn("display text-[24px] tabular", state.focus.phase === "work" ? "text-accent-strong" : "text-ok")}>{remaining(state.focus.endsAt, now)}</span>
+              <span className={cn("display text-2xl tabular", state.focus.phase === "work" ? "text-accent-strong" : "text-ok")}>{remaining(state.focus.endsAt, now)}</span>
               <span className="text-xs text-muted">{state.focus.phase === "work" ? t("travail · cycle {c}", { c: state.focus.cycle }) : t("pause")}</span>
               <Button size="sm" variant="ghost" icon={<Square className="size-3.5" />} className="ml-auto" onClick={() => send({ t: "space.focus", space: space.id, table: def.id, action: "stop" })}>
                 {t("Arrêter")}
@@ -418,16 +418,16 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
             <Music className="size-3.5" /> {t("Ambiance de la table")}
           </h3>
           <div className="flex flex-wrap gap-1">
-            <button type="button" className={cn("rounded-md border px-2 py-0.5 text-[11px]", !state.ambience ? "border-accent text-fg" : "border-white/10 text-muted")} onClick={() => send({ t: "space.ambience", space: space.id, table: def.id, sound: null })}>
+            <button type="button" className={cn("rounded-md border px-2 py-0.5 text-2xs", !state.ambience ? "border-accent text-fg" : "border-ink/10 text-muted")} onClick={() => send({ t: "space.ambience", space: space.id, table: def.id, sound: null })}>
               {t("Silence")}
             </button>
             {SOUNDS.map((s) => (
-              <button key={s} type="button" className={cn("rounded-md border px-2 py-0.5 text-[11px]", state.ambience?.sound === s ? "border-accent text-fg" : "border-white/10 text-muted hover:text-fg")} onClick={() => send({ t: "space.ambience", space: space.id, table: def.id, sound: s })}>
+              <button key={s} type="button" className={cn("rounded-md border px-2 py-0.5 text-2xs", state.ambience?.sound === s ? "border-accent text-fg" : "border-ink/10 text-muted hover:text-fg")} onClick={() => send({ t: "space.ambience", space: space.id, table: def.id, sound: s })}>
                 {SOUND_LABEL[s]}
               </button>
             ))}
           </div>
-          <p className="text-[11px] text-faint">{t("Sons générés par TekBoard, entendus par les personnes assises ; chacun règle ou coupe le sien en haut.")}</p>
+          <p className="text-2xs text-faint">{t("Sons générés par TekBoard, entendus par les personnes assises ; chacun règle ou coupe le sien en haut.")}</p>
           {owner ? (
             <div className="flex gap-2">
               <Input placeholder={t("Lien d'invitation Spotify Jam (facultatif)")} className="text-xs" value={jam} onChange={(e) => setJam(e.target.value)} />
@@ -451,10 +451,10 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
           </h3>
           <ul className="space-y-1">
             {state.pins.map((p, i) => (
-              <li key={i} className="rounded-md bg-white/4 px-2 py-1.5">
+              <li key={i} className="rounded-md bg-ink/4 px-2 py-1.5">
                 <div className="flex items-center gap-2">
                   <span className="min-w-0 flex-1 truncate text-fg">{p.title}</span>
-                  <span className="text-[11px] text-faint">{space.players[p.by]?.nick ?? ""}</span>
+                  <span className="text-2xs text-faint">{space.players[p.by]?.nick ?? ""}</span>
                   {(owner || p.by === meFp) && (
                     <IconButton label={t("Retirer")} onClick={() => send({ t: "space.unpin", space: space.id, table: def.id, index: i })}>
                       <Trash2 className="size-3" />
@@ -473,7 +473,7 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
           </div>
         </section>
 
-        <section className="flex flex-wrap gap-2 border-t border-white/6 pt-3">
+        <section className="flex flex-wrap gap-2 border-t border-ink/6 pt-3">
           <Button size="sm" icon={<Share2 className="size-3.5" />} disabled={others.length === 0} disabledReason={t("Personne d'autre à la table")} onClick={() => {
             const text = window.prompt(t("Note à partager avec la table"));
             if (text?.trim()) useUi.getState().openShare({ kind: "note", title: text.trim().split("\n")[0].slice(0, 60), text }, others.map((p) => p.fp));
@@ -493,7 +493,7 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
             {t("Se lever")}
           </Button>
         </section>
-        <p className="text-[11px] text-faint">{t("Assis : {n}", { n: seated.map((p) => p.nick).join(", ") })}</p>
+        <p className="text-2xs text-faint">{t("Assis : {n}", { n: seated.map((p) => p.nick).join(", ") })}</p>
       </div>
     </Card>
   );
@@ -547,7 +547,7 @@ function TableBoardSection({ space, meFp, def, state }: { space: SpaceState; meF
           <Button size="sm" variant="secondary" busy={busy} onClick={() => void open()}>
             {t("Ouvrir un tableau pour la table")}
           </Button>
-          <p className="text-[11px] text-faint">{t("Les personnes assises à la table peuvent le rejoindre ; il reste dans tes tableaux.")}</p>
+          <p className="text-2xs text-faint">{t("Les personnes assises à la table peuvent le rejoindre ; il reste dans tes tableaux.")}</p>
         </>
       )}
     </section>

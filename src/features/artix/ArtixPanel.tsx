@@ -141,11 +141,11 @@ else if (ask.text === "#free") {
 
   return (
     <aside className="artix-panel anim-slide relative z-[30] flex h-full w-[400px] max-w-[42vw] shrink-0 flex-col" aria-label="Artix">
-      <header className="flex h-14 shrink-0 items-center gap-2.5 border-b border-white/6 px-3.5">
+      <header className="flex h-14 shrink-0 items-center gap-2.5 border-b border-ink/6 px-3.5">
         <Artix state={face} />
         <div className="min-w-0 flex-1 leading-tight">
-          <p className="display text-[14px] font-medium">Artix</p>
-          <p className="truncate text-[11px] text-faint">{status}</p>
+          <p className="display text-base font-medium">Artix</p>
+          <p className="truncate text-2xs text-faint">{status}</p>
         </div>
         <IconButton label={t("Nouvelle conversation (Ctrl+Maj+J)")} onClick={() => (setArtix({ thread: null, job: null }), setView("chat"), input.current?.focus())}>
           <MessageSquarePlus className="size-4" />
@@ -168,7 +168,7 @@ else if (ask.text === "#free") {
         <>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
             {!ai.ready && (
-              <div className="mb-3 rounded-lg border border-warn/30 bg-warn/8 px-3 py-2 text-[13px]">
+              <div className="mb-3 rounded-lg border border-warn/30 bg-warn/8 px-3 py-2 text-sm">
                 <p className="text-fg">{ai.why}</p>
                 <p className="mt-1 text-xs text-muted">{t("Sans IA, les plannings proposés (#day, #week, #reorganize) fonctionnent quand même.")}</p>
                 <button type="button" className="mt-1.5 text-xs text-accent hover:underline" onClick={() => { useUi.setState({ settingsTab: "ai" }); useUi.getState().setPage("settings"); }}>
@@ -178,12 +178,12 @@ else if (ask.text === "#free") {
             )}
             {empty && (
               <div className="flex flex-col gap-3 pt-3">
-                <p className="display text-[17px] font-medium">{greeting()}</p>
-                <p className="text-[13px] text-muted">{t("Dis-moi ce que tu as à faire : je m'en occupe. Les gros changements attendent ton accord.")}</p>
+                <p className="display text-lg font-medium">{greeting()}</p>
+                <p className="text-sm text-muted">{t("Dis-moi ce que tu as à faire : je m'en occupe. Les gros changements attendent ton accord.")}</p>
                 <InsightList compact />
                 <div className="mt-1 flex flex-col gap-1.5">
                   {suggestions.map((s) => (
-                    <button key={s} type="button" onClick={() => submit(s)} className="rounded-lg border border-white/7 px-3 py-2 text-left text-[13px] text-muted transition-colors duration-150 hover:border-accent/40 hover:text-fg">
+                    <button key={s} type="button" onClick={() => submit(s)} className="rounded-lg border border-ink/7 px-3 py-2 text-left text-sm text-muted transition-colors duration-150 hover:border-accent/40 hover:text-fg">
                       {s}
                     </button>
                   ))}
@@ -203,7 +203,7 @@ else if (ask.text === "#free") {
               ))}
               {pendingText && !msgs.some((m) => m.role === "user" && m.text === pendingText && running) && msgs.at(-1)?.text !== pendingText && (
                 <li className="flex justify-end">
-                  <div className="selectable max-w-[88%] rounded-2xl rounded-br-md bg-accent-soft px-3 py-2 text-[13px] whitespace-pre-wrap">{pendingText}</div>
+                  <div className="selectable max-w-[88%] rounded-2xl rounded-br-md bg-accent-soft px-3 py-2 text-sm whitespace-pre-wrap">{pendingText}</div>
                 </li>
               )}
               {(running || send.isPending) && <Live events={job.data?.events ?? []} partial={typeof job.data?.summary.partial === "string" ? job.data.summary.partial : ""} onStop={() => jobId !== null && void api.jobCancel(jobId)} />}
@@ -212,19 +212,19 @@ else if (ask.text === "#free") {
           </div>
 
           <form
-            className="shrink-0 border-t border-white/6 p-3"
+            className="shrink-0 border-t border-ink/6 p-3"
             onSubmit={(e) => {
               e.preventDefault();
               submit(text);
             }}
           >
-            <div className="mb-2 flex items-center gap-1.5 text-[11px] text-faint">
+            <div className="mb-2 flex items-center gap-1.5 text-2xs text-faint">
               <span className="size-1.5 rounded-full bg-accent/70" />
               Sur : {PAGE_LABEL[screen.page] ?? "TekBoard"}
               {screen.project && ` · ${projectName(screen.project)}`}
               {screen.tab && screen.tab !== "overview" && ` · ${screen.tab}`}
             </div>
-            <div className="field flex items-end gap-2 rounded-xl border border-white/8 p-1.5 focus-within:border-accent">
+            <div className="field flex items-end gap-2 rounded-xl border border-ink/8 p-1.5 focus-within:border-accent">
               <textarea
                 ref={input}
                 rows={1}
@@ -242,7 +242,7 @@ else if (ask.text === "#free") {
                 }}
                 placeholder={running ? tr("Artix répond…") : t("Demande à Artix…")}
                 aria-label={t("Message pour Artix")}
-                className="max-h-40 min-h-8 flex-1 resize-none bg-transparent px-1.5 py-1.5 text-[13px] text-fg placeholder:text-faint focus:outline-none focus-visible:outline-none"
+                className="max-h-40 min-h-8 flex-1 resize-none bg-transparent px-1.5 py-1.5 text-sm text-fg placeholder:text-faint focus:outline-none focus-visible:outline-none"
               />
               {running ? (
                 <IconButton label={t("Interrompre")} className="size-8" onClick={() => jobId !== null && void api.jobCancel(jobId)}>
@@ -284,7 +284,7 @@ function Live({ events, partial, onStop }: { events: JobEvent[]; partial: string
         </ul>
       )}
       {partial ? (
-        <Markdown text={partial} className="artix-caret selectable text-[13px] leading-relaxed" />
+        <Markdown text={partial} className="artix-caret selectable text-sm leading-relaxed" />
       ) : (
         <span className="flex items-center gap-2 text-xs text-faint">
           <LoaderCircle className="anim-spin size-3" /> {tools.length ? tr("Artix enchaîne…") : t("Artix réfléchit…")}
@@ -326,7 +326,7 @@ function MessageView({ m, proposals, actions }: { m: AiMessage; proposals: Map<n
   if (m.role === "user")
     return (
       <li className="flex justify-end">
-        <div className="selectable max-w-[88%] rounded-2xl rounded-br-md bg-accent-soft px-3 py-2 text-[13px] whitespace-pre-wrap">{m.text}</div>
+        <div className="selectable max-w-[88%] rounded-2xl rounded-br-md bg-accent-soft px-3 py-2 text-sm whitespace-pre-wrap">{m.text}</div>
       </li>
     );
   if (m.role === "system")
@@ -339,10 +339,10 @@ function MessageView({ m, proposals, actions }: { m: AiMessage; proposals: Map<n
   return (
     <li className="flex flex-col gap-1.5">
       <Steps steps={m.meta.steps ?? []} />
-      <Markdown text={m.text} className="selectable text-[13px] leading-relaxed" />
+      <Markdown text={m.text} className="selectable text-sm leading-relaxed" />
       {(m.meta.actions ?? []).map((id) => actions.get(id)).filter(Boolean).map((a) => <ActionChip key={a!.id} a={a!} />)}
       {(m.meta.proposals ?? []).map((id) => proposals.get(id)).filter(Boolean).map((p) => <BackendProposal key={p!.id} p={p!} />)}
-      {typeof m.meta.costUsd === "number" && <span className="text-[10px] text-faint">≈ {m.meta.costUsd.toFixed(3)} $</span>}
+      {typeof m.meta.costUsd === "number" && <span className="text-3xs text-faint">≈ {m.meta.costUsd.toFixed(3)} $</span>}
     </li>
   );
 }
@@ -353,7 +353,7 @@ function ActionChip({ a }: { a: AiAction }) {
   const undo = useMutation({ mutationFn: () => api.aiUndo(a.id), onSuccess: (s) => toast({ kind: "ok", title: t("Annulé"), detail: s }), onError: (e) => toast({ kind: "error", title: t("Pas annulé"), detail: asAppError(e).message }) });
   const done = a.status === "done";
   return (
-    <div className={cn("flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs", done ? "border-ok/25 bg-ok/6" : "border-white/6 text-faint line-through")}>
+    <div className={cn("flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs", done ? "border-ok/25 bg-ok/6" : "border-ink/6 text-faint line-through")}>
       {done ? <Check className="size-3.5 shrink-0 text-ok" /> : <Undo2 className="size-3.5 shrink-0" />}
       <span className="min-w-0 flex-1 truncate">{a.summary}</span>
       {done && (
@@ -411,13 +411,13 @@ function Threads({ current, onOpen }: { current: number | null; onOpen: (id: num
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-3">
       <p className="px-1 pb-2 text-xs text-faint">{t("Les conversations sont gardées 30 jours. Ce qui doit durer va dans la mémoire.")}</p>
-      {threads.data?.length === 0 && <p className="px-1 text-[13px] text-muted">{t("Aucune conversation pour l'instant.")}</p>}
+      {threads.data?.length === 0 && <p className="px-1 text-sm text-muted">{t("Aucune conversation pour l'instant.")}</p>}
       <ul className="flex flex-col gap-0.5">
         {threads.data?.map((t) => (
-          <li key={t.id} className={cn("group row-hover flex items-center gap-2 rounded-lg px-2.5 py-2", t.id === current && "bg-white/4")}>
+          <li key={t.id} className={cn("group row-hover flex items-center gap-2 rounded-lg px-2.5 py-2", t.id === current && "bg-ink/4")}>
             <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onOpen(t.id)}>
-              <span className="block truncate text-[13px]">{t.title}</span>
-              <span className="text-[11px] text-faint">
+              <span className="block truncate text-sm">{t.title}</span>
+              <span className="text-2xs text-faint">
                 {new Date(t.updatedAt * 1000).toLocaleString(locale(), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · {t.messages} message{t.messages > 1 ? "s" : ""}
               </span>
             </button>

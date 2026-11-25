@@ -103,10 +103,10 @@ export function ProjectsPage() {
                   title={f.title}
                   aria-selected={filter === f.id}
                   onClick={() => setFilter(f.id)}
-                  className={cn("flex h-8 items-center gap-2 rounded-md px-2.5 text-[13px] transition-colors duration-150", filter === f.id ? "bg-raised text-fg" : "text-muted hover:text-fg")}
+                  className={cn("flex h-8 items-center gap-2 rounded-md px-2.5 text-sm transition-colors duration-150", filter === f.id ? "bg-raised text-fg" : "text-muted hover:text-fg")}
                 >
                   {f.label}
-                  <span className="font-mono text-[11px] text-faint">{counts[f.id]}</span>
+                  <span className="font-mono text-2xs text-faint">{counts[f.id]}</span>
                 </button>
               ))}
             </div>
@@ -117,7 +117,7 @@ export function ProjectsPage() {
                 aria-checked={epitechOnly}
                 title={t("Masque les dépôts personnels et ce qui n'est pas du cursus. Le classement d'un dépôt se corrige depuis son menu ⋯.")}
                 onClick={() => setEpitechOnly(!epitechOnly)}
-                className={cn("flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors duration-150", epitechOnly ? "border-transparent bg-accent-soft text-accent-strong" : "border-white/8 text-muted hover:border-line-strong hover:text-fg")}
+                className={cn("flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors duration-150", epitechOnly ? "border-transparent bg-accent-soft text-accent-strong" : "border-ink/8 text-muted hover:border-line-strong hover:text-fg")}
               >
                 <GraduationCap className="size-3.5" />
                 Epitech Projects Only
@@ -135,7 +135,7 @@ export function ProjectsPage() {
               )}
               <Menu
                 trigger={
-                  <button type="button" title={t("Ordre de tri")} className="flex h-7 items-center gap-1.5 rounded-md border border-white/8 px-2.5 text-xs text-muted transition-colors duration-150 hover:border-line-strong hover:text-fg">
+                  <button type="button" title={t("Ordre de tri")} className="flex h-7 items-center gap-1.5 rounded-md border border-ink/8 px-2.5 text-xs text-muted transition-colors duration-150 hover:border-line-strong hover:text-fg">
                     <ArrowDownUp className="size-3.5" />
                     {sortLabel}
                   </button>
@@ -190,9 +190,9 @@ export function ProjectsPage() {
 function HiddenRow({ repo }: { repo: RepoInfo }) {
   const act = useProjectActions();
   return (
-    <li className="flex h-10 items-center gap-3 border-b border-white/6 px-4 text-[13px] last:border-b-0">
+    <li className="flex h-10 items-center gap-3 border-b border-ink/6 px-4 text-sm last:border-b-0">
       <span className="min-w-0 flex-1 truncate text-muted">{displayName(repo)}</span>
-      <span className="selectable min-w-0 flex-[2] truncate font-mono text-[11px] text-faint">{repo.path}</span>
+      <span className="selectable min-w-0 flex-[2] truncate font-mono text-2xs text-faint">{repo.path}</span>
       <Button size="sm" variant="ghost" icon={<Eye className="size-3.5" />} busy={act.visibility.isPending} onClick={() => act.visibility.mutate({ repo, visibility: null })}>
         {t("Restaurer")}
       </Button>
@@ -208,13 +208,13 @@ function RepoRow({ repo, now, showStatus }: { repo: RepoInfo; now: Date; showSta
   const active = lastActivity(repo);
   const clean = !repo.error && attention(repo).length === 0;
   return (
-    <li className={cn("group row-hover flex h-11 items-center gap-3 border-b border-white/6 pr-2 pl-2 last:border-b-0", repo.progress === "done" && "text-muted")}>
+    <li className={cn("group row-hover flex h-11 items-center gap-3 border-b border-ink/6 pr-2 pl-2 last:border-b-0", repo.progress === "done" && "text-muted")}>
       <FavoriteButton repo={repo} />
       <button type="button" onClick={() => openSheet(repo.path)} className="flex min-w-0 flex-[2] items-baseline gap-2.5 text-left" title={`${repo.path}\n${repo.kind === "epitech" ? "Epitech" : "Personal"}: ${repo.kindReason}${repo.status?.branch ? `\nBranch ${repo.status.branch}` : ""}`}>
-        <span className="truncate text-[13px] font-medium">{displayName(repo)}</span>
+        <span className="truncate text-sm font-medium">{displayName(repo)}</span>
         {mod ? <Tag title={repo.my?.unitName ?? undefined}>{mod}</Tag> : repo.group && <span className="shrink-0 text-xs text-faint">{repo.group}</span>}
         {repo.duplicateOf && (
-          <span className="shrink-0 rounded border border-warn/40 px-1.5 text-[11px] text-warn" title={t("Même projet que {p}. Si ce dossier est une copie, masque-le depuis son menu ⋯ : rien n'est supprimé.", { p: repo.duplicateOf })}>
+          <span className="shrink-0 rounded border border-warn/40 px-1.5 text-2xs text-warn" title={t("Même projet que {p}. Si ce dossier est une copie, masque-le depuis son menu ⋯ : rien n'est supprimé.", { p: repo.duplicateOf })}>
             {t("copie")}
           </span>
         )}
