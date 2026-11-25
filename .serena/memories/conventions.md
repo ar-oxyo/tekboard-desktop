@@ -18,10 +18,9 @@
 ## Front
 - Une page = `src/features/<domaine>/<Nom>Page.tsx` ; type `Page` + `PAGES` dans `lib/store.ts` ; entrée de navigation dans `app/sections.ts` ; pages lourdes en `lazy()` dans `app/App.tsx`.
 - Logique pure extraite dans `src/lib/<x>.ts` (ou `features/<x>/*.ts`) avec `<x>.test.ts` à côté ; les composants restent minces.
-- Primitives UI partagées dans `components/ui.tsx` (Button, Card, Dot, Tag, SectionLabel, EmptyState, ErrorNote, PageHeader…), `Modal`, `Menu`, `Select`, `CodeEditor`, `charts/` ; réutiliser avant d'en créer.
+- Primitives UI partagées dans `components/ui.tsx` (Button + disabledReason, IconButton, Card, Section, Notice, Meter, Dot, Tag, SectionLabel, EmptyState, ErrorNote, PageHeader…), `Modal`, `Menu`, `Select`, `Tooltips` (tout `title` devient une infobulle), `CodeEditor`, `charts/` ; réutiliser avant d'en créer.
 - i18n : le texte FRANÇAIS est la clé : `t("Texte en français", { var })` ; anglais dans `src/locales/en.ts` (clé manquante → français affiché). Les termes techniques restent tels quels.
-- Thèmes : variables CSS par `:root[data-theme=…]` dans `styles/index.css` ; utiliser les variables, pas de couleurs en dur (sauf palette fixe des graphiques).
-- Règles visuelles retenues : pas de pastilles en série, pas de libellés en capitales, un seul bouton d'accent par écran, statuts en point + texte.
+- Système visuel : `DESIGN.md` (Riso). Jetons dans `styles/index.css` (`@theme` = sombre, `:root[data-mode=light]` = papier) ; uniquement des noms sémantiques (`bg-surface`, `text-muted`, `border-line`, `bg-ink/5`, `bg-well`, échelle `text-3xs…3xl`), jamais de hex, `white/N` ni `text-[Npx]`. Classes de composants dans `@layer components`.
 
 ## Textes d'interface (voir `PRODUCT.md`)
 - Français d'abord, tutoiement, phrases courtes qui disent exactement ce que l'appli fait et ne fait pas.

@@ -8,7 +8,7 @@ Appli de bureau Linux local-first pour étudiants Epitech (dépôts, rendus, pla
 - `src-tauri/builtin/` : modèles de projet fournis (`c-minimal`, `csfml`). `src-tauri/examples/` : vérifs bout-en-bout lancées à la main (`cargo run --example …`), hors CI.
 - `scripts/` : `tauri.sh` (wrapper cargo/tauri), `release.mjs` (contrôle de versions/changelog), `install.sh` + `tests/install_test.sh`. `install.sh` racine = installateur public (curl | bash).
 - `.github/workflows/` : `ci.yml` (push main/PR), `release.yml` (tag `vX.Y.Z` → release brouillon signée .deb + AppImage).
-- Docs : `docs/ARCHITECTURE.md` = référence détaillée par version (modules, frontière de confiance, MY Epitech, IA/bac à sable, Connect, tableaux blancs, Brain Dump). La lire par section (`grep -n '^## '`) plutôt qu'en entier. `PRODUCT.md` (public, contexte, positionnement, principes produit et marque ; référence pour tout travail de design/UX, format du skill impeccable), `README.md` (FR, utilisateur), `CHANGELOG.md` (une section par version, exigée par la release).
+- Docs : `docs/ARCHITECTURE.md` = référence détaillée par version (modules, frontière de confiance, MY Epitech, IA/bac à sable, Connect, tableaux blancs, Brain Dump). La lire par section (`grep -n '^## '`) plutôt qu'en entier. `PRODUCT.md` (public, contexte, positionnement, principes produit et marque), `DESIGN.md` (système visuel Riso, jetons, composants ; + `.impeccable/design.json`), `CLAUDE.md` (règles de travail et d'outils), `README.md` (FR, utilisateur), `CHANGELOG.md` (une section par version, exigée par la release).
 
 ## Invariants transverses
 - Règles de sécurité/confiance non négociables : `mem:invariants/safety`.

@@ -1,7 +1,9 @@
 # Frontend (`src/`)
 
 - `main.tsx` : point d'entrée ; charge `CaptureApp` seul dans la fenêtre `capture`, sinon `app/App.tsx`.
-- `app/App.tsx` : routeur par état (`useUi().page`, pas de router), pages lourdes en `lazy`, onboarding (`features/onboarding`) tant que `settings.onboarded` est faux. `app/sections.ts` : navigation en sections (today, projects, planning, school, stats, lab, connect, resources, settings) → pages. `app/Sidebar.tsx`.
+- `app/App.tsx` : routeur par état (`useUi().page`, pas de router), pages lourdes en `lazy`, onboarding (`features/onboarding`) tant que `settings.onboarded` est faux ; `<main>` est un `@container` ; barre de page des sections à onglets avec `PageBarSlot`. `app/sections.ts` : 9 sections (Ctrl+1…9), `tabs: true` pour Projets et Réglages (onglets dans la barre de page), `pageLabel`. `app/Sidebar.tsx` : groupes (essentiel, épinglés = favoris, École, Labo, Connect), rail Ctrl+B (`usePref("sidebarRail")`). `app/pageIcons.tsx` (icône par page, partagée avec la palette), `app/history.ts` (Alt+←/→), `app/ShortcutsDialog.tsx` (Ctrl+/).
+- Apparence : `lib/appearance.ts` (pur : mode clair/sombre/système, `data-mode` sur <html> avant le premier rendu, `crossFade`) + `useColorMode` dans `lib/hooks.ts` (pref `colorMode`, miroir localStorage). Design par défaut id `aurora` = « Riso » (clair + sombre) ; flat/neon/cozy/terminal = sombres, hérités.
+- `src/dev/` : faux backend de développement (mockIPC + fixtures), chargé seulement hors Tauri en dev ; voir CLAUDE.md.
 - `lib/api.ts` : TOUS les appels backend (`api.<méthode>`) + types miroirs du Rust ; son `invoke` appelle `afterCommand` → invalidation automatique.
 - `lib/sync.ts` : bus de données. `COMMAND_DOMAINS` (commande → domaines), `DOMAIN_KEYS` (domaine → préfixes de clés Query), écoute `data-changed` du backend.
 - `lib/hooks.ts` : `keys` + hooks Query partagés (`useSettings`, `useRepos`, `useBoard`, `usePref`, `useProjectActions`…). `lib/store.ts` : état UI zustand (`useUi` : page, toasts, demandes de lancement), type `Page`/`PAGES`.

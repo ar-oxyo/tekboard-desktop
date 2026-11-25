@@ -42,7 +42,7 @@ Success means a student knows what is due, what state each project is in and wha
 - **Languages:** French is the primary language, English the second, chosen at first run or in Settings.
 - **Terminology:** the Tests feature always says "test" ("tester", "tests"), never "vérifier". Product names stay as they are: Artix, Doctor, Labo, Playground, Arena, Brain Dump, Inbox, Connect, TekShare, TekLive, TekSpace, Skill Tree, Banana, moulinette.
 - **Supported systems:** Ubuntu/Debian (.deb) and other x86_64 distributions (AppImage). macOS, Windows and ARM are not supported.
-- **Open decision:** the app currently offers five user-selectable designs (default, Flat, Neon, Cozy, Terminal). Whether all five must survive future design work has not been decided.
+- **Designs:** one signature design, Riso (id `aurora`), in light, dark or system mode (see DESIGN.md). Flat, Neon, Cozy and Terminal remain selectable, dark only, kept rendering but not extended; their removal is planned.
 
 ## Brand Commitments
 

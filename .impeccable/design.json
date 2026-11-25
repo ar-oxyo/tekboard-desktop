@@ -1,0 +1,197 @@
+{
+ "schemaVersion": 2,
+ "generatedAt": "2026-11-25T19:00:56.888443+00:00",
+ "title": "Design System: TekBoard",
+ "extensions": {
+  "colorMeta": {
+   "riso-blue": {
+    "role": "primary",
+    "displayName": "Riso Blue",
+    "canonical": "#006bab",
+    "tonalRamp": [
+     "rgb(0 107 171 / 0.12)",
+     "#006bab",
+     "#00578b"
+    ]
+   },
+   "fluo-orange": {
+    "role": "secondary",
+    "displayName": "Fluorescent Orange",
+    "canonical": "#ff6c2f",
+    "tonalRamp": [
+     "color-mix(in srgb, #ff6c2f 26%, transparent)",
+     "#ff6c2f",
+     "#a8450b"
+    ]
+   },
+   "paper": {
+    "role": "neutral",
+    "displayName": "Warm Paper",
+    "canonical": "#f3efe6",
+    "tonalRamp": [
+     "#fdfcf8",
+     "#f9f7f1",
+     "#f3efe6",
+     "#ebe6da",
+     "#e6e0d3",
+     "#ddd6c7",
+     "#c4bba8"
+    ]
+   },
+   "black-stock": {
+    "role": "neutral",
+    "displayName": "Black Stock",
+    "canonical": "#181715",
+    "tonalRamp": [
+     "#121110",
+     "#181715",
+     "#201f1c",
+     "#272623",
+     "#2b2a26",
+     "#2e2c28",
+     "#423f39"
+    ]
+   },
+   "ink": {
+    "role": "neutral",
+    "displayName": "Ink",
+    "canonical": "#1d1b19",
+    "tonalRamp": [
+     "#1d1b19",
+     "#58534b",
+     "#6b655a"
+    ]
+   }
+  },
+  "typographyMeta": {
+   "display": {
+    "displayName": "Display",
+    "purpose": "The single most important name or figure on a screen."
+   },
+   "headline": {
+    "displayName": "Page title",
+    "purpose": "Page bar titles."
+   },
+   "title": {
+    "displayName": "Section title",
+    "purpose": "Section headings over a hairline."
+   },
+   "body": {
+    "displayName": "Body",
+    "purpose": "All UI text, 13px, tabular figures."
+   },
+   "label": {
+    "displayName": "Label",
+    "purpose": "Metadata, column headers, group names; sentence case."
+   },
+   "mono": {
+    "displayName": "Data",
+    "purpose": "Times, dates, module codes, paths, hashes."
+   }
+  },
+  "shadows": [
+   {
+    "name": "pop",
+    "value": "0 1px 2px rgb(29 27 25 / 0.08), 0 14px 36px -12px rgb(29 27 25 / 0.28)",
+    "purpose": "Menus, dialogs, palette, toasts, tooltips only."
+   }
+  ],
+  "motion": [
+   {
+    "name": "ease",
+    "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+    "purpose": "All transitions."
+   },
+   {
+    "name": "dur-fast",
+    "value": "120ms",
+    "purpose": "Hover and state changes."
+   },
+   {
+    "name": "dur-base",
+    "value": "180ms",
+    "purpose": "Entrances and layout changes."
+   }
+  ],
+  "breakpoints": [
+   {
+    "name": "today-two-columns",
+    "value": "56rem (container)"
+   },
+   {
+    "name": "projects-activity-column",
+    "value": "48rem (container)"
+   }
+  ]
+ },
+ "components": [
+  {
+   "name": "Primary Button",
+   "kind": "button",
+   "refersTo": "button-primary",
+   "description": "The one main action of a screen: a block of ink.",
+   "html": "<button class=\"ds-btn\">Y travailler maintenant</button>",
+   "css": ".ds-btn{background:#1d1b19;color:#f3efe6;height:32px;padding:0 12px;border:0;border-radius:6px;font:500 13px/1 'Inter Variable',system-ui,sans-serif}.ds-btn:hover{filter:brightness(1.1)}"
+  },
+  {
+   "name": "Ink Row",
+   "kind": "custom",
+   "refersTo": "nav-item-active",
+   "description": "A clickable list row; hovering lays down blue ink, an urgent date block overprints.",
+   "html": "<div class=\"ds-row\"><span class=\"ds-date\">ven. 27 23:42</span><span>secured</span><span class=\"ds-due\">dans 2 jours</span></div>",
+   "css": ".ds-row{display:grid;grid-template-columns:112px 1fr auto;gap:12px;align-items:center;height:44px;padding:0 4px;border-bottom:1px solid #ddd6c7;font:13px 'Inter Variable',sans-serif;color:#1d1b19;background:#f3efe6;border-radius:6px}.ds-row:hover{background:rgb(0 107 171/.12)}.ds-date{font:12px 'JetBrains Mono Variable',monospace;background:color-mix(in srgb,#ff6c2f 26%,transparent);mix-blend-mode:multiply;padding:2px 6px;border-radius:4px}.ds-due{color:#a8450b;font-size:12px}"
+  },
+  {
+   "name": "Tooltip",
+   "kind": "custom",
+   "refersTo": "tooltip",
+   "description": "Printed in reverse: paper text on a block of ink.",
+   "html": "<span class=\"ds-tip\">Ouvrir le Doctor</span>",
+   "css": ".ds-tip{background:#1d1b19;color:#f3efe6;border-radius:5px;padding:4px 8px;font:12px/16px 'Inter Variable',sans-serif}"
+  }
+ ],
+ "narrative": {
+  "northStar": "The student print shop's working sheet",
+  "overview": "Two Riso inks on warm stock: blue for what you can act on, fluorescent orange for what is pressing, black ink for everything else. Quiet, dense, hairline-structured; light (paper) and dark (black stock).",
+  "keyCharacteristics": [
+   "Two inks with fixed meanings",
+   "Hairlines and spacing instead of cards",
+   "Narrow Archivo titles, Inter UI, mono for data",
+   "Layouts follow the content width"
+  ],
+  "rules": [
+   {
+    "name": "The Two Inks Rule",
+    "body": "Blue = act/selected, orange = pressing. No third accent, no decoration.",
+    "section": "colors"
+   },
+   {
+    "name": "The Overprint Rule",
+    "body": "Urgent marks under a hovered row overprint with the blue film.",
+    "section": "colors"
+   },
+   {
+    "name": "The Narrow Voice Rule",
+    "body": "Archivo only for page titles and the single key figure.",
+    "section": "typography"
+   },
+   {
+    "name": "The No Ghost Card Rule",
+    "body": "Hairline or shadow, never both; shadows only on floating layers.",
+    "section": "elevation"
+   }
+  ],
+  "dos": [
+   "Use semantic tokens and ink/N",
+   "Give every disabled control its reason",
+   "Keep one ink-black primary action per screen",
+   "Check light and dark"
+  ],
+  "donts": [
+   "Hex, white/N or text-[px] in components",
+   "Cards inside cards",
+   "Gradient text, glows, glass, eyebrows, uppercase labels",
+   "Hard-coded English"
+  ]
+ }
+}
