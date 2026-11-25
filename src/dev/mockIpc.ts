@@ -9,6 +9,7 @@
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import apiSource from "../lib/api.ts?raw";
 import { fixtures } from "./fixtures";
+import { useUi } from "../lib/store";
 
 type Kind = "array" | "void" | "nullable" | "boolean" | "number" | "string" | "record" | "object";
 
@@ -43,6 +44,18 @@ export function installMock() {
   const mode = params.get("mode");
   if (mode) localStorage.setItem("tekboard.colorMode", mode);
   const prefs: Record<string, unknown> = mode ? { colorMode: mode } : {};
+
+  // ?open=artix|inbox|palette|shortcuts|capture opens an overlay once the app has started.
+  const open = params.get("open");
+  if (open)
+    window.setTimeout(() => {
+      const ui = useUi.getState();
+      if (open === "artix") ui.openAssistant();
+      else if (open === "inbox") ui.openInbox();
+      else if (open === "palette") ui.setPaletteOpen(true);
+      else if (open === "shortcuts") useUi.setState({ shortcutsOpen: true });
+      else if (open === "capture") ui.setCaptureOpen(true);
+    }, 600);
 
   mockWindows(params.get("window") === "capture" ? "capture" : "main");
   mockIPC(

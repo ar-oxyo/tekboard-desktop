@@ -618,6 +618,24 @@ code,
   background: color-mix(in srgb, var(--color-accent-2) 26%, transparent);
   mix-blend-mode: var(--overprint);
 }
+/* Today: one column in a narrow window (or with Artix open), what matters first; two
+   columns when there is room, hand-ins beside the day. */
+.today-grid {
+  display: grid;
+  gap: 2.25rem 3rem;
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "now" "due" "sched" "load" "quick";
+}
+.today-grid > * {
+  min-width: 0;
+}
+@container (min-width: 56rem) {
+  .today-grid {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    grid-template-areas: "now due" "sched due" "load quick";
+  }
+}
 .row-hover {
   transition: background 0.1s ease;
 }

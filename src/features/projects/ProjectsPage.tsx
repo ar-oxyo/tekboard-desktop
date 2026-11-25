@@ -161,7 +161,7 @@ export function ProjectsPage() {
                   <span className="w-32 shrink-0">{t("Rendu")}</span>
                   <span className="flex-[1.6]">Git</span>
                   <span className={cn("shrink-0", filter !== "todo" && filter !== "in_progress" && filter !== "done" ? "w-28" : "w-6")}>{filter !== "todo" && filter !== "in_progress" && filter !== "done" ? t("Statut") : ""}</span>
-                  <span className="hidden w-24 shrink-0 text-right lg:block">{t("Activité")}</span>
+                  <span className="hidden w-24 shrink-0 text-right @3xl:block">{t("Activité")}</span>
                   <span className="w-14 shrink-0" />
                 </li>
                 {shown.map((repo) => (
@@ -234,7 +234,7 @@ function RepoRow({ repo, now, showStatus }: { repo: RepoInfo; now: Date; showSta
       <span className={cn("flex shrink-0", showStatus ? "w-28" : "w-6")}>
         <ProgressPicker repo={repo} compact={!showStatus} />
       </span>
-      <span className="hidden w-24 shrink-0 text-right text-xs text-faint lg:block" title={repo.lastCommit?.subject}>
+      <span className="hidden w-24 shrink-0 text-right text-xs text-faint @3xl:block" title={repo.lastCommit?.subject}>
         {active > 0 ? timeAgo(Math.floor(active / 1000)) : t("aucun commit")}
       </span>
       <span className="flex shrink-0 items-center opacity-0 transition-opacity duration-(--dur-fast) group-focus-within:opacity-100 group-hover:opacity-100">

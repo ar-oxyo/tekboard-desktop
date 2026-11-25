@@ -393,7 +393,7 @@ export function App() {
     <div className="flex h-full">
       <div className="app-bg" aria-hidden />
       <Sidebar />
-      <main className="relative z-[1] min-w-0 flex-1 overflow-y-auto">
+      <main className="@container relative z-[1] min-w-0 flex-1 overflow-y-auto">
         {page === "agenda" ? (
           <div key={page} className="anim-rise h-full">
             <PlanningPage />

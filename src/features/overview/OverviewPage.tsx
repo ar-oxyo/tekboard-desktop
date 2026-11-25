@@ -56,14 +56,20 @@ export function OverviewPage() {
         <ErrorNote title={t("Impossible de parcourir tes projets")}>{asAppError(repos.error).message}</ErrorNote>
       ) : (
         <>
-          <div className="grid grid-cols-1 items-start gap-x-12 gap-y-9 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-            <div className="flex min-w-0 flex-col gap-9">
+          <div className="today-grid">
+            <div style={{ gridArea: "now" }}>
               <NowBlock />
+            </div>
+            <div style={{ gridArea: "due" }}>
+              <DeadlinesBlock />
+            </div>
+            <div style={{ gridArea: "sched" }}>
               <ScheduleBlock />
+            </div>
+            <div style={{ gridArea: "load" }}>
               <WorkloadBlock />
             </div>
-            <div className="flex min-w-0 flex-col gap-9">
-              <DeadlinesBlock />
+            <div style={{ gridArea: "quick" }}>
               <QuickActions />
             </div>
           </div>
@@ -86,7 +92,7 @@ function MoreSection({ repos }: { repos: RepoInfo[] }) {
         {flagged > 0 && <span className="text-xs text-faint">· {plural(flagged, "{n} à regarder", "{n} à regarder")}</span>}
       </button>
       {open && (
-        <div className="grid grid-cols-1 items-start gap-x-12 gap-y-9 lg:grid-cols-3">
+        <div className="grid grid-cols-1 items-start gap-x-12 gap-y-9 @5xl:grid-cols-3">
           <FocusCard repo={currentFocus(repos)} />
           <AttentionCard repos={repos} />
           <div className="flex min-w-0 flex-col gap-9">
