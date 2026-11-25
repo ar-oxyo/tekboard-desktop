@@ -11,6 +11,9 @@
     <style>
       #splash { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: #141415; transition: opacity 160ms ease-out; }
       #splash.gone { opacity: 0; pointer-events: none; }
+      html[data-mode="light"] #splash { background: #f3efe6; }
+      html[data-mode="dark"]:not([data-theme="aurora"]) #splash { background: #141415; }
+      html[data-theme="aurora"][data-mode="dark"] #splash { background: #181715; }
       #splash svg { width: 72px; height: 72px; animation: tb-in 300ms cubic-bezier(.2,.8,.2,1) both; }
       /* The ring fills up, then the T appears. */
       #splash .ring { stroke-dasharray: 0 943; animation: tb-ring 520ms cubic-bezier(.3,.7,.2,1) 80ms forwards; }

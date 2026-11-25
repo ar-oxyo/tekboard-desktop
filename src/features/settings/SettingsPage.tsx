@@ -4,7 +4,7 @@ import { Check, FolderPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Select } from "../../components/Select";
 import { Button, Card, CardTitle, cn, Code, ErrorNote, Field, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
-import { COLOR_MODES, designHasLight, type ColorMode } from "../../lib/appearance";
+import { COLOR_MODES, crossFade, designHasLight, type ColorMode } from "../../lib/appearance";
 import { api, asAppError, type Settings } from "../../lib/api";
 import { tildify } from "../../lib/format";
 import { keys, useColorMode, useEnv, useHome, usePref, useRepos, useSettings, useTemplates } from "../../lib/hooks";
@@ -316,6 +316,7 @@ export function SettingsPage() {
             <ThemePicker
               current={settings.data.theme}
               onPick={(theme) => {
+                crossFade();
                 useUi.setState({ themeOverride: null });
                 save.mutate({ ...settings.data!, theme });
                 setDraft((d) => (d ? { ...d, theme } : d));

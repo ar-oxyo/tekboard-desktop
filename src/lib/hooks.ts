@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, asAppError, type Progress, type RepoInfo, type RepoKind } from "./api";
 import { useUi } from "./store";
 import { t } from "./i18n";
-import { applyMode, MODE_KEY, storedMode, type ColorMode } from "./appearance";
+import { applyMode, crossFade, MODE_KEY, storedMode, type ColorMode } from "./appearance";
 
 export const keys = {
   settings: ["settings"] as const,
@@ -150,7 +150,11 @@ export function useProjectActions() {
 
 /** Keeps <html data-mode> in step with the preference, the design and the system setting. */
 export function useColorMode(theme: string | undefined): [ColorMode, (m: ColorMode) => void] {
-  const [mode, setPref] = usePref<ColorMode>("colorMode", storedMode());
+  const [mode, setStored] = usePref<ColorMode>("colorMode", storedMode());
+  const setPref = (m: ColorMode) => {
+    crossFade();
+    setStored(m);
+  };
   useEffect(() => {
     localStorage.setItem(MODE_KEY, mode);
     applyMode(mode, theme);
