@@ -19,7 +19,9 @@ import { listenConnect } from "../lib/connect";
 import { ConnectPage } from "../features/connect/ConnectPage";
 import { ShareDialog } from "../features/connect/ShareDialog";
 import { LIVE_KEY, LivePage } from "../features/connect/LivePage";
-import { listenSpaceLobby } from "../features/space/lobby";
+import "../features/space/lobby";
+import { listenSessions } from "../lib/sessionBus";
+import "../features/whiteboard/bus";
 import { doctorProblems } from "../features/settings/DoctorCard";
 import { SkillTreePage } from "../features/skilltree/SkillTreePage";
 import { PAGES, useUi, type Page } from "../lib/store";
@@ -48,6 +50,7 @@ import { OnboardingFlow } from "../features/onboarding/OnboardingFlow";
 // Heavy screens (code editor, canvas) load the first time they are opened.
 const PlaygroundPage = lazy(() => import("../features/playground/PlaygroundPage"));
 const ArenaPage = lazy(() => import("../features/arena/ArenaPage"));
+const BoardsPage = lazy(() => import("../features/whiteboard/BoardsPage"));
 // TekSpace loads only when opened: nothing of it runs or draws before.
 const SpacePage = lazy(() => import("../features/space/SpacePage"));
 
@@ -187,7 +190,7 @@ export function App() {
     const received = listen<{ title: string }>("tekshare-received", (e) => {
       useUi.getState().toast({ kind: "ok", title: t("« {t} » est arrivé", { t: e.payload.title }), detail: t("Vérifié. Choisis où le ranger dans Connect."), action: { label: t("Ranger"), run: () => useUi.getState().setPage("connect") } });
     });
-    const spaces = listenSpaceLobby();
+    const spaces = listenSessions();
     const shareChanged = listen("tekshare-changed", () => void qc.invalidateQueries({ queryKey: ["tekshare"] }));
     // TekLive: the session state is pushed; an invitation is announced wherever you are.
     const liveState = listen("teklive-state", (e) => qc.setQueryData(LIVE_KEY, e.payload));
@@ -381,6 +384,11 @@ export function App() {
           {page === "arena" && (
             <Suspense fallback={<Spinner />}>
               <ArenaPage />
+            </Suspense>
+          )}
+          {page === "boards" && (
+            <Suspense fallback={<Spinner />}>
+              <BoardsPage />
             </Suspense>
           )}
         </div>

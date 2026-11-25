@@ -5,7 +5,7 @@
 import { listen } from "@tauri-apps/api/event";
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 
-export type Domain = "plan" | "repos" | "focus" | "memory" | "insights" | "runs" | "subjects" | "my" | "libraries" | "settings" | "prompts" | "templates" | "ai" | "activity" | "playground" | "arena";
+export type Domain = "plan" | "repos" | "focus" | "memory" | "insights" | "runs" | "subjects" | "my" | "libraries" | "settings" | "prompts" | "templates" | "ai" | "activity" | "playground" | "arena" | "boards";
 
 /** Query key prefixes fed by each domain. */
 export const DOMAIN_KEYS: Record<Domain, QueryKey[]> = {
@@ -26,6 +26,7 @@ export const DOMAIN_KEYS: Record<Domain, QueryKey[]> = {
   activity: [["activity"]],
   playground: [["playground"]],
   arena: [["arena"]],
+  boards: [["boards"]],
 };
 
 /** What each writing command changes. Read-only commands are absent. */
@@ -37,6 +38,14 @@ export const COMMAND_DOMAINS: Record<string, Domain[]> = {
   playground_run: ["runs"],
   playground_export: ["repos"],
   arena_save: ["arena"],
+  board_create: ["boards"],
+  board_rename: ["boards"],
+  board_set_project: ["boards"],
+  board_set_position: ["boards"],
+  board_duplicate: ["boards"],
+  board_delete: ["boards"],
+  board_restore: ["boards"],
+  board_import: ["boards"],
   arena_delete: ["arena"],
   arena_run: ["runs"],
   arena_generate: ["runs"],

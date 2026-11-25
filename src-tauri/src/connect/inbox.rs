@@ -35,6 +35,7 @@ pub fn destinations(kind: &str) -> Vec<&'static str> {
         "log" | "error" => vec!["artix", "downloads"],
         "patch" => vec!["patch", "downloads"],
         "config" => vec!["config"],
+        "board" => vec!["board", "downloads"],
         "note" => vec!["downloads", "artix"],
         "file" | "folder" => vec!["downloads", "playground"],
         _ => vec!["downloads"],
@@ -62,6 +63,7 @@ pub enum Target {
     Arena,
     Downloads,
     Config,
+    Board,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -105,6 +107,7 @@ pub fn import(state: &AppState, svc: &super::Service, downloads: &Path, id: &str
         Target::Arena => "arena",
         Target::Downloads => "downloads",
         Target::Config => "config",
+        Target::Board => "board",
     };
     if !allowed.contains(&name) {
         return Err(AppError::new("invalid_target", "Cette destination ne convient pas à ce type de ressource"));
@@ -231,6 +234,11 @@ pub fn import(state: &AppState, svc: &super::Service, downloads: &Path, id: &str
             let dest = fresh(&parent, &slug(&m.title));
             share::extract(&files, &dest)?;
             done(format!("Enregistré dans {}", dest.display()), json!({"reveal": dest}))
+        }
+        Target::Board => {
+            let b = crate::boards::import_json(&state.conn(), &state.data_dir, &text_of(&files)?, None, now())?;
+            crate::notify::changed(&["boards"]);
+            done(format!("Tableau « {} » ajouté", b.name), json!({"page": "boards", "board": b.id}))
         }
         Target::Config => {
             let v: Value = serde_json::from_str(&text_of(&files)?).map_err(|_| AppError::new("bad_bundle", "Réglages illisibles"))?;

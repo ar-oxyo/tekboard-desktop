@@ -1,10 +1,10 @@
 import { create } from "zustand";
 import type { PlanEvent, PlanTask } from "./api";
 
-export type Page = "overview" | "projects" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "myepitech" | "logtime" | "cozy" | "settings" | "prompts" | "agenda" | "skilltree" | "playground" | "arena" | "connect" | "live" | "space";
+export type Page = "overview" | "projects" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "myepitech" | "logtime" | "cozy" | "settings" | "prompts" | "agenda" | "skilltree" | "playground" | "arena" | "boards" | "connect" | "live" | "space";
 
 /** Sidebar order. Ctrl+1 to Ctrl+9 open the first nine. */
-export const PAGES: Page[] = ["overview", "projects", "agenda", "git", "testing", "library", "templates", "myepitech", "skilltree", "logtime", "subjects", "analytics", "cozy", "settings", "prompts", "playground", "arena", "connect", "live", "space"];
+export const PAGES: Page[] = ["overview", "projects", "agenda", "git", "testing", "library", "templates", "myepitech", "skilltree", "logtime", "subjects", "analytics", "cozy", "settings", "prompts", "playground", "arena", "boards", "connect", "live", "space"];
 
 export interface Toast {
   id: number;
@@ -35,6 +35,9 @@ interface UiState {
   testingRepo: string | null;
   /** Project chosen for a TekLive session (from the project menu). */
   liveRepo: string | null;
+  /** The whiteboard open on the Tableaux page. */
+  board: string | null;
+  openBoard: (id: string | null) => void;
   openLive: (path: string) => void;
   openTesting: (path: string | null) => void;
   /** Task whose progress the Testing screen shows. */
@@ -105,6 +108,8 @@ export const useUi = create<UiState>((set, get) => ({
   openLibrary: (libraryRepo) => set({ libraryRepo, page: "library", sheetPath: null, paletteOpen: false }),
   testingRepo: null,
   liveRepo: null,
+  board: null,
+  openBoard: (board) => set({ board, page: "boards", sheetPath: null, paletteOpen: false }),
   openLive: (liveRepo) => set({ liveRepo, page: "live", sheetPath: null, paletteOpen: false }),
   openTesting: (testingRepo) => set({ testingRepo, page: "testing", sheetPath: null, paletteOpen: false }),
   jobId: null,

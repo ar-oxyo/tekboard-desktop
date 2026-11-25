@@ -1,11 +1,13 @@
 pub mod ai;
 pub mod arena;
 pub mod analytics;
+pub mod boards;
 pub mod cdiag;
 pub mod checker;
 pub mod claude;
 pub mod commands;
 pub mod commands_ai;
+pub mod commands_boards;
 pub mod commands_connect;
 pub mod commands_app;
 pub mod commands_dev;
@@ -228,6 +230,23 @@ pub fn run() {
             commands::cozy_restore,
             commands::startup,
             commands_lib::library_list,
+            commands_boards::board_list,
+            commands_boards::board_create,
+            commands_boards::board_get,
+            commands_boards::board_save,
+            commands_boards::board_rename,
+            commands_boards::board_set_project,
+            commands_boards::board_set_position,
+            commands_boards::board_duplicate,
+            commands_boards::board_delete,
+            commands_boards::board_versions,
+            commands_boards::board_restore,
+            commands_boards::board_write_file,
+            commands_boards::board_write_pdf,
+            commands_boards::board_export_json,
+            commands_boards::board_import,
+            commands_boards::board_export_to_project,
+            commands_boards::board_ai,
             commands_lab::playground_tools,
             commands_lab::playground_list,
             commands_lab::playground_create,

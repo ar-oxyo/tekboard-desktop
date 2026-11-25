@@ -1,7 +1,7 @@
 // Project sheet: what you add to a repository — status, deadline, notes, build and run commands, subjects.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, CircleCheck, CircleX, Code2, Hammer, Rocket } from "lucide-react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Modal } from "../../components/Modal";
 import { Button, cn, ErrorNote, Field, Input, Spinner, Tag } from "../../components/ui";
 import { api, asAppError, type ProjectSheet as Sheet, type RepoInfo, type SheetInput } from "../../lib/api";
@@ -14,9 +14,11 @@ import { AdvancedTab, GitTab, PlanOverview } from "./SheetPlan";
 import { DocsTab, TestingTab } from "./SheetTabs";
 import { t } from "../../lib/i18n";
 
+const ProjectBoards = lazy(() => import("../whiteboard/BoardsPage").then((m) => ({ default: m.ProjectBoards })));
+
 // Libraries are managed from Projects → Libraries, where the whole catalogue is.
-type Tab = "overview" | "details" | "git" | "testing" | "docs" | "advanced";
-const TABS: Array<[Tab, string]> = [["overview", t("Vue d'ensemble")], ["details", t("Rendu et notes")], ["git", "Git"], ["testing", "Tests"], ["docs", t("Documentation")], ["advanced", t("Avancé")]];
+type Tab = "overview" | "details" | "git" | "testing" | "docs" | "boards" | "advanced";
+const TABS: Array<[Tab, string]> = [["overview", t("Vue d'ensemble")], ["details", t("Rendu et notes")], ["git", "Git"], ["testing", "Tests"], ["docs", t("Documentation")], ["boards", t("Tableaux")], ["advanced", t("Avancé")]];
 
 export function ProjectSheetDialog({ path }: { path: string }) {
   const close = useUi((s) => s.closeSheet);
@@ -198,6 +200,11 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
       {tab === "overview" && <PlanOverview repo={repo} />}
       {tab === "git" && <GitTab repo={repo} />}
       {tab === "advanced" && <AdvancedTab repo={repo} />}
+      {tab === "boards" && (
+        <Suspense fallback={<Spinner />}>
+          <ProjectBoards repo={repo.path} />
+        </Suspense>
+      )}
       {tab === "testing" && <TestingTab repo={repo} />}
       {tab === "docs" && <DocsTab repo={repo} subjects={linked} onOpenSubject={(id) => openSubject.mutate(id)} />}
       {tab === "details" && (

@@ -18,6 +18,7 @@ export const KIND_LABEL: Record<string, string> = {
   note: t("Note"),
   draft: t("Brouillon du Playground"),
   config: t("Réglages TekBoard"),
+  board: t("Tableau blanc"),
 };
 
 export const STATUS_LABEL: Record<Transfer["status"], string> = {
@@ -44,6 +45,7 @@ export const DEST_LABEL: Record<string, string> = {
   artix: t("Faire analyser par Artix"),
   downloads: t("Enregistrer dans Téléchargements"),
   config: t("Appliquer à mes réglages"),
+  board: t("Ajouter à mes tableaux"),
 };
 
 /** Paired people connected right now, who can receive (not the invisible or busy ones last). */

@@ -4,7 +4,7 @@
 // table's resources. Nothing records what you do elsewhere; microphone and camera are never used.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { DoorOpen, ExternalLink, Music, Pin, Play, Send, Share2, Square, Target, Timer, Trash2, UserPlus, Users, Volume2, VolumeX } from "lucide-react";
+import { DoorOpen, ExternalLink, Music, PenTool, Pin, Play, Send, Share2, Square, Target, Timer, Trash2, UserPlus, Users, Volume2, VolumeX } from "lucide-react";
 import { api, asAppError, type ConnectConfig, type ConnectState, type LiveSession } from "../../lib/api";
 import { useUi } from "../../lib/store";
 import { usePref } from "../../lib/hooks";
@@ -23,6 +23,7 @@ import { liveSpaces, useSpaceLobby } from "./lobby";
 import { join, leave, moveLocal, send, setAudience, startHosting, useSpace } from "./client";
 import { SpaceEngine } from "./engine";
 import * as audio from "./audio";
+import { joinBoard, useBoardBus } from "../whiteboard/bus";
 import { t } from "../../lib/i18n";
 
 const SOUND_LABEL: Record<Sound, string> = { rain: t("Pluie"), cafe: t("Café"), fire: t("Cheminée"), forest: t("Forêt"), library: t("Bibliothèque"), brown: t("Bruit brun") };
@@ -442,6 +443,8 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
           )}
         </section>
 
+        <TableBoardSection space={space} meFp={meFp} def={def} state={state} />
+
         <section className="space-y-1.5">
           <h3 className="flex items-center gap-1.5 text-xs text-faint">
             <Pin className="size-3.5" /> {t("Ressources de la table")}
@@ -496,3 +499,57 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
   );
 }
 
+/** The table's whiteboard: one person seated opens it and hosts it; the others seated join it. */
+function TableBoardSection({ space, meFp, def, state }: { space: SpaceState; meFp: string; def: TableDef; state: TableState }) {
+  const toast = useUi((s) => s.toast);
+  const [busy, setBusy] = useState(false);
+  const b = state.board;
+  const seatedHere = (fp: string) => {
+    const p = useSpace.getState().space?.players[fp];
+    return !!p?.seat && seatById(p.seat)?.table.id === def.id;
+  };
+  const open = async () => {
+    setBusy(true);
+    try {
+      const board = await api.boardCreate(t("Table « {n} » · {d}", { n: state.topic || t(def.name), d: new Date().toLocaleDateString() }), null);
+      useBoardBus.setState({
+        autoHost: {
+          board: board.id,
+          mayJoin: seatedHere,
+          started: (session, name) => send({ t: "space.board", space: space.id, table: def.id, board: { session, name } }),
+          stopped: () => send({ t: "space.board", space: space.id, table: def.id, board: null }),
+        },
+      });
+      useUi.getState().openBoard(board.id);
+    } catch (e) {
+      toast({ kind: "error", title: t("Création impossible"), detail: asAppError(e).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="space-y-1.5">
+      <h3 className="flex items-center gap-1.5 text-xs text-faint">
+        <PenTool className="size-3.5" /> {t("Tableau blanc de la table")}
+      </h3>
+      {b ? (
+        b.host === meFp ? (
+          <Button size="sm" variant="secondary" onClick={() => useUi.getState().openBoard(b.session.split("@")[0])}>
+            {t("Revenir à mon tableau « {n} »", { n: b.name })}
+          </Button>
+        ) : (
+          <Button size="sm" variant="secondary" onClick={() => joinBoard({ host: b.host, session: b.session.slice(0, 120), name: b.name.slice(0, 80), hostNick: b.hostNick.slice(0, 24), at: Date.now() })}>
+            {t("Rejoindre le tableau de {n}", { n: b.hostNick })}
+          </Button>
+        )
+      ) : (
+        <>
+          <Button size="sm" variant="secondary" busy={busy} onClick={() => void open()}>
+            {t("Ouvrir un tableau pour la table")}
+          </Button>
+          <p className="text-[11px] text-faint">{t("Les personnes assises à la table peuvent le rejoindre ; il reste dans tes tableaux.")}</p>
+        </>
+      )}
+    </section>
+  );
+}

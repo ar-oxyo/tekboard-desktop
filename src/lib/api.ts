@@ -883,6 +883,7 @@ export type ShareResource =
   | { kind: "error"; title: string; text: string }
   | { kind: "patch"; repo: string }
   | { kind: "note"; title: string; text: string }
+  | { kind: "board"; id: string }
   | { kind: "config" };
 export interface ShareCheck {
   kind: string;
@@ -926,10 +927,11 @@ export type ImportTarget =
   | { to: "patch"; repo: string; apply: boolean }
   | { to: "arena" }
   | { to: "downloads" }
-  | { to: "config" };
+  | { to: "config" }
+  | { to: "board" };
 export interface Imported {
   detail: string;
-  open: { page?: string; id?: number; path?: string; runId?: number; reveal?: string } | null;
+  open: { page?: string; id?: number; path?: string; runId?: number; reveal?: string; board?: string } | null;
 }
 
 // ───────────────────────── TekLive ─────────────────────────
@@ -964,7 +966,31 @@ export interface LiveInvitation {
   at: number;
 }
 
-export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull" | "playground" | "arena" | "arena_ai" | "arena_report";
+// ───────────────────────── Whiteboards ─────────────────────────
+export interface BoardMeta {
+  id: string;
+  name: string;
+  project: string | null;
+  thumb: string | null;
+  position: number;
+  createdAt: number;
+  updatedAt: number;
+  elements: number;
+}
+export interface BoardFile {
+  id: string;
+  mimeType: string;
+  dataURL: string;
+  created?: number;
+}
+export interface BoardData {
+  meta: BoardMeta;
+  elements: unknown[];
+  appState: Record<string, unknown>;
+  files: Record<string, BoardFile>;
+}
+
+export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull" | "playground" | "arena" | "arena_ai" | "arena_report" | "board_ai";
 /** Kind-specific facts; see the Rust module that produces each kind. */
 export type RunSummary = Record<string, unknown> & { steps?: JobStep[] };
 export interface JobView {
@@ -1752,6 +1778,23 @@ export const api = {
   sessionSend: (fp: string, msg: Record<string, unknown>) => tauriInvoke<void>("session_send", { fp, msg }),
   sessionBroadcast: (fps: string[], msg: Record<string, unknown>) => tauriInvoke<number>("session_broadcast", { fps, msg }),
   spaceOpenJam: (url: string) => tauriInvoke<void>("space_open_jam", { url }),
+  boardList: (project: string | null, query: string | null) => invoke<BoardMeta[]>("board_list", { project, query }),
+  boardCreate: (name: string, project: string | null) => invoke<BoardMeta>("board_create", { name, project }),
+  boardGet: (id: string) => invoke<BoardData>("board_get", { id }),
+  boardSave: (id: string, elements: unknown[], appState: Record<string, unknown>, files: Record<string, BoardFile>, thumb: string | null) => tauriInvoke<BoardMeta>("board_save", { id, elements, appState, files, thumb }),
+  boardRename: (id: string, name: string) => invoke<void>("board_rename", { id, name }),
+  boardSetProject: (id: string, project: string | null) => invoke<void>("board_set_project", { id, project }),
+  boardSetPosition: (id: string, position: number) => invoke<void>("board_set_position", { id, position }),
+  boardDuplicate: (id: string) => invoke<BoardMeta>("board_duplicate", { id }),
+  boardDelete: (id: string) => invoke<void>("board_delete", { id }),
+  boardVersions: (id: string) => invoke<Array<{ at: number; elements: number }>>("board_versions", { id }),
+  boardRestore: (id: string, at: number) => invoke<BoardData>("board_restore", { id, at }),
+  boardWriteFile: (path: string, base64: string | null, text: string | null) => invoke<void>("board_write_file", { path, base64, text }),
+  boardWritePdf: (path: string, jpeg: string, width: number, height: number) => invoke<void>("board_write_pdf", { path, jpeg, width, height }),
+  boardExportJson: (id: string) => invoke<string>("board_export_json", { id }),
+  boardImport: (path: string, project: string | null) => invoke<BoardMeta>("board_import", { path, project }),
+  boardExportToProject: (id: string, repo: string) => invoke<string>("board_export_to_project", { id, repo }),
+  boardAi: (kind: "diagram" | "annotate", request: string, context: string) => invoke<number>("board_ai", { kind, request, context }),
   jobGet: (id: number) => invoke<JobView>("job_get", { id }),
   jobGetSince: (id: number, logFrom: number, eventsFrom: number) => invoke<JobView>("job_get", { id, logFrom, eventsFrom }),
   jobCancel: (id: number) => invoke<void>("job_cancel", { id }),

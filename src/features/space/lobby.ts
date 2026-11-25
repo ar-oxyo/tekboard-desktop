@@ -1,6 +1,6 @@
 // Always loaded (it is tiny): spaces announced by contacts and invitations, kept until the
 // TekSpace screen opens. Other TekSpace messages go to the space engine once it is loaded.
-import { listen } from "@tauri-apps/api/event";
+import { onSession } from "../../lib/sessionBus";
 import { create } from "zustand";
 import { useUi } from "../../lib/store";
 import { t } from "../../lib/i18n";
@@ -31,19 +31,18 @@ export function liveSpaces(spaces: Record<string, Hosted>, now: number): Hosted[
   return Object.values(spaces).filter((s) => now - s.at < ANNOUNCE_TTL).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
-export function listenSpaceLobby() {
-  return listen<{ from: string; msg: Record<string, unknown> }>("connect-session", (e) => {
-    const { from, msg } = e.payload;
-    const tp = msg.t;
-    if (tp === "space.announce" || tp === "space.invite") {
-      const h: Hosted = { space: String(msg.space ?? "").slice(0, 64), name: String(msg.name ?? "").slice(0, 60), hostNick: String(msg.hostNick ?? "").slice(0, 24), count: Number(msg.count ?? 0) || 0, v: Number(msg.v ?? 1) || 1, host: from, at: Date.now() };
-      if (!h.space) return;
-      if (tp === "space.announce") useSpaceLobby.setState((s) => ({ spaces: { ...s.spaces, [h.space]: h } }));
-      else {
-        useSpaceLobby.setState((s) => ({ invites: [...s.invites.filter((i) => i.space !== h.space), h], spaces: { ...s.spaces, [h.space]: h } }));
-        useUi.getState().toast({ kind: "info", title: t("{n} t'invite dans « {s} »", { n: h.hostNick, s: h.name }), detail: t("Un espace TekSpace, pour travailler ensemble."), action: { label: t("Voir"), run: () => useUi.getState().setPage("space") } });
-      }
+export function handleSpace(from: string, msg: Record<string, unknown>) {
+  const tp = msg.t;
+  if (tp === "space.announce" || tp === "space.invite") {
+    const h: Hosted = { space: String(msg.space ?? "").slice(0, 64), name: String(msg.name ?? "").slice(0, 60), hostNick: String(msg.hostNick ?? "").slice(0, 24), count: Number(msg.count ?? 0) || 0, v: Number(msg.v ?? 1) || 1, host: from, at: Date.now() };
+    if (!h.space) return;
+    if (tp === "space.announce") useSpaceLobby.setState((s) => ({ spaces: { ...s.spaces, [h.space]: h } }));
+    else {
+      useSpaceLobby.setState((s) => ({ invites: [...s.invites.filter((i) => i.space !== h.space), h], spaces: { ...s.spaces, [h.space]: h } }));
+      useUi.getState().toast({ kind: "info", title: t("{n} t'invite dans « {s} »", { n: h.hostNick, s: h.name }), detail: t("Un espace TekSpace, pour travailler ensemble."), action: { label: t("Voir"), run: () => useUi.getState().setPage("space") } });
     }
-    useSpaceLobby.getState().handler?.(from, msg);
-  });
+  }
+  useSpaceLobby.getState().handler?.(from, msg);
 }
+
+onSession("space.", handleSpace);

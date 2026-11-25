@@ -113,6 +113,16 @@ describe("host", () => {
     h.tick();
     expect(h.state.tables["focus-a"].focus).toMatchObject({ phase: "work", cycle: 2 });
     expect(s2).toBeDefined();
+    // The table's board: opened by B, only B (or the owner) closes it, and it ends when B leaves.
+    expect(h.handle("B", { t: "space.board", space: "sp1", table: "focus-a", board: { session: "b1@abc", name: "Archi" } })).toBe(true);
+    expect(h.state.tables["focus-a"].board).toMatchObject({ host: "B", hostNick: "B", session: "b1@abc" });
+    expect(h.handle("A", { t: "space.board", space: "sp1", table: "focus-a", board: { session: "b2@def", name: "x" } })).toBe(true);
+    expect(h.state.tables["focus-a"].board?.host, "the owner may replace it").toBe("A");
+    expect(h.handle("B", { t: "space.board", space: "sp1", table: "focus-a", board: null }), "not B's anymore").toBe(false);
+    expect(readClient({ t: "space.board", space: "sp1", table: "focus-a", board: { session: "../x", name: "x" } }), "bad session").toBeNull();
+    h.remove("A");
+    expect(h.state.tables["focus-a"].board).toBeNull();
+    h.handle("A", { t: "space.join", space: "sp1", v: 1, nick: "A", avatar: "", status: "" });
     // Everyone leaves: the table is free again.
     h.remove("A");
     h.remove("B");

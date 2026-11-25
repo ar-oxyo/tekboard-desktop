@@ -55,6 +55,15 @@ Chaque version publiée a sa section ici ; la release GitHub reprend ce texte.
 - Ambiances sonores générées en direct (pluie, café, cheminée, forêt, bibliothèque, bruit brun), communes à la table, avec volume et coupure propres à chacun ; lien d'invitation Spotify Jam facultatif (seuls les liens Jam s'ouvrent, aucun son ne passe par TekBoard).
 - Léger : chargé seulement à l'ouverture, campus statique dessiné une fois, image redessinée seulement quand quelque chose bouge (30 i/s au plus), rien n'est dessiné quand la page est masquée. Aucun micro, aucune caméra, aucune surveillance de ce que tu fais ailleurs.
 
+**Tableau blanc** (Labo → Tableaux, onglet Tableaux de la fiche projet, tables de TekSpace)
+- Dessin à main levée, formes, flèches, texte, images, notes, grille et aimantation (Excalidraw, chargé seulement à l'ouverture d'un tableau ; polices fournies par TekBoard, rien n'est téléchargé).
+- Formes pour expliquer du code, générées à partir de quelques valeurs : tableau C, structure, pointeur, pile et tas, liste chaînée, arbre binaire, graphe, pile, file, classe UML, organigramme, client-serveur, dépendances entre fonctions. Les flèches restent attachées aux formes quand on les déplace.
+- Blocs de code C colorés comme dans l'éditeur, dont le code reste modifiable.
+- Tableaux enregistrés automatiquement dans TekBoard (jamais dans le dépôt Git sauf export voulu) : renommer, dupliquer, épingler, trier, chercher par nom ou par texte, miniatures, historique de versions avec restauration, rattachement à un projet (onglet Tableaux de la fiche).
+- Export PNG, SVG, PDF et `.tekboard-board` (réimportable, comme les fichiers `.excalidraw`), ou copie dans `docs/boards/` d'un projet. Partage par TekShare.
+- Dessiner à plusieurs avec ses contacts TekBoard Connect : changements envoyés élément par élément, curseurs colorés et nommés, droits « peut dessiner » ou « lecture seule » vérifiés par l'hôte, arrivées, départs et reconnexion, annulation propre à chacun, mode présentation (suivre la vue de quelqu'un). À une table de TekSpace, un tableau s'ouvre pour la table et les personnes assises le rejoignent.
+- Artix, sur demande : expliquer le tableau, générer un diagramme (organigramme, architecture, structure de données) ou annoter ce qui est dessiné. La proposition arrive en aperçu sélectionné, à garder ou annuler, et Ctrl+Z l'enlève d'un coup ; elle n'est envoyée aux autres qu'une fois gardée.
+
 ## 0.7.0
 
 **Choisir son IA** (Réglages → Artix (IA), et au premier lancement)

@@ -344,6 +344,26 @@ const MIGRATIONS: &[&str] = &[
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
      );",
+    // v-boards: whiteboards (scenes live in the data folder; the table indexes and versions them).
+    "CREATE TABLE boards (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        project TEXT,
+        thumb TEXT,
+        position INTEGER NOT NULL DEFAULT 0,
+        text TEXT NOT NULL DEFAULT '',
+        elements INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+     );
+     CREATE INDEX boards_project ON boards (project);
+     CREATE TABLE board_versions (
+        board_id TEXT NOT NULL,
+        at INTEGER NOT NULL,
+        elements INTEGER NOT NULL,
+        scene TEXT NOT NULL,
+        PRIMARY KEY (board_id, at)
+     );",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

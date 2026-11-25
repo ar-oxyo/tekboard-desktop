@@ -15,7 +15,7 @@ const MAX_SPEED = 9;
 const MAX_PLAYERS = 40;
 
 export function emptyTable(id: string): TableState {
-  return { id, owner: null, privacy: "open", members: [], topic: "", goals: {}, focus: null, ambience: null, jam: null, pins: [] };
+  return { id, owner: null, privacy: "open", members: [], topic: "", goals: {}, focus: null, ambience: null, jam: null, pins: [], board: null };
 }
 
 export class SpaceHost {
@@ -76,6 +76,8 @@ export class SpaceHost {
     const p = this.state.players[fp];
     if (!p || fp === this.state.host) return;
     this.standUp(p);
+    // Their board session ends with them.
+    for (const table of Object.values(this.state.tables)) if (table.board?.host === fp) table.board = null;
     delete this.state.players[fp];
     this.lastMove.delete(fp);
     this.changed();
@@ -175,6 +177,16 @@ export class SpaceHost {
       case "space.pin":
         if (table.pins.length >= 20) return false;
         table.pins.push({ by: fp, title: msg.title, text: msg.text, at: this.now() });
+        break;
+      case "space.board":
+        // Anyone seated may open the table's board; only its host or the table owner closes it.
+        if (msg.board) {
+          if (table.board && table.board.host !== fp && !owner) return false;
+          table.board = { ...msg.board, host: fp, hostNick: p.nick };
+        } else {
+          if (!table.board || (table.board.host !== fp && !owner)) return false;
+          table.board = null;
+        }
         break;
       case "space.unpin": {
         const pin = table.pins[msg.index];

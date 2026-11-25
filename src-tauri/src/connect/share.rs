@@ -51,6 +51,7 @@ pub enum Resource {
     Error { title: String, text: String },
     Patch { repo: String },
     Note { title: String, text: String },
+    Board { id: String },
     Config {},
 }
 
@@ -239,6 +240,10 @@ pub fn build(state: &AppState, r: &Resource) -> Result<Built> {
             let mut b = text_bundle("patch", &format!("Modifications de {name}"), "changes.patch", &diff, json!({"project": name}));
             b.school = school_of(state, &dir).map(|s| s.0);
             b
+        }
+        Resource::Board { id } => {
+            let (name, json) = crate::boards::export_json(&state.conn(), &state.data_dir, id)?;
+            text_bundle("board", &name, "board.tekboard-board", &json, json!({}))
         }
         Resource::Config {} => {
             let s = state.settings()?;

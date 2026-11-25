@@ -50,6 +50,15 @@ export interface TableState {
   ambience: { sound: Sound; since: number } | null;
   jam: string | null;
   pins: Pin[];
+  /** The table's whiteboard, hosted by one of the people seated there. */
+  board: TableBoard | null;
+}
+
+export interface TableBoard {
+  session: string;
+  name: string;
+  host: string;
+  hostNick: string;
 }
 
 export interface SpaceState {
@@ -76,6 +85,7 @@ export type ClientMsg =
   | { t: "space.ambience"; space: string; table: string; sound: Sound | null }
   | { t: "space.pin"; space: string; table: string; title: string; text: string }
   | { t: "space.unpin"; space: string; table: string; index: number }
+  | { t: "space.board"; space: string; table: string; board: { session: string; name: string } | null }
   | { t: "space.profile"; space: string; nick: string; avatar: string; status: string };
 
 export type HostMsg =
@@ -157,6 +167,14 @@ export function readClient(raw: Record<string, unknown>): ClientMsg | null {
       return { t, space, table: clip(raw.table, 32), title: clip(raw.title, 80) || "Note", text: clip(raw.text, 2000) };
     case "space.unpin":
       return { t, space, table: clip(raw.table, 32), index: Math.max(0, Math.floor(num(raw.index) ?? -1)) };
+    case "space.board": {
+      const table = clip(raw.table, 32);
+      if (!table) return null;
+      if (raw.board === null) return { t, space, table, board: null };
+      const b = raw.board as Record<string, unknown> | undefined;
+      const session = clip(b?.session, 120);
+      return session && /^[\w-]+@[\w-]+$/.test(session) ? { t, space, table, board: { session, name: clip(b?.name, 80) || "Tableau" } } : null;
+    }
     case "space.profile":
       return { t, space, nick: clip(raw.nick, 24) || "?", avatar: clip(raw.avatar, 48), status: clip(raw.status, 16) };
     default:

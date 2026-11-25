@@ -23,6 +23,7 @@ export const SCREEN_OF: Record<Page, string> = {
   prompts: "settings",
   playground: "lab",
   arena: "lab",
+  boards: "lab",
   connect: "connect",
   live: "connect",
   space: "connect",
