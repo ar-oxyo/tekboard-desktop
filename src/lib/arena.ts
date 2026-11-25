@@ -95,8 +95,24 @@ export function ratioAt(a: ArenaSeries | undefined, b: ArenaSeries | undefined):
   return pa > 0 ? { n, ratio: pb / pa } : null;
 }
 
-/** Merges what Artix generated into a config: its files replace same-named ones, its scenarios are added. */
-export function mergeGenerated(c: BenchConfig, files: DraftFile[], scenarios: ArenaScenario[]): BenchConfig {
+/**
+ * Merges what Artix generated into a config: its files replace same-named ones, its
+ * scenarios are added (a scenario of the same name is replaced) and its hypotheses are kept
+ * with the benchmark, so the results show them next to the measurements.
+ */
+export function mergeGenerated(c: BenchConfig, files: DraftFile[], scenarios: ArenaScenario[], hypotheses: NonNullable<BenchConfig["hypotheses"]> = []): BenchConfig {
   const names = new Set(files.map((f) => f.name));
-  return { ...c, files: [...c.files.filter((f) => !names.has(f.name)), ...files], scenarios: [...c.scenarios, ...scenarios].slice(0, 6) };
+  const scen = new Set(scenarios.map((s) => s.name));
+  const seen = new Set((c.hypotheses ?? []).map((h) => `${h.function}|${h.message}`));
+  return {
+    ...c,
+    files: [...c.files.filter((f) => !names.has(f.name)), ...files],
+    scenarios: [...c.scenarios.filter((s) => !scen.has(s.name)), ...scenarios].slice(0, 6),
+    hypotheses: [...(c.hypotheses ?? []), ...hypotheses.filter((h) => !seen.has(`${h.function}|${h.message}`))].slice(0, 30),
+  };
+}
+
+/** The hypotheses of a run, split into the project's own code and its libraries. */
+export function splitHypotheses<H extends { scope?: string }>(all: H[]): { project: H[]; library: H[] } {
+  return { project: all.filter((h) => h.scope !== "library"), library: all.filter((h) => h.scope === "library") };
 }

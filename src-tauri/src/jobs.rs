@@ -329,10 +329,7 @@ impl Job {
                     }
                     st.carry.push_str(&text);
                 }
-                while let Some(nl) = st.carry.find('\n') {
-                    let line: String = st.carry.drain(..=nl).collect();
-                    on_line(line.trim_end_matches(['\n', '\r']));
-                }
+                split_lines(&mut st.carry, on_line);
                 if last && !st.carry.is_empty() {
                     let line = std::mem::take(&mut st.carry);
                     on_line(line.trim_end());
@@ -381,6 +378,29 @@ impl Job {
         if let Some(argv) = self.on_kill.lock().unwrap_or_else(|e| e.into_inner()).clone() {
             let _ = Command::new(&argv[0]).args(&argv[1..]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status();
         }
+    }
+}
+
+/// Longest unfinished line kept between two reads: a program printing megabytes without a
+/// newline must not grow it forever.
+const CARRY_CAP: usize = 64 * 1024;
+
+/// Hands every complete line of `carry` to `on_line` and keeps the unfinished end. One pass:
+/// draining line by line moved the rest of the buffer each time (quadratic on big outputs,
+/// which froze the Arena's profiling on programs that print their data).
+fn split_lines(carry: &mut String, on_line: &mut dyn FnMut(&str)) {
+    let mut start = 0;
+    while let Some(i) = carry[start..].find('\n') {
+        on_line(carry[start..start + i].trim_end_matches('\r'));
+        start += i + 1;
+    }
+    carry.drain(..start);
+    if carry.len() > CARRY_CAP {
+        let mut cut = carry.len() - CARRY_CAP;
+        while !carry.is_char_boundary(cut) {
+            cut += 1;
+        }
+        carry.drain(..cut);
     }
 }
 
@@ -664,6 +684,26 @@ pub fn split_command(command: &str) -> Result<Vec<String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lines_are_split_in_one_pass_and_a_runaway_line_is_capped() {
+        let mut carry = String::from("a\r\nb\nunfinished");
+        let mut seen = Vec::new();
+        split_lines(&mut carry, &mut |l| seen.push(l.to_string()));
+        assert_eq!(seen, ["a", "b"]);
+        assert_eq!(carry, "unfinished");
+        // Ten megabytes of short lines go through quickly (it used to be quadratic).
+        let mut big = "123456789\n".repeat(1_000_000);
+        let t = std::time::Instant::now();
+        let mut n = 0;
+        split_lines(&mut big, &mut |_| n += 1);
+        assert_eq!(n, 1_000_000);
+        assert!(big.is_empty());
+        assert!(t.elapsed() < Duration::from_secs(2), "{:?}", t.elapsed());
+        let mut long = "é".repeat(CARRY_CAP);
+        split_lines(&mut long, &mut |_| {});
+        assert!(long.len() <= CARRY_CAP);
+    }
 
     #[test]
     fn typed_commands_are_split_like_a_shell_would_without_running_one() {

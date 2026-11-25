@@ -715,6 +715,8 @@ export interface BenchConfig {
   scenarios: ArenaScenario[];
   files: DraftFile[];
   options: ArenaOptions;
+  /** Artix's reading of the code when it prepared the benchmark (hypotheses). */
+  hypotheses?: Array<{ function: string; file: string; line: number | null; message: string }>;
 }
 export interface ArenaSaved {
   id: number;
@@ -778,6 +780,12 @@ export interface ArenaHypothesis {
   weight?: string;
   message: string;
   provenance?: string;
+  /** "project" (the program's files) or "library" (library folders, imported code, tests). */
+  scope?: "project" | "library";
+  /** Variants where the same finding was read. */
+  seenIn?: string[];
+  /** Places it was merged from. */
+  count?: number;
 }
 export interface ArenaResults {
   config: BenchConfig | null;
@@ -787,6 +795,8 @@ export interface ArenaResults {
   inputs: Array<{ scenario: number; n: number; bytes: number; head: string }>;
   notes: string[];
   machine: { cpu: string | null; cores: number; load: string | null };
+  /** The Valgrind run in progress. */
+  current?: { tool: string; variant: number; scenario: number; n: number; limitS: number; startedAt: number } | null;
 }
 export interface ArenaGenerated {
   files: DraftFile[];

@@ -42,12 +42,13 @@ pub fn generation_prompt(config: &BenchConfig, focus: &str) -> String {
     let program = config.variants.first().map(|v| if v.program.is_empty() { "le programme du brouillon".to_string() } else { v.program.clone() }).unwrap_or_default();
     format!(
         "Tu prépares un benchmark pour le programme C de ce dossier ({program}). {focus}\n\n\
-Lis le code pour comprendre ce que le programme attend en entrée et quelles fonctions risquent d'être lentes.\n\
-Écris des générateurs de données et des scénarios de taille croissante. Règles strictes :\n\
-- un générateur est un fichier Python (.py, bibliothèque standard seulement) ou C (.c), appelé `gen N SEED SORTIE` : il écrit dans le fichier SORTIE des données de taille N, de façon reproductible avec SEED ;\n\
-- pas d'accès réseau, pas de fichiers en dehors de SORTIE ;\n\
-- 4 à 8 tailles par scénario, croissantes et assez espacées (facteur 2 par exemple), assez grandes pour durer de quelques millisecondes à quelques secondes ;\n\
-- prévois aussi des cas limites (données déjà triées, toutes égales, vides…) quand c'est pertinent ;\n\
+Procède dans l'ordre, sans lire plus que nécessaire : 1) le point d'entrée et la lecture des entrées, pour connaître le format exact attendu ; 2) les fonctions qui traitent ces données.\n\
+Écris le MINIMUM de fichiers : la qualité compte, pas la quantité. Règles strictes :\n\
+- un générateur est un fichier Python (.py, bibliothèque standard seulement) ou C (.c), appelé `gen N SEED SORTIE` : il écrit dans le fichier SORTIE des données de taille N, de façon reproductible avec SEED (même N et même SEED = même fichier) ;\n\
+- un seul générateur suffit le plus souvent ; au plus 3 scénarios, et un fichier de plus seulement si les données ont une autre forme ;\n\
+- pas d'accès réseau, pas de fichiers en dehors de SORTIE, pas de fichier d'aide ni de README ;\n\
+- 5 à 8 tailles par scénario, croissantes d'un facteur 2, de petites (quelques millisecondes) à assez grandes (une à quelques secondes) : TekBoard teste d'abord les générateurs sur une petite taille, puis s'arrête de lui-même à la limite de temps ;\n\
+- un cas limite (données déjà triées, toutes égales…) seulement s'il peut changer la complexité ;\n\
 - `args` donne les arguments du programme, sans shell : `{{input}}` est remplacé par le chemin du fichier de données, `{{n}}` par la taille, `{{seed}}` par la graine ; `stdin: true` donne le fichier sur l'entrée standard.\n\n\
 Format de réponse OBLIGATOIRE. Chaque fichier ainsi :\n\
 === FILE nom_du_fichier.py\n\
@@ -170,7 +171,12 @@ pub fn generate_in_job(job: &Job, dir: &Path, config: &BenchConfig, focus: &str)
         let mut s = StreamFiles::default();
         files = s.feed(&answer.text);
     }
-    let g = parse_tail(&answer.text, &files);
+    let mut g = parse_tail(&answer.text, &files);
+    if let Some(parent) = dir.parent() {
+        if check_generators(job, &parent.join("gen-check"), &mut g)? {
+            return Ok("cancelled");
+        }
+    }
     job.set("generated", &g);
     job.event(json!({"kind": "arena", "type": "generated", "files": g.files.len(), "scenarios": g.scenarios.len()}));
     if g.scenarios.is_empty() {
@@ -179,6 +185,73 @@ pub fn generate_in_job(job: &Job, dir: &Path, config: &BenchConfig, focus: &str)
     }
     job.end("generate", if g.rejected.is_empty() { "success" } else { "warning" }, Some(format!("{} fichier(s), {} scénario(s)", g.files.len(), g.scenarios.len())));
     Ok(if g.rejected.is_empty() { "success" } else { "warning" })
+}
+
+/// Runs each generator a scenario uses at a small size, twice with the same seed, in the
+/// sandbox: a generator that fails, writes nothing or is not reproducible is set aside with
+/// the reason, before anyone uses it. Returns true when the job was cancelled.
+fn check_generators(job: &Job, work: &Path, g: &mut Generated) -> Result<bool> {
+    use crate::ai::sandbox::Limits;
+    if g.scenarios.iter().all(|s| s.generator.is_none()) || crate::ai::sandbox::check().is_err() {
+        return Ok(false);
+    }
+    std::fs::create_dir_all(work)?;
+    crate::playground::materialize(&g.files, work)?;
+    let limits = Limits { wall: Duration::from_secs(20), cpu_seconds: 30, file_mb: 64, output_cap: 16 * 1024, mem_mb: Some(1024), tasks: Some(32), address_space_free: false };
+    let mut verdicts: std::collections::HashMap<(String, u64), std::result::Result<(), String>> = std::collections::HashMap::new();
+    let mut kept = Vec::new();
+    for sc in std::mem::take(&mut g.scenarios) {
+        let Some(gen) = sc.generator.clone() else {
+            kept.push(sc);
+            continue;
+        };
+        let n = sc.sizes.first().copied().unwrap_or(16).min(64);
+        let key = (gen.clone(), n);
+        if !verdicts.contains_key(&key) {
+            let path = work.join(&gen);
+            let base: Vec<String> = if gen.ends_with(".py") {
+                vec!["python3".into(), path.to_string_lossy().into_owned()]
+            } else {
+                let bin = work.join(format!("{gen}.bin"));
+                let out = super::exec(job, work, &["cc".into(), "-O1".into(), "-o".into(), bin.to_string_lossy().into_owned(), path.to_string_lossy().into_owned(), "-lm".into()], None, &limits, false)?;
+                if out.cancelled {
+                    return Ok(true);
+                }
+                if !out.ok() {
+                    verdicts.insert(key.clone(), Err(format!("{gen} ne compile pas")));
+                }
+                vec![bin.to_string_lossy().into_owned()]
+            };
+            if !verdicts.contains_key(&key) {
+                let mut texts = Vec::new();
+                for i in 0..2 {
+                    let file = work.join(format!("{gen}.{n}.{i}.txt"));
+                    let mut argv = base.clone();
+                    argv.extend([n.to_string(), sc.seed.to_string(), file.to_string_lossy().into_owned()]);
+                    let out = super::exec(job, work, &argv, None, &limits, false)?;
+                    if out.cancelled {
+                        return Ok(true);
+                    }
+                    texts.push(if out.ok() { std::fs::read(&file).ok() } else { None });
+                }
+                let verdict = match (&texts[0], &texts[1]) {
+                    (Some(a), Some(b)) if a.is_empty() || b.is_empty() => Err(format!("{gen} n'écrit rien pour n={n}")),
+                    (Some(a), Some(b)) if a != b => Err(format!("{gen} donne deux fichiers différents pour la même graine")),
+                    (Some(_), Some(_)) => Ok(()),
+                    _ => Err(format!("{gen} échoue pour n={n}")),
+                };
+                verdicts.insert(key.clone(), verdict);
+            }
+        }
+        match &verdicts[&key] {
+            Ok(()) => kept.push(sc),
+            Err(why) => g.rejected.push(format!("scénario « {} » écarté : {why}", sc.name)),
+        }
+    }
+    g.scenarios = kept;
+    job.log(&format!("Générateurs testés : {} scénario(s) gardé(s), {} écarté(s).", g.scenarios.len(), g.rejected.len()));
+    let _ = std::fs::remove_dir_all(work);
+    Ok(false)
 }
 
 /// What the report is written from: the measured results, trimmed to what matters.
@@ -243,6 +316,34 @@ mod tests {
         let got = s.feed("D\nfin");
         assert_eq!(got.len(), 1);
         assert_eq!(got[0].content, "print(2)\n");
+    }
+
+    #[test]
+    fn generators_are_tried_before_being_offered() {
+        if crate::toolenv::which("python3").is_none() || crate::ai::sandbox::check().is_err() {
+            return;
+        }
+        let sc = |name: &str, gen: &str| Scenario { name: name.into(), generator: Some(gen.into()), sizes: vec![1000, 2000], seed: 3, args: "{input}".into(), stdin: false };
+        let f = |name: &str, content: &str| DraftFile { name: name.into(), content: content.into(), library: None };
+        let good = "import random, sys\nn, s, out = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3]\nrandom.seed(s)\nopen(out, 'w').write(' '.join(str(random.randint(0, 9)) for _ in range(n)))\n";
+        let noisy = "import random, sys, time\nn, s, out = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3]\nrandom.seed(time.time_ns())\nopen(out, 'w').write(' '.join(str(random.randint(0, 10**9)) for _ in range(n)))\n";
+        let broken = "import sys\nraise SystemExit(3)\n";
+        let mut g = Generated { files: vec![f("good.py", good), f("noisy.py", noisy), f("broken.py", broken)], scenarios: vec![sc("ok", "good.py"), sc("ok bis", "good.py"), sc("bruit", "noisy.py"), sc("cassé", "broken.py")], ..Default::default() };
+        let jobs = crate::jobs::Jobs::default();
+        let db = std::sync::Arc::new(std::sync::Mutex::new(crate::db::open_in_memory().unwrap()));
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path().join("check");
+        let (tx, rx) = std::sync::mpsc::channel();
+        jobs.start(db, "arena_ai", None, "t".into(), &[("generate", "x")], move |job| {
+            let cancelled = check_generators(job, &work, &mut g)?;
+            tx.send((cancelled, g)).unwrap();
+            Ok("success")
+        });
+        let (cancelled, g) = rx.recv_timeout(Duration::from_secs(60)).unwrap();
+        assert!(!cancelled);
+        assert_eq!(g.scenarios.iter().map(|s| s.name.as_str()).collect::<Vec<_>>(), ["ok", "ok bis"]);
+        assert!(g.rejected.iter().any(|r| r.contains("bruit") && r.contains("graine")), "{:?}", g.rejected);
+        assert!(g.rejected.iter().any(|r| r.contains("cassé") && r.contains("échoue")), "{:?}", g.rejected);
     }
 
     #[test]

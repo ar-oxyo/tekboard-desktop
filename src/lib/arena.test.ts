@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ArenaResults, ArenaSeries } from "./api";
-import { chartSeries, doubling, emptyConfig, fitLabel, mergeGenerated, parseSizes, ratioAt } from "./arena";
+import { chartSeries, doubling, emptyConfig, fitLabel, mergeGenerated, parseSizes, ratioAt, splitHypotheses } from "./arena";
 
 const point = (n: number, ms: number, extra: Partial<ArenaSeries["points"][number]> = {}) => ({ n, samples: [], wall: { median: ms, mad: 0, min: ms * 0.9, max: ms * 1.1, outliers: [] }, cpu: null, maxRssKb: 1000, ir: n * n, failed: null, ...extra });
 const series = (variant: number, scenario: number, pts: ReturnType<typeof point>[]): ArenaSeries => ({ variant, scenario, points: pts, fitTime: null, fitIr: null, hot: null, profiledN: null, heapPeak: null, heap: null });
@@ -36,5 +36,19 @@ describe("arena helpers", () => {
     expect(m.files.map((f) => f.name).sort()).toEqual(["edge.py", "gen.py"]);
     expect(m.files.find((f) => f.name === "gen.py")?.content).toBe("new");
     expect(m.scenarios).toHaveLength(2);
+  });
+
+  it("keeps Artix's hypotheses once, and a regenerated scenario replaces its namesake", () => {
+    const h = { function: "sort", file: "sort.c", line: 3, message: "boucles imbriquées" };
+    const sc = { name: "triés", generator: "gen.py", sizes: [10], seed: 1, args: "{input}", stdin: false };
+    const once = mergeGenerated(emptyConfig(), [], [sc], [h]);
+    const twice = mergeGenerated(once, [], [{ ...sc, sizes: [20] }], [h]);
+    expect(twice.hypotheses).toEqual([h]);
+    expect(twice.scenarios.filter((s) => s.name === "triés").map((s) => s.sizes)).toEqual([[20]]);
+  });
+
+  it("sets library findings apart", () => {
+    const s = splitHypotheses([{ scope: "project" }, { scope: "library" }, {}]);
+    expect([s.project.length, s.library.length]).toEqual([2, 1]);
   });
 });
