@@ -32,7 +32,7 @@ export function dropTarget(x: number, y: number): DropTarget | null {
   return { day, time: atMinutes(day, minutes) };
 }
 
-export const itemTitle = (i: CalItem) => [`${KIND_LABEL[i.kind]} · ${i.title}`, i.allDay ? null : `${hhmm(i.start)} – ${hhmm(i.end)} (${fmtDur((i.end - i.start) / MIN)})`, i.module, i.detail, i.unregistered ? "You are not registered to this session" : null, i.source === "my" ? "From MY Epitech — read-only" : null].filter(Boolean).join("\n");
+export const itemTitle = (i: CalItem) => [`${KIND_LABEL[i.kind]} · ${i.title}`, i.allDay ? null : `${hhmm(i.start)} – ${hhmm(i.end)} (${fmtDur((i.end - i.start) / MIN)})`, i.module, i.detail, i.unregistered ? t("Tu n'es pas inscrit à cette séance") : null, i.source === "my" ? "From MY Epitech — read-only" : null].filter(Boolean).join("\n");
 
 interface Props {
   days: number[];
@@ -232,8 +232,8 @@ export function TimeGrid({ days, items, now, prefs, ghost, onCreate, onOpen, onM
                 )}
                 {d === today && (
                   <div className="pointer-events-none absolute inset-x-0 z-30 flex items-center" style={{ top: (minutesIn(now, d) / 60) * HOUR }}>
-                    <span className="-ml-1 size-2 rounded-full bg-danger" />
-                    <span className="h-px flex-1 bg-danger" />
+                    <span className="-ml-1 size-2 rounded-full bg-accent-2" />
+                    <span className="h-0.5 flex-1 bg-accent-2" />
                   </div>
                 )}
               </div>
@@ -278,7 +278,7 @@ function Block({ item, day, col, cols, past, onGrab, onOpen }: { item: CalItem; 
         <p className="truncate font-mono text-3xs text-muted">
           {hhmm(item.start)} – {hhmm(item.end)}
           {item.exam ? " · exam" : ""}
-          {item.unregistered ? " · not registered" : ""}
+          {item.unregistered ? ` · ${t("non inscrit")}` : ""}
         </p>
       )}
       {height >= 56 && (item.module || item.detail) && <p className="truncate text-3xs text-faint">{item.module ?? item.detail}</p>}

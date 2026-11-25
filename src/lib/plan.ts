@@ -108,8 +108,9 @@ export interface PlanProject {
   color: string;
 }
 
-/** Colours that stay readable on every design: used as a tint over the surface, never as text. */
-export const PALETTE = ["#8b7cf6", "#4cc38a", "#e2a93b", "#5fb4e8", "#e5646a", "#d77fd0", "#5fd4c4", "#f08a5d"];
+/** Riso inks, readable on every design: used as a tint over the surface, never as text.
+ *  Fluorescent orange is kept out: it means a hand-in. */
+export const PALETTE = ["#0078bf", "#00a95c", "#ffb511", "#5ec8e5", "#f15060", "#ff48b0", "#00838a", "#765ba7"];
 export function colorFor(key: string): string {
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
@@ -163,7 +164,7 @@ export interface CalItem {
 
 export const KIND_LABEL: Record<CalKind, string> = { session: t("Session de travail"), task: t("Tâche"), event: t("Événement"), reminder: t("Rappel"), block: t("Indisponible"), deadline: t("Rendu"), activity: t("Ta séance"), campus: t("Séance du campus"), holiday: t("Vacances"), start: t("Ouverture du projet") };
 /** Neutral colours of entries that belong to no project. */
-export const KIND_COLOR: Record<CalKind, string> = { session: "#8b7cf6", task: "#8b7cf6", event: "#5fb4e8", reminder: "#e2a93b", block: "#6b7280", deadline: "#e5646a", activity: "#7f8aa3", campus: "#6b7280", holiday: "#4cc38a", start: "#5fb4e8" };
+export const KIND_COLOR: Record<CalKind, string> = { session: "#0078bf", task: "#0078bf", event: "#00838a", reminder: "#ffb511", block: "#8a847a", deadline: "#ff6c2f", activity: "#7f8aa3", campus: "#8a847a", holiday: "#00a95c", start: "#00838a" };
 
 export type Filters = Record<"work" | "personal" | "handins" | "school" | "campus" | "holidays", boolean>;
 export const DEFAULT_FILTERS: Filters = { work: true, personal: true, handins: true, school: true, campus: false, holidays: true };

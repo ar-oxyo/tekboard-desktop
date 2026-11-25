@@ -67,13 +67,13 @@ function EventForm({ draft }: { draft: Partial<PlanEvent> }) {
 
   const save = () => {
     const [a, b] = [minutesOf(from), minutesOf(to)];
-    if (!day || a === null || b === null) return setError("Set a day, a start and an end.");
+    if (!day || a === null || b === null) return setError(tr("Indique un jour, un début et une fin."));
     const base = dayStartOf(day);
     const start = base + a * MIN;
     // An end before the start means "until that hour the next day".
     const end = b > a ? base + b * MIN : addDays(base, 1) + b * MIN;
     const label = title.trim() || (work ? name : "") || "";
-    if (!label) return setError("Give it a title, or pick a project.");
+    if (!label) return setError(tr("Donne-lui un titre, ou choisis un projet."));
     act.saveEvent.mutate({ ...draft, kind, title: label, project, notes, done, category, start: Math.floor(start / 1000), end: Math.floor(end / 1000) }, { onSuccess: close });
   };
 
@@ -200,7 +200,7 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
       return null;
     }
     if (!title.trim()) {
-      setError("A title is required.");
+      setError(tr("Un titre est nécessaire."));
       return null;
     }
     return { ...draft, title: title.trim(), project, priority: Number(priority), estimateMin: minutes, dueDay: due || null, notes, kind: draft.kind === "note" || draft.kind === "snippet" ? draft.kind : idea ? "idea" : "task" };
@@ -230,7 +230,7 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
     <Modal
       open
       onClose={close}
-      title={isNew ? "New task" : "Task"}
+      title={isNew ? tr("Nouvelle tâche") : "Task"}
       width="w-[520px]"
       footer={
         <>
@@ -505,7 +505,7 @@ export function ReviewDialog({ onClose }: { onClose: () => void }) {
           </IconButton>
           <span className="ml-1 text-sm text-muted">
             {new Date(from).toLocaleDateString(locale(), { day: "numeric", month: "long" })} – {new Date(addDays(to, -1)).toLocaleDateString(locale(), { day: "numeric", month: "long" })}
-            {offset === 0 && " · this week"}
+            {offset === 0 && ` · ${tr("cette semaine")}`}
           </span>
         </div>
         <div className="grid grid-cols-3 gap-2">

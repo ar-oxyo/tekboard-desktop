@@ -21,6 +21,12 @@ import { useLoads, usePlanActions, usePlanData } from "./usePlan";
 import { due } from "../../lib/repos";
 import { locale, t } from "../../lib/i18n";
 
+// Labels used inside callbacks where `t` names a task.
+const L_PROJECT = t("projet");
+const L_HIGH = t("priorité haute");
+const L_DUE = t("pour le");
+const L_IDEAS = t("Idées");
+
 const tr = t;
 
 type View = "day" | "week" | "month";
@@ -74,7 +80,7 @@ export function PlanningPage() {
   const open = (i: CalItem) => {
     if (i.source === "plan") useUi.getState().editEvent(i.event!);
     else if (i.project) useUi.getState().openSheet(i.project);
-    else toast({ kind: "info", title: i.title, detail: [i.module, i.detail, "From MY Epitech: read-only. Plan your work around it."].filter(Boolean).join(" · ") });
+    else toast({ kind: "info", title: i.title, detail: [i.module, i.detail, t("Depuis MY Epitech : en lecture seule. Organise ton travail autour.")].filter(Boolean).join(" · ") });
   };
   const move = (i: CalItem, start: number, end: number) => i.event && act.saveEvent.mutate({ ...i.event, start: Math.floor(start / 1000), end: Math.floor(end / 1000) });
   const create = (start: number, end: number) => useUi.getState().editEvent({ kind: "session", start: Math.floor(start / 1000), end: Math.floor(end / 1000) });
@@ -254,16 +260,16 @@ function InboxPanel({ data, onDrag, now }: { data: ReturnType<typeof usePlanData
           <input type="checkbox" aria-label={tr("Fait")} className="mt-0.5 accent-(--color-accent)" checked={false} onPointerDown={(e) => e.stopPropagation()} onChange={() => act.toggleTask(t)} />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm">{t.title}</span>
-            <span className="flex items-center gap-2 text-2xs text-faint">
+            <span className="flex flex-wrap items-center gap-x-2 text-2xs whitespace-nowrap text-faint">
               {t.project && (
                 <span className="flex min-w-0 items-center gap-1 truncate">
                   <span className="size-1.5 shrink-0 rounded-full" style={{ background: color(t.project) }} />
-                  {name(t.project) ?? "project"}
+                  {name(t.project) ?? L_PROJECT}
                 </span>
               )}
               {t.estimateMin !== null && <span>{fmtDur(t.estimateMin)}</span>}
-              {t.priority >= 3 && <span className="text-warn">high</span>}
-              {t.dueDay && <span>due {new Date(`${t.dueDay}T12:00`).toLocaleDateString(locale(), { day: "numeric", month: "short" })}</span>}
+              {t.priority >= 3 && <span className="text-warn">{L_HIGH}</span>}
+              {t.dueDay && <span>{L_DUE} {new Date(`${t.dueDay}T12:00`).toLocaleDateString(locale(), { day: "numeric", month: "short" })}</span>}
             </span>
           </span>
         </div>
@@ -271,7 +277,7 @@ function InboxPanel({ data, onDrag, now }: { data: ReturnType<typeof usePlanData
       {ideas.length > 0 && (
         <>
           <p className="mt-3 flex items-center gap-1.5 px-1 text-xs text-faint">
-            <Lightbulb className="size-3.5" /> Idées
+            <Lightbulb className="size-3.5" /> {L_IDEAS}
           </p>
           {ideas.map((t) => (
             <button key={t.id} type="button" onClick={() => useUi.getState().editTask(t)} className="row-hover truncate rounded-md px-2 py-1 text-left text-sm text-muted">
