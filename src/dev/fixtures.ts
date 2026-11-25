@@ -1,6 +1,7 @@
 // Development only: demonstration data for the browser mock (see mockIPC.ts). Plausible
 // values for a second-year student mid-semester; nothing here ever reaches a real build.
 import type { BoardItem, EnvStatus, PlanState, RepoInfo, Settings } from "../lib/api";
+import { skillTree } from "./skilltreeFixture";
 
 type Fixture = unknown | ((args: Record<string, unknown>, params: URLSearchParams) => unknown);
 
@@ -230,6 +231,7 @@ const connect = {
 export const fixtures: Record<string, Fixture> = {
   my_overview: { syncedAt: now - 40 * 60, account: "camille.martin@epitech.eu", projects: [], creditsAcquired: 12, creditsTotal: 60, blocks: [], exams: [] },
   my_logtime: logtime,
+  my_skill_tree: skillTree,
   analytics,
   connect_state: connect,
   git_detail: (a: Record<string, unknown>) => {

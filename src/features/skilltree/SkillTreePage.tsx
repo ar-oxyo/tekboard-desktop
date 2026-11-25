@@ -2,13 +2,13 @@
 // from MY Epitech's own data (cached at the last sync, so it opens offline). The only thing
 // TekBoard deduces, the domain of a unit, is labelled as an estimate everywhere it appears.
 import { useQuery } from "@tanstack/react-query";
-import { Crosshair, GraduationCap, Minus, Network, Plus, RefreshCw, X } from "lucide-react";
-import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
+import { GraduationCap, Maximize, Minus, Plus, RefreshCw, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Select } from "../../components/Select";
-import { Badge, Button, Card, CardTitle, cn, EmptyState, ErrorNote, PageHeader, Spinner } from "../../components/ui";
+import { Badge, Button, Card, CardTitle, cn, EmptyState, ErrorNote, IconButton, PageHeader, Spinner } from "../../components/ui";
 import { api, asAppError, type SkillNode, type SkillStatus, type SkillTree } from "../../lib/api";
 import { locale, t } from "../../lib/i18n";
-import { layout, neighbours, NO_FILTER, RADIUS, visible, type Filters } from "../../lib/skilltree";
+import { fit, layout, neighbours, NO_FILTER, visible, wheelAction, zoomAt, type Filters, type View } from "../../lib/skilltree";
 import { useUi } from "../../lib/store";
 import { Stat } from "../analytics/AnalyticsPage";
 import { useMySync } from "../myepitech/useMySync";
@@ -20,8 +20,6 @@ const STATUS: Record<SkillStatus, { label: string; color: string }> = {
   failed: { label: t("Non validé"), color: "var(--color-danger)" },
   locked: { label: t("Pas encore ouvert"), color: "var(--color-faint)" },
 };
-
-const SIZE = { unit: 17, skill: 8, project: 5.5 } as const;
 
 function Meter({ value, total, color = "var(--color-accent)" }: { value: number; total: number; color?: string }) {
   const pct = total > 0 ? Math.min(100, (value / total) * 100) : 0;
@@ -104,7 +102,7 @@ function TreeView({ tree }: { tree: SkillTree }) {
       <Card className="relative overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b border-ink/6 px-3 py-2">
           <Select size="sm" className="w-36" label={t("Année")} value={f.year === null ? "" : String(f.year)} onChange={(v) => setF({ ...f, year: v ? Number(v) : null })} options={[{ value: "", label: t("Toutes les années") }, ...years.map((y) => ({ value: String(y), label: `${y}–${y + 1}` }))]} />
-          <Select size="sm" className="w-36" label={t("Semestre")} value={f.semester === null ? "" : String(f.semester)} onChange={(v) => setF({ ...f, semester: v ? Number(v) : null })} options={[{ value: "", label: t("Tous les semestres") }, ...semesters.map((s) => ({ value: String(s), label: t("Semestre {n}", { n: s }) + (s === tree.semester ? ` · ${t("actuel")}` : "") }))]} />
+          <Select size="sm" className="w-44" label={t("Semestre")} value={f.semester === null ? "" : String(f.semester)} onChange={(v) => setF({ ...f, semester: v ? Number(v) : null })} options={[{ value: "", label: t("Tous les semestres") }, ...semesters.map((s) => ({ value: String(s), label: t("Semestre {n}", { n: s }) + (s === tree.semester ? ` · ${t("actuel")}` : "") }))]} />
           <Select size="sm" className="w-48" label={t("Domaine (estimation)")} value={f.domain ?? ""} onChange={(v) => setF({ ...f, domain: v || null })} options={[{ value: "", label: t("Tous les domaines") }, ...domains.map((d) => ({ value: d, label: d, hint: t("estimation") }))]} />
           <Select size="sm" className="w-40" label={t("Statut")} value={f.status ?? ""} onChange={(v) => setF({ ...f, status: (v || null) as Filters["status"] })} options={[{ value: "", label: t("Tous les statuts") }, { value: "todo", label: t("À travailler") }, ...(Object.keys(STATUS) as SkillStatus[]).map((s) => ({ value: s, label: STATUS[s].label }))]} />
           <label className="flex items-center gap-1.5 text-xs text-muted">
@@ -191,106 +189,160 @@ function TreeView({ tree }: { tree: SkillTree }) {
 
 type Placement = ReturnType<typeof layout>;
 
-function curve(a: { x: number; y: number }, b: { x: number; y: number }) {
-  const mx = (a.x + b.x) / 2;
+const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+
+/** Smooth link from a project chip to a skill it trains (only drawn when one of them is lit). */
+function projectLink(a: { x: number; y: number }, b: { x: number; y: number }) {
   const my = (a.y + b.y) / 2;
-  return `M${a.x},${a.y} Q${mx * 0.9},${my * 0.9} ${b.x},${b.y}`;
+  return `M${a.x},${a.y - 8} C${a.x},${my} ${b.x},${my} ${b.x},${b.y + 8}`;
+}
+
+/** Progress ring: an arc of `pct` % around a mark of radius `r`. */
+function Ring({ r, pct, color }: { r: number; pct: number; color: string }) {
+  const c = 2 * Math.PI * r;
+  return <circle r={r} fill="none" stroke={color} strokeWidth={2} strokeDasharray={`${(c * Math.max(0, Math.min(100, pct))) / 100} ${c}`} transform="rotate(-90)" strokeLinecap="round" />;
 }
 
 function Canvas({ tree, shown, placed, byId, lit, selected, onHover, onSelect }: { tree: SkillTree; shown: Set<string>; placed: Placement; byId: Map<string, SkillNode>; lit: Set<string> | null; selected: string | null; onHover: (id: string | null) => void; onSelect: (id: string | null) => void }) {
+  const box = useRef<HTMLDivElement>(null);
   const svg = useRef<SVGSVGElement>(null);
-  const [view, setView] = useState({ x: 0, y: 0, k: 0.62 });
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
+  // Once the person pans or zooms, a resize no longer refits behind their back.
+  const touched = useRef(false);
   const drag = useRef<{ x: number; y: number; vx: number; vy: number; moved: boolean } | null>(null);
-  const W = 1000;
-  const H = 640;
-  const toLocal = (cx: number, cy: number) => {
-    const r = svg.current!.getBoundingClientRect();
-    return { x: ((cx - r.left) / r.width) * W - W / 2, y: ((cy - r.top) / r.height) * H - H / 2 };
+
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setSize({ w: e.contentRect.width, h: e.contentRect.height }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  // New filters, new tree: show it whole.
+  useEffect(() => {
+    touched.current = false;
+  }, [placed]);
+  useEffect(() => {
+    if (!touched.current && size.w > 0) setView(fit(placed.width, placed.height, size.w, size.h));
+  }, [placed, size]);
+  // React's onWheel is passive: the page would scroll while the tree zooms. A native,
+  // non-passive listener keeps the wheel inside the tree.
+  useEffect(() => {
+    const el = svg.current;
+    if (!el) return;
+    const on = (e: WheelEvent) => {
+      e.preventDefault();
+      touched.current = true;
+      const a = wheelAction(e);
+      const r = el.getBoundingClientRect();
+      setView((v) => (a.kind === "zoom" ? zoomAt(v, a.factor, e.clientX - r.left, e.clientY - r.top) : { ...v, x: v.x + a.dx, y: v.y + a.dy }));
+    };
+    el.addEventListener("wheel", on, { passive: false });
+    return () => el.removeEventListener("wheel", on);
+  }, []);
+
+  const refit = () => {
+    touched.current = false;
+    setView(fit(placed.width, placed.height, size.w, size.h));
   };
-  function wheel(e: ReactWheelEvent) {
-    const p = toLocal(e.clientX, e.clientY);
-    const k = Math.min(3, Math.max(0.3, view.k * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
-    setView({ k, x: p.x - ((p.x - view.x) * k) / view.k, y: p.y - ((p.y - view.y) * k) / view.k });
+  const zoom = (f: number) => {
+    touched.current = true;
+    setView((v) => zoomAt(v, f, size.w / 2, size.h / 2));
+  };
+  const pan = (dx: number, dy: number) => {
+    touched.current = true;
+    setView((v) => ({ ...v, x: v.x + dx, y: v.y + dy }));
+  };
+  function key(e: React.KeyboardEvent) {
+    const k = e.key;
+    if (k === "+" || k === "=") zoom(1.25);
+    else if (k === "-") zoom(0.8);
+    else if (k === "0" || k.toLowerCase() === "f") refit();
+    else if (k === "ArrowLeft") pan(60, 0);
+    else if (k === "ArrowRight") pan(-60, 0);
+    else if (k === "ArrowUp") pan(0, 60);
+    else if (k === "ArrowDown") pan(0, -60);
+    else return;
+    e.preventDefault();
   }
   function down(e: ReactPointerEvent) {
+    if (e.button !== 0) return;
     drag.current = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false };
-    (e.target as Element).setPointerCapture?.(e.pointerId);
   }
   function move(e: ReactPointerEvent) {
     const d = drag.current;
     if (!d) return;
-    const r = svg.current!.getBoundingClientRect();
-    const dx = ((e.clientX - d.x) / r.width) * W;
-    const dy = ((e.clientY - d.y) / r.height) * H;
-    if (Math.abs(dx) + Math.abs(dy) > 3) d.moved = true;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    if (!d.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+    // Captured only once it is a drag: capturing on press would steal the click from the nodes.
+    if (!d.moved) svg.current?.setPointerCapture?.(e.pointerId);
+    d.moved = true;
+    touched.current = true;
     setView((v) => ({ ...v, x: d.vx + dx, y: d.vy + dy }));
   }
-  const zoom = (f: number) => setView((v) => ({ ...v, k: Math.min(3, Math.max(0.3, v.k * f)) }));
   const dim = (id: string) => lit !== null && !lit.has(id);
-  const labels = view.k > 1.15;
+  const labels = view.k >= 0.55;
+  const branchOf = new Map(tree.branches.map((b) => [b.id, b]));
+  // Project → skill links: only those touching the lit set, so the tree stays readable.
+  const projectLinks = lit ? tree.links.filter((l) => l.kind === "project_skill" && lit.has(l.source) && lit.has(l.target) && placed.nodes.has(l.source) && placed.nodes.has(l.target)) : [];
 
   return (
-    <div className="relative">
+    <div ref={box} className="relative h-[min(68vh,620px)] min-h-80 overflow-hidden overscroll-contain">
       <svg
         ref={svg}
-        viewBox={`${-W / 2} ${-H / 2} ${W} ${H}`}
-        className="block h-[560px] w-full cursor-grab touch-none select-none active:cursor-grabbing"
-        onWheel={wheel}
+        width={size.w}
+        height={size.h}
+        tabIndex={0}
+        className="block cursor-grab touch-none select-none outline-none active:cursor-grabbing"
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={() => setTimeout(() => (drag.current = null), 0)}
         onClick={() => !drag.current?.moved && onSelect(null)}
+        onKeyDown={key}
         role="img"
         aria-label={t("Arbre de compétences")}
       >
         <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}>
-          {[RADIUS.unit, RADIUS.skill, RADIUS.project].map((r) => <circle key={r} r={r} fill="none" stroke="currentColor" className="text-ink/4" strokeDasharray="2 6" />)}
-          {[...placed.branches].map(([id, b]) => (
-            <path key={`sector-${id}`} d={`M0,0 L${Math.cos(b.from) * 860},${Math.sin(b.from) * 860}`} stroke="currentColor" className="text-ink/5" />
+          {placed.lanes.map((l) => {
+            const b = branchOf.get(l.id);
+            const color = l.color ?? "var(--color-faint)";
+            return (
+              <g key={l.id} opacity={lit && b && !b.units.some((u) => lit.has(u)) ? 0.35 : 1}>
+                <rect x={l.x} y={l.y} width={l.w} height={l.h} rx={14} fill="var(--color-ink)" fillOpacity={0.035} />
+                <circle cx={l.x + 22} cy={l.y + 22} r={4} fill={l.projects ? "var(--color-faint)" : color} />
+                <text x={l.x + 34} y={l.y + 26} className="fill-fg text-xs font-medium">{l.projects ? t("Projets") : clip(l.name, 48)}</text>
+                {b && b.threshold !== null && b.threshold > 0 && (
+                  <g transform={`translate(${l.x + l.w - 156},${l.y + 18})`}>
+                    <rect width={90} height={5} y={2} rx={2.5} fill="var(--color-ink)" fillOpacity={0.08} />
+                    <rect width={Math.min(90, (90 * (b.secure ?? 0)) / b.threshold)} height={5} y={2} rx={2.5} fill={color} />
+                    <text x={100} y={8} className="fill-muted text-3xs tabular-nums">{t("{s}/{t} cr.", { s: b.secure ?? 0, t: b.threshold })}</text>
+                  </g>
+                )}
+              </g>
+            );
+          })}
+          {placed.edges.map((e) => {
+            const on = lit !== null && lit.has(e.from) && lit.has(e.to);
+            const child = byId.get(e.to);
+            return <path key={`${e.from}>${e.to}`} d={e.d} fill="none" stroke={on && child ? STATUS[child.status].color : "var(--color-ink)"} strokeOpacity={on ? 0.9 : 0.16} strokeWidth={on ? 1.6 : 1.2} opacity={dim(e.to) ? 0.4 : 1} />;
+          })}
+          {projectLinks.map((l) => (
+            <path key={`${l.source}~${l.target}`} d={projectLink(placed.nodes.get(l.source)!, placed.nodes.get(l.target)!)} fill="none" stroke={STATUS[byId.get(l.source)!.status].color} strokeOpacity={0.7} strokeWidth={1.4} strokeDasharray="4 4" />
           ))}
-          {/* Root to branches, branches to units. */}
-          {[...placed.branches].map(([id, b]) => {
-            const branch = tree.branches.find((x) => x.id === id)!;
-            return (
-              <g key={`b-${id}`} opacity={lit && !branch.units.some((u) => lit.has(u)) ? 0.25 : 1}>
-                <line x1={0} y1={0} x2={b.x} y2={b.y} stroke={branch.color ?? "var(--color-faint)"} strokeOpacity={0.5} strokeWidth={2} />
-                {branch.units.filter((u) => placed.nodes.has(u)).map((u) => <path key={u} d={curve(b, placed.nodes.get(u)!)} fill="none" stroke={branch.color ?? "var(--color-faint)"} strokeOpacity={0.35} strokeWidth={1.5} />)}
-              </g>
-            );
-          })}
-          {tree.links.filter((l) => placed.nodes.has(l.source) && placed.nodes.has(l.target)).map((l) => {
-            const on = lit !== null && lit.has(l.source) && lit.has(l.target);
-            const src = byId.get(l.source)!;
-            return <path key={`${l.source}-${l.target}`} d={curve(placed.nodes.get(l.target)!, placed.nodes.get(l.source)!)} fill="none" stroke={on ? STATUS[src.status].color : "currentColor"} className={on ? "" : "text-ink/12"} strokeWidth={on ? 1.6 : 1} opacity={lit && !on ? 0.3 : 1} />;
-          })}
-          <circle r={46} fill="var(--color-surface)" stroke="var(--color-accent)" strokeOpacity={0.5} strokeWidth={2} />
-          <text textAnchor="middle" y={-4} className="fill-fg text-md font-medium">{tree.credits.acquired ?? "—"}</text>
-          <text textAnchor="middle" y={13} className="fill-muted text-3xs">{tree.credits.threshold !== null ? `/ ${tree.credits.threshold} ${t("crédits")}` : t("crédits")}</text>
-          {[...placed.branches].map(([id, b]) => {
-            const branch = tree.branches.find((x) => x.id === id)!;
-            return (
-              <g key={`bl-${id}`} transform={`translate(${b.x},${b.y})`}>
-                <circle r={7} fill={branch.color ?? "var(--color-faint)"} />
-                <text x={Math.cos(b.angle) * 14} y={Math.sin(b.angle) * 14 + 4} textAnchor={Math.abs(Math.cos(b.angle)) < 0.3 ? "middle" : Math.cos(b.angle) > 0 ? "start" : "end"} className="fill-fg text-2xs font-medium">
-                  {branch.name.length > 24 ? `${branch.name.slice(0, 23)}…` : branch.name}
-                </text>
-              </g>
-            );
-          })}
-          {tree.nodes.filter((n) => shown.has(n.id) && placed.nodes.has(n.id)).map((n, i) => {
+          {tree.nodes.filter((n) => shown.has(n.id) && placed.nodes.has(n.id)).map((n) => {
             const p = placed.nodes.get(n.id)!;
             const s = STATUS[n.status];
-            const r = SIZE[n.kind];
             const filled = n.status === "acquired";
-            const showLabel = n.kind === "unit" || labels || selected === n.id || lit?.has(n.id);
-            const flip = Math.cos(p.angle) < 0;
+            const sel = selected === n.id;
+            const progress = n.kind === "unit" ? (n.total ? ((n.validated ?? 0) / n.total) * 100 : null) : n.levelPercent;
             return (
               <g
                 key={n.id}
                 transform={`translate(${p.x},${p.y})`}
-                className="anim-pop cursor-pointer"
-                style={{ animationDelay: `${Math.min(i, 80) * 6}ms` }}
-                opacity={dim(n.id) ? 0.22 : n.status === "locked" ? 0.55 : 1}
+                className="cursor-pointer"
+                opacity={dim(n.id) ? 0.25 : n.status === "locked" ? 0.6 : 1}
                 onPointerEnter={() => onHover(n.id)}
                 onPointerLeave={() => onHover(null)}
                 onClick={(e) => {
@@ -298,24 +350,40 @@ function Canvas({ tree, shown, placed, byId, lit, selected, onHover, onSelect }:
                   if (!drag.current?.moved) onSelect(n.id);
                 }}
               >
-                {selected === n.id && <circle r={r + 6} fill="none" stroke="var(--color-fg)" strokeOpacity={0.6} strokeWidth={1.5} />}
-                {n.status === "in_progress" && <circle r={r + 4} fill="none" stroke={s.color} strokeWidth={1.5} className="skill-pulse" />}
-                <circle r={r} fill={filled ? s.color : "var(--color-surface)"} stroke={s.color} strokeWidth={n.kind === "unit" ? 2.5 : 1.6} strokeDasharray={n.status === "locked" ? "3 3" : undefined} />
-                {n.kind === "unit" && n.validated !== null && n.total ? <text textAnchor="middle" y={3.5} className={cn("text-3xs font-medium tabular-nums", filled ? "fill-bg" : "fill-fg")}>{n.validated}/{n.total}</text> : null}
-                {showLabel && (
-                  <text x={flip ? -(r + 5) : r + 5} y={3.5} textAnchor={flip ? "end" : "start"} className={cn(n.kind === "unit" ? "fill-fg text-2xs" : "fill-muted text-3xs")}>
-                    {n.label.length > 34 ? `${n.label.slice(0, 33)}…` : n.label}
-                  </text>
+                {n.kind === "unit" && (
+                  <>
+                    {sel && <rect x={-19} y={-19} width={38} height={38} rx={11} fill="none" stroke="var(--color-fg)" strokeOpacity={0.55} strokeWidth={1.5} />}
+                    <rect x={-14} y={-14} width={28} height={28} rx={8} fill={filled ? s.color : "var(--color-surface)"} stroke={s.color} strokeWidth={2} strokeDasharray={n.status === "locked" ? "3 3" : undefined} />
+                    <text x={24} y={-2} className="fill-fg text-xs font-medium">{clip(n.label, 26)}</text>
+                    <text x={24} y={12} className="fill-muted text-3xs tabular-nums">
+                      {[n.validated !== null && n.total ? `${n.validated}/${n.total}` : null, n.credits !== null ? t("{n} cr.", { n: n.credits }) : null, n.grade].filter(Boolean).join(" · ") || s.label}
+                    </text>
+                  </>
+                )}
+                {n.kind === "skill" && (
+                  <>
+                    {sel && <circle r={12} fill="none" stroke="var(--color-fg)" strokeOpacity={0.55} strokeWidth={1.5} />}
+                    {n.status === "in_progress" && progress !== null && <Ring r={9.5} pct={progress} color={s.color} />}
+                    <circle r={6} fill={filled ? s.color : "var(--color-surface)"} stroke={s.color} strokeWidth={1.6} strokeDasharray={n.status === "locked" ? "2 2" : undefined} />
+                    {labels && <text x={15} y={4} className={cn("text-2xs", n.status === "acquired" ? "fill-fg" : "fill-muted")}>{clip(n.label, 30)}</text>}
+                  </>
+                )}
+                {n.kind === "project" && (
+                  <>
+                    {sel && <rect x={-10} y={-10} width={20} height={20} rx={4} transform="rotate(45)" fill="none" stroke="var(--color-fg)" strokeOpacity={0.55} strokeWidth={1.5} />}
+                    <rect x={-6} y={-6} width={12} height={12} rx={2} transform="rotate(45)" fill={filled ? s.color : "var(--color-surface)"} stroke={s.color} strokeWidth={1.6} strokeDasharray={n.status === "locked" ? "2 2" : undefined} />
+                    {labels && <text x={16} y={4} className="fill-fg text-2xs">{clip(n.label, 30)}</text>}
+                  </>
                 )}
               </g>
             );
           })}
         </g>
       </svg>
-      <div className="absolute top-3 left-3 flex flex-col gap-1">
-        <Button size="sm" variant="secondary" icon={<Plus className="size-3.5" />} title={t("Zoomer")} onClick={() => zoom(1.25)} />
-        <Button size="sm" variant="secondary" icon={<Minus className="size-3.5" />} title={t("Dézoomer")} onClick={() => zoom(0.8)} />
-        <Button size="sm" variant="secondary" icon={<Crosshair className="size-3.5" />} title={t("Recentrer")} onClick={() => setView({ x: 0, y: 0, k: 0.62 })} />
+      <div className="absolute right-3 bottom-3 flex gap-1 rounded-lg bg-surface p-0.5 shadow-sm">
+        <IconButton label={t("Zoomer (+)")} onClick={() => zoom(1.25)}><Plus className="size-3.5" /></IconButton>
+        <IconButton label={t("Dézoomer (−)")} onClick={() => zoom(0.8)}><Minus className="size-3.5" /></IconButton>
+        <IconButton label={t("Tout afficher (F)")} onClick={refit}><Maximize className="size-3.5" /></IconButton>
       </div>
     </div>
   );
@@ -330,11 +398,15 @@ function Legend() {
           {STATUS[s].label}
         </span>
       ))}
-      <span className="flex items-center gap-1.5"><Network className="size-3" /> {t("Gros cercles : unités · moyens : acquis d'apprentissage · petits : projets")}</span>
-      <span className="ml-auto text-faint">{t("Relations : celles de MY Epitech. Domaine : estimation TekBoard.")}</span>
+      <span className="ml-auto flex items-center gap-3 text-faint">
+        <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-[3px] border-2 border-faint" />{t("Unité")}</span>
+        <span className="flex items-center gap-1.5"><span className="size-2 rounded-full border-2 border-faint" />{t("Acquis d'apprentissage")}</span>
+        <span className="flex items-center gap-1.5"><span className="size-2 rotate-45 rounded-[2px] border-2 border-faint" />{t("Projet")}</span>
+      </span>
     </div>
   );
 }
+
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (

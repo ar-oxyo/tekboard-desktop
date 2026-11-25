@@ -1342,18 +1342,6 @@ code,
   background: var(--color-accent);
   animation: fade-in 0.6s steps(2) infinite alternate;
 }
-
-/* Skill Tree: a unit or a skill being worked on breathes, gently. */
-@keyframes skill-pulse {
-  0%, 100% { opacity: 0.9; }
-  50% { opacity: 0.25; }
-}
-.skill-pulse {
-  animation: skill-pulse 2.6s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .skill-pulse { animation: none; }
-}
 }
 
 /* Settings read as one sheet: their groups are hairline sections, not boxes. Outside the

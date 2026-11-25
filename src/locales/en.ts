@@ -2384,4 +2384,9 @@ export const en: Record<string, string> = {
   "URL distante copiée": "Remote URL copied",
   "Son dossier n'a pas bougé.": "Its folder has not moved.",
   "Commande de l'IDE": "IDE command",
+  // Experience V2
+  "Zoomer (+)": "Zoom in (+)",
+  "Dézoomer (−)": "Zoom out (−)",
+  "Tout afficher (F)": "Fit to view (F)",
+  "{s}/{t} cr.": "{s}/{t} cr.",
 };
