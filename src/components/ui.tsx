@@ -1,5 +1,6 @@
 // Small presentational primitives shared by every screen.
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import { createContext, useContext, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { LoaderCircle } from "lucide-react";
 
 export function cn(...parts: Array<string | false | null | undefined>): string {
@@ -84,7 +85,7 @@ export function Card({ children, className, hero }: { children: ReactNode; class
 
 export function CardTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
-    <header className="flex h-11 items-center justify-between gap-3 border-b border-ink/6 px-4">
+    <header className="flex h-10 items-center justify-between gap-3 border-b border-line px-4">
       <h2 className="flex min-w-0 items-center gap-2 text-sm font-medium text-fg">{children}</h2>
       {right}
     </header>
@@ -191,12 +192,30 @@ export function Code({ children }: { children: ReactNode }) {
   return <code className="selectable rounded bg-raised px-1.5 py-0.5 font-mono text-xs text-fg">{children}</code>;
 }
 
+/** The page bar's right-hand slot, when the page sits in a tabbed section (see App). */
+export const PageBarSlot = createContext<HTMLElement | "pending" | null>(null);
+
+/**
+ * Title, one line of context and the page's actions, on one row. In a tabbed section
+ * (Projects, Settings) the bar already shows the section and its tabs: the context and the
+ * actions join it there instead of adding a second band.
+ */
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
+  const slot = useContext(PageBarSlot);
+  if (slot === "pending") return null;
+  if (slot)
+    return createPortal(
+      <>
+        {subtitle && <span className="hidden min-w-0 truncate text-xs text-faint lg:block">{subtitle}</span>}
+        {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      </>,
+      slot,
+    );
   return (
-    <div className="mb-6 flex min-h-10 items-center justify-between gap-4">
-      <div className="min-w-0">
-        <h1 className="display title-gradient truncate text-2xl leading-[1.2] font-medium">{title}</h1>
-        {subtitle && <p className="mt-1 truncate text-sm text-muted">{subtitle}</p>}
+    <div className="mb-5 flex min-h-9 items-center gap-4">
+      <div className="flex min-w-0 flex-1 items-baseline gap-3">
+        <h1 className="display title-gradient shrink-0 text-xl font-(--title-weight) tracking-[-0.01em]">{title}</h1>
+        {subtitle && <p className="min-w-0 truncate text-xs text-faint">{subtitle}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>

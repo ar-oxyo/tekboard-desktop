@@ -1,8 +1,9 @@
 import { listen } from "@tauri-apps/api/event";
 import { useQueryClient } from "@tanstack/react-query";
-import { lazy, Suspense, useEffect } from "react";
-import { Spinner } from "../components/ui";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { PageBarSlot, Spinner } from "../components/ui";
 import { Toaster } from "../components/Toaster";
+import { Tooltips } from "../components/Tooltips";
 import { LauncherDialog } from "../features/launcher/LauncherDialog";
 import { OverviewPage } from "../features/overview/OverviewPage";
 import { CommandPalette } from "../features/palette/CommandPalette";
@@ -44,7 +45,9 @@ import { PromptsPage } from "../features/prompts/PromptsPage";
 import { TestingPage } from "../features/testing/TestingPage";
 import { PackageDialog } from "../features/tools/PackageDialog";
 import { ReadmeDialog } from "../features/tools/ReadmeDialog";
-import { remember, entryOf, SECTIONS } from "./sections";
+import { remember, entryOf, SECTIONS, sectionOf } from "./sections";
+import { goBack, goForward } from "./history";
+import { ShortcutsDialog } from "./ShortcutsDialog";
 import { SectionTabs, Sidebar } from "./Sidebar";
 import { runMySync } from "../features/myepitech/useMySync";
 import { applyLang, t } from "../lib/i18n";
@@ -59,6 +62,13 @@ const BoardsPage = lazy(() => import("../features/whiteboard/BoardsPage"));
 const SpacePage = lazy(() => import("../features/space/SpacePage"));
 
 const UPDATE_KEY = "tekboard.update.lastCheck";
+
+/** Typing somewhere (a field, an editor, a whiteboard): global shortcuts stay out of the way. */
+function editing(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el || !el.closest) return false;
+  return !!el.closest("input, textarea, select, [contenteditable=''], [contenteditable='true'], .excalidraw, .cm-editor");
+}
 const DAY = 24 * 3600 * 1000;
 
 
@@ -106,6 +116,8 @@ export function App() {
   const share = useUi((s) => s.share);
   const settings = useSettings();
   const qc = useQueryClient();
+  const tabbed = sectionOf(page).tabs ?? false;
+  const [barSlot, setBarSlot] = useState<HTMLElement | null>(null);
   useCaptureShortcut();
   useNudges();
 
@@ -253,8 +265,25 @@ export function App() {
   }, [qc]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+        if (editing(e.target)) return;
+        e.preventDefault();
+        if (e.key === "ArrowLeft") goBack();
+        else goForward();
+        return;
+      }
       if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
       const key = e.key.toLowerCase();
+      if (key === "b" && !e.shiftKey && !editing(e.target)) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("tekboard:toggle-rail"));
+        return;
+      }
+      if (key === "/" || key === ":") {
+        e.preventDefault();
+        useUi.setState((s) => ({ shortcutsOpen: !s.shortcutsOpen }));
+        return;
+      }
       if (key === "j") {
         e.preventDefault();
         const ui = useUi.getState();
@@ -355,6 +384,7 @@ export function App() {
           <OnboardingFlow />
         </div>
         <Toaster />
+        <Tooltips />
       </>
     );
   }
@@ -369,8 +399,15 @@ export function App() {
             <PlanningPage />
           </div>
         ) : (
-        <div key={page} className="anim-rise mx-auto max-w-[1440px] px-8 pt-6 pb-10">
-          <SectionTabs />
+        <div key={page} className="anim-rise mx-auto max-w-[1440px] px-8 pt-5 pb-10">
+          {tabbed && (
+            <div className="mb-5 flex min-h-9 items-center gap-4">
+              <h1 className="display title-gradient shrink-0 text-xl font-(--title-weight) tracking-[-0.01em]">{sectionOf(page).label}</h1>
+              <SectionTabs />
+              <div ref={setBarSlot} className="flex min-w-0 flex-1 items-center justify-end gap-3" />
+            </div>
+          )}
+          <PageBarSlot.Provider value={tabbed ? (barSlot ?? "pending") : null}>
           {page === "overview" && <OverviewPage />}
           {page === "projects" && <ProjectsPage />}
           {page === "git" && <GitPage />}
@@ -407,6 +444,7 @@ export function App() {
               <BoardsPage />
             </Suspense>
           )}
+          </PageBarSlot.Provider>
         </div>
         )}
       </main>
@@ -420,9 +458,11 @@ export function App() {
       <EventDialog />
       <TaskDialog />
       <QuickCapture />
+      <ShortcutsDialog />
       <InboxDialog />
       <FocusBar />
       <Toaster />
+      <Tooltips />
     </div>
   );
 }

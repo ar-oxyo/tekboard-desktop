@@ -1,28 +1,15 @@
-import { CalendarDays, ChartNoAxesColumn, Inbox, FlaskRound, FolderGit2, Users, GraduationCap, LayoutTemplate, Search, Settings, Sun } from "lucide-react";
-import type { ReactNode } from "react";
+import { ChevronRight, Inbox, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../lib/api";
+import { api, type RepoInfo } from "../lib/api";
 import { cn, Kbd } from "../components/ui";
 import { Artix } from "../features/artix/Artix";
-import { useEnv } from "../lib/hooks";
-import { useUi } from "../lib/store";
-import { entryOf, SECTIONS, sectionOf, type Section } from "./sections";
+import { useEnv, usePref, useRepos } from "../lib/hooks";
+import { displayName } from "../lib/repos";
+import { useUi, type Page } from "../lib/store";
+import { PAGE_ICON } from "./pageIcons";
+import { entryOf, pageLabel, SECTIONS, sectionOf } from "./sections";
 import { t } from "../lib/i18n";
-
-const icon = "size-4";
-const ICONS: Record<Section["id"], ReactNode> = {
-  today: <Sun className={icon} />,
-  projects: <FolderGit2 className={icon} />,
-  planning: <CalendarDays className={icon} />,
-  school: <GraduationCap className={icon} />,
-  stats: <ChartNoAxesColumn className={icon} />,
-  lab: <FlaskRound className={icon} />,
-  connect: <Users className={icon} />,
-  resources: <LayoutTemplate className={icon} />,
-  settings: <Settings className={icon} />,
-};
-const MAIN = SECTIONS.slice(0, 7);
-const FOOT = SECTIONS.slice(7);
 
 export function Logo({ className }: { className?: string }) {
   // Same drawing as public/tekboard.svg: a T inside a progress ring.
@@ -47,87 +34,223 @@ export function Logo({ className }: { className?: string }) {
   );
 }
 
+/** The sidebar's groups: the screens people open every day first, then by subject. */
+const GROUPS: Array<{ id: string; label: string; pages: Page[] }> = [
+  { id: "school", label: t("École"), pages: ["myepitech", "skilltree", "logtime", "subjects", "analytics"] },
+  { id: "lab", label: t("Labo"), pages: ["playground", "arena", "boards"] },
+  { id: "connect", label: "Connect", pages: ["connect", "live", "space"] },
+];
+
+/** Ctrl+N of the section a screen opens with, when it is the section's entry. */
+function shortcutOf(page: Page): string | undefined {
+  const i = SECTIONS.findIndex((s) => s.pages[0].page === page);
+  return i >= 0 && i < 9 ? `Ctrl+${i + 1}` : undefined;
+}
+
 export function Sidebar() {
   const page = useUi((s) => s.page);
   const setPage = useUi((s) => s.setPage);
   const setPaletteOpen = useUi((s) => s.setPaletteOpen);
   const artixOpen = useUi((s) => s.assistantOpen);
-  const env = useEnv();
-  const current = sectionOf(page).id;
-  const missing = env.data?.tools.filter((t) => t.required && !t.path).length ?? 0;
-  const gh = env.data?.github.state;
-  const inbox = useQuery({ queryKey: ["brain-count"], queryFn: api.brainCount, staleTime: 60_000 });
   const inboxOpen = useUi((s) => s.inbox !== null);
+  const [rail, setRail] = usePref("sidebarRail", false);
+  const [folded, setFolded] = usePref<string[]>("sidebarFolded", []);
+  const inbox = useQuery({ queryKey: ["brain-count"], queryFn: api.brainCount, staleTime: 60_000 });
+  const repos = useRepos();
+  const pinned = (repos.data ?? []).filter((r) => r.meta.favorite && r.meta.visibility === null).slice(0, 6);
+  const current = sectionOf(page);
+  useEffect(() => {
+    const on = () => setRail(!rail);
+    window.addEventListener("tekboard:toggle-rail", on);
+    return () => window.removeEventListener("tekboard:toggle-rail", on);
+  }, [rail, setRail]);
 
-  const row = (s: Section) => {
-    const n = SECTIONS.indexOf(s) + 1;
-    const on = current === s.id;
-    return (
-      <button key={s.id} type="button" aria-current={on ? "page" : undefined} onClick={() => setPage(entryOf(s))} title={`Ctrl+${n}`} className={cn("nav-item flex h-8 shrink-0 items-center gap-2.5 px-2.5 text-sm", on ? "font-medium" : "text-muted hover:bg-ink/4 hover:text-fg")}>
-        <span className={cn("flex w-4 shrink-0 justify-center", on ? "text-accent" : "text-faint")}>{ICONS[s.id]}</span>
-        {s.label}
-      </button>
-    );
-  };
+  /** A screen of a tabbed section (Projects, Settings) lights its section's entry. */
+  const isOn = (p: Page) => (sectionOf(p).tabs ? current.id === sectionOf(p).id : page === p);
+  const go = (p: Page) => setPage(sectionOf(p).tabs ? entryOf(sectionOf(p)) : p);
+
+  const item = (p: Page, extra?: ReactNode) => (
+    <NavItem key={p} rail={rail} on={isOn(p)} icon={PAGE_ICON[p]} label={sectionOf(p).tabs ? sectionOf(p).label : pageLabel(p)} hint={shortcutOf(p)} onClick={() => go(p)}>
+      {extra}
+    </NavItem>
+  );
+  const toggleGroup = (id: string) => setFolded(folded.includes(id) ? folded.filter((g) => g !== id) : [...folded, id]);
 
   return (
-    <aside className="sidebar flex w-56 shrink-0 flex-col">
-      <div className="flex h-16 items-center gap-2.5 px-5">
-        <Logo className="logo-glow size-6" />
-        <span className="display text-md font-medium">TekBoard</span>
+    <aside className={cn("sidebar group/side flex shrink-0 flex-col transition-[width] duration-(--dur-base) ease-(--ease)", rail ? "w-[52px]" : "w-56")} aria-label="Navigation">
+      <div className={cn("flex h-13 shrink-0 items-center gap-2", rail ? "justify-center px-0" : "px-4")}>
+        {!rail && (
+          <>
+            <Logo className="logo-glow size-[22px] shrink-0" />
+            <span className="display flex-1 truncate text-md font-bold tracking-[-0.01em]">TekBoard</span>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={() => setRail(!rail)}
+          title={rail ? t("Déplier la barre latérale (Ctrl+B)") : t("Replier la barre latérale (Ctrl+B)")}
+          className={cn("flex size-7 shrink-0 items-center justify-center rounded-md text-faint transition-[color,background-color,opacity] duration-(--dur-fast) hover:bg-ink/6 hover:text-fg", !rail && "opacity-0 group-hover/side:opacity-100 focus-visible:opacity-100")}
+        >
+          {rail ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+        </button>
       </div>
-      <button type="button" onClick={() => setPaletteOpen(true)} className="mx-3 flex h-8 items-center gap-2.5 rounded-(--btn-radius) border border-ink/7 bg-ink/3 px-2.5 text-faint transition-colors duration-150 hover:border-ink/12 hover:text-muted">
-        <Search className="size-4" />
-        <span className="flex-1 text-left text-sm">{t("Rechercher")}</span>
-        <Kbd>Ctrl K</Kbd>
-      </button>
-      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 pt-5 pb-3" aria-label="Navigation">
-        {MAIN.map(row)}
-        <button type="button" onClick={() => (artixOpen ? useUi.getState().closeAssistant() : useUi.getState().openAssistant())} title="Ctrl+J" className={cn("nav-item mt-4 flex h-9 shrink-0 items-center gap-2.5 px-2 text-sm", artixOpen ? "font-medium" : "text-muted hover:bg-ink/4 hover:text-fg")}>
-          <Artix size={20} />
-          Artix
-          <Kbd>Ctrl J</Kbd>
+
+      <div className={cn("shrink-0", rail ? "px-2" : "px-3")}>
+        <button
+          type="button"
+          onClick={() => setPaletteOpen(true)}
+          title={rail ? t("Rechercher (Ctrl+K)") : undefined}
+          className={cn("flex h-8 w-full items-center gap-2.5 rounded-(--btn-radius) border border-line bg-ink/3 text-faint transition-colors duration-(--dur-fast) hover:border-line-strong hover:text-muted", rail ? "justify-center" : "px-2.5")}
+        >
+          <Search className="size-4 shrink-0" />
+          {!rail && (
+            <>
+              <span className="flex-1 text-left">{t("Rechercher")}</span>
+              <Kbd>Ctrl K</Kbd>
+            </>
+          )}
         </button>
-        <button type="button" onClick={() => useUi.getState().openInbox()} title={t("Captures à ranger (Ctrl+I pour noter)")} className={cn("nav-item flex h-8 shrink-0 items-center gap-2.5 px-2.5 text-sm", inboxOpen ? "font-medium" : "text-muted hover:bg-ink/4 hover:text-fg")}>
-          <span className="flex w-4 shrink-0 justify-center text-faint">
-            <Inbox className="size-4" />
-          </span>
-          {t("Inbox")}
-          {(inbox.data ?? 0) > 0 && <span className="ml-auto rounded-full bg-accent-soft px-1.5 text-2xs text-accent-strong tabular-nums">{inbox.data}</span>}
-        </button>
+      </div>
+
+      <nav className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto pt-3 pb-3", rail ? "px-2" : "px-3")}>
+        <div className="flex flex-col gap-px">
+          {item("overview")}
+          {item("projects")}
+          {item("agenda")}
+          <NavItem rail={rail} on={inboxOpen} icon={<Inbox className="size-4" />} label={t("Inbox")} hint={t("Captures à ranger · Ctrl+I pour noter")} onClick={() => useUi.getState().openInbox()}>
+            {(inbox.data ?? 0) > 0 && <Count rail={rail} n={inbox.data ?? 0} />}
+          </NavItem>
+        </div>
+
+        {pinned.length > 0 && <Pinned rail={rail} repos={pinned} />}
+
+        {GROUPS.map((g) => {
+          const closed = folded.includes(g.id) && !g.pages.includes(page);
+          return (
+            <div key={g.id} className={cn("flex flex-col gap-px", rail ? "mt-2 border-t border-line pt-2" : "mt-3")}>
+              {!rail && (
+                <button type="button" onClick={() => toggleGroup(g.id)} aria-expanded={!closed} className="group/g flex h-6 items-center gap-1 px-2.5 text-left text-xs text-faint transition-colors duration-(--dur-fast) hover:text-muted">
+                  {g.label}
+                  <ChevronRight className={cn("size-3 opacity-0 transition-[transform,opacity] duration-(--dur-fast) group-hover/g:opacity-100", !closed && "rotate-90")} />
+                </button>
+              )}
+              {!closed && g.pages.map((p) => item(p))}
+            </div>
+          );
+        })}
+
       </nav>
-      <div className="flex flex-col gap-0.5 border-t border-ink/6 px-3 py-3">
-        {FOOT.map(row)}
-        <button type="button" onClick={() => setPage("settings")} title={t("Ouvrir les réglages")} className="mt-2 flex w-full flex-col gap-1 px-2.5 text-left text-xs text-faint transition-colors duration-150 hover:text-muted">
-          <Status ok={env.data ? missing === 0 : null} label={env.data ? (missing === 0 ? t("Outils prêts") : `${missing} outil${missing > 1 ? "s" : ""} manquant${missing > 1 ? "s" : ""}`) : t("Vérification des outils…")} />
-          <Status ok={gh === undefined ? null : gh === "ready"} label={gh === undefined ? t("Vérification de GitHub…") : gh === "ready" ? t("GitHub connecté") : gh === "missing" ? t("gh non installé") : gh === "loggedOut" ? t("gh non connecté") : t("GitHub injoignable")} />
-        </button>
+
+      <div className={cn("flex shrink-0 flex-col gap-px border-t border-line py-2", rail ? "px-2" : "px-3")}>
+        <NavItem rail={rail} on={artixOpen} icon={<Artix size={18} />} label="Artix" hint="Ctrl+J" onClick={() => (artixOpen ? useUi.getState().closeAssistant() : useUi.getState().openAssistant())} />
+        {item("templates")}
+        {item("settings")}
+        <Health rail={rail} />
       </div>
     </aside>
   );
 }
 
-function Status({ ok, label }: { ok: boolean | null; label: string }) {
+function NavItem({ rail, on, icon, label, hint, onClick, children }: { rail: boolean; on: boolean; icon: ReactNode; label: string; hint?: string; onClick: () => void; children?: ReactNode }) {
   return (
-    <span className="flex h-5 items-center gap-2.5">
-      <span className="flex w-4 shrink-0 justify-center">
-        <span className={cn("size-1.5 rounded-full", ok === null ? "bg-faint" : ok ? "bg-ok" : "bg-warn")} />
-      </span>
-      {label}
-    </span>
+    <button
+      type="button"
+      aria-current={on ? "page" : undefined}
+      onClick={onClick}
+      title={rail ? (hint ? `${label} · ${hint}` : label) : hint}
+      className={cn("nav-item relative flex h-7 shrink-0 items-center gap-2.5 text-sm", rail ? "justify-center" : "px-2.5", on ? "font-medium text-fg" : "text-muted hover:bg-ink/5 hover:text-fg")}
+    >
+      <span className={cn("flex w-4 shrink-0 justify-center", on ? "text-accent" : "text-faint")}>{icon}</span>
+      {!rail && <span className="min-w-0 flex-1 truncate text-left">{label}</span>}
+      {children}
+    </button>
   );
 }
 
-/** Tabs of the current section, above its screen. */
+function Count({ n, rail }: { n: number; rail: boolean }) {
+  if (rail) return <span aria-hidden className="absolute top-1 right-1.5 size-1.5 rounded-full bg-accent" />;
+  return <span className="text-2xs text-faint tabular-nums">{n}</span>;
+}
+
+/** Days until a hand-in, as the dot size: the closer, the bigger (three steps). */
+function urgency(r: RepoInfo): 0 | 1 | 2 {
+  if (r.deadlineState === "overdue" || r.deadlineState === "today") return 2;
+  const at = r.meta.deadlineAt ?? r.meta.deadline;
+  if (!at || r.progress === "done") return 0;
+  const days = (new Date(at).getTime() - Date.now()) / 86_400_000;
+  return days <= 3 ? 1 : 0;
+}
+
+function Pinned({ repos, rail }: { repos: RepoInfo[]; rail: boolean }) {
+  const openSheet = useUi((s) => s.openSheet);
+  const sheet = useUi((s) => s.sheetPath);
+  return (
+    <div className={cn("flex flex-col gap-px", rail ? "mt-2 border-t border-line pt-2" : "mt-3")}>
+      {!rail && <p className="flex h-6 items-center px-2.5 text-xs text-faint">{t("Épinglés")}</p>}
+      {repos.map((r) => {
+        const u = urgency(r);
+        const name = displayName(r);
+        return (
+          <button
+            key={r.path}
+            type="button"
+            onClick={() => openSheet(r.path)}
+            aria-current={sheet === r.path ? "true" : undefined}
+            title={rail ? name : r.epitech ? `${name} · ${r.epitech.module}` : undefined}
+            className={cn("nav-item flex h-7 shrink-0 items-center gap-2.5 text-sm", rail ? "justify-center" : "px-2.5", sheet === r.path ? "text-fg" : "text-muted hover:bg-ink/5 hover:text-fg")}
+          >
+            <span className="flex w-4 shrink-0 items-center justify-center">
+              <span aria-hidden className={cn("rounded-full", u === 2 ? "size-2 bg-accent-2" : u === 1 ? "size-1.5 bg-accent-2" : "size-1.5 bg-faint")} />
+            </span>
+            {!rail && <span className="min-w-0 flex-1 truncate text-left">{name}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Tools and GitHub in one line: quiet when all is well, the first problem otherwise. */
+function Health({ rail }: { rail: boolean }) {
+  const env = useEnv();
+  const missing = env.data?.tools.filter((x) => x.required && !x.path).length ?? 0;
+  const gh = env.data?.github.state;
+  const toolsLine = env.data ? (missing === 0 ? t("Outils prêts") : t("{n} outil(s) manquant(s)", { n: missing })) : t("Vérification des outils…");
+  const ghLine = gh === undefined ? t("Vérification de GitHub…") : gh === "ready" ? t("GitHub connecté") : gh === "missing" ? t("gh non installé") : gh === "loggedOut" ? t("gh non connecté") : t("GitHub injoignable");
+  const ok = env.data ? missing === 0 && gh === "ready" : null;
+  const label = ok === null ? t("Vérification…") : ok ? t("Tout est prêt") : missing > 0 ? toolsLine : ghLine;
+  return (
+    <button
+      type="button"
+      onClick={() => useUi.setState({ page: "settings", settingsTab: "doctor", sheetPath: null })}
+      title={`${toolsLine} · ${ghLine} — ${t("Ouvrir le Doctor")}`}
+      className={cn("mt-1 flex h-7 items-center gap-2.5 rounded-(--btn-radius) text-xs transition-colors duration-(--dur-fast) hover:bg-ink/5", rail ? "justify-center" : "px-2.5", ok === false ? "text-warn" : "text-faint hover:text-muted")}
+    >
+      <span className="flex w-4 shrink-0 justify-center">
+        <span aria-hidden className={cn("size-1.5 rounded-full", ok === null ? "bg-faint" : ok ? "bg-ok" : "bg-warn")} />
+      </span>
+      {!rail && <span className="truncate">{label}</span>}
+    </button>
+  );
+}
+
+/** Tabs of a tabbed section (Projects, Settings), in the page bar. */
 export function SectionTabs() {
   const page = useUi((s) => s.page);
   const setPage = useUi((s) => s.setPage);
   const s = sectionOf(page);
-  if (s.pages.length < 2) return null;
+  if (!s.tabs) return null;
   return (
-    <div className="mb-5 flex items-center gap-1 border-b border-ink/6" role="tablist" aria-label={s.label}>
+    <div className="flex items-center gap-0.5" role="tablist" aria-label={s.label}>
       {s.pages.map((p) => (
-        <button key={p.page} type="button" role="tab" aria-selected={p.page === page} onClick={() => setPage(p.page)} className={cn("-mb-px border-b-2 px-3 py-2 text-sm transition-colors duration-150", p.page === page ? "border-accent font-medium text-fg" : "border-transparent text-muted hover:text-fg")}>
+        <button
+          key={p.page}
+          type="button"
+          role="tab"
+          aria-selected={p.page === page}
+          onClick={() => setPage(p.page)}
+          className={cn("h-7 rounded-(--btn-radius) px-2.5 text-sm transition-colors duration-(--dur-fast)", p.page === page ? "bg-ink/7 font-medium text-fg" : "text-muted hover:bg-ink/4 hover:text-fg")}
+        >
           {p.label}
         </button>
       ))}

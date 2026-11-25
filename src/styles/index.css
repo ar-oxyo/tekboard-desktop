@@ -79,15 +79,15 @@
   --color-fg: #1d1b19;
   --color-muted: #58534b;
   --color-faint: #6b655a;
-  --color-accent: #0078bf;
-  --color-accent-strong: #005f99;
-  --color-accent-soft: rgb(0 120 191 / 0.13);
+  --color-accent: #006bab;
+  --color-accent-strong: #00578b;
+  --color-accent-soft: rgb(0 107 171 / 0.12);
   --color-accent-2: #ff6c2f;
   --color-on-accent: #ffffff;
   --color-ok: #0f7044;
   --color-warn: #a8450b;
   --color-danger: #b92a37;
-  --color-info: #005f99;
+  --color-info: #00578b;
   --color-ink: #1d1b19;
   --color-well: rgb(29 27 25 / 0.05);
   --shadow-pop: 0 1px 2px rgb(29 27 25 / 0.08), 0 14px 36px -12px rgb(29 27 25 / 0.28);
@@ -684,6 +684,18 @@ code,
 }
 .scrim {
   background: rgb(0 0 0 / 0.6);
+}
+/* Tooltips are printed in reverse: ground-coloured text on a block of ink. */
+.tooltip {
+  background: var(--color-fg);
+  color: var(--color-bg);
+  border-radius: 5px;
+  line-height: 16px;
+  box-shadow: 0 4px 14px -4px rgb(0 0 0 / 0.35);
+  animation: fade-in var(--dur-fast) var(--ease);
+}
+:root[data-mode="light"] .scrim {
+  background: rgb(29 27 25 / 0.3);
 }
 
 /* Overlays are centred with Tailwind's `translate` property (and menus are placed by
