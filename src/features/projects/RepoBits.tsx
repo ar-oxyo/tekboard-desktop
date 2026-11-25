@@ -120,7 +120,7 @@ export function RepoMenu({ repo, sheet = true }: { repo: RepoInfo; sheet?: boole
   const openLauncher = useUi((s) => s.openLauncher);
   const hasRemote = repo.remoteUrl !== null;
   return (
-    <Menu label={`More actions for ${repo.name}`}>
+    <Menu label={t("Autres actions pour {n}", { n: repo.name })}>
       {sheet && (
         <MenuItem icon={<NotebookPen className="size-4" />} onSelect={() => openSheet(repo.path)}>
           {t("Fiche du projet")}

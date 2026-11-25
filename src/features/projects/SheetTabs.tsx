@@ -19,7 +19,7 @@ export function TestingTab({ repo }: { repo: RepoInfo }) {
       {runs.isLoading ? <Spinner /> : latest.size === 0 ? (
         <p className="text-sm text-muted">{t("Rien n'a encore été lancé sur ce projet.")}</p>
       ) : (
-        <ul className="rounded-lg border border-line bg-bg py-1">
+        <ul className="divide-y divide-line border-y border-line">
           {[...latest.values()].map((r) => (
             <li key={r.id}>
               <button type="button" className="row-hover flex h-9 w-full items-center gap-2.5 px-3 text-left text-sm" onClick={() => { openTesting(repo.path); useUi.setState({ runId: r.id }); }}>

@@ -21,6 +21,12 @@ export function Modal({ open, onClose, title, description, children, footer, wid
       <Dialog.Portal>
         <Dialog.Overlay className="scrim anim-fade fixed inset-0 z-40" />
         <Dialog.Content
+          // The panel takes the focus, not the close button: no ring or tooltip on a cross the user never aimed at.
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            (e.currentTarget as HTMLElement | null)?.focus();
+          }}
+          tabIndex={-1}
           className={cn(
             "glass anim-pop fixed top-1/2 left-1/2 z-50 flex max-h-[86vh] max-w-[94vw] -translate-x-1/2 -translate-y-1/2 flex-col",
             "focus:outline-none",

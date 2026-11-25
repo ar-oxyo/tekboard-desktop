@@ -127,10 +127,13 @@ code,
   background: color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
-*:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  border-radius: 6px;
+/* In the base layer so a component's own focus utilities (focus:outline-none…) still win. */
+@layer base {
+  *:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
 }
 
 ::-webkit-scrollbar {
@@ -452,6 +455,9 @@ code,
   --select-bg: #080d08;
 }
 
+/* Component classes live in a layer below the utilities: a utility on an element (rounded-md,
+   bg-…) always wins over the class it is combined with. */
+@layer components {
 .app-bg {
   position: fixed;
   inset: 0;
@@ -1039,4 +1045,5 @@ code,
 }
 @media (prefers-reduced-motion: reduce) {
   .skill-pulse { animation: none; }
+}
 }

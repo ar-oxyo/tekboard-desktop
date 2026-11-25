@@ -31,6 +31,14 @@ export function Tooltips() {
   const target = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    // Focus shows a tooltip only while moving with the keyboard, not when a dialog focuses something.
+    let keyboard = false;
+    const onKeyMode = (e: KeyboardEvent) => {
+      if (e.key === "Tab" || e.key.startsWith("Arrow")) keyboard = true;
+    };
+    const onPointerMode = () => {
+      keyboard = false;
+    };
     const place = (el: HTMLElement, text: string) => {
       const r = el.getBoundingClientRect();
       const below = r.top < 40;
@@ -61,8 +69,10 @@ export function Tooltips() {
     };
     const focus = (e: FocusEvent) => {
       const el = (e.target as HTMLElement | null)?.closest?.<HTMLElement>("[title], [data-tip]");
-      if (el && el.matches(":focus-visible")) show(el, true);
+      if (el && keyboard && el.matches(":focus-visible")) show(el, true);
     };
+    document.addEventListener("keydown", onKeyMode, true);
+    document.addEventListener("pointerdown", onPointerMode, true);
     document.addEventListener("pointerover", over);
     document.addEventListener("focusin", focus);
     document.addEventListener("focusout", hide);
@@ -71,6 +81,8 @@ export function Tooltips() {
     window.addEventListener("scroll", hide, true);
     window.addEventListener("blur", hide);
     return () => {
+      document.removeEventListener("keydown", onKeyMode, true);
+      document.removeEventListener("pointerdown", onPointerMode, true);
       document.removeEventListener("pointerover", over);
       document.removeEventListener("focusin", focus);
       document.removeEventListener("focusout", hide);

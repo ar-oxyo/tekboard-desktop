@@ -3,13 +3,14 @@ import * as DM from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronRight, Ellipsis } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn, IconButton } from "./ui";
+import { t } from "../lib/i18n";
 
 export function Menu({ trigger, children, align = "end", label }: { trigger?: ReactNode; children: ReactNode; align?: "start" | "end"; label?: string }) {
   return (
     <DM.Root>
       <DM.Trigger asChild>
         {trigger ?? (
-          <IconButton label={label ?? "More actions"}>
+          <IconButton label={label ?? t("Autres actions")}>
             <Ellipsis className="size-4" />
           </IconButton>
         )}

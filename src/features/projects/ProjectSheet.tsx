@@ -151,7 +151,7 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
   const buildState = build.data && (
     <span className={cn("flex items-center gap-1.5 text-sm", build.data.code === 0 ? "text-ok" : "text-danger")}>
       {build.data.code === 0 ? <CircleCheck className="size-4" /> : <CircleX className="size-4" />}
-      {build.data.timedOut ? "Stopped after 5 minutes" : build.data.code === 0 ? "Build succeeded" : `Build failed (exit ${build.data.code ?? "?"})`}
+      {build.data.timedOut ? t("Arrêté après 5 minutes") : build.data.code === 0 ? t("Compilation réussie") : t("Compilation échouée (code {c})", { c: build.data.code ?? "?" })}
       <span className="text-faint">· {(build.data.durationMs / 1000).toFixed(1)} s</span>
     </span>
   );
@@ -173,7 +173,7 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
             icon={<Rocket className="size-3.5" />}
             busy={launch.isPending}
             disabled={bin !== undefined && !bin.terminal}
-            title={!bin ? undefined : !bin.terminal ? "No terminal is configured to run programs (Settings → Workspace)" : binary ? `Runs ./${binary}${draft.runArgs ? ` ${draft.runArgs}` : ""} in a terminal` : "Set the binary in Deadline & notes: TekBoard could not tell which program this project builds"}
+            title={!bin ? undefined : !bin.terminal ? t("Aucun terminal n'est configuré pour lancer les programmes (Réglages → Espace de travail)") : binary ? t("Lance ./{b} dans un terminal", { b: `${binary}${draft.runArgs ? ` ${draft.runArgs}` : ""}` }) : t("Indique le binaire dans Rendu et notes : TekBoard n'a pas pu deviner quel programme ce projet compile")}
             onClick={() => launch.mutate()}
           >
             {t("Lancer")}
@@ -215,7 +215,7 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
               label={t("Rendu")}
               hint={
                 d.state === "unknown" ? (
-                  my?.deadline ? "Not set" : "Not set — TekBoard never guesses a date"
+                  my?.deadline ? t("Non définie") : t("Non définie : TekBoard ne devine jamais une date")
                 ) : (
                   <>
                     <span className={cn(d.tone === "danger" ? "text-danger" : d.tone === "warn" ? "text-warn" : "")}>{d.label}</span>
@@ -243,7 +243,7 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
             </p>
           )}
           <div className="grid grid-cols-2 gap-3">
-            <Field label={t("Binaire à lancer")} hint={bin?.detected ? `Detected: ${bin.detected} (${bin.detectedFrom}). Leave empty to use it.${bin && binary && !bin.exists && draft.runBin === saved.runBin ? " Not built yet." : ""}` : "Nothing detected (no plain NAME in the Makefile, no executable at the root)."}>
+            <Field label={t("Binaire à lancer")} hint={bin?.detected ? `${t("Détecté : {b} ({from}). Laisse vide pour l'utiliser.", { b: bin.detected, from: bin.detectedFrom ?? "" })}${bin && binary && !bin.exists && draft.runBin === saved.runBin ? ` ${t("Pas encore compilé.")}` : ""}` : t("Rien de détecté (pas de NAME simple dans le Makefile, pas d'exécutable à la racine).")}>
               <Input className="font-mono text-xs" placeholder={bin?.detected ?? "path/inside/the/project"} value={draft.runBin ?? ""} onChange={(e) => setDraft({ ...draft, runBin: e.target.value || null })} />
             </Field>
             <Field label="Arguments" hint={t("Les guillemets groupent les mots. Pas de pipes ni de redirections : le programme est lancé sans shell.")}>

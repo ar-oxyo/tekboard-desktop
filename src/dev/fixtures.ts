@@ -169,6 +169,11 @@ const agenda = {
 };
 
 export const fixtures: Record<string, Fixture> = {
+  project_get: (a: Record<string, unknown>) => {
+    const r = repos.find((x) => x.path === a.path) ?? repos[0];
+    return { deadline: r.meta.deadline, deadlineAt: r.meta.deadlineAt, deadlineSource: r.meta.deadlineSource, buildCmd: "make re", notes: "Tests de hash à corriger avant jeudi.\n- vérifier les collisions\n- valgrind propre", runBin: null, runArgs: null };
+  },
+  project_run_info: { configured: null, detected: "secured", detectedFrom: "Makefile", effective: "secured", exists: true, args: null, terminal: false },
   deadline_board: board,
   my_agenda: agenda,
   startup: (_a: Record<string, unknown>, p: URLSearchParams) => ({ page: p.get("page"), sheet: p.get("sheet"), theme: p.get("theme"), repo: p.get("repo"), pick: null, tool: null, run: null, report: null, anchor: null }),
