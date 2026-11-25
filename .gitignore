@@ -17,3 +17,6 @@ src-tauri/gen/
 .serena/cache/
 .serena/logs/
 .serena/project.local.yml
+.impeccable/mocks/
+.impeccable/review/
+.impeccable/config.local.json

@@ -11,6 +11,12 @@ const queryClient = new QueryClient({
 const capture = new URLSearchParams(window.location.search).get("window") === "capture";
 const Root = capture ? lazy(() => import("./features/brain/CaptureApp").then((m) => ({ default: m.CaptureApp }))) : lazy(() => import("./app/App").then((m) => ({ default: m.App })));
 
+// Development in a plain browser (no Tauri): demonstration data instead of the backend.
+if (import.meta.env.DEV && !("__TAURI_INTERNALS__" in window)) {
+  const { installMock } = await import("./dev/mockIpc");
+  installMock();
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
