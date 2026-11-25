@@ -446,7 +446,7 @@ ai_choice() {
 dev_build() {
     step "Compilation depuis les sources"
     local root
-    root=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)
+    root=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd) || root=""
     if [[ -z "$root" || ! -f "$root/package.json" || ! -d "$root/src-tauri" ]]; then
         fail "--dev se lance depuis un clone du dépôt :"
         cmd "git clone https://github.com/$REPO.git && cd tekboard-desktop && ./install.sh --dev"
