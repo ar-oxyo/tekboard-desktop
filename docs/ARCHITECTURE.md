@@ -208,3 +208,42 @@ The unit's domain is the only deduction, from its projects' unit codes, and is f
 - The walk continues two levels inside a repository to find independent ones.
 - Links are followed once (canonical-path set).
 - `MAX_DEPTH` is 8.
+
+## Lab, Connect and whiteboards (0.8)
+
+**Shared plumbing.**
+- `jobs::Job::run_opts` runs a command with stdin from a file, separate stdout/stderr and an adaptive poll (durations are not rounded to the poll period). `run`/`run_lines` are thin wrappers.
+- `ai::sandbox::wrap_argv(work, argv, envs, Limits)` builds a bubblewrap command line: no network, read-only system, `--clearenv`, work dir as the only writable bind. Memory and process limits use a `systemd-run --user --scope` cgroup (`MemoryMax`, `TasksMax`) when available, `ulimit` otherwise. There is never an unsandboxed fallback.
+- `cdiag` parses gcc/clang/linker diagnostics and ASan/LSan/UBSan/Valgrind reports into `Diagnostic` / `MemIssue` (file, line, stack frames in the user's code).
+- `components/CodeEditor.tsx` is the shared CodeMirror 6 editor (C grammar, lint marks, light completion); `components/charts` holds the hand-made SVG charts.
+
+**Playground** (`playground.rs`, `commands_lab.rs`, `features/playground`). Drafts are rows of `playground_drafts` (files as JSON). A run is a `playground` job: `compile` then `run` steps in a copy under the cache dir, inside the sandbox, with time, memory, output and process limits. The job summary keeps the files, so any past run can be restored. Library import reuses `library.rs` (dependency closure); export writes a new folder (Makefile, .gitignore) and refuses an existing one.
+
+**Arena** (`arena/`). A benchmark (`arena_benchmarks`) is variants × scenarios × sizes.
+- Each variant is an isolated copy: the working tree via `ai::workcopy`, a revision via `git archive` (the worktree and `.git` are never touched).
+- `measure.rs` compiles a tiny fork/`wait4` helper in the sandbox: wall and CPU time in µs and max RSS, N repeats after a warm-up, median and MAD, outliers flagged.
+- With Valgrind: Callgrind instruction counts per size and per function (`--auto=no`), Massif peak, Memcheck allocation count. A missing tool is a skipped step, never an estimate.
+- `fit.rs`: least squares over 1, log n, n, n log n, n², n³, 2ⁿ; the best fit is reported only with enough sizes and a clear margin, otherwise "undetermined".
+- `heuristics.rs` reads the code with tree-sitter and reports hypotheses, kept apart from measurements.
+- `ai.rs`: Artix streams generator files as `=== FILE … === END` blocks (each shown when complete, nothing runs before the user accepts); the final report prompt receives only the measured JSON and the heuristics.
+
+**Connect** (`connect/`, off by default, `Config` stored under the `connect` settings key).
+- Identity: a self-signed Ed25519 certificate (`rcgen`), key 0600; the device id is the SHA-256 fingerprint.
+- Transport: WebSocket over mutual TLS 1.3 (`rustls` with `ring`); there is no certificate authority: the handshake signatures are verified for real (each side proves it holds its key), then the fingerprint is pinned and a known contact must come back with the same one. First contact shows the same 6-digit code on both sides (derived from both fingerprints) before the user accepts.
+- Discovery: `mdns-sd`, service `_tekboard._tcp.local.`, only while enabled and not invisible. No scanning; manual fallback is an invitation code `tb1:<ip>:<port>:<fp>` or an address. It listens on the chosen LAN interface only; no UPnP, no firewall change, no relay.
+- Messages: JSON text (256 KiB max) and binary frames `[u32 BE len][json][payload]`, per-peer frame rate limit, unpaired peers may only send a pairing request. Modules register a handler per message prefix (`Service::on`); `space.*`, `board.*` and `connect.gone` are forwarded to the window as `connect-session` and dispatched by `lib/sessionBus.ts`.
+- `netdiag` explains client isolation / VLANs in plain words instead of trying to get around them.
+
+**TekShare** (`connect/share.rs`, `connect/inbox.rs`). An offer is a zip with a `tekshare.json` manifest (type, title, preview, size, SHA-256). Sending runs `packager::secret_in` and the exclusion list, refuses whole school repositories and warns on school projects. Receiving: quarantine in the cache, size and hash check, extraction without absolute paths, `..`, links, exec bits or zip bombs. Typed destinations import into the library, templates, prompts, Playground, Arena, boards, a project (patch: `git apply --check` first) or Downloads. Nothing is executed.
+
+**TekLive** (`teklive/`). `relay.rs` is a Rust port of the p2p-live-share WebSocket relay (`/<room>/<peer>`, JSON text, binary frames with a u32 LE metadata length, `__update_peers__`), bound to the LAN address, accepting only the room opened from this machine and, optionally, contacts' addresses. The "TekBoard Bridge" VS Code extension is generated as a `.vsix` by Rust and installed after confirmation. It reads a single-use request file in `$XDG_RUNTIME_DIR` (0600), sets `p2p-live-share.servers` through `workspace.getConfiguration().update` and runs `p2p-live-share.host`. TekBoard sees the room on its relay and builds the real `p2p-live-share://ws.<room>.<host:port>/` link; guests join with `code --folder-uri`. The extension has no per-participant permissions; the UI says so.
+
+**TekSpace** (`features/space`). Pure TypeScript: `SpaceHost` is host-authoritative behind an abstract transport (Connect today, a headless host later), `protocol.ts` checks every client message, the engine draws a static map once and redraws on change only (≤30 fps, stopped when hidden). Tables carry goals, a shared focus timer (host timestamps), Web Audio ambiences, a validated Spotify Jam link, pins and the table's board.
+
+**Whiteboards** (`boards.rs`, `commands_boards.rs`, `features/whiteboard`).
+- Storage: a `boards` row (name, project, text index for search, thumbnail, position) and `data/boards/<id>.json`; images in `data/boards/<id>/files/` (PNG/JPEG/WebP/GIF/SVG data URLs, 4 MB each); embeddable/iframe elements refused. `board_versions` keeps a snapshot every 5 minutes of work, 30 per board. Nothing is written into a project unless exported (`docs/boards/<name>.tekboard-board`, never overwritten).
+- Exports: PNG/SVG by Excalidraw; PDF is a JPEG rendered by the window wrapped in a one-page PDF written by `boards::pdf_from_jpeg` (no crate); `.tekboard-board` is versioned JSON validated on import (`.excalidraw` files are accepted too). Save-dialog paths must be absolute, in the home folder, with an export extension.
+- Editor: Excalidraw 0.18 (MIT), lazy-loaded with the editor chunk. Fonts are served by TekBoard (`vite.config.ts`, `/excalidraw/fonts`, Xiaolai left out); `assetPath.ts` sets `EXCALIDRAW_ASSET_PATH` and, since WebKitGTK does not always fire `document.fonts` `loadingdone`, loads the faces and dispatches the event itself. The CSP gains `blob:` images, `blob:` workers and `connect-src 'self'` only.
+- `lib/boards.ts` (pure, tested) builds the programming shapes as Excalidraw skeletons with bound arrows, summarises a board for Artix and parses Artix answers (Mermaid block, `[{anchor, note}]` annotations).
+- Collaboration (`collab.ts`, tested with a fake transport): the board's owner hosts; guests `board.join`, get `board.welcome` and the scene in chunks under the Connect limit (counted in UTF-8 bytes); then only elements whose version changed travel (`board.ops`), merged with `reconcileElements` and applied with `CaptureUpdateAction.NEVER` so undo stays per person. Images are fetched by id on demand. Cursors ≤20 Hz, edit/view rights enforced by the host (writes from viewers are refused), presentation = followers receive the presenter's scroll/zoom. A guest that gets no answer is told after 10 s and can reconnect. A TekSpace table's board lets people seated at that table join without an invitation.
+- Artix (`board_ai` job): a Mermaid diagram (converted with `@excalidraw/mermaid-to-excalidraw`) or annotations. The result is inserted as a selected preview marked `customData.tekPreview`: not saved, not sent to others, removed on cancel, and kept as one undo step.

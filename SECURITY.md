@@ -12,8 +12,14 @@ N'ouvre pas de ticket public. Utilise **Security → Report a vulnerability** su
 | Session du site MY Epitech (cookies du navigateur intégré) | `~/.local/share/dev.tekboard.app/my-session/` | jamais exportée, effacée par « Effacer la session » |
 | Jeton d'accès MY Epitech | mémoire uniquement | jamais écrit sur le disque ni dans les journaux |
 | Fichiers temporaires | `~/.cache/dev.tekboard.app/` | vidable à tout moment |
+| Identité TekBoard Connect (clé Ed25519, certificat) | `~/.local/share/dev.tekboard.app/connect/` | clé lisible par toi seul (600), jamais envoyée |
+| Ressources reçues par TekShare | quarantaine dans `~/.cache/dev.tekboard.app/`, puis la destination que tu choisis | empreinte SHA-256 vérifiée, jamais exécutées |
 
 Tekboard n'enregistre aucun mot de passe : la connexion Microsoft se fait sur le vrai site, l'accès GitHub passe par `gh` et SSH par ton agent.
+
+## TekBoard Connect
+
+Désactivé par défaut. Une fois activé, TekBoard écoute sur l'interface du réseau local choisie (aucune ouverture sur Internet, aucune modification du pare-feu, pas d'UPnP) et s'annonce par mDNS tant que tu n'es pas « Invisible ». Les connexions sont en TLS 1.3 mutuel ; un appareil n'est accepté qu'après comparaison d'un code à 6 chiffres affiché des deux côtés, puis reconnu par l'empreinte de son certificat. Avant l'appairage, un appareil ne peut envoyer qu'une demande ; tailles et débits des messages sont limités. Rien de reçu n'est exécuté automatiquement : un fichier, un patch ou un brouillon attend ton choix, une session (TekLive, TekSpace, tableau blanc) ton clic. Les secrets détectés et les fichiers sensibles sont refusés à l'envoi.
 
 ## Mises à jour
 

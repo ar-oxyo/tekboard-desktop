@@ -1,7 +1,7 @@
 {
   "name": "tekboard",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "license": "GPL-3.0-only",
   "author": "Thibault Eininger",
   "description": "Organise tes projets Epitech : dépôts, rendus, planning, logtime, MY Epitech et Artix.",

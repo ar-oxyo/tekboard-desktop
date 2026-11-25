@@ -17,9 +17,17 @@
 - **École** : synchronisation MY Epitech en un bouton (projets, dates, sujets, résultats), **logtime** de la semaine, et le **Skill Tree** : ta progression en arbre de compétences, d'après les données officielles de MY Epitech.
 - **Tests** : tests unitaires, coding style (Banana), clone propre du dépôt, et une moulinette simulée dans un bac à sable.
 - **Artix** : un assistant qui comprend « j'ai un rendez-vous jeudi à 14 h » et l'ajoute, décompose un sujet en tâches, organise ta semaine. Il fonctionne avec **Claude Code, OpenRouter (modèles gratuits) ou une IA locale** — ou pas d'IA du tout.
+- **Labo** :
+  - le **Playground** pour écrire et lancer du C tout de suite (sanitizers, Valgrind, bac à sable) ;
+  - l'**Arena** pour mesurer et comparer des algorithmes ou deux branches : temps, mémoire, instructions, complexité estimée ;
+  - des **tableaux blancs** pour schématiser listes chaînées, arbres, mémoire ou architecture, seul ou à plusieurs.
+- **Connect** (facultatif, désactivé par défaut) : retrouver les TekBoard de ses camarades sur le même réseau local, puis :
+  - partager des ressources avec **TekShare** ;
+  - coder ensemble dans VS Code avec **TekLive** ;
+  - se retrouver dans **TekSpace**, un petit campus en pixel art.
 - **Doctor** : un diagnostic de ton environnement, avec la solution à chaque problème.
 
-Tout reste sur ton ordinateur : pas de compte TekBoard, pas de serveur, pas de télémétrie.
+Tout reste sur ton ordinateur : pas de compte TekBoard, pas de serveur, pas de télémétrie. Connect relie directement deux ordinateurs du même réseau, sans passer par Internet.
 
 | | |
 | --- | --- |
@@ -89,11 +97,23 @@ Le script s'en occupe ; voici le détail pour savoir à quoi sert chaque outil.
 | `epiclang`, `banana-check-repo` | optionnel | vérification du coding style (tuile Banana) |
 | `gcc`, `valgrind`, `gdb`, `gcovr` | optionnel | compilation, fuites mémoire, débogage, couverture |
 | `pdftotext` (poppler) | optionnel | lecture des sujets PDF par l'IA |
-| `bubblewrap` | optionnel | bac à sable de la moulinette d'Artix et de la génération de tests |
+| `bubblewrap` | optionnel | bac à sable du Playground, de l'Arena, de la moulinette d'Artix et de la génération de tests |
+| `clang`, `python3`, `perf` | optionnel | autre compilateur du Playground, générateurs de données et mesures de l'Arena |
+| VS Code (`code`) | optionnel | TekLive ; l'extension P2P Live Share s'installe depuis TekBoard |
 | Claude Code, OpenRouter ou Ollama | optionnel | Artix (voir [Intelligence artificielle](#intelligence-artificielle)) |
 | Node.js 20+, Rust, bibliothèques `-dev` | développement | seulement pour compiler TekBoard (`./install.sh --dev`) |
 
 Un outil absent ne bloque jamais TekBoard : la fonction concernée est désactivée et l'application explique pourquoi et comment l'installer (**Réglages → Doctor**).
+
+## Travailler à plusieurs (TekBoard Connect)
+
+Connect s'active dans **Connect → Personnes**. Tant qu'il est éteint, TekBoard n'écoute rien et n'annonce rien.
+
+- **Découverte** : les TekBoard qui ont activé Connect sur le même réseau local se voient (mDNS / DNS-SD). Aucun balayage d'adresses, aucun serveur.
+- **Appairage** : à la première connexion, les deux écrans affichent le même code à 6 chiffres ; compare-le avant d'accepter. Les échanges sont ensuite chiffrés (TLS 1.3 mutuel) et l'appareil est reconnu par son empreinte.
+- **Ce qui est partagé** : uniquement ce que tu envoies toi-même (TekShare), une session que tu ouvres (TekLive, TekSpace, tableau blanc), ton pseudonyme, ton avatar et ton statut. Rien n'est jamais exécuté à la réception. Secrets, cookies MY Epitech et clés d'API ne partent jamais.
+- **Réseau de l'école** : beaucoup de réseaux Wi-Fi (dont ceux des campus) isolent les appareils les uns des autres. Dans ce cas, Connect ne trouve personne et **ne cherchera pas à contourner cette règle** : pas de relais Internet, pas de modification du pare-feu. Le diagnostic réseau de la page Connect le dit en clair. Un partage de connexion ou un réseau domestique fonctionne en général.
+- **Pare-feu local** : si tu en as un (ufw…), il doit laisser passer le mDNS (UDP 5353) et le port affiché dans Connect. TekBoard ne le modifie pas pour toi.
 
 ## Configuration GitHub
 
@@ -185,6 +205,12 @@ Il manque souvent FUSE 2 : `sudo apt install libfuse2t64` (Ubuntu 24.04+), `sudo
 </details>
 
 <details>
+<summary>Connect ne trouve personne</summary>
+
+Vérifie que l'autre personne a activé Connect et n'est pas « Invisible », puis lance le **diagnostic réseau** de la page Connect. Si le réseau isole les appareils (fréquent sur les Wi-Fi d'école), la découverte et les connexions directes sont impossibles ; TekBoard ne contourne pas cette règle. Essaie le code d'invitation `tb1:…`, ou un autre réseau (partage de connexion).
+</details>
+
+<details>
 <summary>La tuile Banana est grisée</summary>
 
 epiclang et banana-check-repo manquent. Sur Ubuntu : `sudo add-apt-repository ppa:epitech/ppa && sudo apt install epiclang banana-coding-style-checker`.
@@ -196,7 +222,8 @@ epiclang et banana-check-repo manquent. Sur Ubuntu : `sudo add-apt-repository pp
 | --- | --- |
 | Réglages, projets suivis, planning, tâches, notes | `~/.local/share/dev.tekboard.app/tekboard.db` |
 | Clé OpenRouter (si tu en utilises une) | `~/.local/share/dev.tekboard.app/secrets.json` (lisible par toi seul) |
-| Sujets téléchargés, modèles, bibliothèques | `~/.local/share/dev.tekboard.app/` |
+| Sujets téléchargés, modèles, bibliothèques, tableaux blancs | `~/.local/share/dev.tekboard.app/` |
+| Identité Connect (certificat et clé de l'appareil) | `~/.local/share/dev.tekboard.app/connect/` (lisible par toi seul) |
 | Session MY Epitech (cookies du site) | `~/.local/share/dev.tekboard.app/my-session/` |
 | Fichiers temporaires | `~/.cache/dev.tekboard.app/` |
 
