@@ -192,6 +192,53 @@ export function Code({ children }: { children: ReactNode }) {
   return <code className="selectable rounded bg-raised px-1.5 py-0.5 font-mono text-xs text-fg">{children}</code>;
 }
 
+/**
+ * A titled block without a box: a heading row over a hairline, then the content. Grouping
+ * comes from spacing and rules, so a screen does not turn into a wall of cards.
+ */
+export function Section({ title, meta, action, children, className, id }: { title: ReactNode; meta?: ReactNode; action?: ReactNode; children: ReactNode; className?: string; id?: string }) {
+  return (
+    <section id={id} className={cn("min-w-0", className)}>
+      <header className="flex min-h-8 items-center gap-3 border-b border-line pb-1.5">
+        <h2 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-fg">{title}</h2>
+        {meta && <span className="min-w-0 truncate text-xs text-faint">{meta}</span>}
+        {action && <div className="ml-auto flex shrink-0 items-center gap-1">{action}</div>}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+const meterInk: Record<Tone, string> = { neutral: "bg-faint", accent: "bg-accent", ok: "bg-ok", warn: "bg-warn", danger: "bg-danger", info: "bg-info" };
+
+/** A thin bar for a share of something (tests passed, hours done). */
+export function Meter({ value, max, tone = "accent", label, className }: { value: number; max: number; tone?: Tone; label?: string; className?: string }) {
+  const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
+  return (
+    <span role="meter" aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-label={label} className={cn("block h-1.5 overflow-hidden rounded-full bg-ink/8", className)}>
+      <span className={cn("block h-full rounded-full transition-[width] duration-(--dur-base) ease-(--ease)", meterInk[tone])} style={{ width: `${pct}%` }} />
+    </span>
+  );
+}
+
+const noticeTone: Record<"info" | "warn" | "danger" | "ok", string> = {
+  info: "bg-accent-soft text-fg [&>svg]:text-accent",
+  warn: "bg-warn/10 text-fg [&>svg]:text-warn",
+  danger: "bg-danger/10 text-fg [&>svg]:text-danger",
+  ok: "bg-ok/10 text-fg [&>svg]:text-ok",
+};
+
+/** A line that needs attention, inside a screen: what is going on, and the way out. */
+export function Notice({ tone = "info", icon, children, action, className }: { tone?: "info" | "warn" | "danger" | "ok"; icon?: ReactNode; children: ReactNode; action?: ReactNode; className?: string }) {
+  return (
+    <div role={tone === "danger" ? "alert" : "status"} className={cn("flex items-start gap-2.5 rounded-(--btn-radius) px-3 py-2 text-sm [&>svg]:mt-0.5 [&>svg]:size-4 [&>svg]:shrink-0", noticeTone[tone], className)}>
+      {icon}
+      <div className="min-w-0 flex-1 text-muted [&_strong]:font-medium [&_strong]:text-fg">{children}</div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
+  );
+}
+
 /** The page bar's right-hand slot, when the page sits in a tabbed section (see App). */
 export const PageBarSlot = createContext<HTMLElement | "pending" | null>(null);
 

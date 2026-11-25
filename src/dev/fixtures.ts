@@ -1,6 +1,6 @@
 // Development only: demonstration data for the browser mock (see mockIPC.ts). Plausible
 // values for a second-year student mid-semester; nothing here ever reaches a real build.
-import type { EnvStatus, PlanState, RepoInfo, Settings } from "../lib/api";
+import type { BoardItem, EnvStatus, PlanState, RepoInfo, Settings } from "../lib/api";
 
 type Fixture = unknown | ((args: Record<string, unknown>, params: URLSearchParams) => unknown);
 
@@ -152,7 +152,25 @@ const captures = [
   { id: 13, title: "valgrind --leak-check=full ./secured", text: "valgrind --leak-check=full ./secured", project: null, kind: "snippet", ctype: "command", tags: [], pinned: false, archivedAt: null, doneAt: null, createdAt: now - 2 * D, updatedAt: null },
 ];
 
+const board: BoardItem[] = repos
+  .filter((r) => r.meta.deadline && r.progress !== "done")
+  .map((r): BoardItem => ({ title: r.name, module: r.epitech?.module ?? null, repoPath: r.path, myId: r.my?.id ?? null, day: r.meta.deadline, at: r.meta.deadlineAt, source: "my" as const, state: r.deadlineState, status: r.progress, cloned: true, repoExpected: true, starts: null, myDay: null }))
+  .concat([{ title: "Bootstrap 42sh", module: "G-PSU-200", repoPath: null, myId: 2001, day: day(9), at: iso(9, 23, 42), source: "my" as const, state: "upcoming" as const, status: "todo" as const, cloned: false, repoExpected: true, starts: day(1), myDay: null }]);
+
+const agenda = {
+  items: [
+    { kind: "activity", title: "Follow-up CPE", day: day(1), start: iso(1, 14), end: iso(1, 15), module: "G-CPE-110", detail: "Salle 2", mine: true, mandatory: true, exam: false, repoPath: null, until: null, status: "registered", eventId: 501, projectKey: null },
+    { kind: "activity", title: "Keynote PSU", day: day(0), start: iso(0, 10), end: iso(0, 11), module: "G-PSU-100", detail: "Amphi", mine: true, mandatory: true, exam: false, repoPath: null, until: null, status: "registered", eventId: 502, projectKey: null },
+  ],
+  syncedAt: now - 40 * 60,
+  modules: ["G-CPE-110", "G-PSU-100", "G-SYN-100", "G-AIA-200", "G-MUL-100"],
+  notes: [],
+  peerTodo: [],
+};
+
 export const fixtures: Record<string, Fixture> = {
+  deadline_board: board,
+  my_agenda: agenda,
   startup: (_a: Record<string, unknown>, p: URLSearchParams) => ({ page: p.get("page"), sheet: p.get("sheet"), theme: p.get("theme"), repo: p.get("repo"), pick: null, tool: null, run: null, report: null, anchor: null }),
   get_settings: (_a: Record<string, unknown>, p: URLSearchParams) => ({ ...settings, onboarded: !p.has("onboarding"), theme: p.get("theme") ?? settings.theme }),
   save_settings: (a: Record<string, unknown>) => a.settings ?? settings,

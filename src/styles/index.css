@@ -594,6 +594,20 @@ code,
 .logo-glow {
   filter: var(--logo-glow);
 }
+/* A row you can act on: hovering lays down a film of blue ink. An urgent mark under it
+   (orange) overprints with the blue, like two Riso passes on the same sheet. */
+.ink-row {
+  border-radius: var(--btn-radius);
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.ink-row:hover,
+.ink-row:focus-visible {
+  background: var(--color-accent-soft);
+}
+.ink-urgent {
+  background: color-mix(in srgb, var(--color-accent-2) 26%, transparent);
+  mix-blend-mode: var(--overprint);
+}
 .row-hover {
   transition: background 0.1s ease;
 }
@@ -603,6 +617,12 @@ code,
 .field {
   background: var(--field-bg);
   border-radius: var(--btn-radius);
+}
+/* A field in focus says so with its border and a soft ring, not the global outline on top. */
+.field:focus-visible,
+.field:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
 }
 /* Drop-down lists and action menus: one panel style for the five designs. */
 .select-trigger {
