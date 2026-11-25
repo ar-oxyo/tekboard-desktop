@@ -24,6 +24,8 @@ pub struct Rhythm {
     pub mode: String,
     /// Minutes from midnight.
     pub day_start: i64,
+    /// Minutes from the midnight of the same day: past 1440 the working day ends the next
+    /// morning (`09:00 → 02:00 (+1 j)` is 540 → 1560). That night belongs to the day before.
     pub day_end: i64,
     /// 0 = Sunday.
     pub work_days: Vec<u32>,
@@ -78,7 +80,8 @@ impl Rhythm {
     pub fn sanitized(mut self) -> Self {
         let d = Rhythm::default();
         self.day_start = self.day_start.clamp(0, 23 * 60);
-        self.day_end = self.day_end.clamp(self.day_start + 60, 24 * 60);
+        // At most until 06:00 the next morning, and an hour before the next day starts.
+        self.day_end = self.day_end.clamp(self.day_start + 60, (self.day_start + 23 * 60).min(30 * 60));
         self.work_days.retain(|d| *d < 7);
         self.work_days.sort();
         self.work_days.dedup();
@@ -103,6 +106,18 @@ impl Rhythm {
             self.work_days = d.work_days;
         }
         self
+    }
+
+    /// Minutes of the next morning that still belong to the day before (0 when the working
+    /// day ends before midnight).
+    pub fn night(&self) -> i64 {
+        (self.day_end - 24 * 60).max(0)
+    }
+
+    /// Working hours in 24-hour time, `09:00–02:00 (+1 j)` when they go past midnight.
+    pub fn hours_label(&self) -> String {
+        let e = self.day_end % (24 * 60);
+        format!("{:02}:{:02}–{:02}:{:02}{}", self.day_start / 60, self.day_start % 60, e / 60, e % 60, if self.day_end > 24 * 60 { " (+1 j)" } else { "" })
     }
 
     /// The rhythm saved in the interface preferences (`plan.prefs`), with defaults for what is missing.
@@ -188,17 +203,40 @@ fn date_of(t: i64) -> NaiveDate {
 /// Instant at `minutes` after local midnight of `day` (a midnight from `day_of`).
 pub fn at(day: i64, minutes: i64) -> i64 {
     let d = date_of(day + 3600);
+    // Past midnight: that time of the next day (a working day that ends at 02:00).
+    if minutes >= 24 * 60 {
+        return at(midnight(d.succ_opt().unwrap_or(d)), minutes - 24 * 60);
+    }
     let h = (minutes / 60).clamp(0, 23) as u32;
     let m = (minutes % 60) as u32;
-    if minutes >= 24 * 60 {
-        return midnight(d.succ_opt().unwrap_or(d));
-    }
     Local.from_local_datetime(&d.and_hms_opt(h, m, 0).unwrap_or_default()).earliest().map(|x| x.timestamp()).unwrap_or(day + minutes * MIN)
 }
 
 pub fn next_day(day: i64) -> i64 {
     let d = date_of(day + 3600);
     midnight(d.succ_opt().unwrap_or(d))
+}
+
+pub fn prev_day(day: i64) -> i64 {
+    let d = date_of(day + 3600);
+    midnight(d.pred_opt().unwrap_or(d))
+}
+
+/// The working day `t` belongs to: its calendar day, or the day before during a night that
+/// belongs to it (01:00 with hours until 02:00).
+pub fn work_day_of(t: i64, r: &Rhythm) -> i64 {
+    let day = day_of(t);
+    if r.night() > 0 && minute_of_day(t) < r.night() { prev_day(day) } else { day }
+}
+
+/// Bounds of working day `day`: from the end of the previous night to the end of its own.
+pub fn work_day_bounds(r: &Rhythm, day: i64) -> (i64, i64) {
+    (at(day, r.night()), at(next_day(day), r.night()))
+}
+
+/// Working hours of `day` as instants (the end may be the next morning).
+pub fn work_window(r: &Rhythm, day: i64) -> (i64, i64) {
+    (at(day, r.day_start), at(day, r.day_end))
 }
 
 pub fn weekday(day: i64) -> u32 {
@@ -231,9 +269,16 @@ pub struct Span {
     pub end: i64,
 }
 
-/// Protected spans (meals…) of a day, as busy time.
+/// Protected spans (meals…) of a working day, as busy time: those of its calendar day, and
+/// those of the next morning when its hours go past midnight.
 fn protected_of(r: &Rhythm, day: i64) -> Vec<Busy> {
-    r.protected.iter().map(|[a, b]| Busy { start: at(day, *a), end: at(day, *b), title: "Pause protégée".into(), kind: "protected", event_id: None }).collect()
+    let mk = |d: i64, a: i64, b: i64| Busy { start: at(d, a), end: at(d, b), title: "Pause protégée".into(), kind: "protected", event_id: None };
+    let mut out: Vec<Busy> = r.protected.iter().map(|[a, b]| mk(day, *a, *b)).collect();
+    if r.night() > 0 {
+        let next = next_day(day);
+        out.extend(r.protected.iter().filter(|[a, _]| *a < r.night()).map(|[a, b]| mk(next, *a, *b)));
+    }
+    out
 }
 
 /// Free time of at least `min_minutes` between `from` and `to`, inside working hours, with a
@@ -241,14 +286,16 @@ fn protected_of(r: &Rhythm, day: i64) -> Vec<Busy> {
 pub fn free_slots(busy: &[Busy], r: &Rhythm, from: i64, to: i64, min_minutes: i64) -> Vec<Span> {
     let mut out = Vec::new();
     let pad = r.break_minutes * MIN;
-    let mut day = day_of(from);
+    // The working day before `from` may still run past midnight into it.
+    let mut day = work_day_of(from, r);
     while day < to {
         if r.work_days.contains(&weekday(day)) {
-            let mut blocks: Vec<(i64, i64)> = busy.iter().filter(|b| b.end > day && b.start < next_day(day)).map(|b| if b.kind == "protected" { (b.start, b.end) } else { (b.start - pad, b.end + pad) }).collect();
+            let (start, stop) = work_window(r, day);
+            let mut blocks: Vec<(i64, i64)> = busy.iter().filter(|b| b.end > start - pad && b.start < stop + pad).map(|b| if b.kind == "protected" { (b.start, b.end) } else { (b.start - pad, b.end + pad) }).collect();
             blocks.extend(protected_of(r, day).iter().map(|b| (b.start, b.end)));
             blocks.sort();
-            let mut cursor = at(day, r.day_start).max(ceil_quarter(from));
-            let end = at(day, r.day_end).min(to);
+            let mut cursor = start.max(ceil_quarter(from));
+            let end = stop.min(to);
             for (s, e) in blocks {
                 if e <= cursor {
                     continue;
@@ -293,12 +340,13 @@ pub struct DayLoad {
 }
 
 pub fn day_load(busy: &[Busy], r: &Rhythm, day: i64) -> DayLoad {
-    let end_day = next_day(day);
-    let clip = |b: &Busy| (b.end.min(end_day) - b.start.max(day)).max(0) / MIN;
+    // A working day runs from the end of the previous night to the end of its own.
+    let (lo, end_day) = work_day_bounds(r, day);
+    let clip = |b: &Busy| (b.end.min(end_day) - b.start.max(lo)).max(0) / MIN;
     let work_min: i64 = busy.iter().filter(|b| b.is_work()).map(clip).sum();
     let school_min: i64 = busy.iter().filter(|b| b.kind == "school").map(clip).sum();
     let working_day = r.work_days.contains(&weekday(day));
-    let free_min: i64 = if working_day { free_slots(busy, r, day, end_day, 15).iter().map(|s| (s.end - s.start) / MIN).sum() } else { 0 };
+    let free_min: i64 = if working_day { free_slots(busy, r, lo, end_day, 15).iter().filter(|s| work_day_of(s.start, r) == day).map(|s| (s.end - s.start) / MIN).sum() } else { 0 };
     // School counts toward the day: a day of classes is not a day for four more hours of work.
     let total = work_min + school_min / 2;
     let state = if total > r.max_minutes_per_day { "over" } else if total >= r.max_minutes_per_day - 15 { "full" } else if total < r.max_minutes_per_day / 3 { "light" } else { "ok" };
@@ -333,7 +381,7 @@ pub fn validate(placements: &[Placement], busy: &[Busy], r: &Rhythm, now: i64) -
     let mut cal: Vec<Busy> = busy.iter().filter(|b| b.event_id.is_none_or(|id| !moved.contains(&id))).cloned().collect();
     let mut err = |i: usize, m: String| v.push(Violation { index: Some(i), severity: "error", message: m });
     for p in placements {
-        let label = format!("« {} » ({} {}–{})", p.title, day_label(day_of(p.start)), hm(p.start), hm(p.end));
+        let label = format!("« {} » ({} {}–{})", p.title, day_label(work_day_of(p.start, r)), hm(p.start), hm(p.end));
         if p.end <= p.start {
             err(p.index, format!("{label} : la fin est avant le début."));
             continue;
@@ -344,7 +392,7 @@ pub fn validate(placements: &[Placement], busy: &[Busy], r: &Rhythm, now: i64) -
         if !p.work {
             continue;
         }
-        let day = day_of(p.start);
+        let day = work_day_of(p.start, r);
         let len = (p.end - p.start) / MIN;
         if len > r.session_minutes + r.session_minutes / 2 {
             err(p.index, format!("{label} dure {len} min : au-delà de {} min, coupe en plusieurs blocs avec une pause.", r.session_minutes + r.session_minutes / 2));
@@ -352,8 +400,9 @@ pub fn validate(placements: &[Placement], busy: &[Busy], r: &Rhythm, now: i64) -
         if !r.work_days.contains(&weekday(day)) {
             err(p.index, format!("{label} tombe un jour non travaillé."));
         }
-        if minute_of_day(p.start) < r.day_start || p.end > at(day, r.day_end) {
-            err(p.index, format!("{label} sort des horaires de travail ({:02}:{:02}–{:02}:{:02}).", r.day_start / 60, r.day_start % 60, r.day_end / 60, r.day_end % 60));
+        let (open, close) = work_window(r, day);
+        if p.start < open || p.end > close {
+            err(p.index, format!("{label} sort des horaires de travail ({}).", r.hours_label()));
         }
         for pr in protected_of(r, day) {
             if p.start < pr.end && p.end > pr.start {
@@ -373,7 +422,7 @@ pub fn validate(placements: &[Placement], busy: &[Busy], r: &Rhythm, now: i64) -
         cal.push(Busy { start: p.start, end: p.end, title: p.title.clone(), kind: "work", event_id: None });
     }
     // Per day: ceiling, long breaks, flexible time.
-    let mut days: Vec<i64> = placements.iter().filter(|p| p.work).map(|p| day_of(p.start)).collect();
+    let mut days: Vec<i64> = placements.iter().filter(|p| p.work).map(|p| work_day_of(p.start, r)).collect();
     days.sort();
     days.dedup();
     for day in days {
@@ -386,7 +435,7 @@ pub fn validate(placements: &[Placement], busy: &[Busy], r: &Rhythm, now: i64) -
             v.push(Violation { index: None, severity: "warning", message: format!("{} : il ne reste que {} de temps libre (objectif : {} gardés pour l'imprévu).", load.label, dur(load.free_min), dur(r.flex_minutes)) });
         }
         // Several blocks in a row need a longer break.
-        let mut work: Vec<&Busy> = cal.iter().filter(|b| b.is_work() && day_of(b.start) == day).collect();
+        let mut work: Vec<&Busy> = cal.iter().filter(|b| b.is_work() && work_day_of(b.start, r) == day).collect();
         work.sort_by_key(|b| b.start);
         let mut run = 1;
         for w in work.windows(2) {
@@ -453,9 +502,9 @@ pub struct Suggestion {
 }
 
 /// The day's work and school, as already on the calendar.
-fn used_today(busy: &[Busy], day: i64) -> i64 {
-    let next = next_day(day);
-    let clip = |b: &Busy| (b.end.min(next) - b.start.max(day)).max(0) / MIN;
+fn used_today(busy: &[Busy], r: &Rhythm, day: i64) -> i64 {
+    let (lo, next) = work_day_bounds(r, day);
+    let clip = |b: &Busy| (b.end.min(next) - b.start.max(lo)).max(0) / MIN;
     busy.iter().filter(|b| b.is_work()).map(clip).sum::<i64>() + busy.iter().filter(|b| b.kind == "school").map(clip).sum::<i64>() / 2
 }
 
@@ -471,28 +520,30 @@ impl Placer<'_> {
         if !self.r.work_days.contains(&weekday(day)) {
             return 0;
         }
-        let cap = self.r.max_minutes_per_day - used_today(&self.busy, day);
-        let free: i64 = free_slots(&self.busy, self.r, day.max(self.now), next_day(day), 15).iter().map(|s| (s.end - s.start) / MIN).sum();
+        let cap = self.r.max_minutes_per_day - used_today(&self.busy, self.r, day);
+        let (lo, hi) = work_day_bounds(self.r, day);
+        let free: i64 = free_slots(&self.busy, self.r, lo.max(self.now), hi, 15).iter().filter(|s| work_day_of(s.start, self.r) == day).map(|s| (s.end - s.start) / MIN).sum();
         cap.min(free - self.r.flex_minutes).max(0)
     }
 
     /// Earliest (or latest) free slot of `day` before `limit` holding `minutes`.
     fn slot(&self, day: i64, limit: i64, minutes: i64, latest: bool) -> Option<Span> {
-        let from = day.max(ceil_quarter(self.now + 10 * MIN));
-        let to = next_day(day).min(limit);
+        let (lo, hi) = work_day_bounds(self.r, day);
+        let from = lo.max(ceil_quarter(self.now + 10 * MIN));
+        let to = hi.min(limit);
         if to <= from {
             return None;
         }
-        let slots = free_slots(&self.busy, self.r, from, to, minutes);
+        let slots: Vec<Span> = free_slots(&self.busy, self.r, from, to, minutes).into_iter().filter(|s| work_day_of(s.start, self.r) == day).collect();
         let s = if latest { slots.last() } else { slots.first() }?;
         Some(if latest { Span { start: s.end - minutes * MIN, end: s.end } } else { Span { start: s.start, end: s.start + minutes * MIN } })
     }
 
     /// Books a block; after enough blocks in a row, the next one waits for a long break.
     fn book(&mut self, span: Span, title: &str) {
-        let day = day_of(span.start);
+        let day = work_day_of(span.start, self.r);
         self.busy.push(Busy { start: span.start, end: span.end, title: title.into(), kind: "work", event_id: None });
-        let mut work: Vec<&Busy> = self.busy.iter().filter(|b| b.is_work() && day_of(b.start) == day).collect();
+        let mut work: Vec<&Busy> = self.busy.iter().filter(|b| b.is_work() && work_day_of(b.start, self.r) == day).collect();
         work.sort_by_key(|b| b.start);
         let mut run = 0;
         let mut last_end = 0;
@@ -739,6 +790,44 @@ pub(crate) mod tests {
         assert_eq!(free[0], Span { start: at(d, 540), end: at(d, 585) });
         assert_eq!(free[1], Span { start: at(d, 810), end: at(d, 1200) });
         assert_eq!(free.len(), 2);
+    }
+
+    #[test]
+    fn a_working_day_can_end_after_midnight() {
+        // 09:00 → 02:00 (+1 j), no protected span to keep the arithmetic readable.
+        let r = Rhythm { day_end: 26 * 60, protected: vec![], work_days: vec![1, 2, 3, 4, 5], ..Rhythm::default() }.sanitized();
+        assert_eq!((r.day_end, r.night()), (26 * 60, 120));
+        assert_eq!(r.hours_label(), "09:00–02:00 (+1 j)");
+        let mon = monday();
+        let tue = next_day(mon);
+        assert_eq!(at(mon, 25 * 60), at(tue, 60), "01:00 the next day");
+        // 01:00 on Tuesday belongs to Monday's working day; 03:00 to Tuesday.
+        assert_eq!(work_day_of(at(tue, 60), &r), mon);
+        assert_eq!(work_day_of(at(tue, 180), &r), tue);
+        // Monday evening runs to 02:00 Tuesday; Tuesday's own hours start at 09:00.
+        let free = free_slots(&[], &r, mon, next_day(tue), 30);
+        assert_eq!(free[0], Span { start: at(mon, 540), end: at(tue, 120) });
+        assert_eq!(free[1].start, at(tue, 540));
+        // A session at 00:30–01:30 is inside Monday's hours; 02:30–03:00 is outside.
+        let p = |s: i64, e: i64| Placement { index: 0, event_id: None, start: s, end: e, work: true, title: "nuit".into() };
+        assert!(validate(&[p(at(tue, 30), at(tue, 90))], &[], &r, mon).iter().all(|v| !v.message.contains("horaires")));
+        assert!(validate(&[p(at(tue, 150), at(tue, 180))], &[], &r, mon).iter().any(|v| v.message.contains("horaires") && v.message.contains("(+1 j)")));
+        // The night counts toward Monday's load, not Tuesday's.
+        let night = [b(at(tue, 0), at(tue, 90), "work")];
+        assert_eq!(day_load(&night, &r, mon).work_min, 90);
+        assert_eq!(day_load(&night, &r, tue).work_min, 0);
+        // Friday's night does not open Saturday (not a working day), Saturday has no hours.
+        let fri = at(mon, 0) + 4 * 86_400;
+        let sat = next_day(day_of(fri + 3600));
+        let free = free_slots(&[], &r, sat, next_day(next_day(sat)), 30);
+        assert!(free.iter().all(|s| s.start >= at(next_day(next_day(sat)), 0) || work_day_of(s.start, &r) == day_of(fri + 3600)), "{free:?}");
+    }
+
+    #[test]
+    fn a_night_too_long_is_cut_back() {
+        // Ends at most at 06:00, and an hour before the next day starts.
+        assert_eq!(Rhythm { day_start: 9 * 60, day_end: 40 * 60, ..Rhythm::default() }.sanitized().day_end, 30 * 60);
+        assert_eq!(Rhythm { day_start: 5 * 60, day_end: 29 * 60, ..Rhythm::default() }.sanitized().day_end, 28 * 60);
     }
 
     #[test]

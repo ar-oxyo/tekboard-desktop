@@ -236,7 +236,10 @@ pub fn context_card(state: &AppState, screen: &Screen, thread: Option<i64>, sinc
         let plan = crate::planner::state(&conn, t)?;
         let rhythm = crate::schedule::Rhythm::load(&conn);
         let busy = crate::schedule::busy_from(&plan.events, &agenda.items);
+        // At 01:00 with hours until 02:00, "today" is still the working day that began yesterday.
+        let day = crate::schedule::work_day_of(t, &rhythm);
         let load = crate::schedule::day_load(&busy, &rhythm, day);
+        lines.push(format!("Horaires de travail : {} (24 h){}", rhythm.hours_label(), if rhythm.night() > 0 { " ; disponibilité, pas obligation : garder pauses et repos" } else { "" }));
         let next: Vec<String> = busy.iter().filter(|b| b.end > t && b.start < crate::schedule::next_day(day) && b.kind != "protected").take(4).map(|b| format!("{} {}", &crate::schedule::local_iso(b.start)[11..], b.title)).collect();
         lines.push(format!("Aujourd'hui : {} de travail prévu{} (plafond {}, rythme {}){}", crate::schedule::dur(load.work_min), if load.school_min > 0 { format!(" + {} d'école", crate::schedule::dur(load.school_min)) } else { String::new() }, crate::schedule::dur(load.max_min), crate::schedule::mode_label(&rhythm.mode), if next.is_empty() { String::new() } else { format!(" ; à venir : {}", next.join(", ")) }));
         let soon: Vec<String> = board.iter().filter(|b| b.state != "unknown" && b.status != "done").take(3).map(|b| format!("{} ({}{})", b.title, b.at.clone().or(b.day.clone()).unwrap_or_default().chars().take(16).collect::<String>(), if b.state == "overdue" { ", en retard" } else { "" })).collect();

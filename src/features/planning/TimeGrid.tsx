@@ -3,7 +3,7 @@
 import { Flag, Lock } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import { cn } from "../../components/ui";
-import { addDays, fmtDur, hhmm, KIND_LABEL, layoutDay, MIN, startOfDay, type CalItem, type PlanPrefs } from "../../lib/plan";
+import { addDays, fmtDur, hhmm, KIND_LABEL, layoutDay, MIN, offRanges, startOfDay, type CalItem, type PlanPrefs } from "../../lib/plan";
 import { locale, t } from "../../lib/i18n";
 
 export const HOUR = 52;
@@ -195,11 +195,11 @@ export function TimeGrid({ days, items, now, prefs, ghost, onCreate, onOpen, onM
             const dragged = drag && drag.start < end && drag.end > d ? drag : null;
             const draggedItem = dragged ? timed.find((i) => i.id === dragged.id) : undefined;
             const shown = ghost && ghost.start < end && ghost.end > d ? ghost : null;
-            const off = !prefs.workDays.includes(new Date(d).getDay());
             return (
               <div key={d} data-day={d} data-timeline onPointerDown={draw} className="cal-col relative border-l border-ink/6" style={{ backgroundSize: `100% ${HOUR}px` }}>
-                <div className="cal-off pointer-events-none absolute inset-x-0 top-0" style={{ height: off ? "100%" : (prefs.dayStart / 60) * HOUR }} />
-                {!off && <div className="cal-off pointer-events-none absolute inset-x-0 bottom-0" style={{ top: (prefs.dayEnd / 60) * HOUR }} />}
+                {offRanges(prefs, d).map(([a, b]) => (
+                  <div key={a} className="cal-off pointer-events-none absolute inset-x-0" style={{ top: (a / 60) * HOUR, height: ((b - a) / 60) * HOUR }} />
+                ))}
                 {blocks.map(({ item, col, cols: n }) => (
                   <Block key={item.id} item={item} day={d} col={col} cols={n} past={item.end < now} onGrab={grab} onOpen={onOpen} />
                 ))}

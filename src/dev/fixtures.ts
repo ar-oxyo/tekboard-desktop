@@ -284,7 +284,8 @@ export const fixtures: Record<string, Fixture> = {
   save_settings: (a: Record<string, unknown>) => a.settings ?? settings,
   env_status: env,
   scan_repos: repos,
-  ui_prefs_get: {},
+  // ?night=1: working hours 09:00 → 02:00 the next day.
+  ui_prefs_get: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("night") ? { "plan.prefs": { dayStart: 540, dayEnd: 1560, workDays: [1, 2, 3, 4, 5], maxMinutesPerDay: 300, sessionMinutes: 75, breakMinutes: 15, mode: "custom", protected: [[750, 810]] } } : {}),
   brain_count: captures.length,
   brain_list: captures,
   plan_state: plan,

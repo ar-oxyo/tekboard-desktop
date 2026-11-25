@@ -234,7 +234,8 @@ export function busySpans(items: CalItem[]): Span[] {
 export function freeSlots(busy: Span[], prefs: PlanPrefs, from: number, to: number, minMinutes = 30): Span[] {
   const sorted = [...busy].sort((a, b) => a.start - b.start);
   const out: Span[] = [];
-  for (let day = startOfDay(from); day < to; day = addDays(day, 1)) {
+  // The working day before `from` may still run past midnight into it.
+  for (let day = addDays(startOfDay(from), nightOf(prefs) > 0 ? -1 : 0); day < to; day = addDays(day, 1)) {
     if (!prefs.workDays.includes(new Date(day).getDay())) continue;
     let cursor = Math.max(day + prefs.dayStart * MIN, ceil15(from));
     const end = Math.min(day + prefs.dayEnd * MIN, to);
@@ -430,7 +431,7 @@ export function buildContext(projects: PlanProject[], state: PlanState, items: C
   const ctx = {
     now: toLocalIso(now),
     weekday: new Date(now).toLocaleDateString("en", { weekday: "long" }),
-    prefs: { workFrom: hhmmOf(prefs.dayStart), workUntil: hhmmOf(prefs.dayEnd), workDays: prefs.workDays, maxMinutesPerDay: prefs.maxMinutesPerDay, sessionMinutes: prefs.sessionMinutes, breakMinutes: prefs.breakMinutes },
+    prefs: { hours: hoursLabel(prefs), workFrom: hhmmOf(prefs.dayStart), workUntil: hhmmOf(prefs.dayEnd), workUntilNextDay: prefs.dayEnd > 1440, workDays: prefs.workDays, maxMinutesPerDay: prefs.maxMinutesPerDay, sessionMinutes: prefs.sessionMinutes, breakMinutes: prefs.breakMinutes },
     projects: relevant.map(({ p, l }) => ({ key: p.key, title: p.title, module: p.module, handIn: p.dueMs ? toLocalIso(p.dueMs) : null, status: p.status, priority: p.priority, estimateMin: p.estimateMin, plannedMin: l.planned, risk: l.risk })),
     tasks: openTasks(state.tasks).slice(0, 60).map((t) => ({ id: t.id, title: t.title, project: t.project, priority: t.priority, estimateMin: t.estimateMin, dueDay: t.dueDay, parent: t.parentId })),
     entries: items
@@ -443,7 +444,46 @@ export function buildContext(projects: PlanProject[], state: PlanState, items: C
   return JSON.stringify(ctx);
 }
 
-export const hhmmOf = (minutes: number) => `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
+/** "HH:MM" of minutes from midnight; past 1440 (next morning), the time of that morning. */
+export const hhmmOf = (minutes: number) => {
+  const m = ((minutes % 1440) + 1440) % 1440;
+  return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+};
+
+/** Minutes of the next morning that still belong to the working day (hours past midnight). */
+export const nightOf = (p: Pick<PlanPrefs, "dayEnd">) => Math.max(0, p.dayEnd - 1440);
+
+/** Working hours in 24-hour time: "09:00–20:00", "09:00–02:00 (+1 j)". */
+export function hoursLabel(p: Pick<PlanPrefs, "dayStart" | "dayEnd">): string {
+  return `${hhmmOf(p.dayStart)}–${hhmmOf(p.dayEnd)}${p.dayEnd > 1440 ? ` ${t("(+1 j)")}` : ""}`;
+}
+
+/** An end time typed as a clock (0–1439): before or at the start, it is the next morning. */
+export const endFromClock = (start: number, clock: number) => (clock <= start ? clock + 1440 : clock);
+
+/**
+ * Working minutes of the calendar day `day` (local midnight), as [from, to) minute ranges:
+ * the night carried over from the day before when that was a working day, then its own hours.
+ */
+export function workRanges(p: Pick<PlanPrefs, "dayStart" | "dayEnd" | "workDays">, day: number): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  const night = nightOf(p);
+  if (night > 0 && p.workDays.includes(new Date(addDays(day, -1)).getDay())) out.push([0, night]);
+  if (p.workDays.includes(new Date(day).getDay())) out.push([p.dayStart, Math.min(p.dayEnd, 1440)]);
+  return out;
+}
+
+/** The rest of the day: what is outside `workRanges`, to shade on the calendar. */
+export function offRanges(p: Pick<PlanPrefs, "dayStart" | "dayEnd" | "workDays">, day: number): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  let cursor = 0;
+  for (const [a, b] of workRanges(p, day)) {
+    if (a > cursor) out.push([cursor, a]);
+    cursor = Math.max(cursor, b);
+  }
+  if (cursor < 1440) out.push([cursor, 1440]);
+  return out;
+}
 export const minutesOf = (text: string) => {
   const m = /^(\d{1,2}):(\d{2})$/.exec(text);
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;

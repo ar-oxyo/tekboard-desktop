@@ -234,7 +234,7 @@ fn calendar_items(w: &World, from: i64, to: i64) -> Vec<Value> {
 }
 
 fn rhythm_json(r: &Rhythm) -> Value {
-    json!({"mode": schedule::mode_label(&r.mode), "horaires": format!("{:02}:{:02}–{:02}:{:02}", r.day_start / 60, r.day_start % 60, r.day_end / 60, r.day_end % 60), "joursTravailles": r.work_days, "plafondParJour": schedule::dur(r.max_minutes_per_day), "session": schedule::dur(r.session_minutes), "pause": schedule::dur(r.break_minutes), "pauseLongue": format!("{} après {} blocs", schedule::dur(r.long_break_minutes), r.blocks_before_long_break), "tempsLibreGarde": schedule::dur(r.flex_minutes), "pausesProtegees": r.protected.iter().map(|[a, b]| format!("{:02}:{:02}–{:02}:{:02}", a / 60, a % 60, b / 60, b % 60)).collect::<Vec<_>>(), "margeAvantRendu": format!("{} jour(s)", r.buffer_days)})
+    json!({"mode": schedule::mode_label(&r.mode), "horaires": r.hours_label(), "horairesNote": if r.night() > 0 { "La journée de travail finit le lendemain matin : c'est une disponibilité, pas une obligation. Garde des pauses et du repos." } else { "" }, "joursTravailles": r.work_days, "plafondParJour": schedule::dur(r.max_minutes_per_day), "session": schedule::dur(r.session_minutes), "pause": schedule::dur(r.break_minutes), "pauseLongue": format!("{} après {} blocs", schedule::dur(r.long_break_minutes), r.blocks_before_long_break), "tempsLibreGarde": schedule::dur(r.flex_minutes), "pausesProtegees": r.protected.iter().map(|[a, b]| format!("{:02}:{:02}–{:02}:{:02}", a / 60, a % 60, b / 60, b % 60)).collect::<Vec<_>>(), "margeAvantRendu": format!("{} jour(s)", r.buffer_days)})
 }
 
 fn planned_minutes(w: &World, key: &str, from: i64) -> i64 {
