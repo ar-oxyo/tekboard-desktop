@@ -603,7 +603,84 @@ export interface JobStep {
   detail: string | null;
   durationMs: number | null;
 }
-export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull";
+// ───────────────────────── Code Playground ─────────────────────────
+export interface DraftFile {
+  name: string;
+  content: string;
+  /** Library the file was imported from (read-only by default). */
+  library?: string | null;
+}
+export interface DraftSettings {
+  compiler: "gcc" | "clang" | "epiclang";
+  flags: string;
+  args: string;
+  stdin: string;
+  asan: boolean;
+  ubsan: boolean;
+  valgrind: boolean;
+  timeoutS: number;
+  memMb: number;
+}
+export interface Draft {
+  id: number;
+  title: string;
+  files: DraftFile[];
+  settings: DraftSettings;
+  open: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+export interface PlaygroundTools {
+  compilers: Array<{ name: string; path: string | null; version: string | null }>;
+  valgrind: string | null;
+  sandbox: string | null;
+  cgroupLimits: boolean;
+}
+export interface CDiagnostic {
+  file: string;
+  line: number | null;
+  col: number | null;
+  severity: "error" | "warning" | "note";
+  message: string;
+  flag: string | null;
+  origin: "compiler" | "linker";
+}
+export interface MemFrame {
+  function: string;
+  file: string | null;
+  line: number | null;
+}
+export interface MemIssue {
+  tool: "asan" | "lsan" | "ubsan" | "valgrind";
+  kind: string;
+  message: string;
+  at: MemFrame | null;
+  frames: MemFrame[];
+  bytes: number | null;
+}
+export interface PlaygroundCompile {
+  ok: boolean;
+  command: string;
+  output: string;
+  diagnostics: CDiagnostic[];
+  durationMs: number;
+}
+export interface PlaygroundRun {
+  command: string;
+  exitCode: number | null;
+  signal: number | null;
+  signalName: string | null;
+  timedOut: boolean;
+  stdout: string;
+  stderr: string;
+  stdoutTruncated: boolean;
+  stderrTruncated: boolean;
+  durationMs: number;
+  memory: MemIssue[];
+  valgrind: { errors: number | null; definitelyLost: number | null; indirectlyLost: number | null; stillReachable: number | null } | null;
+}
+
+export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull" | "playground";
 /** Kind-specific facts; see the Rust module that produces each kind. */
 export type RunSummary = Record<string, unknown> & { steps?: JobStep[] };
 export interface JobView {
@@ -1345,6 +1422,16 @@ export const api = {
 
   projectConfigGet: (repo: string) => invoke<ProjectConfig>("project_config_get", { repo }),
   projectConfigSet: (repo: string, config: ProjectConfig) => invoke<ProjectConfig>("project_config_set", { repo, config }),
+  playgroundTools: () => invoke<PlaygroundTools>("playground_tools"),
+  playgroundList: () => invoke<Draft[]>("playground_list"),
+  playgroundCreate: (title: string, files: DraftFile[] | null, settings: DraftSettings | null) => invoke<Draft>("playground_create", { title, files, settings }),
+  playgroundSave: (id: number, title: string, files: DraftFile[], settings: DraftSettings) => invoke<Draft>("playground_save", { id, title, files, settings }),
+  playgroundSetOpen: (id: number, open: boolean) => invoke<void>("playground_set_open", { id, open }),
+  playgroundDelete: (id: number) => invoke<void>("playground_delete", { id }),
+  playgroundRun: (id: number, title: string, files: DraftFile[], settings: DraftSettings) => invoke<number>("playground_run", { id, title, files, settings }),
+  playgroundImportLibrary: (libraryId: number, files: string[]) => invoke<DraftFile[]>("playground_import_library", { libraryId, files }),
+  playgroundExportPreview: (id: number, name: string) => invoke<DraftFile[]>("playground_export_preview", { id, name }),
+  playgroundExport: (id: number, parent: string, name: string, gitInit: boolean) => invoke<string>("playground_export", { id, parent, name, gitInit }),
   jobGet: (id: number) => invoke<JobView>("job_get", { id }),
   jobGetSince: (id: number, logFrom: number, eventsFrom: number) => invoke<JobView>("job_get", { id, logFrom, eventsFrom }),
   jobCancel: (id: number) => invoke<void>("job_cancel", { id }),

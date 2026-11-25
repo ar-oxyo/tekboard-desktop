@@ -85,7 +85,7 @@ pub fn run(job: &Job, dir: &Path, r: &Request, mut ep: Endpoint, on_event: &mut 
     let (mut tokens_in, mut tokens_out, mut cost) = (0u64, 0u64, 0f64);
     let mut json_retry = r.json_schema.is_some();
     let mut turns = 0usize;
-    let finish = |cancelled: bool, timed_out: bool, ok: bool| Outcome { code: Some(if ok { 0 } else { 1 }), output: String::new(), timed_out, cancelled, duration_ms: started.elapsed().as_millis() as u64 };
+    let finish = |cancelled: bool, timed_out: bool, ok: bool| Outcome { code: Some(if ok { 0 } else { 1 }), output: String::new(), stdout: String::new(), stderr: String::new(), timed_out, cancelled, duration_ms: started.elapsed().as_millis() as u64 };
 
     let answer: Result<Answer> = loop {
         if job.cancelled() {

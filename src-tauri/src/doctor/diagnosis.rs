@@ -99,6 +99,9 @@ fn install_cmd(tool: &str) -> String {
         "pdftotext" => ("poppler-utils", "poppler-utils", "poppler"),
         "bwrap" => ("bubblewrap", "bubblewrap", "bubblewrap"),
         "gh" => ("gh", "gh", "github-cli"),
+        "time" => ("time", "time", "time"),
+        "perf" => ("linux-tools-generic", "perf", "perf"),
+        "python3" => ("python3", "python3", "python"),
         t => (t, t, t),
     };
     if crate::toolenv::which("apt-get").is_some() {
@@ -208,6 +211,45 @@ fn ai(out: &mut Vec<Check>, deep: bool) {
             Ok(()) => check("ai.sandbox", "IA", "Bac à sable des agents (bubblewrap)", Status::Ok, "Fonctionne."),
             Err(e) => check("ai.sandbox", "IA", "Bac à sable des agents (bubblewrap)", Status::Warn, e).command(install_cmd("bwrap")),
         }.affects("moulinette d'Artix, génération de tests"));
+    }
+}
+
+/// Code Playground and Algorithm Arena: compilers, measuring tools, sandbox limits.
+fn lab(out: &mut Vec<Check>) {
+    let cat = "Labo";
+    out.push(match crate::ai::sandbox::check() {
+        Ok(()) => check("lab.sandbox", cat, "Bac à sable (bubblewrap)", Status::Ok, "Les programmes du Playground et des benchmarks tournent isolés."),
+        Err(e) => check("lab.sandbox", cat, "Bac à sable (bubblewrap)", Status::Error, format!("{e} Sans lui, rien n'est exécuté.")).command(install_cmd("bwrap")),
+    }.affects("Playground, Arena"));
+    out.push(if crate::ai::sandbox::scope_available() {
+        check("lab.limits", cat, "Limites mémoire (cgroup)", Status::Ok, "La mémoire et le nombre de processus d'un programme sont plafonnés par systemd.")
+    } else {
+        check("lab.limits", cat, "Limites mémoire (cgroup)", Status::Warn, "systemd-run --user ne peut pas créer de scope : la mémoire est limitée par ulimit (pas avec ASan ni Valgrind).")
+    }.affects("Playground, Arena"));
+    for (bin, what, affects, arg) in [
+        ("clang", "Compilateur C (LLVM)", "choix du compilateur dans le Playground", "--version"),
+        ("time", "GNU time : temps CPU et mémoire maximale", "mesures de l'Arena", "--version"),
+        ("perf", "Compteurs matériels", "mesures fines de l'Arena (facultatif)", "--version"),
+        ("python3", "Générateurs de données", "jeux de données de l'Arena écrits en Python", "--version"),
+    ] {
+        let path = if bin == "time" { Some(std::path::PathBuf::from("/usr/bin/time")).filter(|p| p.exists()) } else { crate::settings::which(bin) };
+        let c = match path.as_deref().and_then(|p| crate::toolenv::first_line(p, &[arg], std::time::Duration::from_secs(4)).ok()) {
+            Some(v) => check(format!("lab.{bin}"), cat, bin, Status::Ok, v.chars().take(80).collect::<String>()),
+            None if path.is_some() => check(format!("lab.{bin}"), cat, bin, Status::Warn, format!("{what} : installé mais ne répond pas.")),
+            None => check(format!("lab.{bin}"), cat, bin, Status::Unconfigured, format!("{what} : absent.")).command(install_cmd(bin)),
+        };
+        out.push(c.affects(affects));
+    }
+    if crate::settings::which("perf").is_some() {
+        let level = std::fs::read_to_string("/proc/sys/kernel/perf_event_paranoid").ok().and_then(|s| s.trim().parse::<i32>().ok());
+        if let Some(l) = level.filter(|l| *l > 2) {
+            out.push(check("lab.perf.paranoid", cat, "Accès aux compteurs perf", Status::Warn, format!("kernel.perf_event_paranoid = {l} : perf stat est refusé aux utilisateurs. L'Arena s'en passe (temps, Valgrind).")).command("sudo sysctl kernel.perf_event_paranoid=2").affects("perf stat dans l'Arena"));
+        }
+    }
+    for (tool, what) in [("callgrind", "fonctions les plus coûteuses"), ("massif", "pic de mémoire")] {
+        if crate::settings::which("valgrind").is_none() {
+            out.push(check(format!("lab.{tool}"), cat, format!("Valgrind {tool}"), Status::Unconfigured, format!("Valgrind est absent : pas de {what} dans l'Arena.")).command(install_cmd("valgrind")).affects("Arena"));
+        }
     }
 }
 
@@ -321,6 +363,7 @@ fn run_checks(state: &AppState, f: &Facts) -> Report {
     my_epitech(&mut checks, f, now);
     ai(&mut checks, f.deep);
     epitech_tools(&mut checks);
+    lab(&mut checks);
     data(&mut checks, state);
     projects(&mut checks, state);
     updates(&mut checks, f);

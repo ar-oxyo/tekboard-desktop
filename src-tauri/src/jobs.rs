@@ -93,13 +93,30 @@ pub struct Job {
     run_row: AtomicI64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Outcome {
     pub code: Option<i32>,
+    /// Everything the command printed (stdout then stderr when the streams are split).
     pub output: String,
+    /// Only with `RunOpts::split_streams`.
+    pub stdout: String,
+    pub stderr: String,
     pub timed_out: bool,
     pub cancelled: bool,
     pub duration_ms: u64,
+}
+
+/// How `Job::run_opts` starts a command.
+#[derive(Clone, Copy)]
+pub struct RunOpts<'a> {
+    pub argv: &'a [String],
+    pub cwd: &'a Path,
+    pub timeout: Duration,
+    pub envs: &'a [(&'a str, &'a str)],
+    pub log_output: bool,
+    /// A file read as standard input (otherwise `/dev/null`).
+    pub stdin: Option<&'a Path>,
+    pub split_streams: bool,
 }
 
 impl Outcome {
@@ -248,55 +265,83 @@ impl Job {
     /// `log_output: false` keeps the raw output out of the log (machine-readable streams:
     /// the caller logs a readable version itself).
     pub fn run_lines(&self, argv: &[String], cwd: &Path, timeout: Duration, envs: &[(&str, &str)], log_output: bool, on_line: &mut dyn FnMut(&str)) -> Result<Outcome> {
+        self.run_opts(&RunOpts { argv, cwd, timeout, envs, log_output, stdin: None, split_streams: false }, on_line)
+    }
+
+    /// The general form: standard input from a file, and stdout / stderr kept apart
+    /// (`Outcome::stdout` / `stderr`) when `split_streams` — the log still shows both as they come.
+    pub fn run_opts(&self, o: &RunOpts<'_>, on_line: &mut dyn FnMut(&str)) -> Result<Outcome> {
         use std::io::{Read, Seek, SeekFrom};
+        let RunOpts { argv, cwd, timeout, envs, log_output, stdin, split_streams } = *o;
         if argv.is_empty() {
             return Err(AppError::new("not_configured", "Aucune commande à lancer"));
         }
         if self.cancelled() {
-            return Ok(Outcome { code: None, output: String::new(), timed_out: false, cancelled: true, duration_ms: 0 });
+            return Ok(Outcome { code: None, output: String::new(), stdout: String::new(), stderr: String::new(), timed_out: false, cancelled: true, duration_ms: 0 });
         }
         if log_output {
             self.log(&format!("$ {}", argv.join(" ")));
         }
-        let path = std::env::temp_dir().join(format!("tekboard-job-{}-{}", std::process::id(), self.started.elapsed().as_nanos()));
-        let mut file = std::fs::OpenOptions::new().read(true).write(true).create_new(true).open(&path)?;
-        let _ = std::fs::remove_file(&path);
+        static SEQ: AtomicU64 = AtomicU64::new(0);
+        let temp = |tag: &str| -> Result<std::fs::File> {
+            let path = std::env::temp_dir().join(format!("tekboard-job-{}-{}-{tag}", std::process::id(), SEQ.fetch_add(1, Ordering::SeqCst)));
+            let file = std::fs::OpenOptions::new().read(true).write(true).create_new(true).open(&path)?;
+            let _ = std::fs::remove_file(&path);
+            Ok(file)
+        };
+        let out_file = temp("out")?;
+        let err_file = if split_streams { Some(temp("err")?) } else { None };
         let started = Instant::now();
         let mut cmd = crate::toolenv::command(&argv[0]);
-        cmd.args(&argv[1..]).envs(envs.iter().copied()).current_dir(cwd).stdin(Stdio::null()).stdout(Stdio::from(file.try_clone()?)).stderr(Stdio::from(file.try_clone()?)).process_group(0);
+        let stdin_cfg = match stdin {
+            Some(p) => Stdio::from(std::fs::File::open(p)?),
+            None => Stdio::null(),
+        };
+        let stderr_cfg = match &err_file {
+            Some(f) => Stdio::from(f.try_clone()?),
+            None => Stdio::from(out_file.try_clone()?),
+        };
+        cmd.args(&argv[1..]).envs(envs.iter().copied()).current_dir(cwd).stdin(stdin_cfg).stdout(Stdio::from(out_file.try_clone()?)).stderr(stderr_cfg).process_group(0);
         crate::toolenv::scrub_env(&mut cmd);
         let mut child = cmd
             .spawn()
             .map_err(|e| if e.kind() == std::io::ErrorKind::NotFound { AppError::new("command_missing", format!("« {} » est introuvable", argv[0])) } else { AppError::Io(e) })?;
         self.pgid.store(child.id() as i32, Ordering::SeqCst);
-        let mut output = String::new();
-        let mut pos = 0u64;
-        let mut carry = String::new();
-        let mut pump = |file: &mut std::fs::File, output: &mut String, carry: &mut String, last: bool| {
-            let mut buf = Vec::new();
-            if file.seek(SeekFrom::Start(pos)).is_ok() && file.read_to_end(&mut buf).is_ok() && !buf.is_empty() {
-                pos += buf.len() as u64;
-                let text = String::from_utf8_lossy(&buf).into_owned();
-                if output.len() < LOG_CAP {
-                    output.push_str(&text);
+        // One reader per stream: what was read so far, and the line not finished yet.
+        struct Stream {
+            file: std::fs::File,
+            pos: u64,
+            text: String,
+            carry: String,
+        }
+        let mut streams: Vec<Stream> = std::iter::once(out_file).chain(err_file).map(|file| Stream { file, pos: 0, text: String::new(), carry: String::new() }).collect();
+        let mut pump = |streams: &mut Vec<Stream>, last: bool| {
+            for st in streams.iter_mut() {
+                let mut buf = Vec::new();
+                if st.file.seek(SeekFrom::Start(st.pos)).is_ok() && st.file.read_to_end(&mut buf).is_ok() && !buf.is_empty() {
+                    st.pos += buf.len() as u64;
+                    let text = String::from_utf8_lossy(&buf).into_owned();
+                    if st.text.len() < LOG_CAP {
+                        st.text.push_str(&text);
+                    }
+                    if log_output {
+                        self.log_raw(&text);
+                    }
+                    st.carry.push_str(&text);
                 }
-                if log_output {
-                    self.log_raw(&text);
+                while let Some(nl) = st.carry.find('\n') {
+                    let line: String = st.carry.drain(..=nl).collect();
+                    on_line(line.trim_end_matches(['\n', '\r']));
                 }
-                carry.push_str(&text);
-            }
-            while let Some(nl) = carry.find('\n') {
-                let line: String = carry.drain(..=nl).collect();
-                on_line(line.trim_end_matches(['\n', '\r']));
-            }
-            if last && !carry.is_empty() {
-                let line = std::mem::take(carry);
-                on_line(line.trim_end());
+                if last && !st.carry.is_empty() {
+                    let line = std::mem::take(&mut st.carry);
+                    on_line(line.trim_end());
+                }
             }
         };
         let (mut timed_out, mut cancelled) = (false, false);
         let status = loop {
-            pump(&mut file, &mut output, &mut carry, false);
+            pump(&mut streams, false);
             if let Some(status) = child.try_wait()? {
                 break status;
             }
@@ -308,9 +353,11 @@ impl Job {
                 let _ = child.kill();
                 break child.wait()?;
             }
-            std::thread::sleep(Duration::from_millis(80));
+            // Short commands end within a few milliseconds: poll often at first, so their
+            // duration is not rounded up to the polling step, then settle at 80 ms.
+            std::thread::sleep(Duration::from_millis((2 + started.elapsed().as_millis() as u64 / 8).min(80)));
         };
-        pump(&mut file, &mut output, &mut carry, true);
+        pump(&mut streams, true);
         // `cancel()` may have killed the group before this loop noticed the flag.
         cancelled = cancelled || (!timed_out && self.cancelled());
         self.pgid.store(0, Ordering::SeqCst);
@@ -320,7 +367,13 @@ impl Job {
         if timed_out {
             self.log(&format!("(arrêté après {} s : limite de temps)", timeout.as_secs()));
         }
-        Ok(Outcome { code: if timed_out || cancelled { None } else { status.code() }, output, timed_out, cancelled, duration_ms: started.elapsed().as_millis() as u64 })
+        let mut texts = streams.into_iter().map(|s| s.text);
+        let first = texts.next().unwrap_or_default();
+        let (output, stdout, stderr) = match texts.next() {
+            Some(err) => (format!("{first}{err}"), first, err),
+            None => (first, String::new(), String::new()),
+        };
+        Ok(Outcome { code: if timed_out || cancelled { None } else { status.code() }, output, stdout, stderr, timed_out, cancelled, duration_ms: started.elapsed().as_millis() as u64 })
     }
 
     fn kill_group(&self, pid: u32) {
@@ -360,6 +413,14 @@ impl Jobs {
         self.map().values().find_map(|j| {
             let v = j.lock();
             (v.status == "running" && v.kind == kind && v.repo.as_deref() == repo).then_some(v.id)
+        })
+    }
+
+    /// A running job of this kind whose summary matches `pred` (several drafts may run at once).
+    pub fn find_running(&self, kind: &str, pred: impl Fn(&Map<String, Value>) -> bool) -> Option<u64> {
+        self.map().values().find_map(|j| {
+            let v = j.lock();
+            (v.status == "running" && v.kind == kind && pred(&v.summary)).then_some(v.id)
         })
     }
 
@@ -705,6 +766,32 @@ mod tests {
         let v = wait(&jobs, id);
         assert_eq!(v.status, "failed");
         assert!(v.log.contains("limite de temps") && v.log.contains("est introuvable"), "{}", v.log);
+    }
+
+    #[test]
+    fn stdin_comes_from_a_file_and_the_streams_can_be_kept_apart() {
+        let (jobs, conn) = (Jobs::default(), db());
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().to_path_buf();
+        std::fs::write(dir.join("in.txt"), "bonjour\n").unwrap();
+        let id = jobs.start(conn, "tests", None, "t".into(), &[("a", "A")], move |job| {
+            let argv = sh("read l; echo \"out:$l\"; echo err >&2; exit 3");
+            let mut lines = Vec::new();
+            let o = job.run_opts(&RunOpts { argv: &argv, cwd: &dir, timeout: Duration::from_secs(5), envs: &[], log_output: true, stdin: Some(&dir.join("in.txt")), split_streams: true }, &mut |l| lines.push(l.to_string()))?;
+            assert_eq!(o.code, Some(3));
+            assert_eq!(o.stdout, "out:bonjour\n");
+            assert_eq!(o.stderr, "err\n");
+            // A command that ends at once is not rounded up to the 80 ms polling step.
+            let quick = job.run(&["true".to_string()], &dir, Duration::from_secs(5), &[])?;
+            assert!(quick.duration_ms < 60, "{} ms", quick.duration_ms);
+            assert!(lines.contains(&"out:bonjour".to_string()) && lines.contains(&"err".to_string()), "{lines:?}");
+            let merged = job.run(&sh("echo a; echo b >&2"), &dir, Duration::from_secs(5), &[])?;
+            assert!(merged.output.contains('a') && merged.output.contains('b') && merged.stdout.is_empty());
+            Ok("success")
+        });
+        let v = wait(&jobs, id);
+        assert_eq!(v.status, "success", "{}", v.log);
+        assert!(v.log.contains("out:bonjour") && v.log.contains("err"));
     }
 
     #[test]

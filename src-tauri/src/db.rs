@@ -297,6 +297,16 @@ const MIGRATIONS: &[&str] = &[
         repo_path TEXT NOT NULL,
         PRIMARY KEY (subject_id, repo_path)
      );",
+    // v-lab: Code Playground drafts (files and settings as JSON; closed tabs stay as history).
+    "CREATE TABLE playground_drafts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        files TEXT NOT NULL,
+        settings TEXT NOT NULL,
+        open INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+     );",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

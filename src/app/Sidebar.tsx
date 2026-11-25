@@ -1,4 +1,4 @@
-import { CalendarDays, ChartNoAxesColumn, FolderGit2, GraduationCap, LayoutTemplate, Search, Settings, Sun } from "lucide-react";
+import { CalendarDays, ChartNoAxesColumn, FlaskRound, FolderGit2, GraduationCap, LayoutTemplate, Search, Settings, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn, Kbd } from "../components/ui";
 import { Artix } from "../features/artix/Artix";
@@ -14,11 +14,12 @@ const ICONS: Record<Section["id"], ReactNode> = {
   planning: <CalendarDays className={icon} />,
   school: <GraduationCap className={icon} />,
   stats: <ChartNoAxesColumn className={icon} />,
+  lab: <FlaskRound className={icon} />,
   resources: <LayoutTemplate className={icon} />,
   settings: <Settings className={icon} />,
 };
-const MAIN = SECTIONS.slice(0, 5);
-const FOOT = SECTIONS.slice(5);
+const MAIN = SECTIONS.slice(0, 6);
+const FOOT = SECTIONS.slice(6);
 
 export function Logo({ className }: { className?: string }) {
   // Same drawing as public/tekboard.svg: a T inside a progress ring.

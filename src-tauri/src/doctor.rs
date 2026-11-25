@@ -28,6 +28,7 @@ const TOOLS: &[(&str, &str, bool, &[&str])] = &[
     ("make", "Builds projects", true, &["--version"]),
     ("epiclang", "Epitech C compiler", false, &["--version"]),
     ("gcc", "C compiler", false, &["--version"]),
+    ("clang", "C compiler (LLVM)", false, &["--version"]),
     ("valgrind", "Memory checks", false, &["--version"]),
     ("gdb", "Debugger", false, &["--version"]),
     ("gcovr", "Coverage report for unit tests", false, &["--version"]),

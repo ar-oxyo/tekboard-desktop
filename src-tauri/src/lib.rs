@@ -1,11 +1,13 @@
 pub mod ai;
 pub mod analytics;
+pub mod cdiag;
 pub mod checker;
 pub mod claude;
 pub mod commands;
 pub mod commands_ai;
 pub mod commands_app;
 pub mod commands_dev;
+pub mod commands_lab;
 pub mod commands_lib;
 pub mod commands_my;
 pub mod commands_plan;
@@ -32,6 +34,7 @@ pub mod myview;
 pub mod notify;
 pub mod packager;
 pub mod planner;
+pub mod playground;
 pub mod projects;
 pub mod prompts;
 pub mod readme;
@@ -217,6 +220,16 @@ pub fn run() {
             commands::cozy_restore,
             commands::startup,
             commands_lib::library_list,
+            commands_lab::playground_tools,
+            commands_lab::playground_list,
+            commands_lab::playground_create,
+            commands_lab::playground_save,
+            commands_lab::playground_set_open,
+            commands_lab::playground_delete,
+            commands_lab::playground_run,
+            commands_lab::playground_import_library,
+            commands_lab::playground_export_preview,
+            commands_lab::playground_export,
             commands_lib::library_suggestions,
             commands_lib::library_add,
             commands_lib::library_unregister,

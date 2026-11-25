@@ -5,7 +5,7 @@
 import { listen } from "@tauri-apps/api/event";
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 
-export type Domain = "plan" | "repos" | "focus" | "memory" | "insights" | "runs" | "subjects" | "my" | "libraries" | "settings" | "prompts" | "templates" | "ai" | "activity";
+export type Domain = "plan" | "repos" | "focus" | "memory" | "insights" | "runs" | "subjects" | "my" | "libraries" | "settings" | "prompts" | "templates" | "ai" | "activity" | "playground";
 
 /** Query key prefixes fed by each domain. */
 export const DOMAIN_KEYS: Record<Domain, QueryKey[]> = {
@@ -24,11 +24,17 @@ export const DOMAIN_KEYS: Record<Domain, QueryKey[]> = {
   templates: [["templates"]],
   ai: [["ai-threads"], ["ai-thread"], ["ai-proposals"], ["ai-actions"], ["focus"]],
   activity: [["activity"]],
+  playground: [["playground"]],
 };
 
 /** What each writing command changes. Read-only commands are absent. */
 export const COMMAND_DOMAINS: Record<string, Domain[]> = {
   save_settings: ["settings", "repos"],
+  playground_create: ["playground"],
+  playground_set_open: ["playground"],
+  playground_delete: ["playground"],
+  playground_run: ["runs"],
+  playground_export: ["repos"],
   ui_prefs_set: ["settings", "plan"],
   set_favorite: ["repos"],
   clone_project: ["repos", "activity"],

@@ -2,6 +2,19 @@
 
 Chaque version publiée a sa section ici ; la release GitHub reprend ce texte.
 
+## 0.8.0
+
+**Code Playground** (Labo → Playground, ou « Nouveau brouillon C » dans la palette)
+- Écrire quelques lignes de C et les lancer tout de suite, sans projet, sans dépôt ni Makefile : éditeur avec coloration, numéros de ligne, autocomplétion légère (mots-clés, libc, identifiants du brouillon), plusieurs onglets et plusieurs fichiers par brouillon, sauvegarde automatique.
+- Compiler et lancer en un clic ou avec Ctrl+Entrée ; choix de gcc, clang ou epiclang selon ce qui est installé, options de compilation, arguments et entrée standard du programme.
+- Erreurs et avertissements du compilateur et de l'édition de liens listés, soulignés dans le code et cliquables ; stdout et stderr séparés.
+- AddressSanitizer, UndefinedBehaviorSanitizer et Valgrind en un clic : chaque problème mémoire est lu (type, octets, pile d'appels) et renvoie à la ligne en cause.
+- Chaque exécution est isolée dans le bac à sable (bubblewrap : pas de réseau, système en lecture seule, environnement vidé), annulable, et limitée en temps, en mémoire et en nombre de processus (cgroup systemd quand c'est possible).
+- Historique des brouillons fermés et des exécutions, avec restauration du code d'une exécution passée.
+- Import de fonctions depuis les bibliothèques de TekBoard (avec leurs dépendances), export d'un brouillon en vrai projet (Makefile, .gitignore, git init facultatif).
+- Artix, sur demande seulement : expliquer une erreur, le comportement ou les problèmes mémoire, proposer des cas limites ou un petit environnement de test, suggérer une correction sans l'appliquer, expliquer une notion.
+- Doctor : nouvelle catégorie Labo (bac à sable, limites mémoire, clang, GNU time, perf, python3).
+
 ## 0.7.0
 
 **Choisir son IA** (Réglages → Artix (IA), et au premier lancement)

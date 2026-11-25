@@ -1,6 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
+import { Spinner } from "../components/ui";
 import { Toaster } from "../components/Toaster";
 import { LauncherDialog } from "../features/launcher/LauncherDialog";
 import { OverviewPage } from "../features/overview/OverviewPage";
@@ -39,6 +40,9 @@ import { applyLang, t } from "../lib/i18n";
 import { hideSplash } from "../lib/splash";
 import { OnboardingFlow } from "../features/onboarding/OnboardingFlow";
 
+// Heavy screens (code editor, canvas) load the first time they are opened.
+const PlaygroundPage = lazy(() => import("../features/playground/PlaygroundPage"));
+
 const UPDATE_KEY = "tekboard.update.lastCheck";
 const DAY = 24 * 3600 * 1000;
 
@@ -71,7 +75,7 @@ export function navigateTo(page: string, project: string | null, tab: string | n
     if (tab === "libraries") return ui.openLibrary(project);
     return ui.openSheet(project);
   }
-  const map: Record<string, Page> = { today: "overview", projects: "projects", planning: "agenda", school: "myepitech", stats: "analytics", resources: "templates", settings: "settings" };
+  const map: Record<string, Page> = { today: "overview", projects: "projects", planning: "agenda", school: "myepitech", stats: "analytics", lab: "playground", resources: "templates", settings: "settings" };
   ui.setPage(map[page] ?? "overview");
 }
 
@@ -207,7 +211,7 @@ export function App() {
       } else if (key === "n" && !e.shiftKey) {
         e.preventDefault();
         openLauncher({ mode: "new" });
-      } else if (/^[1-7]$/.test(key)) {
+      } else if (/^[1-8]$/.test(key)) {
         e.preventDefault();
         setPage(entryOf(SECTIONS[Number(key) - 1]));
       }
@@ -325,6 +329,11 @@ export function App() {
           {page === "templates" && <TemplatesPage />}
           {page === "settings" && <SettingsPage />}
           {page === "prompts" && <PromptsPage />}
+          {page === "playground" && (
+            <Suspense fallback={<Spinner />}>
+              <PlaygroundPage />
+            </Suspense>
+          )}
         </div>
         )}
       </main>
