@@ -7,7 +7,7 @@ import { Badge, Button, cn, ErrorNote, Input, Spinner } from "../../components/u
 import { api, asAppError, type PackOptions } from "../../lib/api";
 import { formatBytes } from "../../lib/format";
 import { useUi } from "../../lib/store";
-import { t } from "../../lib/i18n";
+import { plural, t } from "../../lib/i18n";
 
 const MODES: Array<{ id: PackOptions["mode"]; label: string; hint: string }> = [
   { id: "context", label: "AI Context Pack", hint: t("Le code source, plus PROJECT_CONTEXT.md, FILE_TREE.txt et un manifeste écrit à partir des faits du dépôt.") },
@@ -75,7 +75,7 @@ export function PackageDialog({ repo }: { repo: string }) {
         {p && p.sensitive > 0 && (
           <p className="flex items-start gap-2 rounded-md border border-warn/30 bg-warn/10 px-3 py-2 text-xs text-warn">
             <ShieldAlert className="mt-px size-3.5 shrink-0" />
-            {p.sensitive} file{p.sensitive > 1 ? "s look" : " looks"} like a secret (by name, or because a token or private key was recognised inside). {p.sensitive > 1 ? "They are" : "It is"} left out and cannot be added.
+            {plural(p.sensitive, "{n} fichier ressemble à un secret (par son nom, ou parce qu'un jeton ou une clé privée y a été reconnu). Il est laissé de côté et ne peut pas être ajouté.", "{n} fichiers ressemblent à un secret (par leur nom, ou parce qu'un jeton ou une clé privée y a été reconnu). Ils sont laissés de côté et ne peuvent pas être ajoutés.")}
           </p>
         )}
         <div className="flex items-center gap-2">
@@ -84,7 +84,7 @@ export function PackageDialog({ repo }: { repo: string }) {
           {preview.isFetching && <Spinner />}
         </div>
         <ul className="max-h-[38vh] overflow-y-auto rounded-lg border border-line bg-bg py-1">
-          {rows.length === 0 && <li className="px-3 py-3 text-xs text-muted">{p ? "No file matches." : "Reading the project…"}</li>}
+          {rows.length === 0 && <li className="px-3 py-3 text-xs text-muted">{p ? t("Aucun fichier ne correspond.") : t("Lecture du projet…")}</li>}
           {rows.slice(0, 600).map((e) => (
             <li key={e.path}>
               <label className={cn("flex min-h-7 items-center gap-2.5 px-3 text-xs", e.sensitive ? "cursor-not-allowed" : "hover:bg-raised")}>
@@ -100,7 +100,7 @@ export function PackageDialog({ repo }: { repo: string }) {
         {p && (p.skippedDirs.length > 0 || p.truncated) && (
           <p className="selectable text-xs text-faint">
             {p.skippedDirs.length > 0 && <>Folders skipped whole: {p.skippedDirs.join(", ")}. </>}
-            {p.truncated && "This project has more files than TekBoard lists (20,000): the rest is not in the archive."}
+            {p.truncated && t("Ce projet a plus de fichiers que TekBoard n'en liste (20 000) : le reste n'est pas dans l'archive.")}
           </p>
         )}
       </div>

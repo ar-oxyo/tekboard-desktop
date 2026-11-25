@@ -37,10 +37,10 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
       onStarted(id);
       void qc.invalidateQueries({ queryKey: ["quick-history", repo] });
     },
-    onError: fail("The command did not start"),
+    onError: fail(t("La commande n'a pas démarré")),
   });
-  const forget = useMutation({ mutationFn: (command: string) => api.quickForget(repo, command), onSuccess: () => void qc.invalidateQueries({ queryKey: ["quick-history", repo] }), onError: fail("Not removed") });
-  const openTerminal = useMutation({ mutationFn: () => api.openTerminal(repo), onError: fail("The terminal did not start") });
+  const forget = useMutation({ mutationFn: (command: string) => api.quickForget(repo, command), onSuccess: () => void qc.invalidateQueries({ queryKey: ["quick-history", repo] }), onError: fail(t("Pas supprimé")) });
+  const openTerminal = useMutation({ mutationFn: () => api.openTerminal(repo), onError: fail(t("Le terminal n'a pas démarré")) });
   const busy = running !== null || run.isPending;
   // `clear` is TekBoard's own: it empties the log view and never reaches the system.
   const start = (command: string) => {
@@ -150,7 +150,7 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
           ))}
         </Menu>
       )}
-      <IconButton label={terminal ? "Open a terminal in this repository" : "No terminal command is set (Settings)"} disabled={!terminal} onClick={() => openTerminal.mutate()}>
+      <IconButton label={terminal ? t("Ouvrir un terminal dans ce dépôt") : t("Aucune commande de terminal n'est définie (Réglages)")} disabled={!terminal} onClick={() => openTerminal.mutate()}>
         <SquareTerminal className="size-4" />
       </IconButton>
     </div>

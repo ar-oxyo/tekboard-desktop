@@ -286,8 +286,8 @@ export function LibraryPage() {
           {catalog.isLoading ? (
             <p className="flex items-center gap-2 px-4 py-10 text-sm text-muted"><Spinner /> {t("Lecture de la bibliothèque…")}</p>
           ) : shown.length === 0 ? (
-            <EmptyState icon={<Search className="size-5" />} title={sources.length === 0 ? "This library has no source file" : "Nothing matches"}>
-              {sources.length === 0 ? "Drop .c files on this window to add some." : "Try fewer words, or clear the folder and tag filters."}
+            <EmptyState icon={<Search className="size-5" />} title={sources.length === 0 ? t("Cette bibliothèque n'a aucun fichier source") : t("Rien ne correspond")}>
+              {sources.length === 0 ? t("Dépose des fichiers .c sur cette fenêtre pour en ajouter.") : t("Essaie moins de mots, ou retire les filtres de dossier et de tag.")}
             </EmptyState>
           ) : (
             <>
@@ -371,7 +371,7 @@ export function LibraryPage() {
                   <div className="border-b border-ink/6 px-3 py-2.5">
                     <p className="mb-1.5 text-xs text-muted">Nécessaire</p>
                     {plan.data.required.map((r) => (
-                      <label key={r.rel} className="flex min-h-6 items-center gap-2 text-xs" title={`Needed by ${r.neededBy}${r.via.length ? ` (${r.via.join(", ")})` : ""}`}>
+                      <label key={r.rel} className="flex min-h-6 items-center gap-2 text-xs" title={`${t("Requis par {f}", { f: r.neededBy })}${r.via.length ? ` (${r.via.join(", ")})` : ""}`}>
                         <input type="checkbox" className="accent-(--color-accent)" checked onChange={() => flip(exclude, setExclude, r.rel)} />
                         <span className="min-w-0 flex-1 truncate font-mono">{r.rel}</span>
                         <Badge tone={r.kind === "detected" ? "ok" : r.kind === "declared" ? "accent" : "warn"}>{r.kind === "ambiguous" ? "assumed" : r.kind}</Badge>
@@ -397,7 +397,7 @@ export function LibraryPage() {
                   <p key={w} className="selectable flex gap-2 border-t border-ink/6 px-3 py-2 text-xs text-warn"><TriangleAlert className="mt-px size-3.5 shrink-0" />{w}</p>
                 ))}
                 <div className="flex items-center justify-between gap-2 border-t border-ink/6 p-3">
-                  <span className="text-xs text-faint">{risky.length > 0 ? `${confirmed.size}/${risky.length} risky change${risky.length > 1 ? "s" : ""} confirmed` : "Existing files are saved first"}</span>
+                  <span className="text-xs text-faint">{risky.length > 0 ? `${confirmed.size}/${risky.length} risky change${risky.length > 1 ? "s" : ""} confirmed` : t("Les fichiers existants sont sauvegardés d'abord")}</span>
                   <Button variant="primary" icon={<Check className="size-3.5" />} busy={apply.isPending} disabled={real.length === 0 || plan.isFetching} onClick={() => apply.mutate()}>{t("Appliquer")}</Button>
                 </div>
               </div>
@@ -494,7 +494,7 @@ function ActionRow({ action, confirmed, onConfirm }: { action: LibPlanAction; co
       {action.risky && (
         <label className="mt-1 flex items-center gap-2 rounded-md border border-warn/30 bg-warn/10 px-2 py-1 text-xs text-warn">
           <input type="checkbox" className="accent-(--color-warn)" checked={confirmed} onChange={onConfirm} />
-          {action.op === "delete" ? "Yes, delete my edited copy" : "Yes, replace my edited copy"}
+          {action.op === "delete" ? t("Oui, supprimer ma copie modifiée") : t("Oui, remplacer ma copie modifiée")}
         </label>
       )}
       {open && action.diff && <DiffView text={action.diff} className="mt-1.5 max-h-64 rounded-md" />}
@@ -520,7 +520,7 @@ function PresetSaver({ disabled, count, busy, onSave }: { disabled: boolean; cou
   const [name, setName] = useState("");
   return (
     <form className="mt-1 flex gap-1.5" onSubmit={(e) => { e.preventDefault(); if (name.trim()) { onSave(name.trim()); setName(""); } }}>
-      <Input className="h-7 text-xs" placeholder={disabled ? "Tick functions first" : `Name for these ${count}`} value={name} disabled={disabled} onChange={(e) => setName(e.target.value)} />
+      <Input className="h-7 text-xs" placeholder={disabled ? t("Coche d'abord des fonctions") : t("Nom pour ces {n}", { n: count })} value={name} disabled={disabled} onChange={(e) => setName(e.target.value)} />
       <Button size="sm" type="submit" busy={busy} disabled={disabled || !name.trim()}>{t("Enregistrer")}</Button>
     </form>
   );

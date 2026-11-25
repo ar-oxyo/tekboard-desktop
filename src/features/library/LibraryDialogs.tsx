@@ -138,7 +138,7 @@ export function ImportDialog({ libraries, libraryId, paths, onClose, onImported 
       open
       onClose={onClose}
       width="w-[760px]"
-      title={`Import to ${lib?.name ?? "library"}`}
+      title={t("Importer dans {l}", { l: lib?.name ?? t("la bibliothèque") })}
       description={t("Vérifie ce qui a été trouvé, choisis où va chaque fichier, puis importe.")}
       footer={
         <>
@@ -277,7 +277,7 @@ export function FileDetailDialog({ catalog, rel, repo, libDir, state, onClose, o
         {(file.deps.length > 0 || usedBy.length > 0) && (
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <p className="mb-1 font-medium text-muted">A besoin de</p>
+              <p className="mb-1 font-medium text-muted">{t("A besoin de")}</p>
               {file.deps.length === 0 ? <p className="text-faint">{t("Rien de cette bibliothèque.")}</p> : file.deps.map((d) => (
                 <button key={d.rel} type="button" onClick={() => onOpen(d.rel)} className="flex w-full items-center gap-2 py-0.5 text-left hover:text-accent-strong">
                   <span className="truncate font-mono">{d.rel}</span>
@@ -311,7 +311,7 @@ export function FileDetailDialog({ catalog, rel, repo, libDir, state, onClose, o
             <Field label="Description" hint={t("Affichée dans le catalogue et prise en compte par la recherche. Laisse vide pour reprendre le commentaire du fichier.")}>
               <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("Ce que ça fait")} />
             </Field>
-            <Field label="Étiquettes" hint={file.autoTags.length ? `Separated by commas. Guessed from the names: ${file.autoTags.join(", ")}.` : "Separated by commas."}>
+            <Field label={t("Étiquettes")} hint={file.autoTags.length ? t("Séparés par des virgules. Devinés d'après les noms : {tags}.", { tags: file.autoTags.join(", ") }) : t("Séparés par des virgules.")}>
               <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="string, validation" />
             </Field>
             <Field label={t("Dépendances supplémentaires")} hint={t("Fichiers de cette bibliothèque à installer avec celui-ci quand l'analyseur ne voit pas le lien (macros, pointeurs de fonction définis ailleurs). Chemins séparés par des virgules.")}>

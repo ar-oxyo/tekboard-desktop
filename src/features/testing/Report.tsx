@@ -152,7 +152,7 @@ function TestRepo({ s, steps, envActions }: { s: RunSummary; steps: JobStep[]; e
         <Row label="Source">{s.mode === "remote" ? "Remote clone" : "Local Git snapshot"}{str(s.source) && <span className="text-muted"> · {str(s.source)}</span>}</Row>
         <Row label="Branche">{str(s.branch) ?? "detached"}</Row>
         {commit && <Row label="Commit"><span className="font-mono">{commit.slice(0, 7)}</span>{str(s.localHead) && s.localHead !== commit && <span className="text-warn"> · your HEAD is {String(s.localHead).slice(0, 7)}</span>}</Row>}
-        <Row label="Environnement">{iso.mode === "docker" ? `Container ${str(iso.image) ?? ""} — no network, home folder not shared` : "This computer's tools and libraries (clean clone, not isolated)"}</Row>
+        <Row label={t("Environnement")}>{iso.mode === "docker" ? t("Conteneur {i}, sans réseau, dossier personnel non partagé", { i: str(iso.image) ?? "" }) : t("Les outils et bibliothèques de cet ordinateur (clone propre, non isolé)")}</Row>
         <Row label="Clone" tone={tone("clone")}>{word("clone")}</Row>
         <Row label="Compilation" tone={tone("build")}>{word("build")}{str(s.buildCommand) && <span className="font-mono text-muted"> · {str(s.buildCommand)}</span>}</Row>
         {num(build.warnings) !== null && <Row label="Avertissements" tone={(num(build.warnings) ?? 0) > 0 ? "warn" : undefined}>{num(build.warnings)}</Row>}
@@ -168,7 +168,7 @@ function TestRepo({ s, steps, envActions }: { s: RunSummary; steps: JobStep[]; e
       {referenced.length > 0 && (
         <div className="rounded-lg border border-danger/25 bg-danger/5 px-3 py-2 text-xs">
           <p className="mb-0.5 font-medium text-danger">{t("Fichiers cités par ta compilation qui n'existent que sur cet ordinateur")}</p>
-          {referenced.map((l, i) => <p key={i} className="selectable font-mono">{String(l.path)} <span className="font-sans text-muted">— {l.kind === "ignored" ? "ignored by Git" : "not added to Git"}</span></p>)}
+          {referenced.map((l, i) => <p key={i} className="selectable font-mono">{String(l.path)} <span className="font-sans text-muted">— {l.kind === "ignored" ? t("ignoré par Git") : t("pas ajouté à Git")}</span></p>)}
         </div>
       )}
       {locals.length > referenced.length && (

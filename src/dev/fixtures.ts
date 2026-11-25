@@ -169,6 +169,22 @@ const agenda = {
 };
 
 export const fixtures: Record<string, Fixture> = {
+  git_detail: (a: Record<string, unknown>) => {
+    const r = repos.find((x) => x.path === a.path) ?? repos[0];
+    const c = (hash: string, subject: string, h: number) => ({ hash, subject, author: "Camille Martin", date: new Date((now - h * H) * 1000).toISOString() });
+    return {
+      status: r.status,
+      changes: [
+        { path: "src/hash.c", staged: null, unstaged: "M", untracked: false, conflicted: false },
+        { path: "include/secured.h", staged: "M", unstaged: null, untracked: false, conflicted: false },
+        { path: "tests/test_hash.c", staged: null, unstaged: null, untracked: true, conflicted: false },
+      ],
+      branches: [{ name: "main", current: true, upstream: "origin/main" }, { name: "feature/resize", current: false, upstream: null }],
+      log: [c("a1b2c3d", "fix: handle empty PATH", 3), c("b2c3d4e", "feat: resize table when full", 26), c("c3d4e5f", "test: collisions on small tables", 50), c("d4e5f6a", "chore: Makefile rules", 75)],
+      outgoing: r.status?.ahead ? [c("e5f6a7b", "wip: groups", 1)] : [],
+      incoming: [],
+    };
+  },
   project_get: (a: Record<string, unknown>) => {
     const r = repos.find((x) => x.path === a.path) ?? repos[0];
     return { deadline: r.meta.deadline, deadlineAt: r.meta.deadlineAt, deadlineSource: r.meta.deadlineSource, buildCmd: "make re", notes: "Tests de hash à corriger avant jeudi.\n- vérifier les collisions\n- valgrind propre", runBin: null, runArgs: null };

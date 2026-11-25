@@ -101,7 +101,7 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
       let dir = target;
       let present = false;
       if (isNew) {
-        if (!effectiveParent) throw new Error("Choose a destination folder first");
+        if (!effectiveParent) throw new Error(t("Choisis d'abord un dossier de destination"));
         setWorking(`Cloning ${repoName}…`);
         const outcome = await api.cloneProject(url, effectiveParent);
         dir = outcome.path;
@@ -110,12 +110,12 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
         setAlreadyPresent(present);
         refreshAll();
       }
-      if (!dir) throw new Error("No project folder");
+      if (!dir) throw new Error(t("Aucun dossier de projets"));
       if (!chosenTemplate) {
         await finish(dir, present, null);
         return;
       }
-      setWorking("Preparing the template preview…");
+      setWorking(t("Préparation de l'aperçu du modèle…"));
       const v = await api.defaultVars(dir);
       setVars(v);
       await loadPlan(dir, chosenTemplate, v, true);
@@ -140,13 +140,13 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
   async function finish(dir: string, present: boolean, report: ApplyReport | null) {
     let staged = 0;
     if (isNew && report && report.written.length > 0) {
-      setWorking("Staging the new files…");
+      setWorking(t("Indexation des nouveaux fichiers…"));
       await api.stageFiles(dir, report.written);
       staged = report.written.length;
     }
     let workspaceIssue: string | null = null;
     if (isNew) {
-      setWorking("Opening your workspace…");
+      setWorking(t("Ouverture de ton espace de travail…"));
       try {
         const ws = await api.openWorkspace(dir);
         workspaceIssue = ws.ide ?? ws.terminal;
@@ -200,14 +200,14 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
   const conflictsSelected = plan.filter((e) => e.action === "conflict" && selected.has(e.dest)).length;
   const canStart = isNew ? url.trim().length > 0 && !!effectiveParent : !!chosenTemplate;
 
-  const title = isNew ? t("Nouveau projet") : "Apply a template";
+  const title = isNew ? t("Nouveau projet") : t("Appliquer un modèle");
   const description =
     phase === "preview"
-      ? `Review what will be written to ${tildify(target ?? "", home)}`
+      ? t("Vérifie ce qui sera écrit dans {p}", { p: tildify(target ?? "", home) })
       : phase === "done"
         ? undefined
         : isNew
-          ? "Clone a repository, add your template and open it."
+          ? t("Clone un dépôt, ajoute ton modèle et ouvre-le.")
           : tildify(target ?? "", home);
 
   let footer;
@@ -277,7 +277,7 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
               </Field>
             </>
           )}
-          <Field label="Modèle" hint={template ? template.description : isNew ? "The repository is cloned and opened as is." : "Pick the template to apply."}>
+          <Field label="Modèle" hint={template ? template.description : isNew ? t("Le dépôt est cloné et ouvert tel quel.") : t("Choisis le modèle à appliquer.")}>
             <Select label="Modèle" value={chosenTemplate} onChange={setTemplateId} options={[{ value: "", label: isNew ? "No template" : "Choose…" }, ...(templates.data ?? []).map((t) => ({ value: t.id, label: t.name, hint: `${t.fileCount} file${t.fileCount === 1 ? "" : "s"}` }))]} />
           </Field>
         </div>
@@ -314,7 +314,7 @@ export function LauncherDialog({ request }: { request: LaunchRequest }) {
           </p>
           <p className="selectable font-mono text-xs text-muted">{tildify(done.path, home)}</p>
           <ul className="space-y-1 text-sm text-muted">
-            {isNew && <li>· {done.alreadyPresent ? "Already cloned — nothing downloaded" : "Repository cloned"}</li>}
+            {isNew && <li>· {done.alreadyPresent ? t("Déjà cloné : rien n'est téléchargé") : "Repository cloned"}</li>}
             {done.report && (
               <li>
                 · {done.report.written.length} file{done.report.written.length === 1 ? "" : "s"} written
@@ -377,7 +377,7 @@ function PlanList({ plan, selected, onToggle }: { plan: PlanEntry[]; selected: S
               <label className={cn("flex h-7 items-center gap-2.5 px-3 text-xs", selectable ? "hover:bg-raised" : "opacity-55")}>
                 <input type="checkbox" className="accent-(--color-accent)" disabled={!selectable} checked={selectable && selected.has(e.dest)} onChange={() => onToggle(e.dest)} />
                 <span className="selectable min-w-0 flex-1 truncate font-mono">{e.dest}</span>
-                <Badge tone={badge.tone} title={e.action === "identical" ? "Already there with the same content" : e.action === "blocked" ? "Something that is not a regular file is in the way" : undefined}>
+                <Badge tone={badge.tone} title={e.action === "identical" ? t("Déjà présent avec le même contenu") : e.action === "blocked" ? t("Un élément qui n'est pas un fichier ordinaire est en travers") : undefined}>
                   {badge.label}
                 </Badge>
               </label>

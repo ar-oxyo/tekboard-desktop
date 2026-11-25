@@ -66,7 +66,7 @@ export function ReadmeDialog({ repo }: { repo: string }) {
         description={repo.split("/").pop()}
         footer={
           <>
-            <span className="mr-auto text-xs text-muted">{exists ? "README.md exists: compare before replacing it. The current file is saved first." : "This project has no README.md yet."}</span>
+            <span className="mr-auto text-xs text-muted">{exists ? t("README.md existe : compare avant de le remplacer. Le fichier actuel est sauvegardé d'abord.") : t("Ce projet n'a pas encore de README.md.")}</span>
             <Button variant="ghost" onClick={close}>{t("Annuler")}</Button>
             <Button variant="primary" busy={write.isPending} disabled={text === null || text.trim() === "" || running} onClick={() => write.mutate()}>{exists ? "Replace README.md" : "Write README.md"}</Button>
           </>
@@ -80,8 +80,8 @@ export function ReadmeDialog({ repo }: { repo: string }) {
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <div className="flex gap-1">
-                {(["edit", "diff"] as const).map((t) => (
-                  <button key={t} type="button" onClick={() => setTab(t)} className={cn("h-7 rounded-md px-3 text-sm transition-colors", tab === t ? "bg-accent-soft text-accent-strong" : "text-muted hover:text-fg")}>{t === "edit" ? "Proposal (editable)" : exists ? "Diff with current" : "What will be written"}</button>
+                {(["edit", "diff"] as const).map((k) => (
+                  <button key={k} type="button" onClick={() => setTab(k)} className={cn("h-7 rounded-md px-3 text-sm transition-colors", tab === k ? "bg-accent-soft text-accent-strong" : "text-muted hover:text-fg")}>{k === "edit" ? t("Proposition (modifiable)") : exists ? t("Différences avec l'actuel") : t("Ce qui sera écrit")}</button>
                 ))}
               </div>
               <label className="ml-auto flex items-center gap-2 text-xs text-muted" title={t("Ajoute une phrase dans la section Tests disant qu'une IA a aidé. Vérifie ce qu'exigent les règles de ton projet.")}>

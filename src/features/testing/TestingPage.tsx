@@ -167,7 +167,7 @@ export function TestingPage() {
 
           <Card className="min-w-0">
             <CardTitle right={runId !== null && jobId !== null ? <Button size="sm" variant="ghost" onClick={() => useUi.setState({ runId: null })}>{t("Revenir à la tâche en cours")}</Button> : undefined}>
-              {runId !== null ? "Report from the history" : busy ? "Running" : "Report"}
+              {runId !== null ? t("Rapport de l'historique") : busy ? "Running" : "Report"}
             </CardTitle>
             {data ? (
               <Report data={data} onCancel={busy && jobId !== null ? () => cancel.mutate(jobId) : undefined} envActions={(n, t) => void openEnv(n, t)} onClear={clearLog} />
@@ -229,7 +229,7 @@ function Tile({ id, icon, title, children, action, folded, onToggle }: { id: str
   return (
     <div className="border-b border-ink/6 px-4 py-2 last:border-b-0">
       <div className="flex h-8 items-center gap-3">
-        <button type="button" aria-expanded={!closed} onClick={() => onToggle(id)} className="group flex min-w-0 flex-1 items-center gap-3 text-left" title={closed ? "Show the options" : "Hide the options"}>
+        <button type="button" aria-expanded={!closed} onClick={() => onToggle(id)} className="group flex min-w-0 flex-1 items-center gap-3 text-left" title={closed ? t("Afficher les options") : t("Masquer les options")}>
           <span className="flex w-4 shrink-0 justify-center text-faint">{icon}</span>
           <h3 className="min-w-0 truncate text-sm font-medium">{title}</h3>
           <ChevronDown className={cn("size-3.5 shrink-0 text-faint transition-transform duration-150 group-hover:text-fg", closed && "-rotate-90")} />
@@ -322,10 +322,10 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
       <Tile id="testrepo" {...fold} icon={<GitBranch className="size-4" />} title={t("Simulation de rendu")} action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} onClick={() => onStart(() => api.testrepoStart(repo, { mode, rev: null, build: build.trim(), tests: withTests ? firstTrusted : null, isolation, image: info.config.image }))}>{t("Simulation de rendu")}</Button>}>
         <p>{t("Clone le dépôt dans un dossier neuf et le compile, pour voir ce que la correction reçoit vraiment.")}</p>
         <Labeled label="Source">
-          <Seg value={mode} onChange={setMode} options={[{ id: "remote", label: t("Clone du dépôt distant"), disabled: !info.hasRemote, title: info.hasRemote ? "What is published: the reference before a hand-in" : "This repository has no remote" }, { id: "snapshot", label: t("Instantané git local"), title: t("Ce que git contient ici à HEAD. Ne prouve pas que c'est poussé.") }]} />
+          <Seg value={mode} onChange={setMode} options={[{ id: "remote", label: t("Clone du dépôt distant"), disabled: !info.hasRemote, title: info.hasRemote ? t("Ce qui est publié : la référence avant un rendu") : t("Ce dépôt n'a pas de dépôt distant") }, { id: "snapshot", label: t("Instantané git local"), title: t("Ce que git contient ici à HEAD. Ne prouve pas que c'est poussé.") }]} />
         </Labeled>
         <Labeled label={t("Exécuté sur")}>
-          <Seg value={isolation} onChange={setIsolation} options={[{ id: "none", label: t("Cet ordinateur") }, { id: "docker", label: "Conteneur", disabled: !info.docker, title: info.docker ? `Docker image ${info.config.image ?? info.defaultImage}, no network` : "Docker is not installed" }]} />
+          <Seg value={isolation} onChange={setIsolation} options={[{ id: "none", label: t("Cet ordinateur") }, { id: "docker", label: t("Conteneur"), disabled: !info.docker, title: info.docker ? t("Image Docker {i}, sans réseau", { i: info.config.image ?? info.defaultImage }) : t("Docker n'est pas installé") }]} />
         </Labeled>
         {isolation === "docker" ? (
           <Labeled label="Image">
@@ -366,7 +366,7 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
 
       <Tile id="moulinette" {...fold} icon={<ShieldCheck className="size-4" />} title={t("Vérifications rapides")} action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} title={!build.trim() ? "Indique la commande de compilation dans la tuile « Simulation de rendu »" : undefined} onClick={() => { if (memory.trim() !== (info.config.runCmd ?? "")) saveConfig.mutate({ runCmd: memory.trim() || null }); onStart(() => api.moulinetteStart(repo, { build: build.trim(), tests: firstTrusted, memoryRun: memory.trim() || null, subjectAi: subjectAi && ai.read })); }}>{t("Lancer")}</Button>}>
         <p>Compilation, structure, Banana, tests et mémoire, sans IA et en quelques secondes, dans ton dossier de travail.</p>
-        <Labeled label={t("Exécution sous valgrind")}><Input className="h-7 font-mono text-xs" placeholder={info.valgrind ? "./program arguments — run under Valgrind" : "Valgrind is not installed"} disabled={!info.valgrind} value={memory} onChange={(e) => setMemory(e.target.value)} /></Labeled>
+        <Labeled label={t("Exécution sous valgrind")}><Input className="h-7 font-mono text-xs" placeholder={info.valgrind ? t("./programme arguments, lancé sous Valgrind") : t("Valgrind n'est pas installé")} disabled={!info.valgrind} value={memory} onChange={(e) => setMemory(e.target.value)} /></Labeled>
         <label className={cn("flex items-start gap-2", (!ai.read || !info.subject) && "opacity-60")}>
           <input type="checkbox" className="mt-0.5 accent-(--color-accent)" disabled={!ai.read || !info.subject} checked={subjectAi && ai.read} onChange={(e) => setSubjectAi(e.target.checked)} />
           <span>

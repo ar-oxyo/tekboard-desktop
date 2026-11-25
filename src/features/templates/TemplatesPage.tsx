@@ -130,7 +130,7 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
   const setDefault = useMutation({
     mutationFn: () => api.saveSettings({ ...settings.data!, defaultTemplate: isDefault ? null : template.id }),
     onSuccess: (saved) => qc.setQueryData(keys.settings, saved),
-    onError: fail("Could not change the default template"),
+    onError: fail(t("Impossible de changer le modèle par défaut")),
   });
   const duplicate = useMutation({
     mutationFn: () => api.templateDuplicate(template.id, `${template.name} copy`),
@@ -138,7 +138,7 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
       void qc.invalidateQueries({ queryKey: keys.templates });
       onCreated(id);
     },
-    onError: fail("Could not duplicate"),
+    onError: fail(t("Impossible de dupliquer")),
   });
   const remove = useMutation({
     mutationFn: () => api.templateDelete(template.id),
@@ -147,9 +147,9 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
       void qc.invalidateQueries({ queryKey: keys.settings });
       onDeleted();
     },
-    onError: fail("Could not delete"),
+    onError: fail(t("Impossible de supprimer")),
   });
-  const edit = useMutation({ mutationFn: () => api.templateEdit(template.id), onError: fail("Could not open the IDE") });
+  const edit = useMutation({ mutationFn: () => api.templateEdit(template.id), onError: fail(t("Impossible d'ouvrir l'IDE")) });
 
   return (
     <Card className="min-w-0">
@@ -166,7 +166,7 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Select className="w-56" value={null} label={t("Appliquer à un projet")} placeholder={t("Appliquer à un projet")} search onChange={(path) => path && openLauncher({ mode: "existing", path, templateId: template.id })} options={repoOptions(repos.data ?? [])} />
           <Button size="sm" variant="ghost" icon={<Star className="size-3.5" fill={isDefault ? "currentColor" : "none"} />} onClick={() => setDefault.mutate()}>
-            {isDefault ? "Default for new projects" : "Set as default"}
+            {isDefault ? t("Par défaut pour les nouveaux projets") : t("Définir par défaut")}
           </Button>
           <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} title={t("Ouvre le dossier du modèle dans ton IDE")} onClick={() => edit.mutate()}>
             Modifier les fichiers
@@ -227,7 +227,7 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
               <ErrorNote>{asAppError(preview.error).message}</ErrorNote>
             </div>
           ) : preview.data?.text == null ? (
-            <p className="p-4 text-xs text-muted">{preview.data ? `Binary file · ${formatBytes(preview.data.size)}` : "Select a file"}</p>
+            <p className="p-4 text-xs text-muted">{preview.data ? `Binary file · ${formatBytes(preview.data.size)}` : t("Choisis un fichier")}</p>
           ) : (
             <pre className="p-4 font-mono text-xs leading-[1.6] whitespace-pre text-fg" style={{ tabSize: 4 }}>
               {preview.data.text}
