@@ -9,7 +9,7 @@ import { api, asAppError, type PromptDef } from "../../lib/api";
 import { useRepos } from "../../lib/hooks";
 import { displayName } from "../../lib/repos";
 import { useUi } from "../../lib/store";
-import { t } from "../../lib/i18n";
+import { locale, t } from "../../lib/i18n";
 
 const DEFAULT = "\u0001default";
 const VAR = /\{\{([A-Z0-9_]+)\}\}/g;
@@ -195,7 +195,7 @@ function PromptEditor({ def }: { def: PromptDef }) {
               {t === "edit" ? (preset === DEFAULT ? "Text" : "Edit") : t === "default" ? "Par défaut" : "Preview"}
             </button>
           ))}
-          <span className="ml-auto pb-1 text-xs text-faint">{body.length.toLocaleString()} characters{dirty ? " · modified" : ""}</span>
+          <span className="ml-auto pb-1 text-xs text-faint">{body.length.toLocaleString(locale())} characters{dirty ? " · modified" : ""}</span>
         </div>
         {tab === "edit" && <Editor value={body} onChange={setBody} known={known} areaRef={area} />}
         {tab === "default" && <Editor value={def.default} known={known} readOnly />}
@@ -218,7 +218,7 @@ function PromptEditor({ def }: { def: PromptDef }) {
                 <pre className="selectable h-[372px] overflow-auto rounded-md border border-line bg-bg p-3 font-mono text-xs leading-[1.6] break-words whitespace-pre-wrap text-fg">{preview.data?.text ?? ""}</pre>
                 {preview.data && preview.data.variables.length > 0 && (
                   <p className="text-xs text-faint">
-                    {preview.data.variables.map(([n, origin, len]) => `${n}: ${len.toLocaleString()} characters ${origin === "project" ? "from the project" : "(sample)"}`).join(" · ")}. This is the exact text Claude Code would receive; nothing was run.
+                    {preview.data.variables.map(([n, origin, len]) => `${n}: ${len.toLocaleString(locale())} characters ${origin === "project" ? "from the project" : "(sample)"}`).join(" · ")}. This is the exact text Claude Code would receive; nothing was run.
                   </p>
                 )}
               </>

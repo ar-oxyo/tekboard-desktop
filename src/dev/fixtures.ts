@@ -168,7 +168,69 @@ const agenda = {
   peerTodo: [],
 };
 
+const weekStart = (back: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7) - back * 7);
+  return d;
+};
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const logtime = {
+  goalHours: 30,
+  weeks: [0, 1, 2, 3, 4, 5].map((w) => {
+    const s = weekStart(w);
+    const e = new Date(s);
+    e.setDate(s.getDate() + 6);
+    const days = w === 0 ? [21600, 25200, 18000, 0, 0, 0, 0] : [25200, 28800, 21600, 25200, 14400, 3600, 0].map((x) => x - w * 900);
+    return { start: ymd(s), end: ymd(e), seconds: days.reduce((a, b) => a + b, 0), days, promoSeconds: 26 * 3600 };
+  }),
+  lastDay: day(0),
+  fetchedAt: now - 40 * 60,
+  unavailable: null,
+  today: day(0),
+  weekday: (new Date().getDay() + 6) % 7,
+};
+const days = Array.from({ length: 120 }, (_, i) => ({ date: day(-119 + i), count: (i * 7919) % 11 > 6 ? ((i * 31) % 9) : 0 }));
+const analytics = {
+  myEmails: ["camille.martin@example.org"],
+  totalCommits: 412,
+  myCommits: 351,
+  days,
+  activeDays: days.filter((d) => d.count > 0).length,
+  currentStreak: 4,
+  longestStreak: 11,
+  lastCommit: new Date((now - 3 * H) * 1000).toISOString(),
+  byHour: [0, 0, 0, 0, 0, 0, 0, 1, 3, 9, 14, 18, 8, 6, 19, 24, 21, 17, 12, 9, 15, 22, 13, 4],
+  byWeekday: [62, 71, 58, 66, 49, 23, 22],
+  monthly: [0, 1, 2, 3, 4, 5].map((m) => ({ date: day(-30 * (5 - m)).slice(0, 7) + "-01", count: [31, 48, 66, 72, 81, 53][m] })),
+  repos: repos.slice(0, 5).map((r, i) => ({ path: r.path, name: r.name, mine: [96, 71, 64, 12, 108][i], others: [14, 0, 22, 0, 31][i], contributors: [{ name: "Camille Martin", commits: [96, 71, 64, 12, 108][i], me: true }], first: day(-90 + i * 9), last: day(-i) })),
+  languages: [{ name: "C", files: 214, lines: 18420 }, { name: "Makefile", files: 12, lines: 610 }, { name: "Python", files: 9, lines: 980 }, { name: "Shell", files: 5, lines: 140 }],
+  soloRepos: 3,
+  sharedRepos: 2,
+};
+const connect = {
+  enabled: true,
+  running: true,
+  fp: "a1b2c3d4e5f60718",
+  short: "a1b2-c3d4",
+  profile: { nick: "Camille", avatar: "fox", status: "available" },
+  ip: "192.168.1.24",
+  port: 47310,
+  interface: "wlp2s0",
+  invite: null,
+  mdns: true,
+  peers: [
+    { fp: "f00dbabe00112233", short: "f00d-babe", profile: { nick: "Léo", avatar: "owl", status: "available" }, online: true, discovered: true, trusted: true, blocked: false, addr: "192.168.1.31:47310", app: "0.9.0", since: now - 20 * D, lastSeen: now - 60 },
+    { fp: "c0ffee0044556677", short: "c0ff-ee00", profile: { nick: "Inès", avatar: "cat", status: "coding" }, online: false, discovered: false, trusted: true, blocked: false, addr: null, app: "0.8.0", since: now - 40 * D, lastSeen: now - 2 * D },
+  ],
+  requests: [],
+  problems: [],
+  space: true,
+};
+
 export const fixtures: Record<string, Fixture> = {
+  my_logtime: logtime,
+  analytics,
+  connect_state: connect,
   git_detail: (a: Record<string, unknown>) => {
     const r = repos.find((x) => x.path === a.path) ?? repos[0];
     const c = (hash: string, subject: string, h: number) => ({ hash, subject, author: "Camille Martin", date: new Date((now - h * H) * 1000).toISOString() });

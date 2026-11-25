@@ -36,6 +36,9 @@
   --color-danger: #ff6470;
   --color-info: #78bbee;
 
+  /* Second data series (others' work): Riso teal. */
+  --color-chart-2: #3fb8ad;
+
   /* Translucent tints: white on dark grounds, near-black on light ones (`bg-ink/5`). */
   --color-ink: #ffffff;
   /* Sunken wells: code, logs, editors. */
@@ -90,6 +93,7 @@
   --color-info: #00578b;
   --color-ink: #1d1b19;
   --color-well: rgb(29 27 25 / 0.05);
+  --color-chart-2: #00838a;
   --shadow-pop: 0 1px 2px rgb(29 27 25 / 0.08), 0 14px 36px -12px rgb(29 27 25 / 0.28);
 }
 

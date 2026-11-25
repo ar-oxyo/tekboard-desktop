@@ -19,7 +19,7 @@ function Meter({ value, total }: { value: number; total: number }) {
   const pct = total > 0 ? Math.min(100, (value / total) * 100) : 0;
   return (
     <span className="block h-1.5 w-full overflow-hidden rounded-full bg-ink/8" role="img" aria-label={`${value} of ${total}`}>
-      <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: "#7c6ef2" }} />
+      <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: "var(--color-accent)" }} />
     </span>
   );
 }
@@ -77,8 +77,8 @@ function Filled({ a }: { a: Academic }) {
             {a.level !== null && (
               <span className="ml-auto text-muted">
                 Level {a.level}
-                {a.xp !== null && ` · ${a.xp.toLocaleString()} XP`}
-                {a.xpToNext !== null && ` · ${a.xpToNext.toLocaleString()} to the next`}
+                {a.xp !== null && ` · ${a.xp.toLocaleString(locale())} XP`}
+                {a.xpToNext !== null && ` · ${a.xpToNext.toLocaleString(locale())} to the next`}
               </span>
             )}
           </div>
@@ -95,7 +95,7 @@ function Filled({ a }: { a: Academic }) {
               <CardTitle>{t("Tests automatiques, dernière exécution")}</CardTitle>
               <ul className="py-1.5">
                 {a.tests.map((t) => (
-                  <li key={t.project} className="px-4 py-1.5" title={`${t.runs} run${t.runs > 1 ? "s" : ""}${t.date ? `, latest ${new Date(t.date).toLocaleString()}` : ""} · coding style: ${t.styleMajor} major, ${t.styleMinor} minor`}>
+                  <li key={t.project} className="px-4 py-1.5" title={`${t.runs} run${t.runs > 1 ? "s" : ""}${t.date ? `, latest ${new Date(t.date).toLocaleString(locale())}` : ""} · coding style: ${t.styleMajor} major, ${t.styleMinor} minor`}>
                     <div className="mb-1 flex items-baseline gap-2 text-sm">
                       <span className="min-w-0 flex-1 truncate">{t.project}</span>
                       <span className="font-mono text-2xs text-faint">{t.module}</span>

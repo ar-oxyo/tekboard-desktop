@@ -63,7 +63,7 @@ function ProjectRow({ p }: { p: MyProject }) {
           </span>
         </button>
         {t && t.total !== null && (
-          <Dot mono tone={t.passed === t.total ? "ok" : (t.passed ?? 0) === 0 ? "danger" : "warn"} title={`Latest automated test run${t.date ? `, ${new Date(t.date).toLocaleString()}` : ""}`}>
+          <Dot mono tone={t.passed === t.total ? "ok" : (t.passed ?? 0) === 0 ? "danger" : "warn"} title={`Latest automated test run${t.date ? `, ${new Date(t.date).toLocaleString(locale())}` : ""}`}>
             {t.passed}/{t.total} tests
           </Dot>
         )}
