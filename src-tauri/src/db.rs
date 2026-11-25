@@ -307,6 +307,13 @@ const MIGRATIONS: &[&str] = &[
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
      );",
+    // v-lab: Algorithm Arena saved benchmarks (variants, scenarios, generator files).
+    "CREATE TABLE arena_benchmarks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        config TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+     );",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

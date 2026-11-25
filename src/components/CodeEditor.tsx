@@ -34,6 +34,8 @@ interface Props {
   className?: string;
   /** Accessible name. */
   label?: string;
+  /** `c` (default) highlights and completes C; `plain` is a plain text editor (Python, data). */
+  language?: "c" | "plain";
 }
 
 const highlight = HighlightStyle.define([
@@ -88,7 +90,7 @@ function toDiagnostics(state: EditorState, marks: EditorMark[]): Diagnostic[] {
   return out;
 }
 
-export default function CodeEditor({ value, onChange, readOnly, marks, words, onRun, jump, className, label }: Props) {
+export default function CodeEditor({ value, onChange, readOnly, marks, words, onRun, jump, className, label, language = "c" }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const editable = useRef(new Compartment());
@@ -129,12 +131,11 @@ export default function CodeEditor({ value, onChange, readOnly, marks, words, on
           EditorState.tabSize.of(4),
           bracketMatching(),
           closeBrackets(),
-          autocompletion({ override: [complete], activateOnTyping: true, maxRenderedOptions: 40 }),
+          language === "c" ? autocompletion({ override: [complete], activateOnTyping: true, maxRenderedOptions: 40 }) : [],
           highlightActiveLine(),
           highlightActiveLineGutter(),
           highlightSelectionMatches(),
-          cpp(),
-          syntaxHighlighting(highlight),
+          language === "c" ? [cpp(), syntaxHighlighting(highlight)] : [],
           theme,
           editable.current.of([EditorState.readOnly.of(!!readOnly), EditorView.editable.of(!readOnly)]),
           Prec.highest(keymap.of([{ key: "Mod-Enter", run: () => (live.current.onRun?.(), true), preventDefault: true }])),

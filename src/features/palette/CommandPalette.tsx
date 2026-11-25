@@ -2,7 +2,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { CalendarCheck, CalendarDays, PenLine, Sparkles, ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, PawPrint, Plus, RefreshCw, ScrollText, Settings, Timer, Network, FlaskRound, FileCode2 } from "lucide-react";
+import { CalendarCheck, CalendarDays, PenLine, Sparkles, ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, PawPrint, Plus, RefreshCw, ScrollText, Settings, Timer, Network, FlaskRound, FileCode2, Gauge } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { SECTIONS } from "../../app/sections";
 import { startFocus } from "../planning/Focus";
@@ -20,7 +20,7 @@ const itemClass =
 const groupClass = "[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-normal [&_[cmdk-group-heading]]:text-faint ";
 
 const ic = "size-4";
-const PAGE_ICON: Partial<Record<Page, ReactNode>> = { overview: <LayoutDashboard className={ic} />, projects: <FolderGit2 className={ic} />, git: <GitBranch className={ic} />, library: <LibraryBig className={ic} />, testing: <FlaskConical className={ic} />, subjects: <FileText className={ic} />, analytics: <ChartNoAxesColumn className={ic} />, templates: <LayoutTemplate className={ic} />, myepitech: <GraduationCap className={ic} />, skilltree: <Network className={ic} />, cozy: <PawPrint className={ic} />, settings: <Settings className={ic} />, agenda: <CalendarDays className={ic} />, prompts: <PenLine className={ic} />, playground: <FlaskRound className={ic} /> };
+const PAGE_ICON: Partial<Record<Page, ReactNode>> = { overview: <LayoutDashboard className={ic} />, projects: <FolderGit2 className={ic} />, git: <GitBranch className={ic} />, library: <LibraryBig className={ic} />, testing: <FlaskConical className={ic} />, subjects: <FileText className={ic} />, analytics: <ChartNoAxesColumn className={ic} />, templates: <LayoutTemplate className={ic} />, myepitech: <GraduationCap className={ic} />, skilltree: <Network className={ic} />, cozy: <PawPrint className={ic} />, settings: <Settings className={ic} />, agenda: <CalendarDays className={ic} />, prompts: <PenLine className={ic} />, playground: <FlaskRound className={ic} />, arena: <Gauge className={ic} /> };
 /** Every screen, with the shortcut of its section (Ctrl+1 to Ctrl+7 open the sections). */
 const GO: Array<[Page, string, ReactNode, string | undefined]> = SECTIONS.flatMap((sec, i) => sec.pages.map((p, j) => [p.page, sec.pages.length > 1 ? `${sec.label} · ${p.label}` : sec.label, PAGE_ICON[p.page], j === 0 ? `Ctrl ${i + 1}` : undefined] as [Page, string, ReactNode, string | undefined]));
 type ToolId = "testing" | "library" | "package" | "readme";

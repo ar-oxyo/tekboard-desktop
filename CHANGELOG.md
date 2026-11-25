@@ -13,7 +13,17 @@ Chaque version publiée a sa section ici ; la release GitHub reprend ce texte.
 - Historique des brouillons fermés et des exécutions, avec restauration du code d'une exécution passée.
 - Import de fonctions depuis les bibliothèques de TekBoard (avec leurs dépendances), export d'un brouillon en vrai projet (Makefile, .gitignore, git init facultatif).
 - Artix, sur demande seulement : expliquer une erreur, le comportement ou les problèmes mémoire, proposer des cas limites ou un petit environnement de test, suggérer une correction sans l'appliquer, expliquer une notion.
-- Doctor : nouvelle catégorie Labo (bac à sable, limites mémoire, clang, GNU time, perf, python3).
+- Doctor : nouvelle catégorie Labo (bac à sable, limites mémoire, clang, perf, python3, outils de Valgrind).
+
+**Algorithm Arena** (Labo → Arena)
+- Mesure un projet, une branche ou un commit d'un projet, ou un brouillon du Playground, sur des données de taille croissante : temps réel, temps CPU et mémoire maximale (outil de mesure à la microseconde), plusieurs exécutions avec échauffement, médiane, écart robuste et exécutions atypiques signalées.
+- Compare deux versions (deux branches, deux commits, le dossier de travail et un commit, deux brouillons) sur exactement les mêmes données, sans modifier ton dossier ni ton dépôt : chaque version est copiée (git archive pour une révision) et construite à part.
+- Générateurs de données en Python ou en C (`gen N SEED SORTIE`), graines reproductibles, aperçu des données utilisées.
+- Avec Valgrind : instructions comptées à chaque taille (Callgrind), fonctions les plus coûteuses, pic du tas (Massif) et nombre d'allocations (Memcheck). Sans Valgrind, ces mesures sont signalées comme absentes, jamais estimées.
+- Complexité estimée expérimentalement (moindres carrés sur 1, log n, n, n log n, n², n³, 2ⁿ) avec un niveau de confiance explicite ; « indéterminée » quand les mesures ne permettent pas de conclure.
+- Graphiques interactifs (temps, CPU, mémoire, instructions, échelles logarithmiques), tableau des résultats, historique et benchmarks enregistrés.
+- Lecture du code sans IA : boucles imbriquées, allocations ou entrées/sorties dans une boucle, `strlen` dans une condition, récursion multiple, tris quadratiques — présentées comme des hypothèses, distinctes des mesures.
+- Artix, sur demande : écrit les générateurs et scénarios en direct (chaque fichier apparaît dès qu'il est complet, rien n'est exécuté avant ton accord), puis rédige le rapport final à partir des seules mesures (ce qui ralentit, preuves, limites, optimisations, compromis), sans toucher au code.
 
 ## 0.7.0
 

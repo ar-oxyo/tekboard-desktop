@@ -187,7 +187,7 @@ pub fn context_card(state: &AppState, screen: &Screen, thread: Option<i64>, sinc
         "planning" => "Planning",
         "school" => "École",
         "stats" => "Stats",
-        "lab" => "Labo (Code Playground)",
+        "lab" => "Labo (Code Playground, Algorithm Arena)",
         "resources" => "Ressources",
         "settings" => "Réglages",
         _ => "TekBoard",

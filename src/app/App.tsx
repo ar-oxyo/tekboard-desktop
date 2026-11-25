@@ -42,6 +42,7 @@ import { OnboardingFlow } from "../features/onboarding/OnboardingFlow";
 
 // Heavy screens (code editor, canvas) load the first time they are opened.
 const PlaygroundPage = lazy(() => import("../features/playground/PlaygroundPage"));
+const ArenaPage = lazy(() => import("../features/arena/ArenaPage"));
 
 const UPDATE_KEY = "tekboard.update.lastCheck";
 const DAY = 24 * 3600 * 1000;
@@ -332,6 +333,11 @@ export function App() {
           {page === "playground" && (
             <Suspense fallback={<Spinner />}>
               <PlaygroundPage />
+            </Suspense>
+          )}
+          {page === "arena" && (
+            <Suspense fallback={<Spinner />}>
+              <ArenaPage />
             </Suspense>
           )}
         </div>

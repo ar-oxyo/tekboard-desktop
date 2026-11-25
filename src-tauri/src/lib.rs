@@ -1,4 +1,5 @@
 pub mod ai;
+pub mod arena;
 pub mod analytics;
 pub mod cdiag;
 pub mod checker;
@@ -230,6 +231,14 @@ pub fn run() {
             commands_lab::playground_import_library,
             commands_lab::playground_export_preview,
             commands_lab::playground_export,
+            commands_lab::arena_tools,
+            commands_lab::arena_list,
+            commands_lab::arena_save,
+            commands_lab::arena_delete,
+            commands_lab::arena_revisions,
+            commands_lab::arena_run,
+            commands_lab::arena_generate,
+            commands_lab::arena_report,
             commands_lib::library_suggestions,
             commands_lib::library_add,
             commands_lib::library_unregister,

@@ -680,7 +680,130 @@ export interface PlaygroundRun {
   valgrind: { errors: number | null; definitelyLost: number | null; indirectlyLost: number | null; stillReachable: number | null } | null;
 }
 
-export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull" | "playground";
+// ───────────────────────── Algorithm Arena ─────────────────────────
+export type ArenaSource = { kind: "project"; path: string; rev: string | null } | { kind: "draft"; id: number };
+export interface ArenaVariant {
+  label: string;
+  source: ArenaSource;
+  build: string;
+  program: string;
+}
+export interface ArenaScenario {
+  name: string;
+  generator: string | null;
+  sizes: number[];
+  seed: number;
+  args: string;
+  stdin: boolean;
+}
+export interface ArenaOptions {
+  repeats: number;
+  warmup: boolean;
+  callgrind: boolean;
+  massif: boolean;
+  heap: boolean;
+  timeoutS: number;
+  memMb: number;
+}
+export interface BenchConfig {
+  name: string;
+  variants: ArenaVariant[];
+  scenarios: ArenaScenario[];
+  files: DraftFile[];
+  options: ArenaOptions;
+}
+export interface ArenaSaved {
+  id: number;
+  config: BenchConfig;
+  updatedAt: number;
+}
+export interface ArenaStats {
+  median: number;
+  mad: number;
+  min: number;
+  max: number;
+  outliers: number[];
+}
+export interface ArenaSample {
+  wallUs: number;
+  userUs: number;
+  sysUs: number;
+  maxRssKb: number;
+  exit: number;
+  signal: number;
+}
+export interface ArenaPoint {
+  n: number;
+  samples: ArenaSample[];
+  wall: ArenaStats | null;
+  cpu: ArenaStats | null;
+  maxRssKb: number | null;
+  ir: number | null;
+  failed: string | null;
+}
+export interface ArenaFit {
+  model: string | null;
+  confidence: "likely" | "uncertain" | "insufficient";
+  exponent: number | null;
+  candidates: Array<{ model: string; r2: number }>;
+  why: string;
+}
+export interface HotFunction {
+  function: string;
+  file: string | null;
+  ir: number;
+  percent: number;
+  own: boolean;
+}
+export interface ArenaSeries {
+  variant: number;
+  scenario: number;
+  points: ArenaPoint[];
+  fitTime: ArenaFit | null;
+  fitIr: ArenaFit | null;
+  hot: { totalIr: number | null; functions: HotFunction[] } | null;
+  profiledN: number | null;
+  heapPeak: number | null;
+  heap: { allocs: number; frees: number; bytes: number } | null;
+}
+export interface ArenaHypothesis {
+  file: string;
+  function: string;
+  line: number | null;
+  kind?: string;
+  weight?: string;
+  message: string;
+  provenance?: string;
+}
+export interface ArenaResults {
+  config: BenchConfig | null;
+  variants: string[];
+  series: ArenaSeries[];
+  hypotheses: ArenaHypothesis[];
+  inputs: Array<{ scenario: number; n: number; bytes: number; head: string }>;
+  notes: string[];
+  machine: { cpu: string | null; cores: number; load: string | null };
+}
+export interface ArenaGenerated {
+  files: DraftFile[];
+  scenarios: ArenaScenario[];
+  hypotheses: ArenaHypothesis[];
+  rejected: string[];
+}
+export interface ArenaTools {
+  sandbox: string | null;
+  valgrind: boolean;
+  callgrindAnnotate: boolean;
+  python: boolean;
+  compiler: boolean;
+}
+export interface Revisions {
+  current: string | null;
+  branches: string[];
+  commits: Array<[string, string]>;
+}
+
+export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull" | "playground" | "arena" | "arena_ai" | "arena_report";
 /** Kind-specific facts; see the Rust module that produces each kind. */
 export type RunSummary = Record<string, unknown> & { steps?: JobStep[] };
 export interface JobView {
@@ -1432,6 +1555,14 @@ export const api = {
   playgroundImportLibrary: (libraryId: number, files: string[]) => invoke<DraftFile[]>("playground_import_library", { libraryId, files }),
   playgroundExportPreview: (id: number, name: string) => invoke<DraftFile[]>("playground_export_preview", { id, name }),
   playgroundExport: (id: number, parent: string, name: string, gitInit: boolean) => invoke<string>("playground_export", { id, parent, name, gitInit }),
+  arenaTools: () => invoke<ArenaTools>("arena_tools"),
+  arenaList: () => invoke<ArenaSaved[]>("arena_list"),
+  arenaSave: (id: number | null, config: BenchConfig) => invoke<ArenaSaved>("arena_save", { id, config }),
+  arenaDelete: (id: number) => invoke<void>("arena_delete", { id }),
+  arenaRevisions: (path: string) => invoke<Revisions>("arena_revisions", { path }),
+  arenaRun: (config: BenchConfig) => invoke<number>("arena_run", { config }),
+  arenaGenerate: (config: BenchConfig, focus: string) => invoke<number>("arena_generate", { config, focus }),
+  arenaReport: (runId: number) => invoke<number>("arena_report", { runId }),
   jobGet: (id: number) => invoke<JobView>("job_get", { id }),
   jobGetSince: (id: number, logFrom: number, eventsFrom: number) => invoke<JobView>("job_get", { id, logFrom, eventsFrom }),
   jobCancel: (id: number) => invoke<void>("job_cancel", { id }),

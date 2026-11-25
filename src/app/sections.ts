@@ -15,7 +15,7 @@ export const SECTIONS: Section[] = [
   { id: "planning", label: t("Planning"), pages: [{ page: "agenda", label: t("Planning") }] },
   { id: "school", label: t("École"), pages: [{ page: "myepitech", label: "MY Epitech" }, { page: "skilltree", label: "Skill Tree" }, { page: "logtime", label: "Logtime" }, { page: "subjects", label: t("Sujets") }] },
   { id: "stats", label: "Stats", pages: [{ page: "analytics", label: "Stats" }] },
-  { id: "lab", label: t("Labo"), pages: [{ page: "playground", label: "Playground" }] },
+  { id: "lab", label: t("Labo"), pages: [{ page: "playground", label: "Playground" }, { page: "arena", label: "Arena" }] },
   { id: "resources", label: t("Modèles"), pages: [{ page: "templates", label: t("Modèles") }] },
   { id: "settings", label: t("Réglages"), pages: [{ page: "settings", label: t("Réglages") }, { page: "prompts", label: "Prompts" }, { page: "cozy", label: "Cozy Fox" }] },
 ];

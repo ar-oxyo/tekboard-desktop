@@ -99,7 +99,6 @@ fn install_cmd(tool: &str) -> String {
         "pdftotext" => ("poppler-utils", "poppler-utils", "poppler"),
         "bwrap" => ("bubblewrap", "bubblewrap", "bubblewrap"),
         "gh" => ("gh", "gh", "github-cli"),
-        "time" => ("time", "time", "time"),
         "perf" => ("linux-tools-generic", "perf", "perf"),
         "python3" => ("python3", "python3", "python"),
         t => (t, t, t),
@@ -228,11 +227,10 @@ fn lab(out: &mut Vec<Check>) {
     }.affects("Playground, Arena"));
     for (bin, what, affects, arg) in [
         ("clang", "Compilateur C (LLVM)", "choix du compilateur dans le Playground", "--version"),
-        ("time", "GNU time : temps CPU et mémoire maximale", "mesures de l'Arena", "--version"),
         ("perf", "Compteurs matériels", "mesures fines de l'Arena (facultatif)", "--version"),
         ("python3", "Générateurs de données", "jeux de données de l'Arena écrits en Python", "--version"),
     ] {
-        let path = if bin == "time" { Some(std::path::PathBuf::from("/usr/bin/time")).filter(|p| p.exists()) } else { crate::settings::which(bin) };
+        let path = crate::settings::which(bin);
         let c = match path.as_deref().and_then(|p| crate::toolenv::first_line(p, &[arg], std::time::Duration::from_secs(4)).ok()) {
             Some(v) => check(format!("lab.{bin}"), cat, bin, Status::Ok, v.chars().take(80).collect::<String>()),
             None if path.is_some() => check(format!("lab.{bin}"), cat, bin, Status::Warn, format!("{what} : installé mais ne répond pas.")),
