@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Check, FolderPlus, X } from "lucide-react";
+import { Check, ChevronRight, FolderPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Select } from "../../components/Select";
 import { Button, Card, CardTitle, cn, Code, ErrorNote, Field, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
@@ -340,12 +340,16 @@ export function SettingsPage() {
 }
 
 // Swatches are fixed colours on purpose: each tile previews its own design, whatever the active one is.
-const THEMES: Array<{ id: string; name: string; tagline: string; bg: string; card: string; accent: string; text: string; radius: number }> = [
+const THEMES: Array<{ id: string; name: string; tagline: string; bg: string; card: string; accent: string; text: string; radius: number; obsolete?: boolean }> = [
   { id: "aurora", name: "Riso", tagline: t("Deux encres sur papier, en clair ou en sombre"), bg: "linear-gradient(135deg, #f3efe6 0 50%, #181715 50% 100%)", card: "#f9f7f1", accent: "#0078bf", text: "#1d1b19", radius: 6 },
+  { id: "sauge", name: "Sauge", tagline: t("Encre verte et ambre : calme, naturel"), bg: "linear-gradient(135deg, #eef1e8 0 50%, #141815 50% 100%)", card: "#f6f8f2", accent: "#2f7a4f", text: "#1a211b", radius: 6 },
+  { id: "ardoise", name: "Ardoise", tagline: t("Ardoise froide, cyan et orange : concentration"), bg: "linear-gradient(135deg, #eef2f6 0 50%, #13171c 50% 100%)", card: "#f7f9fb", accent: "#0e7490", text: "#141a21", radius: 6 },
+  { id: "prune", name: "Prune", tagline: t("Lie-de-vin et moutarde : chaleur du soir"), bg: "linear-gradient(135deg, #f6eef0 0 50%, #1a1418 50% 100%)", card: "#fbf6f7", accent: "#8e2f63", text: "#24171e", radius: 6 },
+  { id: "sumi", name: "Sumi", tagline: t("Encre noire, vermillon et or : minimal"), bg: "linear-gradient(135deg, #f7f5ef 0 50%, #111111 50% 100%)", card: "#fcfbf7", accent: "#b8321f", text: "#141414", radius: 6 },
   { id: "flat", name: "Flat", tagline: t("Gris-bleu, net et carré"), bg: "#0c0d11", card: "#15181e", accent: "#8f83f7", text: "#e8eaf0", radius: 5 },
-  { id: "neon", name: "Neon", tagline: t("Magenta, cyan et une grille"), bg: "radial-gradient(120px 70px at 5% 0%, #ff50d277, transparent 70%), radial-gradient(120px 80px at 100% 100%, #28dcff66, transparent 70%), #07050f", card: "#1a1030", accent: "linear-gradient(120deg,#ff7ad9,#b46bff,#46dcff)", text: "#f4eeff", radius: 7 },
+  { id: "neon", obsolete: true, name: "Neon", tagline: t("Magenta, cyan et une grille"), bg: "radial-gradient(120px 70px at 5% 0%, #ff50d277, transparent 70%), radial-gradient(120px 80px at 100% 100%, #28dcff66, transparent 70%), #07050f", card: "#1a1030", accent: "linear-gradient(120deg,#ff7ad9,#b46bff,#46dcff)", text: "#f4eeff", radius: 7 },
   { id: "cozy", name: "Cozy", tagline: t("Pastels chauds, coins ronds"), bg: "radial-gradient(120px 70px at 10% 0%, #cba6f755, transparent 70%), radial-gradient(110px 70px at 100% 100%, #fab38744, transparent 70%), #14141f", card: "#25253a", accent: "linear-gradient(135deg,#cba6f7,#f5c2e7)", text: "#cdd6f4", radius: 11 },
-  { id: "terminal", name: "Terminal", tagline: t("Vert phosphore, monospace"), bg: "repeating-linear-gradient(180deg,#5cff8f14 0 1px,transparent 1px 3px), #040704", card: "#080d08", accent: "#5cff8f", text: "#cdf7c8", radius: 2 },
+  { id: "terminal", obsolete: true, name: "Terminal", tagline: t("Vert phosphore, monospace"), bg: "repeating-linear-gradient(180deg,#5cff8f14 0 1px,transparent 1px 3px), #040704", card: "#080d08", accent: "#5cff8f", text: "#cdf7c8", radius: 2 },
 ];
 
 const MODE_LABEL: Record<ColorMode, string> = { system: t("Système"), light: t("Clair"), dark: t("Sombre") };
@@ -375,7 +379,7 @@ export function ThemePicker({ current, onPick }: { current: string; onPick: (id:
       {!light && <span className="text-xs text-faint">{t("Sombre seulement avec ce design.")}</span>}
     </div>
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" role="radiogroup" aria-label={t("Design")}>
-      {THEMES.map((t) => {
+      {THEMES.filter((x) => !x.obsolete).map((t) => {
         const active = t.id === current;
         return (
           <button key={t.id} type="button" role="radio" aria-checked={active} onClick={() => !active && onPick(t.id)} className="group text-left">
@@ -398,6 +402,24 @@ export function ThemePicker({ current, onPick }: { current: string; onPick: (id:
         );
       })}
     </div>
+    <details className="group mt-5" open={THEMES.some((x) => x.obsolete && x.id === current)}>
+      <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 text-xs text-faint hover:text-muted [&::-webkit-details-marker]:hidden">
+        <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
+        {t("Obsolètes")}
+        <span className="text-faint">· {t("plus mis à jour, sombres seulement")}</span>
+      </summary>
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3" role="radiogroup" aria-label={t("Designs obsolètes")}>
+        {THEMES.filter((x) => x.obsolete).map((x) => (
+          <button key={x.id} type="button" role="radio" aria-checked={x.id === current} onClick={() => x.id !== current && onPick(x.id)} className="group/o text-left opacity-80 hover:opacity-100">
+            <span className={`block h-[60px] overflow-hidden border ${x.id === current ? "border-accent" : "border-ink/10 group-hover/o:border-ink/25"}`} style={{ background: x.bg, borderRadius: x.radius + 4 }} />
+            <span className="mt-1.5 flex items-center gap-1.5 text-sm">
+              {x.name}
+              {x.id === current && <Check className="size-3.5 text-accent" />}
+            </span>
+          </button>
+        ))}
+      </div>
+    </details>
     </div>
   );
 }

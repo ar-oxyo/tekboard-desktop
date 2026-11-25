@@ -101,7 +101,7 @@ components:
 
 It is an Operate surface: a desktop tool opened every morning beside VS Code and a terminal, used for hours, often under deadline. Density is high but calm: 13px body, 28–36px rows, hairlines and spacing instead of boxes. It refuses the grey-panel-plus-violet SaaS dashboard, card grids, gradient text, glows and glass.
 
-The signature design ("Riso", id `aurora`) exists in **light** (warm paper) and **dark** (black stock), plus "system". Four legacy designs (Flat, Neon, Cozy, Terminal) still render through the same tokens, dark only; they are not extended and may be removed.
+The signature design ("Riso", id `aurora`) exists in **light** (warm paper) and **dark** (black stock), plus "system". Four **ambiances** reuse the whole Riso system with other inks, each in light and dark: **Sauge** (green + amber, calm), **Ardoise** (cool slate, cyan + orange, focus), **Prune** (wine + mustard, evening), **Sumi** (black ink, vermilion + gold, minimal). They only redefine colour tokens (`:root[data-theme=…]` and `…[data-mode="light"]` in `index.css`); the two-ink rule holds in each (`accent` = action, `accent-2` = urgency). Flat and Cozy stay as legacy dark designs; Neon and Terminal sit in a folded "Obsolètes" group of the picker. A new ambiance = one dark block + one light block + its id in `settings.rs::THEMES` and `LIGHT_DESIGNS` (`lib/appearance.ts`), every text token checked at 4.5:1.
 
 ## Colors
 

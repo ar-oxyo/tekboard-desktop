@@ -97,6 +97,202 @@
   --shadow-pop: 0 1px 2px rgb(29 27 25 / 0.08), 0 14px 36px -12px rgb(29 27 25 / 0.28);
 }
 
+/* ───────────────────────── Ambiances ─────────────────────────
+   Same system as Riso (two inks with fixed meanings, hairlines, light and dark), other
+   colours. Only colour tokens change; everything else comes from the Riso defaults. */
+/* Sauge — encre verte et ambre : calme, naturel. */
+:root[data-theme="sauge"] {
+  --color-bg: #141815;
+  --color-panel: #0f1310;
+  --color-surface: #1b201c;
+  --color-raised: #222823;
+  --color-hover: #262d27;
+  --color-line: #2a312b;
+  --color-line-strong: #3d473e;
+  --color-fg: #e8ede4;
+  --color-muted: #a3ad9f;
+  --color-faint: #869182;
+  --color-accent: #5fbf8a;
+  --color-accent-strong: #8fd6ad;
+  --color-accent-soft: rgb(95 191 138 / 0.16);
+  --color-accent-2: #f2a541;
+  --color-on-accent: #0d1a12;
+  --color-ok: #9ccc65;
+  --color-warn: #f2a541;
+  --color-danger: #ef6b5b;
+  --color-info: #7fb3d5;
+  --color-chart-2: #d9a441;
+  --color-ink: #ffffff;
+}
+:root[data-theme="sauge"][data-mode="light"] {
+  --color-bg: #eef1e8;
+  --color-panel: #e4e8dc;
+  --color-surface: #f6f8f2;
+  --color-raised: #fbfcf8;
+  --color-hover: #dfe4d6;
+  --color-line: #d3d9c8;
+  --color-line-strong: #b7c0aa;
+  --color-fg: #1a211b;
+  --color-muted: #4f5a4f;
+  --color-faint: #5c675b;
+  --color-accent: #2f7a4f;
+  --color-accent-strong: #245f3d;
+  --color-accent-soft: rgb(47 122 79 / 0.12);
+  --color-accent-2: #e08a1e;
+  --color-on-accent: #ffffff;
+  --color-ok: #3a630a;
+  --color-warn: #8f5306;
+  --color-danger: #b3362a;
+  --color-info: #2f6690;
+  --color-chart-2: #a06a12;
+  --color-ink: #1a211b;
+  --color-well: color-mix(in srgb, #1a211b 5%, transparent);
+}
+/* Ardoise — ardoise froide, cyan et orange : concentration. */
+:root[data-theme="ardoise"] {
+  --color-bg: #13171c;
+  --color-panel: #0e1216;
+  --color-surface: #1a2027;
+  --color-raised: #212831;
+  --color-hover: #252d37;
+  --color-line: #2a323d;
+  --color-line-strong: #3c4756;
+  --color-fg: #e6ebf1;
+  --color-muted: #9eaab8;
+  --color-faint: #8793a2;
+  --color-accent: #22b8cf;
+  --color-accent-strong: #66d9e8;
+  --color-accent-soft: rgb(34 184 207 / 0.16);
+  --color-accent-2: #fb923c;
+  --color-on-accent: #04161a;
+  --color-ok: #4cc38a;
+  --color-warn: #fb923c;
+  --color-danger: #f87171;
+  --color-info: #66d9e8;
+  --color-chart-2: #f0b45b;
+  --color-ink: #ffffff;
+}
+:root[data-theme="ardoise"][data-mode="light"] {
+  --color-bg: #eef2f6;
+  --color-panel: #e3e9f0;
+  --color-surface: #f7f9fb;
+  --color-raised: #fdfeff;
+  --color-hover: #dde4ec;
+  --color-line: #d2dae4;
+  --color-line-strong: #b3bfcd;
+  --color-fg: #141a21;
+  --color-muted: #4a5666;
+  --color-faint: #5a6575;
+  --color-accent: #0e7490;
+  --color-accent-strong: #155e75;
+  --color-accent-soft: rgb(14 116 144 / 0.11);
+  --color-accent-2: #ea580c;
+  --color-on-accent: #ffffff;
+  --color-ok: #0f6430;
+  --color-warn: #a8470a;
+  --color-danger: #b91c1c;
+  --color-info: #155e75;
+  --color-chart-2: #a8670f;
+  --color-ink: #141a21;
+  --color-well: color-mix(in srgb, #141a21 5%, transparent);
+}
+/* Prune — lie-de-vin et moutarde : chaleur du soir. */
+:root[data-theme="prune"] {
+  --color-bg: #1a1418;
+  --color-panel: #140f13;
+  --color-surface: #221a20;
+  --color-raised: #2a2128;
+  --color-hover: #30262d;
+  --color-line: #33282f;
+  --color-line-strong: #4a3a44;
+  --color-fg: #f1e8ec;
+  --color-muted: #b3a2ab;
+  --color-faint: #97868f;
+  --color-accent: #d77fb0;
+  --color-accent-strong: #e8a6c9;
+  --color-accent-soft: rgb(215 127 176 / 0.16);
+  --color-accent-2: #e0b341;
+  --color-on-accent: #22101a;
+  --color-ok: #7fc88e;
+  --color-warn: #e0b341;
+  --color-danger: #f0727a;
+  --color-info: #a9b8f0;
+  --color-chart-2: #e0b341;
+  --color-ink: #ffffff;
+}
+:root[data-theme="prune"][data-mode="light"] {
+  --color-bg: #f6eef0;
+  --color-panel: #eee3e7;
+  --color-surface: #fbf6f7;
+  --color-raised: #fffbfc;
+  --color-hover: #e9dce1;
+  --color-line: #e0d2d8;
+  --color-line-strong: #c7b0ba;
+  --color-fg: #24171e;
+  --color-muted: #5e4a55;
+  --color-faint: #6c5863;
+  --color-accent: #8e2f63;
+  --color-accent-strong: #74244f;
+  --color-accent-soft: rgb(142 47 99 / 0.10);
+  --color-accent-2: #c99419;
+  --color-on-accent: #ffffff;
+  --color-ok: #24642f;
+  --color-warn: #805a06;
+  --color-danger: #b42a3a;
+  --color-info: #3b4f9e;
+  --color-chart-2: #8a6307;
+  --color-ink: #24171e;
+  --color-well: color-mix(in srgb, #24171e 5%, transparent);
+}
+/* Sumi — encre noire, vermillon et or : minimal, très contrasté. */
+:root[data-theme="sumi"] {
+  --color-bg: #111111;
+  --color-panel: #0b0b0b;
+  --color-surface: #1a1a19;
+  --color-raised: #222221;
+  --color-hover: #262625;
+  --color-line: #2c2c2a;
+  --color-line-strong: #42423f;
+  --color-fg: #f2f0ea;
+  --color-muted: #aeaba3;
+  --color-faint: #8f8c84;
+  --color-accent: #e8553f;
+  --color-accent-strong: #f28473;
+  --color-accent-soft: rgb(232 85 63 / 0.16);
+  --color-accent-2: #e9b949;
+  --color-on-accent: #1a0905;
+  --color-ok: #8cc084;
+  --color-warn: #e9b949;
+  --color-danger: #ff6b8b;
+  --color-info: #9ab8d8;
+  --color-chart-2: #9ab8d8;
+  --color-ink: #ffffff;
+}
+:root[data-theme="sumi"][data-mode="light"] {
+  --color-bg: #f7f5ef;
+  --color-panel: #efece4;
+  --color-surface: #fcfbf7;
+  --color-raised: #ffffff;
+  --color-hover: #e8e4da;
+  --color-line: #dedad0;
+  --color-line-strong: #c4beb0;
+  --color-fg: #141414;
+  --color-muted: #4d4b46;
+  --color-faint: #5f5b54;
+  --color-accent: #b8321f;
+  --color-accent-strong: #962716;
+  --color-accent-soft: rgb(184 50 31 / 0.10);
+  --color-accent-2: #c99419;
+  --color-on-accent: #ffffff;
+  --color-ok: #306628;
+  --color-warn: #86600a;
+  --color-danger: #a3204a;
+  --color-info: #2c5a85;
+  --color-chart-2: #2c5a85;
+  --color-ink: #141414;
+  --color-well: color-mix(in srgb, #141414 5%, transparent);
+}
+
 html,
 body,
 #root {
@@ -559,8 +755,8 @@ code,
   font-variant-numeric: tabular-nums;
 }
 /* Gradient fills exist only for the legacy Neon and Cozy designs; Riso prints solid ink. */
-:root[data-theme="aurora"] .title-gradient,
-:root[data-theme="aurora"] .number-gradient {
+:root:is([data-theme="aurora"], [data-theme="sauge"], [data-theme="ardoise"], [data-theme="prune"], [data-theme="sumi"]) .title-gradient,
+:root:is([data-theme="aurora"], [data-theme="sauge"], [data-theme="ardoise"], [data-theme="prune"], [data-theme="sumi"]) .number-gradient {
   background: none;
   color: inherit;
 }

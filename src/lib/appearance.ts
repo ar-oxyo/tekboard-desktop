@@ -6,8 +6,9 @@ export const COLOR_MODES: ColorMode[] = ["system", "light", "dark"];
 
 export const MODE_KEY = "tekboard.colorMode";
 export const THEME_KEY = "tekboard.theme";
-/** Only the signature design has a light version; the older designs stay dark. */
-export const designHasLight = (theme: string | undefined) => (theme ?? "aurora") === "aurora";
+/** Riso and its ambiances exist in light and dark; the older designs stay dark. */
+export const LIGHT_DESIGNS = ["aurora", "sauge", "ardoise", "prune", "sumi"];
+export const designHasLight = (theme: string | undefined) => LIGHT_DESIGNS.includes(theme ?? "aurora");
 
 export function storedMode(): ColorMode {
   const v = localStorage.getItem(MODE_KEY);

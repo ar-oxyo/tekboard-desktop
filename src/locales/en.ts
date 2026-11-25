@@ -2327,4 +2327,11 @@ export const en: Record<string, string> = {
   "Cloner": "Clone",
   "{n} session au planning": "{n} session in the calendar",
   "{n} sessions au planning": "{n} sessions in the calendar",
+  "Encre verte et ambre : calme, naturel": "Green ink and amber: calm, natural",
+  "Ardoise froide, cyan et orange : concentration": "Cool slate, cyan and orange: focus",
+  "Lie-de-vin et moutarde : chaleur du soir": "Wine and mustard: evening warmth",
+  "Encre noire, vermillon et or : minimal": "Black ink, vermilion and gold: minimal",
+  "Obsolètes": "Obsolete",
+  "plus mis à jour, sombres seulement": "no longer updated, dark only",
+  "Designs obsolètes": "Obsolete designs",
 };
