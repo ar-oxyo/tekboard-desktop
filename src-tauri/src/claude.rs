@@ -170,8 +170,14 @@ mod tests {
     fn the_plan_shown_matches_what_runs() {
         let p = plan(&["tests"]);
         assert!(p.can_write.contains("tests/"));
-        assert!(p.argv.contains(&"Edit(./tests/**)".to_string()) && p.argv.contains(&"--restricted".to_string()));
         assert!(plan(&[]).can_write.contains("lecture seule"));
+        // The provider in use is process-wide and other tests save AI settings in parallel:
+        // check the Claude command line itself rather than through whichever provider is current.
+        let argv = runner::preview(&runner::Request::new("", Tools::ReadEdit(vec!["tests/**".into()]), Duration::from_secs(1)));
+        assert!(argv.contains(&"Edit(./tests/**)".to_string()) && argv.contains(&"--restricted".to_string()), "{argv:?}");
+        if p.provider == "Claude Code" {
+            assert_eq!(p.argv, argv);
+        }
     }
 
     #[test]
