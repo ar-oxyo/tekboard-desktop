@@ -148,7 +148,7 @@ The scale is `text-3xs` 10 · `2xs` 11 · `xs` 12 · `sm` 13 · `base` 14 · `md
 ## Layout
 
 - App shell: sidebar 224px (52px icon rail, Ctrl+B), content centred at max 1360px with 40px side padding (56px when the content area passes 96rem), 32px top. Content never runs to the window edges.
-- **Page bar**: one row with the title (or the section and its tabs, in Projects and Settings), a one-line context in `faint`, and actions on the right. Never a second band of tabs or a subtitle paragraph.
+- **Page bar**: one row with the title (or the section and its tabs, in Projects, School, Lab, Connect and Settings), a one-line context in `faint`, and actions on the right. Never a second band of tabs or a subtitle paragraph.
 - Sections are separated by 36px; columns by 48px. Lists are rows on hairlines, 28–44px tall, with a column header in `label` style when they have columns.
 - Layout responds to the **content width** (container queries on `<main>`), not the window, so opening Artix reflows the page. **Today** (V6b layout): date and greeting with a "Nouveau" menu, the "now" hero (status, big title, progress, one ink action, IDE and terminal), four indicator tiles (logtime, credits, work planned today, next hand-in), then the day's timeline (320px) beside project cards with tabs (under way, not cloned yet, to commit). Hand-ins, workload, quick actions and activity live in the fold below. Below 56rem of content width, everything stacks.
 - Text measure stays under ~75ch in prose areas.
@@ -193,7 +193,7 @@ Sheet background, 6px radius, hairline that turns blue on focus plus a 3px `acce
 - Tooltips (`Tooltips`, mounted once): every `title` attribute becomes a tooltip printed in reverse (paper text on ink). On focus only while navigating with the keyboard.
 
 ### Navigation (`app/Sidebar.tsx`)
-Core places (Today, Projects, Planning, Inbox with count), pinned projects (favourites, dot size = hand-in urgency), then School, Lab and Connect as collapsible groups, and Artix, Templates, Settings and a single health line at the foot. Active place: blue film + blue icon. Shortcuts: Ctrl+1…9 sections, Ctrl+K palette, Ctrl+B rail, Alt+←/→ history, Ctrl+/ shortcut sheet.
+A flat list, no group headings: the everyday places (Today, Projects, Planning, Inbox with count), a small gap, one entry per other section (School, Stats, Lab, Connect), then pinned projects (favourites, dot size = hand-in urgency), and Artix, Templates, Settings and a single health line at the foot. A section with several screens shows them as tabs in the page bar. Active place: blue film + blue icon. Shortcuts: Ctrl+1…9 sections, Ctrl+K palette, Ctrl+B rail, Alt+←/→ history, Ctrl+/ shortcut sheet.
 
 ### Motion
 120ms (`--dur-fast`) for hovers, 180ms (`--dur-base`) for entrances, `--ease` = `cubic-bezier(0.22, 1, 0.36, 1)`. Pages rise 4px; menus scale from their trigger; mode and design changes cross-fade colours for 200ms. Nothing loops except a spinner or a state that is live (Artix thinking, a skill in progress). Everything stops under `prefers-reduced-motion`.

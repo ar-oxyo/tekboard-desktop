@@ -1,4 +1,4 @@
-import { ChevronRight, Inbox, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { Inbox, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, type RepoInfo } from "../lib/api";
@@ -34,12 +34,6 @@ export function Logo({ className }: { className?: string }) {
   );
 }
 
-/** The sidebar's groups: the screens people open every day first, then by subject. */
-const GROUPS: Array<{ id: string; label: string; pages: Page[] }> = [
-  { id: "school", label: t("École"), pages: ["myepitech", "skilltree", "logtime", "subjects", "analytics"] },
-  { id: "lab", label: t("Labo"), pages: ["playground", "arena", "boards"] },
-  { id: "connect", label: "Connect", pages: ["connect", "live", "space"] },
-];
 
 /** Ctrl+N of the section a screen opens with, when it is the section's entry. */
 function shortcutOf(page: Page): string | undefined {
@@ -54,10 +48,9 @@ export function Sidebar() {
   const artixOpen = useUi((s) => s.assistantOpen);
   const inboxOpen = useUi((s) => s.inbox !== null);
   const [rail, setRail] = usePref("sidebarRail", false);
-  const [folded, setFolded] = usePref<string[]>("sidebarFolded", []);
   const inbox = useQuery({ queryKey: ["brain-count"], queryFn: api.brainCount, staleTime: 60_000 });
   const repos = useRepos();
-  const pinned = (repos.data ?? []).filter((r) => r.meta.favorite && r.meta.visibility === null).slice(0, 6);
+  const pinned = (repos.data ?? []).filter((r) => r.meta.favorite && r.meta.visibility === null).slice(0, 5);
   const current = sectionOf(page);
   useEffect(() => {
     const on = () => setRail(!rail);
@@ -74,7 +67,6 @@ export function Sidebar() {
       {extra}
     </NavItem>
   );
-  const toggleGroup = (id: string) => setFolded(folded.includes(id) ? folded.filter((g) => g !== id) : [...folded, id]);
 
   return (
     <aside className={cn("sidebar group/side flex shrink-0 flex-col transition-[width] duration-(--dur-base) ease-(--ease)", rail ? "w-[52px]" : "w-56")} aria-label="Navigation">
@@ -122,23 +114,15 @@ export function Sidebar() {
           </NavItem>
         </div>
 
+        {/* The other sections, one entry each: their screens are tabs in the page bar. */}
+        <div className={cn("flex flex-col gap-px", rail ? "mt-2 border-t border-line pt-2" : "mt-3")}>
+          {item("myepitech")}
+          {item("analytics")}
+          {item("playground")}
+          {item("connect")}
+        </div>
+
         {pinned.length > 0 && <Pinned rail={rail} repos={pinned} />}
-
-        {GROUPS.map((g) => {
-          const closed = folded.includes(g.id) && !g.pages.includes(page);
-          return (
-            <div key={g.id} className={cn("flex flex-col gap-px", rail ? "mt-2 border-t border-line pt-2" : "mt-3")}>
-              {!rail && (
-                <button type="button" onClick={() => toggleGroup(g.id)} aria-expanded={!closed} className="group/g flex h-6 items-center gap-1 px-2.5 text-left text-xs text-faint transition-colors duration-(--dur-fast) hover:text-muted">
-                  {g.label}
-                  <ChevronRight className={cn("size-3 opacity-0 transition-[transform,opacity] duration-(--dur-fast) group-hover/g:opacity-100", !closed && "rotate-90")} />
-                </button>
-              )}
-              {!closed && g.pages.map((p) => item(p))}
-            </div>
-          );
-        })}
-
       </nav>
 
       <div className={cn("flex shrink-0 flex-col gap-px border-t border-line py-2", rail ? "px-2" : "px-3")}>
