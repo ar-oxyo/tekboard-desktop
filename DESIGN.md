@@ -61,14 +61,14 @@ typography:
 rounded:
   sm: "4px"
   btn: "6px"
-  card: "10px"
+  card: "12px"
   full: "9999px"
 spacing:
   row: "28px"
   row-roomy: "36px"
   section-gap: "36px"
   column-gap: "48px"
-  page-x: "32px"
+  page-x: "40px"
 components:
   button-primary:
     backgroundColor: "{colors.ink}"
@@ -147,10 +147,10 @@ The scale is `text-3xs` 10 · `2xs` 11 · `xs` 12 · `sm` 13 · `base` 14 · `md
 
 ## Layout
 
-- App shell: sidebar 224px (52px icon rail, Ctrl+B), content max 1440px, 32px side padding, 20px top.
+- App shell: sidebar 224px (52px icon rail, Ctrl+B), content centred at max 1360px with 40px side padding (56px when the content area passes 96rem), 32px top. Content never runs to the window edges.
 - **Page bar**: one row with the title (or the section and its tabs, in Projects and Settings), a one-line context in `faint`, and actions on the right. Never a second band of tabs or a subtitle paragraph.
 - Sections are separated by 36px; columns by 48px. Lists are rows on hairlines, 28–44px tall, with a column header in `label` style when they have columns.
-- Layout responds to the **content width** (container queries on `<main>`), not the window, so opening Artix reflows the page. Today goes from one column (now → hand-ins → schedule → load → actions) to two at 56rem.
+- Layout responds to the **content width** (container queries on `<main>`), not the window, so opening Artix reflows the page. **Today** (V6b layout): date and greeting with a "Nouveau" menu, the "now" hero (status, big title, progress, one ink action, IDE and terminal), four indicator tiles (logtime, credits, work planned today, next hand-in), then the day's timeline (320px) beside project cards with tabs (under way, not cloned yet, to commit). Hand-ins, workload, quick actions and activity live in the fold below. Below 56rem of content width, everything stacks.
 - Text measure stays under ~75ch in prose areas.
 
 ## Elevation & Depth
@@ -161,7 +161,7 @@ Flat by default. Depth comes from tone (paper → panel → sheet → raised) an
 
 ## Shapes
 
-Radii are small and practical: 4px (marks, chips), 6px (`--btn-radius`: buttons, inputs, rows, nav items), 10px (`--radius-card`: the remaining cards and dialogs), full circles only for status dots and avatars. Hand-in dates sit in a 4px ink block when urgent. No pills for labels; no side stripes on boxes (calendar events keep their conventional colour edge).
+Radii are small and practical: 4px (marks, chips), 6px (`--btn-radius`: buttons, inputs, rows, nav items), 12px (`--radius-card`: cards, tiles, dialogs), 14px for the Today hero, full circles only for status dots and avatars. Hand-in dates sit in a 4px ink block when urgent. No pills for labels; no side stripes on boxes (calendar events keep their conventional colour edge).
 
 ## Components
 

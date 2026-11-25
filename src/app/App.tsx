@@ -399,7 +399,7 @@ export function App() {
             <PlanningPage />
           </div>
         ) : (
-        <div key={page} className="anim-rise mx-auto max-w-[1440px] px-8 pt-5 pb-10">
+        <div key={page} className="anim-rise mx-auto max-w-[1360px] px-10 pt-8 pb-12 @[96rem]:px-14">
           {tabbed && (
             <div className="mb-5 flex min-h-9 items-center gap-4">
               <h1 className="display title-gradient shrink-0 text-xl font-(--title-weight) tracking-[-0.01em]">{sectionOf(page).label}</h1>

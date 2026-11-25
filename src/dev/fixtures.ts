@@ -228,6 +228,7 @@ const connect = {
 };
 
 export const fixtures: Record<string, Fixture> = {
+  my_overview: { syncedAt: now - 40 * 60, account: "camille.martin@epitech.eu", projects: [], creditsAcquired: 12, creditsTotal: 60, blocks: [], exams: [] },
   my_logtime: logtime,
   analytics,
   connect_state: connect,

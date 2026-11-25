@@ -261,7 +261,7 @@ export function QuickActions() {
 }
 
 /** Free slots of a session, asked to MY Epitech only when the button is pressed. */
-function FreeSlots({ eventId }: { eventId: number }) {
+export function FreeSlots({ eventId }: { eventId: number }) {
   const [open, setOpen] = useState(false);
   const q = useQuery({ queryKey: ["my-free-slots", eventId], queryFn: () => api.myFreeSlots(eventId), enabled: open, staleTime: 120_000, retry: false });
   const byDay = new Map<string, Array<{ start: string; end: string }>>();

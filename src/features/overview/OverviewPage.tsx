@@ -1,11 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, CalendarClock, ChevronDown, ChevronRight, CloudDownload, FolderGit2, GitCommitHorizontal, Play, RefreshCw } from "lucide-react";
+import { ArrowRight, CalendarClock, CalendarDays, ChevronDown, ChevronRight, CloudDownload, FolderGit2, FolderPlus, GitCommitHorizontal, PenLine, Play, Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { Button, Code, cn, Dot, EmptyState, ErrorNote, PageHeader, Section, SectionLabel, Spinner, Tag } from "../../components/ui";
+import { Button, Code, cn, Dot, EmptyState, ErrorNote, IconButton, Section, SectionLabel, Spinner, Tag } from "../../components/ui";
 import { asAppError, type Activity, type BoardItem, type Candidate, type RepoInfo } from "../../lib/api";
 import { timeAgo, tildify } from "../../lib/format";
 import { keys, useActivity, useBoard, useCandidates, useEnv, useHome, useNow, usePref, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
-import { NowBlock, QuickActions, ScheduleBlock, WorkloadBlock } from "./Today";
+import { QuickActions, WorkloadBlock } from "./Today";
+import { HeroNow, ProjectTabs, StatTiles, TimelineBlock } from "./Dashboard";
+import { Menu, MenuItem } from "../../components/Menu";
 import { attention, currentFocus, displayName, due } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { BranchLabel, DueBadge, ProgressPicker, RepoMenu, StatusChips } from "../projects/RepoBits";
@@ -20,33 +22,50 @@ export function OverviewPage() {
 
   const now = new Date();
   const today = now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
-  const greeting = now.getHours() < 12 ? t("Bonjour") : now.getHours() < 18 ? t("Bon après-midi") : t("Bonsoir");
+  const greeting = now.getHours() < 18 ? t("Bonjour") : t("Bonsoir");
+  const firstName = useEnv().data?.identity.name?.trim().split(/\s+/)[0] ?? "";
 
   if (settings.isLoading) return <Loading />;
   if (settings.error) return <ErrorNote title={t("TekBoard n'a pas pu lire ses réglages")}>{asAppError(settings.error).message}</ErrorNote>;
 
   return (
     <>
-      <PageHeader
-        title={t("Aujourd'hui")}
-        subtitle={`${greeting} · ${today}`}
-        actions={
-          hasRoots && (
-            <Button
-              variant="ghost"
-              icon={<RefreshCw className="size-3.5" />}
-              busy={repos.isFetching}
-              title={t("Relire les dépôts et les dates de rendu")}
+      <header className="mb-6 flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm text-muted first-letter:uppercase">{today}</p>
+          <h1 className="display mt-1 truncate text-[30px] leading-[1.15] font-(--title-weight) tracking-[-0.02em]">{firstName ? `${greeting} ${firstName}` : greeting}</h1>
+        </div>
+        {hasRoots && (
+          <div className="flex shrink-0 items-center gap-2">
+            <IconButton
+              label={t("Relire les dépôts et les dates de rendu")}
               onClick={() => {
                 void qc.invalidateQueries({ queryKey: keys.repos });
                 void qc.invalidateQueries({ queryKey: keys.candidates });
               }}
             >
-              {t("Actualiser")}
-            </Button>
-          )
-        }
-      />
+              <RefreshCw className={cn("size-4", repos.isFetching && "anim-spin")} />
+            </IconButton>
+            <Menu
+              trigger={
+                <Button icon={<Plus className="size-4" />} className="h-[34px]">
+                  {t("Nouveau")}
+                </Button>
+              }
+            >
+              <MenuItem icon={<FolderPlus className="size-4" />} hint="Ctrl N" onSelect={() => useUi.getState().openLauncher({ mode: "new" })}>
+                {t("Projet")}
+              </MenuItem>
+              <MenuItem icon={<PenLine className="size-4" />} hint="Ctrl I" onSelect={() => useUi.getState().setCaptureOpen(true)}>
+                {t("Tâche ou idée")}
+              </MenuItem>
+              <MenuItem icon={<CalendarDays className="size-4" />} onSelect={() => useUi.getState().openPlanning(Date.now())}>
+                {t("Session au planning")}
+              </MenuItem>
+            </Menu>
+          </div>
+        )}
+      </header>
 
       {!hasRoots ? (
         <Onboarding />
@@ -56,21 +75,12 @@ export function OverviewPage() {
         <ErrorNote title={t("Impossible de parcourir tes projets")}>{asAppError(repos.error).message}</ErrorNote>
       ) : (
         <>
-          <div className="today-grid">
-            <div style={{ gridArea: "now" }}>
-              <NowBlock />
-            </div>
-            <div style={{ gridArea: "due" }}>
-              <DeadlinesBlock />
-            </div>
-            <div style={{ gridArea: "sched" }}>
-              <ScheduleBlock />
-            </div>
-            <div style={{ gridArea: "load" }}>
-              <WorkloadBlock />
-            </div>
-            <div style={{ gridArea: "quick" }}>
-              <QuickActions />
+          <div className="flex flex-col gap-7">
+            <HeroNow />
+            <StatTiles />
+            <div className="grid grid-cols-1 items-start gap-7 @4xl:grid-cols-[320px_minmax(0,1fr)]">
+              <TimelineBlock />
+              <ProjectTabs />
             </div>
           </div>
           <MoreSection repos={repos.data ?? []} />
@@ -88,15 +98,22 @@ function MoreSection({ repos }: { repos: RepoInfo[] }) {
     <section className="mt-10">
       <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="mb-4 flex items-center gap-1.5 text-sm text-muted hover:text-fg">
         {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-        {t("Dépôts et activité")}
+        {t("Rendus, charge et activité")}
         {flagged > 0 && <span className="text-xs text-faint">· {plural(flagged, "{n} à regarder", "{n} à regarder")}</span>}
       </button>
       {open && (
         <div className="grid grid-cols-1 items-start gap-x-12 gap-y-9 @5xl:grid-cols-3">
-          <FocusCard repo={currentFocus(repos)} />
-          <AttentionCard repos={repos} />
           <div className="flex min-w-0 flex-col gap-9">
+            <DeadlinesBlock />
+            <WorkloadBlock />
+          </div>
+          <div className="flex min-w-0 flex-col gap-9">
+            <QuickActions />
             <NextProjectCard />
+          </div>
+          <div className="flex min-w-0 flex-col gap-9">
+            <FocusCard repo={currentFocus(repos)} />
+            <AttentionCard repos={repos} />
             <ActivityCard repos={repos} />
           </div>
         </div>
