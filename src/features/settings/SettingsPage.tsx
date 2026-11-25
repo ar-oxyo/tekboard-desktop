@@ -436,7 +436,7 @@ function EnvironmentCard() {
               )}
             </Row>
             <Row label="SSH agent">
-              <span className="text-muted">{env.data.sshAgent ? "Available" : "Not reachable — keys with a passphrase will fail"}</span>
+              <span className="text-muted">{env.data.sshAgent ? "Available" : t("Injoignable : les clés protégées par une phrase secrète échoueront")}</span>
             </Row>
             <Row label={t("GitHub par SSH")}>
               <span className="flex min-w-0 items-center gap-2">

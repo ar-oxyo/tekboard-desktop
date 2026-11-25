@@ -35,7 +35,7 @@ export function AcademicSection() {
       <div id="academic" className="mt-2 flex scroll-mt-4 items-end justify-between gap-3">
         <div>
           <h2 className="display text-lg font-medium">Parcours</h2>
-          <p className="text-xs text-muted">{empty ? "From MY Epitech — nothing synced yet." : `As reported by MY Epitech, synced ${timeAgo(a.syncedAt!)}${a.semester !== null ? ` · semester ${a.semester}` : ""}.`}</p>
+          <p className="text-xs text-muted">{empty ? t("Depuis MY Epitech : rien de synchronisé pour l'instant.") : `${t("D'après MY Epitech, synchronisé {ago}", { ago: timeAgo(a.syncedAt!) })}${a.semester !== null ? ` · ${t("semestre {s}", { s: a.semester })}` : ""}.`}</p>
         </div>
         <Button size="sm" variant="ghost" onClick={() => setPage("myepitech")}>
           {empty ? "Connect MY Epitech" : "MY Epitech"}

@@ -18,12 +18,12 @@ Branche `redesign/tekboard-ui`. Document de travail, absorbé par `DESIGN.md` à
 | Groupe | Écrans | État |
 |---|---|---|
 | G0 | Faux backend + captures | fait |
-| G1 | Jetons (texte, ink, well), mode clair/sombre/système | en cours |
-| G2 | Composants partagés | à faire |
-| G3 | Coque, barre latérale, palette, raccourcis | à faire |
-| G4 | Aujourd'hui, Projets, fiche projet | à faire |
-| G5 | Git, Tests, Bibliothèques, Modèles, outils, lanceur | à faire |
-| G6 | Planning | à faire |
+| G1 | Jetons (texte, ink, well), mode clair/sombre/système | fait |
+| G2 | Composants partagés | fait (Section, Meter, Notice, PageHeader en barre, Tooltips) |
+| G3 | Coque, barre latérale, palette, raccourcis | fait |
+| G4 | Aujourd'hui, Projets, fiche projet | fait |
+| G5 | Git, Tests, Bibliothèques, Modèles, outils, lanceur | fait (traductions, liste Git) |
+| G6 | Planning | fait (encres, maintenant en orange) |
 | G7 | MY Epitech, Logtime, Skill Tree, Sujets, Stats | à faire |
 | G8 | Playground, Arena, Tableaux | à faire |
 | G9 | Connect, TekLive, TekSpace | à faire |

@@ -19,7 +19,7 @@ const STATE: Record<ClaudeReport["state"], { label: string; tone: "ok" | "danger
 
 const SOURCE: Record<NonNullable<ClaudeReport["source"]>, string> = {
   settings: "the path you set below",
-  path: "this application's PATH",
+  path: t("le PATH de cette application"),
   user: "a per-user install folder (not in the PATH a desktop application receives)",
   shell: "your login shell's PATH (not in the PATH a desktop application receives)",
 };
@@ -140,7 +140,7 @@ export function ClaudeCard({ configured, onPick, saving }: { configured: string 
                     <ul className="selectable mt-0.5 font-mono text-2xs">{missing.map((p) => <li key={p}>{tildify(p, home)}</li>)}</ul>
                   </>
                 ) : (
-                  <p className="mt-1.5">{d.shellPath.length === 0 ? "Your login shell did not answer in time; only the PATH and the per-user folders were searched." : "Here both are the same: this application was probably started from a terminal."}</p>
+                  <p className="mt-1.5">{d.shellPath.length === 0 ? t("Ton shell de connexion n'a pas répondu à temps : seuls le PATH et les dossiers propres à l'utilisateur ont été parcourus.") : t("Ici les deux sont identiques : l'application a sans doute été lancée depuis un terminal.")}</p>
                 )}
               </div>
             )}

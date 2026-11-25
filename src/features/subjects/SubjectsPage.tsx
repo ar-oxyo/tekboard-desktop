@@ -169,9 +169,9 @@ function SubjectRow({ subject, repos }: { subject: Subject; repos: RepoInfo[] })
   const [armed, setArmed] = useState(false);
   const fail = (title: string) => (e: unknown) => toast({ kind: "error", title, detail: asAppError(e).message });
   const refresh = () => void qc.invalidateQueries({ queryKey: keys.subjects });
-  const openDoc = useMutation({ mutationFn: () => api.subjectOpen(subject.id), onError: fail("Could not open the document") });
-  const link = useMutation({ mutationFn: (path: string | null) => api.subjectLink(subject.id, path), onSuccess: refresh, onError: fail("Could not link") });
-  const remove = useMutation({ mutationFn: () => api.subjectRemove(subject.id), onSuccess: refresh, onError: fail("Could not remove") });
+  const openDoc = useMutation({ mutationFn: () => api.subjectOpen(subject.id), onError: fail(t("Impossible d'ouvrir le document")) });
+  const link = useMutation({ mutationFn: (path: string | null) => api.subjectLink(subject.id, path), onSuccess: refresh, onError: fail(t("Impossible d'associer")) });
+  const remove = useMutation({ mutationFn: () => api.subjectRemove(subject.id), onSuccess: refresh, onError: fail(t("Impossible de retirer")) });
   const missing = subject.repoPath !== null && !repos.some((r) => r.path === subject.repoPath);
   const briefs = useQuery({ queryKey: ["subject-briefs"], queryFn: api.subjectBriefs });
   const brief = briefs.data?.[String(subject.id)];
@@ -263,7 +263,7 @@ function ScanPanel({ repos, onClose, onImported }: { repos: RepoInfo[]; onClose:
           </span>
         }
       >
-        {scan.data ? `PDFs in ${tildify(scan.data.dir, home)}` : "Downloads"}
+        {scan.data ? t("PDF dans {d}", { d: tildify(scan.data.dir, home) }) : t("Téléchargements")}
       </CardTitle>
       {scan.isLoading ? (
         <p className="flex items-center gap-2 px-4 py-5 text-sm text-muted">
@@ -274,7 +274,7 @@ function ScanPanel({ repos, onClose, onImported }: { repos: RepoInfo[]; onClose:
           <ErrorNote>{asAppError(scan.error).message}</ErrorNote>
         </div>
       ) : files.length === 0 ? (
-        <p className="px-4 py-5 text-sm text-muted">{already > 0 ? "Every PDF in this folder is already in the library." : "No PDF in this folder."}</p>
+        <p className="px-4 py-5 text-sm text-muted">{already > 0 ? t("Tous les PDF de ce dossier sont déjà dans la bibliothèque.") : t("Aucun PDF dans ce dossier.")}</p>
       ) : (
         <>
           <p className="border-b border-ink/6 px-4 py-2 text-xs text-faint">

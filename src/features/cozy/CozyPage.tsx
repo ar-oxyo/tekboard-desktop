@@ -43,17 +43,17 @@ export function CozyPage() {
   const status = useQuery({ queryKey: ["cozy"], queryFn: api.cozyStatus, staleTime: 0 });
   const fail = (title: string) => (e: unknown) => toast({ kind: "error", title, detail: asAppError(e).message });
 
-  const update = useMutation({ mutationFn: (patch: Companion) => api.cozyUpdate(patch), onSuccess: (s) => qc.setQueryData(["cozy"], s), onError: fail("Could not change the setting") });
-  const send = useMutation({ mutationFn: (cmd: string) => api.cozySend(cmd), onError: fail("The fox did not get the command") });
+  const update = useMutation({ mutationFn: (patch: Companion) => api.cozyUpdate(patch), onSuccess: (s) => qc.setQueryData(["cozy"], s), onError: fail(t("Impossible de changer le réglage")) });
+  const send = useMutation({ mutationFn: (cmd: string) => api.cozySend(cmd), onError: fail(t("Le renard n'a pas reçu la commande")) });
   const restore = useMutation({
     mutationFn: (name: string) => api.cozyRestore(name),
     onSuccess: (s) => {
       qc.setQueryData(["cozy"], s);
       toast({ kind: "ok", title: t("Configuration précédente restaurée") });
     },
-    onError: fail("Could not restore"),
+    onError: fail(t("Impossible de restaurer")),
   });
-  const saveSettings = useMutation({ mutationFn: (s: Settings) => api.saveSettings(s), onSuccess: (s) => qc.setQueryData(keys.settings, s), onError: fail("Not saved") });
+  const saveSettings = useMutation({ mutationFn: (s: Settings) => api.saveSettings(s), onSuccess: (s) => qc.setQueryData(keys.settings, s), onError: fail(t("Pas enregistré")) });
 
   if (status.isLoading) {
     return (

@@ -134,7 +134,7 @@ function PromptEditor({ def }: { def: PromptDef }) {
       setNewName("");
       toast({ kind: warnings.length ? "info" : "ok", title: activate ? `“${name.trim()}” saved and now in use` : `“${name.trim()}” saved`, detail: warnings.join("\n") || undefined });
     },
-    onError: fail("Not saved"),
+    onError: fail(t("Pas enregistré")),
   });
   const activate = useMutation({
     mutationFn: (name: string | null) => api.promptActivate(def.id, name),
@@ -142,7 +142,7 @@ function PromptEditor({ def }: { def: PromptDef }) {
       await refresh();
       toast({ kind: "ok", title: name === null ? "Default restored" : `“${name}” is now in use` });
     },
-    onError: fail("Not changed"),
+    onError: fail(t("Pas modifié")),
   });
   const remove = useMutation({
     mutationFn: (name: string) => api.promptDelete(def.id, name),
@@ -150,7 +150,7 @@ function PromptEditor({ def }: { def: PromptDef }) {
       setPreset(DEFAULT);
       await refresh();
     },
-    onError: fail("Not deleted"),
+    onError: fail(t("Pas supprimé")),
   });
   const preview = useQuery({ queryKey: ["prompt-preview", def.id, body, repo], queryFn: () => api.promptPreview(def.id, body, repo || null), staleTime: 0, enabled: tab === "preview" });
   const check = useQuery({ queryKey: ["prompt-check", def.id, body], queryFn: () => api.promptPreview(def.id, body, null), staleTime: 0, enabled: dirty });
@@ -166,7 +166,7 @@ function PromptEditor({ def }: { def: PromptDef }) {
       el.setSelectionRange(caret, caret);
     });
   };
-  const options = [{ value: DEFAULT, label: "Par défaut", hint: def.active === null ? "utilisé" : "shipped with TekBoard" }, ...def.presets.map((p) => ({ value: p.name, label: p.name, hint: p.problem ? "no longer valid" : def.active === p.name ? "utilisé" : undefined }))];
+  const options = [{ value: DEFAULT, label: "Par défaut", hint: def.active === null ? "utilisé" : t("fourni avec TekBoard") }, ...def.presets.map((p) => ({ value: p.name, label: p.name, hint: p.problem ? "no longer valid" : def.active === p.name ? "utilisé" : undefined }))];
   const problem = dirty ? (check.data?.error ?? null) : (def.presets.find((p) => p.name === preset)?.problem ?? null);
   const name = preset === DEFAULT ? newName.trim() : preset;
   return (
@@ -183,7 +183,7 @@ function PromptEditor({ def }: { def: PromptDef }) {
           </IconButton>
           {!inUse && !dirty && (
             <Button variant="primary" icon={<Check className="size-3.5" />} busy={activate.isPending} disabled={problem !== null} onClick={() => activate.mutate(preset === DEFAULT ? null : preset)}>
-              {preset === DEFAULT ? "Restore Default" : "Use this preset"}
+              {preset === DEFAULT ? "Restore Default" : t("Utiliser ce préréglage")}
             </Button>
           )}
           {inUse && <Badge tone="ok">utilisé</Badge>}
@@ -238,7 +238,7 @@ function PromptEditor({ def }: { def: PromptDef }) {
             ))}
           </ul>
         </div>
-        {problem && <ErrorNote title={dirty ? "This text cannot be saved" : "This preset is no longer valid: the default is used instead"}>{problem}</ErrorNote>}
+        {problem && <ErrorNote title={dirty ? t("Ce texte ne peut pas être enregistré") : t("Ce préréglage n'est plus valide : celui par défaut est utilisé")}>{problem}</ErrorNote>}
         {dirty && !problem && (check.data?.warnings.length ?? 0) > 0 && <p className="rounded-md border border-warn/30 bg-warn/10 px-3 py-2 text-xs text-warn">{check.data!.warnings.join(" ")}</p>}
         <div className="flex flex-wrap items-center gap-2">
           {preset === DEFAULT ? (
@@ -265,7 +265,7 @@ function PromptEditor({ def }: { def: PromptDef }) {
               <Button variant="ghost" icon={<RotateCcw className="size-3.5" />} onClick={() => setBody(def.default)} title={t("Remet le texte par défaut dans l'éditeur ; rien n'est enregistré avant Enregistrer")}>
                 Revenir au texte par défaut
               </Button>
-              <Button className="ml-auto" variant="ghost" icon={<Trash2 className="size-3.5" />} busy={remove.isPending} onClick={() => remove.mutate(preset)} title={inUse ? "Deletes this preset; the default is used again" : "Deletes this preset"}>
+              <Button className="ml-auto" variant="ghost" icon={<Trash2 className="size-3.5" />} busy={remove.isPending} onClick={() => remove.mutate(preset)} title={inUse ? t("Supprime ce préréglage ; celui par défaut est de nouveau utilisé") : t("Supprime ce préréglage")}>
                 Supprimer la version
               </Button>
             </>
