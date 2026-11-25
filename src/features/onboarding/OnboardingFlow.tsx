@@ -1,4 +1,4 @@
-// First-run assistant: five short steps, each optional one can be skipped. The step reached is
+// First-run assistant: seven short steps, each optional one can be skipped. The step reached is
 // saved in the settings, so closing Tekboard (or switching the language, which reloads the
 // window) resumes there. Shown again from Settings → General → "Relancer l'assistant".
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,8 +13,10 @@ import { useUi } from "../../lib/store";
 import { useMySync } from "../myepitech/useMySync";
 import { Onboarding as RootsPicker } from "../settings/Onboarding";
 import { ThemePicker } from "../settings/SettingsPage";
+import { Capabilities, ProviderPanel, ProviderPicker, useAiStatus } from "../settings/AiProvider";
+import { DoctorCard } from "../settings/DoctorCard";
 
-const STEPS = ["welcome", "personalize", "my", "projects", "done"] as const;
+const STEPS = ["welcome", "personalize", "env", "my", "projects", "ai", "done"] as const;
 type Step = (typeof STEPS)[number];
 const CONSENT_KEY = "tekboard.my.consent";
 
@@ -71,8 +73,10 @@ export function OnboardingFlow() {
         <div className="rounded-(--radius-card) border border-line bg-surface p-6">
           {step === "welcome" && <Welcome />}
           {step === "personalize" && <Personalize s={s} save={save} />}
+          {step === "env" && <EnvStep />}
           {step === "my" && <MyStep />}
           {step === "projects" && <ProjectsStep s={s} save={save} onSaved={forward} />}
+          {step === "ai" && <AiStep />}
           {step === "done" && <Done s={s} />}
           {error && (
             <div className="mt-4">
@@ -90,7 +94,7 @@ export function OnboardingFlow() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {(step === "my" || step === "projects") && (
+            {(step === "my" || step === "projects" || step === "ai") && (
               <Button variant="ghost" onClick={forward}>
                 {t("Passer")}
               </Button>
@@ -100,7 +104,7 @@ export function OnboardingFlow() {
                 {t("Commencer")}
               </Button>
             )}
-            {(step === "personalize" || step === "my") && (
+            {(step === "personalize" || step === "env" || step === "my" || step === "ai") && (
               <Button variant="primary" onClick={forward}>
                 {t("Continuer")}
               </Button>
@@ -252,13 +256,43 @@ function ProjectsStep({ s, save, onSaved }: { s: Settings; save: (p: Partial<Set
   );
 }
 
+function EnvStep() {
+  return (
+    <>
+      <h2 className="display text-lg font-medium">{t("Ton environnement")}</h2>
+      <p className="mt-1 text-[13px] text-muted">{t("TekBoard vérifie les outils dont il se sert. Ce qui manque est expliqué : à quoi il sert, ce qui ne marchera pas sans, et comment l'installer (le plus simple : relancer ./install.sh). Rien n'est bloquant ici.")}</p>
+      <div className="mt-4 -mx-2">
+        <DoctorCard compact />
+      </div>
+    </>
+  );
+}
+
+function AiStep() {
+  return (
+    <>
+      <h2 className="display text-lg font-medium">{t("Choisir une IA pour Artix")}</h2>
+      <p className="mt-1 text-[13px] text-muted">{t("Artix peut s'appuyer sur Claude Code, sur des modèles gratuits en ligne (OpenRouter) ou sur un modèle qui tourne sur ton ordinateur. Facultatif : TekBoard fonctionne aussi sans IA, et tout se change dans Réglages → Artix (IA).")}</p>
+      <div className="mt-4 flex flex-col gap-4">
+        <ProviderPicker />
+        <ProviderPanel />
+        <Capabilities />
+      </div>
+    </>
+  );
+}
+
+const PROVIDER_NAME: Record<string, string> = { claude: "Claude Code", openrouter: "OpenRouter", ollama: t("IA locale (Ollama)"), none: t("sans IA (Réglages → Artix)") };
+
 function Done({ s }: { s: Settings }) {
   const status = useQuery({ queryKey: ["my-status"], queryFn: api.myStatus, staleTime: 0 });
+  const ai = useAiStatus();
   const rows = [
     [t("Langue"), s.language === "en" ? "English" : "Français"],
     [t("Apparence"), s.theme.charAt(0).toUpperCase() + s.theme.slice(1)],
     ["MY Epitech", status.data?.lastSync ? t("connecté") : t("plus tard (École → MY Epitech)")],
     [t("Dossiers de projets"), s.roots.length > 0 ? String(s.roots.length) : t("plus tard (Réglages → Général)")],
+    ["IA", ai.data ? `${PROVIDER_NAME[ai.data.provider]}${ai.data.provider !== "none" && !ai.data.configured ? ` (${t("à configurer")})` : ""}` : "…"],
   ];
   return (
     <>

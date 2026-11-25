@@ -1,4 +1,8 @@
-//! Read-only environment checks. Reports what is there; installs nothing.
+//! Environment checks. `check` is the quick read-only list (sidebar, Settings → Tools);
+//! `diagnosis` is TekBoard Doctor (every dependency, with fixes and an anonymous report).
+
+pub mod anonymize;
+pub mod diagnosis;
 
 use crate::git;
 use crate::github::{self, GhStatus};

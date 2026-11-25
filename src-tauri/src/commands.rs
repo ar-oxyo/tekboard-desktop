@@ -435,6 +435,14 @@ pub fn launch_candidates(state: State<'_, AppState>) -> Result<Vec<Candidate>> {
 pub fn clone_project(state: State<'_, AppState>, url: String, parent: String) -> Result<CloneOutcome> {
     crate::commands::forget_scan();
     let parent = project_dir(&state, &parent)?;
+    // Already cloned somewhere in the project folders: that copy is used, nothing is cloned again.
+    if let Some(wanted) = epitech::parse_remote(url.trim()) {
+        if let Ok((repos, _)) = load_repos(&state) {
+            if let Some(r) = repos.iter().find(|r| r.duplicate_of.is_none() && r.remote.as_ref().is_some_and(|x| x.key() == wanted.key())) {
+                return Ok(CloneOutcome { path: r.path.clone(), already_present: true });
+            }
+        }
+    }
     let outcome = launcher::clone_into(&url, &parent)?;
     if !outcome.already_present {
         db::log_activity(&state.conn(), now(), "clone", Some(&outcome.path), Some(url.trim()))?;

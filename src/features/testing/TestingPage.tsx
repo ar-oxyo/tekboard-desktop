@@ -17,6 +17,8 @@ import { ClaudeBriefDialog } from "../tools/ClaudeBrief";
 import { QuickBar } from "./QuickBar";
 import { duration, KIND_LABEL, Report, STATUS_LABEL, STATUS_TONE, type ReportData } from "./Report";
 import { t } from "../../lib/i18n";
+import { aiGate } from "../../lib/ai";
+import { useAiStatus } from "../settings/AiProvider";
 
 const tr = t;
 
@@ -275,8 +277,9 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
     void qc.invalidateQueries({ queryKey: ["testing-info", repo] });
     return api.testsRun(repo, custom.trim(), false);
   };
-  const claudeReady = info.claude.state === "ready";
+  const ai = aiGate(useAiStatus().data);
   const setPage = useUi((s) => s.setPage);
+  const openAiSettings = () => { useUi.setState({ settingsTab: "ai" }); setPage("settings"); };
   // Options folded by default: the buttons stay, the screen breathes.
   const [folded, setFolded] = usePref<string[]>("testing.folded", ["testrepo", "banana", "moulinette", "ai"]);
   const fold = { folded, onToggle: (id: string) => setFolded(folded.includes(id) ? folded.filter((f) => f !== id) : [...folded, id]) };
@@ -350,25 +353,27 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
         )}
       </Tile>
 
-      <Tile id="artix" {...fold} icon={<Sparkles className="size-4" />} title="Moulinette d'Artix" action={<Button size="sm" variant="primary" icon={<Play className="size-3.5" />} busy={busy} disabled={!claudeReady || sandbox.isError} title={!claudeReady ? "Claude Code n'est pas disponible : voir Réglages → Outils" : sandbox.isError ? String(sandbox.error) : undefined} onClick={() => onStart(() => api.moulinetteAiStart(repo))}>{t("Lancer")}</Button>}>
+      <Tile id="artix" {...fold} icon={<Sparkles className="size-4" />} title="Moulinette d'Artix" action={<Button size="sm" variant="primary" icon={<Play className="size-3.5" />} busy={busy} disabled={!ai.agents || sandbox.isError} title={ai.agentWhy ?? (sandbox.isError ? String(sandbox.error) : undefined)} onClick={() => onStart(() => api.moulinetteAiStart(repo))}>{t("Lancer")}</Button>}>
         <p>Artix joue l'évaluateur : il lit le sujet et le code, décide des tests, compile, essaie les arguments et les cas limites, passe valgrind et creuse ce qui casse. Tu suis chaque vérification en direct. Simulation, pas la moulinette officielle.</p>
-        {sandbox.isError ? (
+        {ai.agentWhy ? (
+          <p className="text-warn">{ai.agentWhy}</p>
+        ) : sandbox.isError ? (
           <p className="text-warn">Bac à sable indisponible : {asAppError(sandbox.error).message || String(sandbox.error)}. Rien ne serait exécuté.</p>
         ) : (
           <p className="text-faint">Sur une copie de ton projet, dans bubblewrap : pas de réseau, ton dossier personnel est masqué, ton projet n'est jamais modifié. Compte dans ton usage de Claude.</p>
         )}
       </Tile>
 
-      <Tile id="moulinette" {...fold} icon={<ShieldCheck className="size-4" />} title={t("Vérifications rapides")} action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} title={!build.trim() ? "Indique la commande de compilation dans la tuile « Simulation de rendu »" : undefined} onClick={() => { if (memory.trim() !== (info.config.runCmd ?? "")) saveConfig.mutate({ runCmd: memory.trim() || null }); onStart(() => api.moulinetteStart(repo, { build: build.trim(), tests: firstTrusted, memoryRun: memory.trim() || null, subjectAi })); }}>{t("Lancer")}</Button>}>
+      <Tile id="moulinette" {...fold} icon={<ShieldCheck className="size-4" />} title={t("Vérifications rapides")} action={<Button size="sm" icon={<Play className="size-3.5" />} busy={busy} disabled={!build.trim()} title={!build.trim() ? "Indique la commande de compilation dans la tuile « Simulation de rendu »" : undefined} onClick={() => { if (memory.trim() !== (info.config.runCmd ?? "")) saveConfig.mutate({ runCmd: memory.trim() || null }); onStart(() => api.moulinetteStart(repo, { build: build.trim(), tests: firstTrusted, memoryRun: memory.trim() || null, subjectAi: subjectAi && ai.read })); }}>{t("Lancer")}</Button>}>
         <p>Compilation, structure, Banana, tests et mémoire, sans IA et en quelques secondes, dans ton dossier de travail.</p>
         <Labeled label={t("Exécution sous valgrind")}><Input className="h-7 font-mono text-xs" placeholder={info.valgrind ? "./program arguments — run under Valgrind" : "Valgrind is not installed"} disabled={!info.valgrind} value={memory} onChange={(e) => setMemory(e.target.value)} /></Labeled>
-        <label className={cn("flex items-start gap-2", (!claudeReady || !info.subject) && "opacity-60")}>
-          <input type="checkbox" className="mt-0.5 accent-(--color-accent)" disabled={!claudeReady || !info.subject} checked={subjectAi} onChange={(e) => setSubjectAi(e.target.checked)} />
+        <label className={cn("flex items-start gap-2", (!ai.read || !info.subject) && "opacity-60")}>
+          <input type="checkbox" className="mt-0.5 accent-(--color-accent)" disabled={!ai.read || !info.subject} checked={subjectAi && ai.read} onChange={(e) => setSubjectAi(e.target.checked)} />
           <span>
-            Demander à Claude Code de comparer le code au sujet
-            {info.subject ? <> (<span className="font-mono">{info.subject}</span>)</> : " — link a subject to this project first"}
-            {!claudeReady && " — Claude Code is not installed"}
-            {subjectAi && <span className="block text-faint">{t("Lecture seule. Le texte du sujet et les fichiers lus sont envoyés à Anthropic ; cela compte dans ton usage de Claude.")}</span>}
+            {t("Demander à l'IA de comparer le code au sujet")}
+            {info.subject ? <> (<span className="font-mono">{info.subject}</span>)</> : t(" — lie d'abord un sujet à ce projet")}
+            {ai.why && <span className="block text-faint">{ai.why}</span>}
+            {subjectAi && ai.read && <span className="block text-faint">{ai.sendsTo ? t("Lecture seule. Le texte du sujet et les fichiers lus sont envoyés à {to}.", { to: ai.sendsTo }) : t("Lecture seule. Tout reste sur cet ordinateur (modèle local).")}</span>}
           </span>
         </label>
       </Tile>
@@ -377,7 +382,7 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
         id="ai"
         {...fold}
         icon={<Bot className="size-4" />}
-        title="Claude Code"
+        title={t("Outils IA")}
         action={
           <Menu
             trigger={
@@ -386,11 +391,11 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
               </Button>
             }
           >
-            <MenuLabel>{claudeReady ? `Claude Code ${info.claude.version?.split(" ")[0] ?? ""}` : "Claude Code is not available"}</MenuLabel>
-            <MenuItem icon={<FlaskConical className="size-4" />} disabled={!claudeReady || busy} onSelect={() => onStart(() => api.genTestsStart(repo))} hint={t("diff à valider")}>
+            <MenuLabel>{ai.ready ? (ai.name === "Claude Code" ? `Claude Code ${info.claude.version?.split(" ")[0] ?? ""}` : ai.name) : t("Aucune IA disponible")}</MenuLabel>
+            <MenuItem icon={<FlaskConical className="size-4" />} disabled={!ai.agents || busy} onSelect={() => onStart(() => api.genTestsStart(repo))} hint={ai.agents ? t("diff à valider") : "Claude Code"}>
               {t("Générer des tests")}
             </MenuItem>
-            <MenuItem icon={<ScanSearch className="size-4" />} disabled={!claudeReady || busy} onSelect={() => onBrief("analysis")} hint="read-only">
+            <MenuItem icon={<ScanSearch className="size-4" />} disabled={!ai.read || busy} onSelect={() => onBrief("analysis")} hint={t("lecture seule")}>
               Analyser le dépôt…
             </MenuItem>
             <MenuItem icon={<FileText className="size-4" />} onSelect={() => onTool("readme")}>
@@ -406,13 +411,16 @@ function Actions({ repo, info, busy, onStart, onBrief, onTool }: { repo: string;
           </Menu>
         }
       >
-        {claudeReady ? (
-          <p>La génération de tests travaille sur une copie : Artix écrit, compile et lance les tests dans le bac à sable, puis te montre les fichiers à appliquer. L'analyse et le README sont en lecture seule.</p>
+        {ai.ready ? (
+          <>
+            <p>{t("L'analyse et le README sont en lecture seule.")} {ai.agents ? t("La génération de tests travaille sur une copie : Artix écrit, compile et lance les tests dans le bac à sable, puis te montre les fichiers à appliquer.") : ai.agentWhy}</p>
+            <p className="text-faint">{t("IA utilisée : {name}.", { name: ai.name })}</p>
+          </>
         ) : (
           <p className="text-warn">
-            {info.claude.state === "not_found" ? "Claude Code was not found on this computer." : (info.claude.detail ?? "Claude Code cannot be used.")}{" "}
-            <button type="button" className="text-accent-strong hover:underline" onClick={() => setPage("settings")}>
-              Vérifier dans Réglages
+            {ai.why}{" "}
+            <button type="button" className="text-accent-strong hover:underline" onClick={openAiSettings}>
+              {t("Ouvrir les réglages de l'IA")}
             </button>
           </p>
         )}

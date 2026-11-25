@@ -1,6 +1,6 @@
 //! Commands of the assistant (memory, journal, proposals) and of work sessions.
 
-use crate::ai::{chat, memory, tools};
+use crate::ai::{chat, memory, ollama, openrouter, provider, secrets, tools};
 use crate::commands::AppState;
 use crate::error::{AppError, Result};
 use crate::focus;
@@ -57,6 +57,130 @@ pub fn ai_settings_set(state: State<'_, AppState>, settings: chat::AiSettings) -
     let conn = state.conn();
     settings.save(&conn)?;
     Ok(chat::AiSettings::load(&conn))
+}
+
+// ───────────────────────────── providers ─────────────────────────────
+
+#[tauri::command(async)]
+pub fn ai_provider_status() -> provider::Status {
+    provider::status()
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KeyStatus {
+    pub has_key: bool,
+    /// The last characters only.
+    pub hint: Option<String>,
+    /// `saved` or `env` (`OPENROUTER_API_KEY`).
+    pub source: Option<secrets::Source>,
+}
+
+fn key_status() -> KeyStatus {
+    match secrets::get_with_source(secrets::OPENROUTER) {
+        Some((k, src)) => KeyStatus { has_key: true, hint: Some(secrets::hint(&k)), source: Some(src) },
+        None => KeyStatus { has_key: false, hint: None, source: None },
+    }
+}
+
+#[tauri::command(async)]
+pub fn ai_openrouter_key() -> KeyStatus {
+    key_status()
+}
+
+/// Saves the key (`None` removes it). It is checked first, so a typo is caught here.
+#[tauri::command(async)]
+pub fn ai_openrouter_key_set(key: Option<String>) -> Result<KeyStatus> {
+    match key.as_deref().map(str::trim).filter(|k| !k.is_empty()) {
+        Some(k) => {
+            if k.len() > 300 || k.chars().any(|c| c.is_whitespace() || c.is_control()) {
+                return Err(AppError::new("invalid_key", "Cette clé n'a pas la forme d'une clé OpenRouter (sk-or-…)."));
+            }
+            openrouter::key_info(k)?;
+            secrets::set(secrets::OPENROUTER, Some(k))?;
+        }
+        None => secrets::set(secrets::OPENROUTER, None)?,
+    }
+    Ok(key_status())
+}
+
+#[tauri::command(async)]
+pub fn ai_openrouter_models(refresh: Option<bool>) -> Result<Vec<openrouter::Model>> {
+    openrouter::models(refresh.unwrap_or(false))
+}
+
+#[tauri::command(async)]
+pub fn ai_ollama_info() -> ollama::Info {
+    ollama::info(&provider::current_settings())
+}
+
+/// Downloads a model into Ollama. Returns the job id.
+#[tauri::command(async)]
+pub fn ai_ollama_pull(state: State<'_, AppState>, model: String) -> Result<u64> {
+    let model = model.trim().to_string();
+    if !ollama::valid_model(&model) {
+        return Err(AppError::new("invalid_model", "Nom de modèle invalide (exemple : qwen2.5:7b)."));
+    }
+    if let Some(id) = state.jobs.active("ollama_pull", Some(&model)) {
+        return Ok(id);
+    }
+    let url = ollama::clean_url(&provider::current_settings().ollama_url).unwrap_or_else(|| ollama::DEFAULT_URL.into());
+    Ok(state.jobs.start(state.db.clone(), "ollama_pull", Some(model.clone()), format!("Installation du modèle {model}"), &[("pull", "Téléchargement du modèle")], move |job| {
+        job.start("pull");
+        match ollama::pull(job, &url, &model) {
+            Ok(()) => {
+                job.end("pull", "success", Some(format!("{model} est prêt")));
+                Ok("success")
+            }
+            Err(e) if e.code() == "cancelled" => {
+                job.end("pull", "cancelled", None);
+                Ok("cancelled")
+            }
+            Err(e) => {
+                job.set("error", e.to_string());
+                job.end("pull", "failed", Some(e.to_string()));
+                Ok("failed")
+            }
+        }
+    }))
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderTest {
+    pub ok: bool,
+    pub provider: provider::Kind,
+    pub model: Option<String>,
+    pub detail: String,
+    pub ms: u64,
+}
+
+/// A real question to OpenRouter or Ollama (one word back), with the current settings.
+/// Claude Code is tested by `claude_check`.
+#[tauri::command(async)]
+pub fn ai_provider_test() -> ProviderTest {
+    let s = provider::current_settings();
+    let kind = provider::kind_of(&s);
+    let started = std::time::Instant::now();
+    let ep = match kind {
+        provider::Kind::OpenRouter => openrouter::endpoint(&s),
+        provider::Kind::Ollama => ollama::endpoint(&s),
+        provider::Kind::Claude => return ProviderTest { ok: false, provider: kind, model: None, detail: "Claude Code se teste depuis sa carte (« Tester Claude Code »).".into(), ms: 0 },
+        provider::Kind::None => return ProviderTest { ok: false, provider: kind, model: None, detail: "Aucune IA choisie.".into(), ms: 0 },
+    };
+    let ep = match ep {
+        Ok(ep) => ep,
+        Err(e) => return ProviderTest { ok: false, provider: kind, model: None, detail: e.to_string(), ms: 0 },
+    };
+    let model = Some(ep.model.clone());
+    let msgs = [serde_json::json!({"role": "user", "content": "Réponds exactement par un mot : prêt"})];
+    let r = crate::ai::openai::complete(&ep, &msgs, &[], std::time::Duration::from_secs(90), &|| false, &mut |_| {});
+    let ms = started.elapsed().as_millis() as u64;
+    match r {
+        Ok(t) if !t.content.trim().is_empty() => ProviderTest { ok: true, provider: kind, model, detail: format!("Réponse reçue : « {} »", crate::ai::stream::clip(&t.content, 60)), ms },
+        Ok(_) => ProviderTest { ok: false, provider: kind, model, detail: "Le modèle a répondu sans texte. Essaie un autre modèle.".into(), ms },
+        Err(e) => ProviderTest { ok: false, provider: kind, model, detail: e.to_string(), ms },
+    }
 }
 
 // ───────────────────────────── memory ─────────────────────────────

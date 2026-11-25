@@ -77,7 +77,12 @@ pub fn executable() -> Result<String> {
 #[serde(rename_all = "camelCase")]
 pub struct Plan {
     pub available: bool,
+    /// Why it cannot run, when `available` is false.
+    pub unavailable: Option<String>,
+    /// The AI that will answer ("Claude Code", "OpenRouter · model", "Ollama · model").
+    pub provider: String,
     pub version: Option<String>,
+    /// The exact command (Claude Code only; the other providers are called over HTTP).
     pub argv: Vec<String>,
     pub can_read: String,
     pub can_write: String,
@@ -85,16 +90,33 @@ pub struct Plan {
     pub account: String,
 }
 
-/// `write_dirs`: folders (relative to the project) Claude may create or edit files in. Empty = read-only.
+/// `write_dirs`: folders (relative to the project) the AI may create or edit files in. Empty = read-only.
 pub fn plan(write_dirs: &[&str]) -> Plan {
+    use crate::ai::provider::{self, Feature, Kind};
+    let feature = if write_dirs.is_empty() { Feature::ReadFiles } else { Feature::Agent };
+    let status = provider::status();
+    let blocked = provider::require(feature).err().map(|e| e.to_string());
+    let can_write = if write_dirs.is_empty() { "Rien : cette exécution est en lecture seule.".into() } else { format!("Uniquement les fichiers dans {}. Rien d'autre dans le projet, rien en dehors.", write_dirs.iter().map(|d| format!("{d}/")).collect::<Vec<_>>().join(", ")) };
+    let secrets = "Les fichiers de ce dossier de projet, sauf .git et ce qui ressemble à un secret (.env, clés, identifiants).";
+    if status.provider != Kind::Claude {
+        let model = status.model.clone().unwrap_or_default();
+        let (name, read, account) = match status.provider {
+            Kind::OpenRouter => (format!("OpenRouter · {model}"), format!("{secrets} Ce qui est lu est envoyé à OpenRouter et à l'hébergeur du modèle pour produire la réponse."), "Ta clé OpenRouter. Modèle gratuit : rien n'est facturé (sauf si tu as autorisé les modèles payants).".to_string()),
+            Kind::Ollama => (format!("Ollama · {model}"), format!("{secrets} Rien ne quitte cet ordinateur : le modèle tourne en local."), "Aucun compte : le modèle tourne sur ton ordinateur.".to_string()),
+            _ => ("Aucune IA".to_string(), secrets.to_string(), "—".to_string()),
+        };
+        return Plan { available: blocked.is_none(), unavailable: blocked, provider: name, version: None, argv: vec![], can_read: read, can_write, cannot: "Modifier un fichier, lancer des commandes ou utiliser tes services connectés : TekBoard lit les fichiers lui-même et ne lui donne que ces lectures.".into(), account };
+    }
     let info = cached();
     let tools = if write_dirs.is_empty() { Tools::Read } else { Tools::ReadEdit(write_dirs.iter().map(|d| format!("{d}/**")).collect()) };
     Plan {
         available: info.state == "ready",
+        unavailable: (info.state != "ready").then(|| info.detail.clone().unwrap_or_else(|| "Claude Code n'est pas installé sur cet ordinateur (commande `claude` introuvable).".into())),
+        provider: "Claude Code".into(),
         version: info.version,
         argv: runner::preview(&runner::Request::new("", tools, Duration::from_secs(1))),
-        can_read: "Les fichiers de ce dossier de projet, sauf .git et ce qui ressemble à un secret (.env, clés, identifiants). Ce qui est lu est envoyé à Anthropic pour produire la réponse.".into(),
-        can_write: if write_dirs.is_empty() { "Rien : cette exécution est en lecture seule.".into() } else { format!("Uniquement les fichiers dans {}. Rien d'autre dans le projet, rien en dehors.", write_dirs.iter().map(|d| format!("{d}/")).collect::<Vec<_>>().join(", ")) },
+        can_read: format!("{secrets} Ce qui est lu est envoyé à Anthropic pour produire la réponse."),
+        can_write,
         cannot: "Lancer des commandes (pas de shell), utiliser le réseau ou tes services connectés. Tes réglages, hooks et plugins Claude Code ne sont pas chargés.".into(),
         account: "Utilise le Claude Code installé sur cet ordinateur, avec ton compte. Cela compte dans ton usage de Claude.".into(),
     }
@@ -104,13 +126,13 @@ pub type Answer = runner::Answer;
 
 /// A question answered from the text of the prompt alone: no tool at all.
 pub fn run_chat(job: &Job, dir: &Path, prompt: &str, timeout: Duration) -> Result<(Outcome, Result<Answer>)> {
-    job.log(&format!("Instructions données à Claude Code (aucun outil) :\n{prompt}\n"));
+    job.log(&format!("Instructions données à l'IA (aucun outil) :\n{prompt}\n"));
     runner::run(job, dir, &runner::Request::new(prompt, Tools::None, timeout), &mut |_| {})
 }
 
 /// Runs Claude Code in `dir` as part of a job: reads the project, writes only in `write_dirs`.
 pub fn run(job: &Job, dir: &Path, prompt: &str, write_dirs: &[&str], timeout: Duration) -> Result<(Outcome, Result<Answer>)> {
-    job.log(&format!("Instructions données à Claude Code :\n{prompt}\n"));
+    job.log(&format!("Instructions données à l'IA :\n{prompt}\n"));
     let tools = if write_dirs.is_empty() { Tools::Read } else { Tools::ReadEdit(write_dirs.iter().map(|d| format!("{d}/**")).collect()) };
     runner::run(job, dir, &runner::Request::new(prompt, tools, timeout), &mut |_| {})
 }

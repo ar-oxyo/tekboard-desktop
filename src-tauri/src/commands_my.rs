@@ -637,3 +637,9 @@ mod slot_tests {
         assert!(free_slots("{\"message\":\"no\"}", now).is_none());
     }
 }
+
+/// The Skill Tree, from the last synchronisation (works offline).
+#[tauri::command(async)]
+pub fn my_skill_tree(state: State<'_, AppState>) -> crate::skilltree::Tree {
+    crate::skilltree::build(&state.conn())
+}

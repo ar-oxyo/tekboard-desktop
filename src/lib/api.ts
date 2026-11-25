@@ -603,7 +603,7 @@ export interface JobStep {
   detail: string | null;
   durationMs: number | null;
 }
-export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant";
+export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull";
 /** Kind-specific facts; see the Rust module that produces each kind. */
 export type RunSummary = Record<string, unknown> & { steps?: JobStep[] };
 export interface JobView {
@@ -698,7 +698,7 @@ export interface TestEnv {
   size: number;
 }
 export interface ClaudeBrief {
-  plan: { available: boolean; version: string | null; argv: string[]; canRead: string; canWrite: string; cannot: string; account: string };
+  plan: { available: boolean; unavailable: string | null; provider: string; version: string | null; argv: string[]; canRead: string; canWrite: string; cannot: string; account: string };
   prompt: string;
 }
 export interface PackOptions {
@@ -1006,12 +1006,127 @@ export interface AiMessage {
   meta: { steps?: AiStep[]; proposals?: number[]; actions?: number[]; costUsd?: number | null; error?: boolean; screen?: Screen };
   createdAt: number;
 }
+export type AiProviderKind = "none" | "claude" | "openrouter" | "ollama";
 export interface AiSettings {
+  /** Empty only in settings saved before 0.7, until the first start fills it. */
+  provider: AiProviderKind | "";
   chatModel: string;
   agentModel: string;
   agentBudgetUsd: number;
   agentMinutes: number;
   autoAnalyze: boolean;
+  openrouterModel: string;
+  allowPaid: boolean;
+  ollamaModel: string;
+  ollamaUrl: string;
+}
+export interface AiCaps {
+  text: boolean;
+  chat: boolean;
+  readFiles: boolean;
+  agents: boolean;
+}
+export interface AiProviderStatus {
+  provider: AiProviderKind;
+  configured: boolean;
+  model: string | null;
+  caps: AiCaps;
+  detail: string | null;
+}
+export interface OpenRouterKey {
+  hasKey: boolean;
+  hint: string | null;
+  source: "saved" | "env" | null;
+}
+export interface OpenRouterModel {
+  id: string;
+  name: string;
+  free: boolean;
+  context: number;
+  tools: boolean;
+  priceIn: number;
+  priceOut: number;
+  recommended: boolean;
+}
+export interface OllamaInfo {
+  url: string;
+  running: boolean;
+  installed: boolean;
+  version: string | null;
+  models: Array<{ name: string; sizeGb: number; parameters: string | null; family: string | null }>;
+  hardware: { ramGb: number; gpu: string | null; vramGb: number | null };
+  recommended: { model: string; downloadGb: number; why: string };
+  detail: string | null;
+}
+export type SkillStatus = "acquired" | "in_progress" | "available" | "failed" | "locked";
+export interface SkillNode {
+  id: string;
+  kind: "unit" | "skill" | "project";
+  label: string;
+  status: SkillStatus;
+  statusFrom: "graph" | "validations";
+  branch: string | null;
+  parent: string | null;
+  semester: number | null;
+  schoolYear: number | null;
+  upcoming: boolean;
+  credits: number | null;
+  grade: string | null;
+  validated: number | null;
+  total: number | null;
+  levelPercent: number | null;
+  mandatory: boolean | null;
+  unitCode: string | null;
+  domain: string | null;
+  /** True when `domain` is TekBoard's estimate (always, when set). */
+  domainEstimated: boolean;
+}
+export interface SkillBranch {
+  id: string;
+  name: string;
+  color: string | null;
+  threshold: number | null;
+  secure: number | null;
+  reachable: number | null;
+  available: number | null;
+  alert: string | null;
+  units: string[];
+}
+export interface SkillTree {
+  syncedAt: number | null;
+  credits: { acquired: number | null; prior: number | null; thisSemester: number | null; threshold: number | null; secure: number | null; reachable: number | null; lost: number; atRisk: number };
+  semester: number | null;
+  semesters: Array<{ num: number; schoolYear: number | null; current: boolean; future: boolean }>;
+  branches: SkillBranch[];
+  nodes: SkillNode[];
+  links: Array<{ source: string; target: string; kind: "skill_unit" | "project_skill" }>;
+  history: Array<{ at: number; label: string; kind: "mark" | "project" }>;
+  notes: string[];
+}
+export type DoctorStatus = "ok" | "warn" | "error" | "unconfigured";
+export interface DoctorCheck {
+  id: string;
+  category: string;
+  title: string;
+  status: DoctorStatus;
+  detail: string;
+  affects: string | null;
+  command: string | null;
+  /** `fix:<id>`, `open:<settings tab>` or `my-connect`. */
+  action: { id: string; label: string; confirm: string | null } | null;
+}
+export interface DoctorReport {
+  at: number;
+  version: string;
+  system: string;
+  checks: DoctorCheck[];
+}
+export interface AiProviderTest {
+  ok: boolean;
+  provider: AiProviderKind;
+  model: string | null;
+  detail: string;
+  ms: number;
 }
 export interface AiProposal {
   id: number;
@@ -1290,6 +1405,18 @@ export const api = {
   aiContextPreview: (screen: Screen) => invoke<string>("ai_context_preview", { screen }),
   aiSettingsGet: () => invoke<AiSettings>("ai_settings_get"),
   aiSettingsSet: (settings: AiSettings) => invoke<AiSettings>("ai_settings_set", { settings }),
+  mySkillTree: () => invoke<SkillTree>("my_skill_tree"),
+  doctorRun: (deep = false) => invoke<DoctorReport>("doctor_run", { deep }),
+  doctorFix: (id: string) => invoke<string>("doctor_fix", { id }),
+  doctorExport: () => invoke<string>("doctor_export"),
+  openHelpUrl: (url: string) => invoke<void>("open_help_url", { url }),
+  aiProviderStatus: () => invoke<AiProviderStatus>("ai_provider_status"),
+  aiProviderTest: () => invoke<AiProviderTest>("ai_provider_test"),
+  aiOpenRouterKey: () => invoke<OpenRouterKey>("ai_openrouter_key"),
+  aiOpenRouterKeySet: (key: string | null) => invoke<OpenRouterKey>("ai_openrouter_key_set", { key }),
+  aiOpenRouterModels: (refresh = false) => invoke<OpenRouterModel[]>("ai_openrouter_models", { refresh }),
+  aiOllamaInfo: () => invoke<OllamaInfo>("ai_ollama_info"),
+  aiOllamaPull: (model: string) => invoke<number>("ai_ollama_pull", { model }),
   aiUndo: (id: number) => invoke<string>("ai_undo", { id }),
   aiActions: (limit?: number) => invoke<AiAction[]>("ai_actions", { limit: limit ?? null }),
   aiProposals: (status?: string | null) => invoke<AiProposal[]>("ai_proposals", { status: status ?? null }),

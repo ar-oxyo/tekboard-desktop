@@ -150,7 +150,7 @@ pub fn assistant_start(state: State<'_, AppState>, question: String, context: St
     if state.jobs.active("assistant", None).is_some() {
         return Err(AppError::new("busy", "Une réponse est déjà en cours : attends-la ou annule-la."));
     }
-    claude::executable()?;
+    crate::ai::provider::require(crate::ai::provider::Feature::Text)?;
     let subject = subject_of.and_then(|repo| {
         let conn = state.conn();
         let s = db::list_subjects(&conn).ok()?.into_iter().find(|s| s.repo_path.as_deref() == Some(repo.as_str()))?;

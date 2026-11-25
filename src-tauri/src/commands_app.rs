@@ -159,3 +159,54 @@ pub async fn update_save_package(app: AppHandle) -> Result<String> {
 pub fn update_open_releases() -> Result<()> {
     workspace::spawn_detached(&["xdg-open".to_string(), updates::RELEASES_URL.to_string()], &std::env::temp_dir())
 }
+
+/// Help pages TekBoard links to (creating a key, installing a tool). Nothing else is opened.
+const HELP_SITES: &[&str] = &["https://openrouter.ai/", "https://ollama.com/", "https://cli.github.com/", "https://github.com/ar-oxyo/tekboard-desktop", "https://docs.claude.com/", "https://code.claude.com/", "https://github.com/Epitech/"];
+
+pub fn allowed_help_url(url: &str) -> bool {
+    HELP_SITES.iter().any(|s| url.starts_with(s)) && !url.chars().any(|c| c.is_whitespace() || c.is_control())
+}
+
+#[tauri::command(async)]
+pub fn open_help_url(url: String) -> Result<()> {
+    if !allowed_help_url(&url) {
+        return Err(crate::error::AppError::new("url_refused", "Ce lien ne fait pas partie des pages d'aide que TekBoard ouvre."));
+    }
+    workspace::spawn_detached(&["xdg-open".to_string(), url], &std::env::temp_dir()).map_err(|e| crate::error::AppError::new("no_browser", format!("Le navigateur par défaut n'a pas pu démarrer : {e}")))
+}
+
+#[cfg(test)]
+mod help_tests {
+    #[test]
+    fn only_help_pages_open() {
+        assert!(super::allowed_help_url("https://openrouter.ai/keys"));
+        assert!(!super::allowed_help_url("https://openrouter.ai.evil.com/"));
+        assert!(!super::allowed_help_url("https://evil.com/?https://openrouter.ai/"));
+        assert!(!super::allowed_help_url("file:///etc/passwd") && !super::allowed_help_url("https://ollama.com/ x"));
+    }
+}
+
+// ───────────────────────────── TekBoard Doctor ─────────────────────────────
+
+/// Every check. `deep`: also asks the AI a question and always looks for an update.
+#[tauri::command]
+pub async fn doctor_run(app: AppHandle, state: tauri::State<'_, crate::commands::AppState>, deep: Option<bool>) -> Result<crate::doctor::diagnosis::Report> {
+    let deep = deep.unwrap_or(false);
+    let enabled = state.settings().map(|s| s.update_check).unwrap_or(true);
+    let update = if enabled || deep { updates::check(&app).await.map(|a| a.map(|a| a.version)).map_err(|e| e.to_string()) } else { Err("disabled".into()) };
+    let my = crate::commands_my::my_status(app.clone(), state.clone());
+    let facts = crate::doctor::diagnosis::Facts { version: app.package_info().version.to_string(), my_connected: my.connected, my_last_sync: my.last_sync, my_stored: my.session_stored, update, update_enabled: enabled, deep };
+    Ok(crate::doctor::diagnosis::run(&state, &facts))
+}
+
+#[tauri::command(async)]
+pub fn doctor_fix(state: tauri::State<'_, crate::commands::AppState>, id: String) -> Result<String> {
+    crate::doctor::diagnosis::fix(&state, &id)
+}
+
+/// The last report, anonymised, as Markdown (to paste in a GitHub issue).
+#[tauri::command(async)]
+pub fn doctor_export(state: tauri::State<'_, crate::commands::AppState>) -> Result<String> {
+    let r = crate::doctor::diagnosis::last().ok_or_else(|| crate::error::AppError::new("no_report", "Lance d'abord le diagnostic."))?;
+    Ok(crate::doctor::diagnosis::export(&state, &r))
+}

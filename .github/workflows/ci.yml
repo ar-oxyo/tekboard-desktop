@@ -24,6 +24,10 @@ jobs:
           workspaces: src-tauri
       - name: Versions agree
         run: node scripts/release.mjs check
+      - name: Installer (shellcheck and simulated systems)
+        run: |
+          shellcheck install.sh scripts/install.sh scripts/tests/install_test.sh
+          scripts/tests/install_test.sh
       - run: npm ci
       - run: npm run typecheck
       - run: npm test

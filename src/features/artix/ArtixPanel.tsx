@@ -12,6 +12,8 @@ import { useJob } from "../../lib/jobs";
 import { freeSlots, addDays, startOfDay, hhmm } from "../../lib/plan";
 import { useUi } from "../../lib/store";
 import { locale, t } from "../../lib/i18n";
+import { aiGate } from "../../lib/ai";
+import { useAiStatus } from "../settings/AiProvider";
 
 const tr = t;
 import { usePlanData } from "../planning/usePlan";
@@ -38,6 +40,7 @@ function greeting() {
 }
 
 function Panel() {
+  const ai = aiGate(useAiStatus().data);
   const qc = useQueryClient();
   const screen = useScreen();
   const thread = useUi((s) => s.artixThread);
@@ -164,6 +167,15 @@ else if (ask.text === "#free") {
       {view === "chat" && (
         <>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+            {!ai.ready && (
+              <div className="mb-3 rounded-lg border border-warn/30 bg-warn/8 px-3 py-2 text-[13px]">
+                <p className="text-fg">{ai.why}</p>
+                <p className="mt-1 text-xs text-muted">{t("Sans IA, les plannings proposés (#day, #week, #reorganize) fonctionnent quand même.")}</p>
+                <button type="button" className="mt-1.5 text-xs text-accent hover:underline" onClick={() => { useUi.setState({ settingsTab: "ai" }); useUi.getState().setPage("settings"); }}>
+                  {t("Ouvrir les réglages de l'IA")}
+                </button>
+              </div>
+            )}
             {empty && (
               <div className="flex flex-col gap-3 pt-3">
                 <p className="display text-[17px] font-medium">{greeting()}</p>

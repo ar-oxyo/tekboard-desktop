@@ -12,6 +12,8 @@ import { displayName, repoOptions } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { useMySync } from "../myepitech/useMySync";
 import { t } from "../../lib/i18n";
+import { aiGate } from "../../lib/ai";
+import { useAiStatus } from "../settings/AiProvider";
 
 export function SubjectsPage() {
   const qc = useQueryClient();
@@ -173,6 +175,7 @@ function SubjectRow({ subject, repos }: { subject: Subject; repos: RepoInfo[] })
   const missing = subject.repoPath !== null && !repos.some((r) => r.path === subject.repoPath);
   const briefs = useQuery({ queryKey: ["subject-briefs"], queryFn: api.subjectBriefs });
   const brief = briefs.data?.[String(subject.id)];
+  const ai = aiGate(useAiStatus().data);
   const analyze = useMutation({ mutationFn: () => api.subjectAnalyze(subject.id), onSuccess: () => toast({ kind: "info", title: t("Artix lit le sujet"), detail: t("Le résumé sera gardé : le PDF ne sera plus relu.") }), onError: fail("Sujet non analysé") });
 
   return (
@@ -188,7 +191,7 @@ function SubjectRow({ subject, repos }: { subject: Subject; repos: RepoInfo[] })
         </Badge>
       ) : null}
       {(!brief || brief.stale) && (
-        <Button size="sm" variant="ghost" busy={analyze.isPending} onClick={() => analyze.mutate()} title={t("Artix lit le sujet une fois et en garde les exigences et une estimation")}>
+        <Button size="sm" variant="ghost" busy={analyze.isPending} disabled={!ai.text} disabledReason={ai.why} onClick={() => analyze.mutate()} title={t("Artix lit le sujet une fois et en garde les exigences et une estimation")}>
           {t("Analyser")}
         </Button>
       )}

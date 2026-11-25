@@ -14,6 +14,7 @@ export const SCREEN_OF: Record<Page, string> = {
   library: "projects",
   templates: "resources",
   myepitech: "school",
+  skilltree: "school",
   logtime: "school",
   subjects: "school",
   analytics: "stats",

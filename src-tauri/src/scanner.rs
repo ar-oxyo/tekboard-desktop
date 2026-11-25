@@ -49,7 +49,8 @@ fn added_at(repo: &Path) -> Option<i64> {
     created.or_else(|| git::run(Some(repo), &["log", "--max-parents=0", "--format=%ct", "-1"]).ok().and_then(|t| t.trim().parse().ok()))
 }
 
-const MAX_DEPTH: usize = 5;
+/// Levels below a root: `Epitech/Année 1/Maths/Semestre 1/101pong` is found.
+const MAX_DEPTH: usize = 8;
 
 pub fn discover(roots: &[String]) -> Vec<(PathBuf, PathBuf)> {
     let mut found = Vec::new();
@@ -58,7 +59,9 @@ pub fn discover(roots: &[String]) -> Vec<(PathBuf, PathBuf)> {
         let mut repos = Vec::new();
         find_repos(&root, 0, MAX_DEPTH, &mut repos);
         for repo in repos {
-            if !found.iter().any(|(_, r)| r == &repo) {
+            // The same folder reached through two roots, or through a link, is listed once.
+            let real = std::fs::canonicalize(&repo).unwrap_or_else(|_| repo.clone());
+            if !found.iter().any(|(_, r)| r == &repo || std::fs::canonicalize(r).map(|x| x == real).unwrap_or(false)) {
                 found.push((root.clone(), repo));
             }
         }
@@ -128,11 +131,12 @@ mod tests {
         init(&b);
         git::run(Some(&a), &["remote", "add", "origin", "git@github.com:Org/G-CPE-110-LYN-1-1-settingup-27.git"]).unwrap();
         fs::write(b.join("x"), "x").unwrap();
+        // An empty `.git` folder is not a repository.
         fs::create_dir_all(root.join("Perso/tool/inner/.git")).unwrap();
 
         let roots = vec![root.to_string_lossy().into_owned()];
         let infos = scan(&roots, &HashMap::new());
-        assert_eq!(infos.len(), 2, "a repo nested inside a repo is not listed separately");
+        assert_eq!(infos.len(), 2, "a half-made .git is not listed");
         let ia = infos.iter().find(|r| r.name.contains("settingup")).unwrap();
         assert_eq!(ia.group, "Tek");
         assert_eq!(ia.epitech.as_ref().unwrap().project, "settingup");
@@ -151,6 +155,58 @@ mod tests {
         init(&root.join("sub/a"));
         let roots = vec![root.to_string_lossy().into_owned(), root.join("sub").to_string_lossy().into_owned()];
         assert_eq!(discover(&roots).len(), 1);
+    }
+
+    #[test]
+    fn deep_school_trees_are_found_with_their_groups() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().join("Epitech");
+        for p in ["Maths/101pong", "Maths/102architect", "Graphical/my_hunter", "C_Programming/my_printf", "C_Programming/my_ls", "Year1/S1/Unix/Shell/minishell1"] {
+            init(&root.join(p));
+        }
+        // Dependencies and caches are not searched; a project named like a skipped folder is kept.
+        init(&root.join("Graphical/my_hunter/node_modules/dep"));
+        init(&root.join("Tools/build"));
+        fs::create_dir_all(root.join("Maths/__pycache__")).unwrap();
+        let found = discover(&[root.to_string_lossy().into_owned()]);
+        let mut names: Vec<String> = found.iter().map(|(_, r)| r.strip_prefix(&root).unwrap().to_string_lossy().into_owned()).collect();
+        names.sort();
+        assert_eq!(names, ["C_Programming/my_ls", "C_Programming/my_printf", "Graphical/my_hunter", "Maths/101pong", "Maths/102architect", "Tools/build", "Year1/S1/Unix/Shell/minishell1"]);
+        let info = inspect(&root, &root.join("Year1/S1/Unix/Shell/minishell1"), RepoMeta::default());
+        assert_eq!(info.group, "Year1/S1/Unix/Shell", "the user's own folders become the group");
+    }
+
+    #[test]
+    fn a_versioned_folder_of_projects_and_submodules() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().join("root");
+        let school = root.join("Epitech");
+        init(&school);
+        init(&school.join("Maths/101pong"));
+        // A submodule: its `.git` is a file pointing into the parent's `.git/modules`.
+        fs::create_dir_all(school.join(".git/modules/lib/my")).unwrap();
+        fs::write(school.join(".git/modules/lib/my/HEAD"), "ref: refs/heads/main\n").unwrap();
+        fs::create_dir_all(school.join("lib/my")).unwrap();
+        fs::write(school.join("lib/my/.git"), "gitdir: ../../.git/modules/lib/my\n").unwrap();
+        fs::write(school.join(".gitmodules"), "[submodule \"lib/my\"]\n\tpath = lib/my\n\turl = x\n").unwrap();
+        assert_eq!(git::repo_kind(&school.join("lib/my")), Some(git::RepoKind::Submodule));
+        let found: Vec<PathBuf> = discover(&[root.to_string_lossy().into_owned()]).into_iter().map(|(_, r)| r).collect();
+        assert_eq!(found, vec![school.clone(), school.join("Maths/101pong")], "independent repos inside a repo are found, submodules are not");
+    }
+
+    #[test]
+    fn links_are_followed_once_without_loops() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().join("root");
+        let elsewhere = tmp.path().join("elsewhere");
+        init(&elsewhere.join("my_rpg"));
+        fs::create_dir_all(&root).unwrap();
+        std::os::unix::fs::symlink(&elsewhere, root.join("linked")).unwrap();
+        std::os::unix::fs::symlink(&root, root.join("loop")).unwrap();
+        let roots = vec![root.to_string_lossy().into_owned(), elsewhere.to_string_lossy().into_owned()];
+        let found = discover(&roots);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert!(found[0].1.ends_with("my_rpg"));
     }
 
     #[test]

@@ -164,3 +164,47 @@ Migration v9 is additive (`visibility`, `calendar_hidden`, `plan_categories`, `p
 - **Data** (`datamgmt.rs`, Settings → Données): backup = zip of `manifest.json`, a `VACUUM INTO` snapshot, `templates/`, `subjects/`, `libraries/` (never `my-session/` nor the cache). Restore checks the manifest (newer schema refused), extracts with `enclosed_name`, runs `integrity_check`, migrates, moves library paths to this computer, saves the current data to `backups/before-import-*.zip`, then swaps the shared connection. Full reset erases only inside the data and cache folders (checked by name) and keeps any projects folder inside them.
 - **Start** (`lib.rs::start`): an unreadable database is renamed `tekboard.db.corrupt-<date>`; a database from a newer version is left alone and the user told; damaged settings keep the fields that still read (`settings::repair`); an unwritable data folder shows a native dialog. Data and cache folders are `0700`.
 - **First run**: `index.html` draws the launch screen before any script, removed when settings are read (`lib/splash.ts`). `features/onboarding/OnboardingFlow.tsx` replaces the app while `onboarded` is false; the step is saved in `settings.onboardingStep`.
+
+## AI providers, Doctor and Skill Tree (0.7)
+
+**Providers.** Every AI request still goes through `ai::runner::run`, which asks `ai::provider::route` where it goes:
+- Claude Code keeps its isolated `claude -p` path.
+- OpenRouter and Ollama share `ai::openai`. It is one OpenAI-compatible client: blocking `ureq`, SSE read line by line inside the job.
+- The calls run in `ai::toolloop`. It produces the same `stream::Event`s and `runner::Answer` as Claude Code, so callers did not change.
+- TekBoard's own tools are reached in-process through `ipc::local`. It uses the same grant and rules as the MCP socket.
+- Project reading for those providers is done by `ai::fstools`. It provides `Read`/`Glob`/`Grep`, confined to the project, with the same `DENY_READ` rules and capped output.
+- Requests that edit files or run commands (`Tools::ReadEdit`, agent tools) are refused for non-Claude providers with `ai_needs_claude`. `provider::require(feature)` gives the same answer before a job starts.
+- OpenRouter: free = prompt, completion and request prices all 0. The model is checked against the model list (cached 6 h) before every request. No `models` fallback list is ever sent, and `allowPaid` is only set by the user after a confirmation.
+- API keys live in `secrets.json` (0600), never in the settings blob sent to the window. They are scrubbed from error messages and reports (`secrets::scrub`).
+- Settings saved before 0.7 have no provider. `provider::migrate` (at start, detection outside the DB lock) sets Claude Code when it answers, none otherwise.
+
+**Doctor** (`doctor::diagnosis`). One `Check` per dependency, with:
+- a status (`ok`, `warn`, `error`, `unconfigured`);
+- what it affects;
+- a command to type;
+- an optional action: `fix:<id>` (backend), `open:<settings tab>` or `my-connect`.
+
+Fixes are limited to:
+- folder and key permissions;
+- `VACUUM INTO` a backup, then `REINDEX; VACUUM`;
+- removing a vanished root, confirmed first, written as is because `settings::save` refuses missing folders.
+
+`doctor::anonymize` masks the following:
+- home, user, roots, git identity and GitHub login;
+- e-mails, JWTs and API keys;
+- lines `packager::secret_in` still flags.
+
+**Skill Tree** (`skilltree`). Built from `my_cache` only, so it works offline:
+- branches = `competencyBlocks` (+ `unassignedBlockIds`);
+- units = `blocks` and `nextSemesterBlocks`;
+- skills = learning outcomes;
+- projects = `graph/me` project nodes, joined by `entityId` and linked through the graph's `project_skill` links;
+- graph statuses override the ones computed from validation counts.
+
+The unit's domain is the only deduction, from its projects' unit codes, and is flagged `domainEstimated`. Filtering and the radial layout are in `src/lib/skilltree.ts` (pure, tested); drawing is plain SVG with pan/zoom (`features/skilltree`).
+
+**Repository discovery** (`settings::find_repos`):
+- A real repository is a `.git` folder with `HEAD`, or a `gitdir:` file. Submodules are skipped (`git::repo_kind`).
+- The walk continues two levels inside a repository to find independent ones.
+- Links are followed once (canonical-path set).
+- `MAX_DEPTH` is 8.

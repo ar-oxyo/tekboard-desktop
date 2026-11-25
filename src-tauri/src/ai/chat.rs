@@ -54,6 +54,9 @@ pub struct Message {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AiSettings {
+    /// `none`, `claude`, `openrouter` or `ollama` (see `provider`). Empty in settings saved
+    /// before 0.7: set once at start (`provider::migrate`).
+    pub provider: String,
     /// Model alias for conversations (`sonnet`, `opus`, `haiku`, or a full name; empty = Claude Code's default).
     pub chat_model: String,
     /// Model for agents (moulinette, test generation, subject analysis).
@@ -64,12 +67,24 @@ pub struct AiSettings {
     pub agent_minutes: i64,
     /// Analyse new subjects without asking.
     pub auto_analyze: bool,
+    /// OpenRouter model id (`qwen/qwen3-coder:free`…).
+    pub openrouter_model: String,
+    /// Paid OpenRouter models may be used. Only ever set by the user, after a confirmation.
+    pub allow_paid: bool,
+    /// Ollama model (`qwen2.5:7b`…) and where the service answers.
+    pub ollama_model: String,
+    pub ollama_url: String,
 }
 
 impl Default for AiSettings {
     fn default() -> Self {
-        AiSettings { chat_model: "sonnet".into(), agent_model: "opus".into(), agent_budget_usd: 0.0, agent_minutes: 15, auto_analyze: false }
+        AiSettings { provider: String::new(), chat_model: "sonnet".into(), agent_model: "opus".into(), agent_budget_usd: 0.0, agent_minutes: 15, auto_analyze: false, openrouter_model: String::new(), allow_paid: false, ollama_model: String::new(), ollama_url: super::ollama::DEFAULT_URL.into() }
     }
+}
+
+/// A model name as providers write them (`sonnet`, `qwen/qwen3:free`, `qwen2.5:7b`), nothing else.
+pub fn clean_model(m: &str) -> String {
+    m.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '[' | ']' | '_' | '/' | ':' | '@')).take(100).collect()
 }
 
 impl AiSettings {
@@ -77,10 +92,31 @@ impl AiSettings {
         crate::db::get_setting(conn, "ai_settings").ok().flatten().and_then(|v| serde_json::from_str(&v).ok()).unwrap_or_default()
     }
     pub fn save(&self, conn: &Connection) -> Result<()> {
-        let clean = |m: &str| m.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '[' | ']' | '_')).take(60).collect::<String>();
-        let s = AiSettings { chat_model: clean(&self.chat_model), agent_model: clean(&self.agent_model), agent_budget_usd: self.agent_budget_usd.clamp(0.0, 50.0), agent_minutes: self.agent_minutes.clamp(3, 60), auto_analyze: self.auto_analyze };
-        crate::db::set_setting(conn, "ai_settings", &serde_json::to_string(&s)?)
+        let provider = super::provider::Kind::parse(&self.provider).map(|k| k.id().to_string()).unwrap_or_default();
+        let s = AiSettings {
+            provider,
+            chat_model: clean_model(&self.chat_model),
+            agent_model: clean_model(&self.agent_model),
+            agent_budget_usd: self.agent_budget_usd.clamp(0.0, 50.0),
+            agent_minutes: self.agent_minutes.clamp(3, 60),
+            auto_analyze: self.auto_analyze,
+            openrouter_model: clean_model(&self.openrouter_model),
+            allow_paid: self.allow_paid,
+            ollama_model: clean_model(&self.ollama_model),
+            ollama_url: super::ollama::clean_url(&self.ollama_url).unwrap_or_else(|| super::ollama::DEFAULT_URL.into()),
+        };
+        crate::db::set_setting(conn, "ai_settings", &serde_json::to_string(&s)?)?;
+        super::provider::set_current(&s);
+        Ok(())
     }
+}
+
+/// The last turns of a thread, oldest first, for providers that keep no session.
+fn history(conn: &Connection, thread: i64, max: usize) -> Result<Vec<(String, String)>> {
+    let mut st = conn.prepare("SELECT role, text FROM ai_messages WHERE thread_id = ?1 AND role IN ('user', 'assistant') ORDER BY id DESC LIMIT ?2")?;
+    let mut rows: Vec<(String, String)> = st.query_map(params![thread, max as i64], |r| Ok((r.get::<_, String>(0)?, crate::ai::stream::clip(&r.get::<_, String>(1)?, 4000))))?.collect::<std::result::Result<_, _>>()?;
+    rows.reverse();
+    Ok(rows)
 }
 
 fn now() -> i64 {
@@ -211,7 +247,7 @@ pub fn send(state: &AppState, thread: Option<i64>, text: &str, screen: &Screen) 
     if text.is_empty() || text.len() > MAX_QUESTION {
         return Err(AppError::new("invalid_question", format!("Écris une demande de {MAX_QUESTION} caractères au plus.")));
     }
-    crate::claude::executable()?;
+    let kind = super::provider::require(super::provider::Feature::Chat)?;
     let t = now();
     let (thread, session, last_turn) = {
         let conn = state.conn();
@@ -231,10 +267,12 @@ pub fn send(state: &AppState, thread: Option<i64>, text: &str, screen: &Screen) 
         return Err(AppError::new("busy", "Artix répond déjà dans cette conversation : attends la réponse ou interromps-la."));
     }
     let card = context_card(state, screen, Some(thread), last_turn)?;
-    let (persona, settings) = {
+    let (persona, settings, past) = {
         let conn = state.conn();
+        // Earlier turns, for providers without a session of their own (read before this one is added).
+        let past = if kind == super::provider::Kind::Claude { Vec::new() } else { history(&conn, thread, 16)? };
         add_message(&conn, thread, "user", text, &json!({"screen": screen}))?;
-        (crate::prompts::template(&conn, crate::prompts::PERSONA)?, AiSettings::load(&conn))
+        (crate::prompts::template(&conn, crate::prompts::PERSONA)?, AiSettings::load(&conn), past)
     };
     crate::notify::changed(&["ai"]);
     let grant = ipc::grant(&state.cache_dir, tools::Caller { thread_id: Some(thread), allowed: tools::chat_tools(), ..Default::default() })?;
@@ -245,6 +283,7 @@ pub fn send(state: &AppState, thread: Option<i64>, text: &str, screen: &Screen) 
     req.mcp = Some(runner::Mcp { config: grant.config.clone(), allow: vec!["*".into()] });
     req.model = Some(settings.chat_model.clone()).filter(|m| !m.is_empty());
     req.partial = true;
+    req.history = past;
     let new_session = session.is_none();
     let session_id = session.unwrap_or_else(runner::new_session_id);
     req.session = if new_session { runner::Session::Start(session_id.clone()) } else { runner::Session::Resume(session_id.clone()) };
@@ -319,11 +358,33 @@ mod tests {
     }
 
     #[test]
+    fn settings_of_older_versions_still_load() {
+        let c = crate::db::open_in_memory().unwrap();
+        crate::db::set_setting(&c, "ai_settings", r#"{"chatModel":"opus","agentModel":"opus","agentBudgetUsd":2.0,"agentMinutes":20,"autoAnalyze":true}"#).unwrap();
+        let s = AiSettings::load(&c);
+        assert_eq!((s.chat_model.as_str(), s.agent_minutes, s.auto_analyze, s.provider.as_str()), ("opus", 20, true, ""));
+        assert_eq!(s.ollama_url, "http://localhost:11434");
+    }
+
+    #[test]
+    fn history_is_oldest_first_and_bounded() {
+        let c = crate::db::open_in_memory().unwrap();
+        c.execute("INSERT INTO ai_threads (title, created_at, updated_at) VALUES ('t', 0, 0)", []).unwrap();
+        for (i, role) in ["user", "assistant", "system", "user", "assistant"].iter().enumerate() {
+            add_message(&c, 1, role, &format!("m{i}"), &json!({})).unwrap();
+        }
+        let h = history(&c, 1, 3).unwrap();
+        assert_eq!(h, vec![("assistant".to_string(), "m1".to_string()), ("user".into(), "m3".into()), ("assistant".into(), "m4".into())], "system notes are left out");
+    }
+
+    #[test]
     fn settings_are_bounded() {
         let c = crate::db::open_in_memory().unwrap();
-        AiSettings { chat_model: "sonnet; rm -rf".into(), agent_model: "opus".into(), agent_budget_usd: 999.0, agent_minutes: 0, auto_analyze: true }.save(&c).unwrap();
+        AiSettings { chat_model: "sonnet; rm -rf".into(), agent_model: "opus".into(), agent_budget_usd: 999.0, agent_minutes: 0, auto_analyze: true, provider: "bogus".into(), openrouter_model: "qwen/qwen3-coder:free".into(), ollama_model: "qwen2.5:7b".into(), ollama_url: "file:///etc".into(), allow_paid: false }.save(&c).unwrap();
         let s = AiSettings::load(&c);
         assert_eq!((s.chat_model.as_str(), s.agent_budget_usd, s.agent_minutes), ("sonnetrm-rf", 50.0, 3));
+        assert_eq!((s.openrouter_model.as_str(), s.ollama_model.as_str()), ("qwen/qwen3-coder:free", "qwen2.5:7b"), "provider model names keep / and :");
+        assert_eq!((s.provider.as_str(), s.ollama_url.as_str()), ("", "http://localhost:11434"), "unknown values are not kept");
         assert_eq!(title_from("  Organise   ma\njournée "), "Organise ma journée");
     }
 }

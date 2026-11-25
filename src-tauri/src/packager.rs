@@ -74,7 +74,7 @@ pub fn secret_in(text: &str) -> Option<&'static str> {
         return Some("private key");
     }
     let alnum = |c: char| c.is_ascii_alphanumeric() || c == '_' || c == '-';
-    for (prefix, min, what) in [("ghp_", 30, "GitHub token"), ("gho_", 30, "GitHub token"), ("github_pat_", 30, "GitHub token"), ("sk-ant-", 30, "Anthropic API key"), ("sk-proj-", 30, "OpenAI API key"), ("xoxb-", 20, "Slack token"), ("xoxp-", 20, "Slack token"), ("AKIA", 16, "AWS access key"), ("AIza", 30, "Google API key")] {
+    for (prefix, min, what) in [("ghp_", 30, "GitHub token"), ("gho_", 30, "GitHub token"), ("github_pat_", 30, "GitHub token"), ("sk-ant-", 30, "Anthropic API key"), ("sk-or-", 30, "OpenRouter API key"), ("sk-proj-", 30, "OpenAI API key"), ("xoxb-", 20, "Slack token"), ("xoxp-", 20, "Slack token"), ("AKIA", 16, "AWS access key"), ("AIza", 30, "Google API key")] {
         let mut from = 0;
         while let Some(i) = text[from..].find(prefix) {
             let at = from + i + prefix.len();

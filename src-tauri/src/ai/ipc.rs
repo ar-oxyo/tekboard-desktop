@@ -24,6 +24,8 @@ use tauri::{AppHandle, Manager};
 
 static GRANTS: Mutex<Option<HashMap<String, Caller>>> = Mutex::new(None);
 static SOCKET: OnceLock<PathBuf> = OnceLock::new();
+/// The same answers, for runs TekBoard drives itself (OpenRouter, Ollama: see `toolloop`).
+static LOCAL: OnceLock<Answer> = OnceLock::new();
 
 fn grants() -> std::sync::MutexGuard<'static, Option<HashMap<String, Caller>>> {
     GRANTS.lock().unwrap_or_else(|e| e.into_inner())
@@ -94,6 +96,7 @@ pub fn serve_static(state: &'static AppState) -> Result<()> {
 type Answer = std::sync::Arc<dyn Fn(&Value) -> Value + Send + Sync>;
 
 fn serve_with(answer: Answer) -> Result<()> {
+    let _ = LOCAL.set(answer.clone());
     let path = socket_path();
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
@@ -121,6 +124,20 @@ fn serve_with(answer: Answer) -> Result<()> {
         }
     });
     Ok(())
+}
+
+/// The token written in an MCP configuration file by `grant`.
+pub fn token_in(config: &Path) -> Option<String> {
+    let v: Value = serde_json::from_str(&std::fs::read_to_string(config).ok()?).ok()?;
+    v["mcpServers"]["tekboard"]["env"]["TEKBOARD_TOKEN"].as_str().map(str::to_string)
+}
+
+/// A request answered in this process, with the same checks as over the socket.
+pub fn local(token: &str, op: &str, name: &str, args: &Value) -> Value {
+    match LOCAL.get() {
+        Some(answer) => answer(&json!({"token": token, "op": op, "name": name, "args": args})),
+        None => json!({"ok": false, "error": "Le canal des outils de TekBoard n'est pas ouvert."}),
+    }
 }
 
 fn handle(stream: UnixStream, answer: &Answer) -> std::io::Result<()> {

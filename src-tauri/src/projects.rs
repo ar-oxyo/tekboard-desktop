@@ -129,7 +129,8 @@ pub fn mark_duplicates(repos: &mut [RepoInfo]) {
     let key = |r: &RepoInfo| -> Option<String> {
         match &r.remote {
             Some(rem) => Some(format!("remote:{}/{}/{}", rem.host.to_lowercase(), rem.owner.to_lowercase(), rem.name.to_lowercase().trim_end_matches(".git"))),
-            None => r.last_commit.as_ref().map(|c| format!("local:{}:{}", r.name.to_lowercase(), c.hash)),
+            // No remote: two copies share their first commit, even when one has moved on.
+            None => r.last_commit.as_ref().map(|c| format!("local:{}", crate::git::root_commit(std::path::Path::new(&r.path)).unwrap_or_else(|| format!("{}:{}", r.name.to_lowercase(), c.hash)))),
         }
     };
     let mut groups: HashMap<String, Vec<usize>> = HashMap::new();

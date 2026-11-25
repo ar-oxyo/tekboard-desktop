@@ -3,7 +3,7 @@
 
 use crate::error::{AppError, Result};
 use serde::Serialize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 fn base(dir: Option<&Path>) -> Command {
@@ -437,8 +437,49 @@ pub fn sync(repo: &Path, op: Sync) -> Result<String> {
     Ok(report.output)
 }
 
+/// What a folder's `.git` is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RepoKind {
+    /// A `.git` folder with a `HEAD`.
+    Normal,
+    /// A `.git` file pointing to the repository data elsewhere (`git worktree`).
+    Linked,
+    /// A submodule of the repository around it (its data is in `…/.git/modules/…`).
+    Submodule,
+}
+
+/// Whether `dir` is the top of a real repository: an empty or half-made `.git` is not.
+pub fn repo_kind(dir: &Path) -> Option<RepoKind> {
+    let dot = dir.join(".git");
+    let meta = std::fs::metadata(&dot).ok()?;
+    if meta.is_dir() {
+        return dot.join("HEAD").is_file().then_some(RepoKind::Normal);
+    }
+    let text = std::fs::read_to_string(&dot).ok()?;
+    let target = text.lines().find_map(|l| l.strip_prefix("gitdir:"))?.trim();
+    let target_path = if Path::new(target).is_absolute() { PathBuf::from(target) } else { dir.join(target) };
+    if !target_path.join("HEAD").is_file() {
+        return None;
+    }
+    let t = target.replace('\\', "/");
+    Some(if t.contains(".git/modules/") { RepoKind::Submodule } else { RepoKind::Linked })
+}
+
 pub fn is_repo(dir: &Path) -> bool {
-    dir.join(".git").exists()
+    repo_kind(dir).is_some()
+}
+
+/// Folders of the submodules declared by the repository in `dir` (from `.gitmodules`).
+pub fn submodule_paths(dir: &Path) -> Vec<PathBuf> {
+    std::fs::read_to_string(dir.join(".gitmodules"))
+        .map(|t| t.lines().filter_map(|l| l.trim().strip_prefix("path")).filter_map(|r| r.trim_start().strip_prefix('=')).map(|p| dir.join(p.trim())).collect())
+        .unwrap_or_default()
+}
+
+/// The first commit of the current branch: the same in every copy of a repository.
+pub fn root_commit(repo: &Path) -> Option<String> {
+    let out = run(Some(repo), &["rev-list", "--max-parents=0", "HEAD"]).ok()?;
+    out.lines().last().map(|l| l.trim().to_string()).filter(|h| !h.is_empty())
 }
 
 #[cfg(test)]

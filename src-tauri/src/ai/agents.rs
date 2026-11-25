@@ -99,7 +99,7 @@ pub const MOULI_STEPS: &[(&str, &str)] = &[("prepare", "Copie de travail et bac 
 
 /// Artix's moulinette on `repo`. Returns the job id.
 pub fn moulinette(state: &AppState, repo: PathBuf) -> Result<u64> {
-    crate::claude::executable()?;
+    super::provider::require(super::provider::Feature::Agent)?;
     let key = repo.to_string_lossy().into_owned();
     if let Some(id) = state.jobs.active("moulinette_ai", Some(&key)) {
         return Ok(id);
@@ -154,7 +154,7 @@ pub const GEN_STEPS: &[(&str, &str)] = &[("prepare", "Copie de travail et bac à
 
 /// Test generation on a copy; the result is a diff (`summary.changes`) applied by `apply_tests`.
 pub fn generate_tests(state: &AppState, repo: PathBuf) -> Result<u64> {
-    crate::claude::executable()?;
+    super::provider::require(super::provider::Feature::Agent)?;
     let key = repo.to_string_lossy().into_owned();
     if let Some(id) = state.jobs.active("gen_tests", Some(&key)) {
         return Ok(id);

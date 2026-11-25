@@ -66,11 +66,14 @@ pub struct Request {
     pub timeout: Duration,
     /// Text being written is reported as it comes (chat).
     pub partial: bool,
+    /// Earlier turns `(role, text)`, for providers that keep no conversation themselves
+    /// (OpenRouter, Ollama). Claude Code continues its own session instead.
+    pub history: Vec<(String, String)>,
 }
 
 impl Request {
     pub fn new(prompt: impl Into<String>, tools: Tools, timeout: Duration) -> Self {
-        Request { prompt: prompt.into(), system: None, tools, mcp: None, model: None, effort: None, session: Session::Once, json_schema: None, budget_usd: None, timeout, partial: false }
+        Request { prompt: prompt.into(), system: None, tools, mcp: None, model: None, effort: None, session: Session::Once, json_schema: None, budget_usd: None, timeout, partial: false, history: Vec::new() }
     }
 }
 
@@ -156,10 +159,43 @@ pub struct Answer {
     pub denials: Vec<String>,
 }
 
-/// Runs Claude Code as part of `job`, in `dir`. Every tool call becomes an activity entry of
-/// the job (`job.event`), the text written so far is kept in the summary under `partial`
-/// when `partial` is set, and `on_event` sees every event (for callers that react to them).
+/// Runs a request with the AI the user chose (`provider`), as part of `job`, in `dir`. Every
+/// tool call becomes an activity entry of the job (`job.event`), the text written so far is
+/// kept in the summary under `partial` when `partial` is set, and `on_event` sees every event
+/// (for callers that react to them). A request the provider cannot handle (an agent with
+/// OpenRouter…) is refused before anything runs.
 pub fn run(job: &Job, dir: &Path, r: &Request, on_event: &mut dyn FnMut(&Event)) -> Result<(Outcome, Result<Answer>)> {
+    match super::provider::route(r)? {
+        super::provider::Route::Claude => run_claude(job, dir, r, on_event),
+        super::provider::Route::Compat(ep) => super::toolloop::run(job, dir, r, ep, on_event),
+    }
+}
+
+/// What every provider shows of a run: text blocks and tool calls in the activity feed.
+pub fn show(job: &Job, ev: &Event) {
+    let label = |t: &str| super::tools::label(t);
+    match ev {
+        Event::Text(t) => job.event(json!({"kind": "text", "text": stream::clip(t, 4000), "at": now()})),
+        Event::ToolUse { id, name, input } => {
+            let (label, detail) = stream::describe(name, input, &label);
+            job.log(&format!("→ {label} {detail}"));
+            job.event(json!({"kind": "tool", "id": id, "tool": name, "label": label, "detail": detail, "status": "running", "at": now()}));
+        }
+        Event::ToolResult { id, ok, text: out } => {
+            if !ok {
+                job.log(&format!("  ✗ {}", stream::clip(out, 300)));
+            }
+            let excerpt = stream::clip(out, 600);
+            job.update_event(id, |e| {
+                e["status"] = json!(if *ok { "ok" } else { "error" });
+                e["result"] = json!(excerpt);
+            });
+        }
+        _ => {}
+    }
+}
+
+fn run_claude(job: &Job, dir: &Path, r: &Request, on_event: &mut dyn FnMut(&Event)) -> Result<(Outcome, Result<Answer>)> {
     let exe = crate::claude::executable()?;
     let argv = argv(&exe, r);
     job.log(&format!("$ {}", preview(r).join(" ")));
@@ -167,7 +203,6 @@ pub fn run(job: &Job, dir: &Path, r: &Request, on_event: &mut dyn FnMut(&Event))
     let mut raw: Vec<String> = Vec::new();
     let mut text = String::new();
     let mut session: Option<String> = None;
-    let label = |t: &str| super::tools::label(t);
     let o = job.run_lines(&argv, dir, r.timeout, &[], false, &mut |line| {
         for ev in stream::parse_line(line) {
             match &ev {
@@ -184,23 +219,9 @@ pub fn run(job: &Job, dir: &Path, r: &Request, on_event: &mut dyn FnMut(&Event))
                         text.push_str(t);
                         text.push('\n');
                     }
-                    job.event(json!({"kind": "text", "text": stream::clip(t, 4000), "at": now()}));
+                    show(job, &ev);
                 }
-                Event::ToolUse { id, name, input } => {
-                    let (label, detail) = stream::describe(name, input, &label);
-                    job.log(&format!("→ {label} {detail}"));
-                    job.event(json!({"kind": "tool", "id": id, "tool": name, "label": label, "detail": detail, "status": "running", "at": now()}));
-                }
-                Event::ToolResult { id, ok, text: out } => {
-                    if !ok {
-                        job.log(&format!("  ✗ {}", stream::clip(out, 300)));
-                    }
-                    let excerpt = stream::clip(out, 600);
-                    job.update_event(id, |e| {
-                        e["status"] = json!(if *ok { "ok" } else { "error" });
-                        e["result"] = json!(excerpt);
-                    });
-                }
+                Event::ToolUse { .. } | Event::ToolResult { .. } => show(job, &ev),
                 Event::Result(f) => {
                     last = Some(f.clone());
                 }

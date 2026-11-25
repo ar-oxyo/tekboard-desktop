@@ -1,4 +1,5 @@
-// Shown before any Claude Code run: what it may read, write and not do, with the exact command and instructions.
+// Shown before any AI run on a project: which AI, what it may read, write and not do, with the
+// exact command (Claude Code) and instructions.
 import { useQuery } from "@tanstack/react-query";
 import { Modal } from "../../components/Modal";
 import { CodeView } from "../../components/DiffView";
@@ -14,7 +15,7 @@ export function ClaudeBriefDialog({ repo, task, disclosure = false, confirmLabel
       open
       onClose={onClose}
       width="w-[720px]"
-      title={task === "tests" ? "Generate unit tests with Claude Code" : task === "readme" ? "Write the README with Claude Code" : task === "analysis" ? "Analyse the repository with Claude Code" : "Check the subject with Claude Code"}
+      title={(task === "tests" ? t("Générer des tests unitaires") : task === "readme" ? t("Écrire le README") : task === "analysis" ? t("Analyser le dépôt") : t("Comparer le code au sujet")) + (p ? ` · ${p.provider}` : "")}
       description={t("Rien ne démarre avant ta confirmation.")}
       footer={
         <>
@@ -29,17 +30,19 @@ export function ClaudeBriefDialog({ repo, task, disclosure = false, confirmLabel
         <ErrorNote>{asAppError(brief.error).message}</ErrorNote>
       ) : (
         <div className="flex flex-col gap-3 text-[13px]">
-          {!p.available && <ErrorNote>Claude Code n'est pas installé sur cet ordinateur (commande `claude` introuvable).</ErrorNote>}
+          {!p.available && <ErrorNote>{p.unavailable ?? t("Cette IA ne peut pas faire cette tâche.")}</ErrorNote>}
           <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-2">
             <dt className="text-muted">{t("Peut lire")}</dt><dd>{p.canRead}</dd>
             <dt className="text-muted">{t("Peut modifier")}</dt><dd>{p.canWrite}</dd>
             <dt className="text-muted">Ne peut pas</dt><dd>{p.cannot}</dd>
             <dt className="text-muted">Compte</dt><dd>{p.account}{p.version && <span className="text-faint"> · {p.version}</span>}</dd>
           </dl>
-          <div>
-            <p className="mb-1 text-xs font-medium text-muted">Commande</p>
-            <CodeView text={p.argv.join(" ")} className="max-h-28 rounded-md whitespace-pre-wrap" />
-          </div>
+          {p.argv.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted">Commande</p>
+              <CodeView text={p.argv.join(" ")} className="max-h-28 rounded-md whitespace-pre-wrap" />
+            </div>
+          )}
           <div>
             <p className="mb-1 text-xs font-medium text-muted">{t("Instructions reçues")}</p>
             <CodeView text={brief.data!.prompt} className="max-h-56 rounded-md" />

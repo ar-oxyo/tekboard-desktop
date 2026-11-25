@@ -11,8 +11,11 @@ import { api, asAppError } from "../../lib/api";
 import { useUi } from "../../lib/store";
 import { ClaudeBriefDialog } from "./ClaudeBrief";
 import { t } from "../../lib/i18n";
+import { aiGate } from "../../lib/ai";
+import { useAiStatus } from "../settings/AiProvider";
 
 export function ReadmeDialog({ repo }: { repo: string }) {
+  const ai = aiGate(useAiStatus().data);
   const qc = useQueryClient();
   const close = useUi((s) => s.closeTool);
   const toast = useUi((s) => s.toast);
@@ -39,7 +42,7 @@ export function ReadmeDialog({ repo }: { repo: string }) {
     }
   }, [proposal]);
   const running = jobId !== null && (job.data === undefined || job.data.status === "running");
-  const failed = job.data && (job.data.status === "failed" || job.data.status === "cancelled") ? job.data.steps[0]?.detail ?? "Claude Code did not answer" : null;
+  const failed = job.data && (job.data.status === "failed" || job.data.status === "cancelled") ? job.data.steps[0]?.detail ?? t("L'IA n'a pas répondu") : null;
 
   const diff = useQuery({ queryKey: ["readme-diff", repo, text], queryFn: () => api.readmeDiff(repo, text ?? ""), enabled: tab === "diff" && text !== null, staleTime: 0 });
   const write = useMutation({
@@ -50,7 +53,7 @@ export function ReadmeDialog({ repo }: { repo: string }) {
       close();
     },
   });
-  const startAi = useMutation({ mutationFn: () => api.readmeAiStart(repo, disclosure), onSuccess: setJobId, onError: (e) => toast({ kind: "error", title: t("Claude Code n'a pas pu démarrer"), detail: asAppError(e).message }) });
+  const startAi = useMutation({ mutationFn: () => api.readmeAiStart(repo, disclosure), onSuccess: setJobId, onError: (e) => toast({ kind: "error", title: t("L'IA n'a pas pu démarrer"), detail: asAppError(e).message }) });
   const exists = draft.data?.current !== null && draft.data?.current !== undefined;
 
   return (
@@ -85,11 +88,11 @@ export function ReadmeDialog({ repo }: { repo: string }) {
                 <input type="checkbox" className="accent-(--color-accent)" checked={disclosure} onChange={(e) => setDisclosure(e.target.checked)} />
                 Mentionner l'aide d'une IA
               </label>
-              <Button size="sm" icon={<Bot className="size-3.5" />} busy={running || startAi.isPending} onClick={() => setBrief(true)}>{running ? "Claude is reading…" : "Enrich with Claude…"}</Button>
+              <Button size="sm" icon={<Bot className="size-3.5" />} busy={running || startAi.isPending} disabled={!ai.read} disabledReason={ai.why} onClick={() => setBrief(true)}>{running ? t("L'IA lit le projet…") : t("Enrichir avec l'IA…")}</Button>
             </div>
             {source === "facts" && (draft.data?.missing.length ?? 0) > 0 && <p className="text-xs text-muted">{t("Construit seulement à partir des faits trouvés dans le dépôt. Laissé à compléter en")} <code className="font-mono">TODO</code> comments: {draft.data!.missing.join("; ")}.</p>}
-            {source === "claude" && <p className="text-xs text-muted">{t("Écrit par Claude Code à partir des fichiers lus. Vérifie-le face à ton code avant de l'écrire : il peut se tromper.")}</p>}
-            {failed && <ErrorNote title="Claude Code">{failed}</ErrorNote>}
+            {source === "claude" && <p className="text-xs text-muted">{t("Écrit par l'IA ({name}) à partir des fichiers lus. Vérifie-le face à ton code avant de l'écrire : elle peut se tromper.", { name: ai.name })}</p>}
+            {failed && <ErrorNote title={ai.name}>{failed}</ErrorNote>}
             {tab === "edit" ? (
               <textarea spellCheck={false} className="field selectable h-[46vh] w-full resize-none border border-white/8 p-3 font-mono text-xs leading-relaxed text-fg focus:border-accent focus:outline-none" value={text ?? ""} onChange={(e) => { setText(e.target.value); if (source === "facts") setSource("claude"); }} />
             ) : diff.isLoading ? (
@@ -103,7 +106,7 @@ export function ReadmeDialog({ repo }: { repo: string }) {
           </div>
         )}
       </Modal>
-      {brief && <ClaudeBriefDialog repo={repo} task="readme" disclosure={disclosure} confirmLabel="Start Claude Code" onClose={() => setBrief(false)} onConfirm={() => { setBrief(false); startAi.mutate(); }} />}
+      {brief && <ClaudeBriefDialog repo={repo} task="readme" disclosure={disclosure} confirmLabel={t("Lancer")} onClose={() => setBrief(false)} onConfirm={() => { setBrief(false); startAi.mutate(); }} />}
     </>
   );
 }

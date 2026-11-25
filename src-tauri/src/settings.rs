@@ -227,7 +227,14 @@ pub struct RootSuggestion {
     pub recommended: bool,
 }
 
-const SKIP_DIRS: &[&str] = &["node_modules", "target", "snap", "vendor", "dist", "build"];
+/// Folders never searched for repositories (dependencies, build output, caches), unless the
+/// folder is itself a repository. Hidden folders are skipped too.
+const SKIP_DIRS: &[&str] = &["node_modules", "target", "snap", "vendor", "dist", "build", "__pycache__", "venv", "site-packages", "bower_components", "Pods", "DerivedData", "cmake-build-debug", "cmake-build-release"];
+
+/// Levels searched below a repository for other, independent repositories (an `Epitech/`
+/// folder that is itself versioned and holds the projects). Kept small: a project's own
+/// sources are not worth walking.
+const INSIDE_REPO_LEVELS: usize = 2;
 
 /// Finds folders under `home` that contain at least two repositories.
 pub fn suggest_roots(home: &Path) -> Vec<RootSuggestion> {
@@ -262,28 +269,50 @@ pub fn suggest_roots(home: &Path) -> Vec<RootSuggestion> {
         .collect()
 }
 
+/// Repositories under `dir`, at most `max_depth` levels down, in a stable order.
+/// - Real repositories only (`git::repo_kind`); submodules are part of their parent.
+/// - A repository can hold other independent repositories: they are found too (two levels in).
+/// - Links to folders are followed, each real folder is visited once (no loops, no duplicates).
 pub(crate) fn find_repos(dir: &Path, depth: usize, max_depth: usize, out: &mut Vec<PathBuf>) {
-    if git::is_repo(dir) {
-        out.push(dir.to_path_buf());
+    let mut seen = std::collections::HashSet::new();
+    walk_repos(dir, depth, max_depth, None, &mut seen, out);
+}
+
+fn walk_repos(dir: &Path, depth: usize, max_depth: usize, inside: Option<usize>, seen: &mut std::collections::HashSet<PathBuf>, out: &mut Vec<PathBuf>) {
+    let Ok(real) = std::fs::canonicalize(dir) else { return };
+    if !seen.insert(real) {
         return;
     }
-    if depth >= max_depth {
+    let kind = git::repo_kind(dir);
+    let mut inside = inside;
+    let mut submodules = Vec::new();
+    match kind {
+        Some(git::RepoKind::Submodule) => return,
+        Some(_) => {
+            out.push(dir.to_path_buf());
+            inside = Some(0);
+            submodules = git::submodule_paths(dir);
+        }
+        None => {}
+    }
+    if depth >= max_depth || inside.is_some_and(|n| n >= INSIDE_REPO_LEVELS) {
         return;
     }
     let Ok(entries) = std::fs::read_dir(dir) else { return };
     let mut children: Vec<PathBuf> = entries
         .flatten()
-        .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
         .filter(|e| {
             let name = e.file_name();
             let name = name.to_string_lossy();
-            !name.starts_with('.') && !SKIP_DIRS.contains(&name.as_ref())
+            // `metadata` follows links: a link to a folder is a folder.
+            !name.starts_with('.') && std::fs::metadata(e.path()).map(|m| m.is_dir()).unwrap_or(false) && (!SKIP_DIRS.contains(&name.as_ref()) || git::is_repo(&e.path()))
         })
         .map(|e| e.path())
+        .filter(|p| !submodules.contains(p))
         .collect();
     children.sort();
     for child in children {
-        find_repos(&child, depth + 1, max_depth, out);
+        walk_repos(&child, depth + 1, max_depth, inside.map(|n| n + 1), seen, out);
     }
 }
 
@@ -319,8 +348,10 @@ mod tests {
     use super::*;
     use std::fs;
 
+    /// The smallest folder git recognises as a repository.
     fn mkrepo(p: &Path) {
         fs::create_dir_all(p.join(".git")).unwrap();
+        fs::write(p.join(".git/HEAD"), "ref: refs/heads/main\n").unwrap();
     }
 
     #[test]

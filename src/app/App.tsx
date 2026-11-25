@@ -14,6 +14,8 @@ import { useSettings } from "../lib/hooks";
 import { api, asAppError } from "../lib/api";
 import { listenJobs } from "../lib/jobs";
 import { invalidate, listenData, setQueryClient } from "../lib/sync";
+import { doctorProblems } from "../features/settings/DoctorCard";
+import { SkillTreePage } from "../features/skilltree/SkillTreePage";
 import { PAGES, useUi, type Page } from "../lib/store";
 import { AnalyticsPage } from "../features/analytics/AnalyticsPage";
 import { CozyPage } from "../features/cozy/CozyPage";
@@ -231,6 +233,28 @@ export function App() {
   // A new version, looked for at most once a day, quietly: offline or GitHub down says nothing.
   const updateCheck = settings.data?.updateCheck ?? false;
   const onboarded = settings.data?.onboarded ?? false;
+  // TekBoard Doctor, quietly at start: an error (a required tool missing, a broken AI setup,
+  // an unreadable projects folder) is offered to the user once per launch.
+  useEffect(() => {
+    if (!onboarded) return;
+    const timer = setTimeout(() => {
+      void api.doctorRun(false).then(
+        (r) => {
+          const problems = doctorProblems(r.checks);
+          if (problems.length > 0)
+            useUi.getState().toast({
+              kind: "error",
+              title: t("Un problème a été détecté"),
+              detail: problems.map((p) => `${p.title} : ${p.detail}`).slice(0, 2).join(" · "),
+              duration: 15000,
+              action: { label: t("Ouvrir le Doctor"), run: () => useUi.setState({ page: "settings", settingsTab: "doctor", sheetPath: null }) },
+            });
+        },
+        () => undefined,
+      );
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [onboarded]);
   useEffect(() => {
     if (!updateCheck || !onboarded) return;
     let last = 0;
@@ -295,6 +319,7 @@ export function App() {
           {page === "subjects" && <SubjectsPage />}
           {page === "analytics" && <AnalyticsPage />}
           {page === "myepitech" && <MyEpitechPage />}
+          {page === "skilltree" && <SkillTreePage />}
           {page === "logtime" && <LogtimePage />}
           {page === "cozy" && <CozyPage />}
           {page === "templates" && <TemplatesPage />}

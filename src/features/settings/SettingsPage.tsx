@@ -12,10 +12,11 @@ import { useUi } from "../../lib/store";
 import { AiSettingsCard } from "./AiSettings";
 import { ClaudeCard } from "./ClaudeCard";
 import { DataCard } from "./DataCard";
+import { DoctorCard } from "./DoctorCard";
 import { UpdatesCard } from "./UpdatesCard";
 import { applyLang, t } from "../../lib/i18n";
 
-const TABS: Array<[string, string]> = [["general", t("Général")], ["ai", t("Artix (IA)")], ["tools", t("Outils et Claude Code")], ["my", "MY Epitech"], ["design", t("Apparence")], ["updates", t("Mises à jour")], ["data", t("Données")]];
+const TABS: Array<[string, string]> = [["general", t("Général")], ["doctor", "Doctor"], ["ai", t("Artix (IA)")], ["tools", t("Outils et Claude Code")], ["my", "MY Epitech"], ["design", t("Apparence")], ["updates", t("Mises à jour")], ["data", t("Données")]];
 
 export function SettingsPage() {
   const qc = useQueryClient();
@@ -38,6 +39,16 @@ export function SettingsPage() {
   useEffect(() => {
     if (settings.data && draft === null) setDraft(settings.data);
   }, [settings.data, draft]);
+  // A link elsewhere (the Doctor, Artix) asks for a tab while Settings is already open.
+  const wanted = useUi((u) => u.settingsTab);
+  const [pending, setPending] = useState<string | null>(forced);
+  useEffect(() => {
+    if (wanted) {
+      setTab(wanted);
+      setPending(null);
+      useUi.setState({ settingsTab: null });
+    }
+  }, [wanted, setTab]);
 
   const save = useMutation({
     mutationFn: (s: Settings) => api.saveSettings(s),
@@ -64,7 +75,8 @@ export function SettingsPage() {
     );
   }
 
-  const tab = forceTools ? "tools" : forced && TABS.some(([id]) => id === forced) ? forced : TABS.some(([id]) => id === savedTab) ? savedTab : "general";
+  // The tab asked at opening wins until another tab is picked.
+  const tab = forceTools ? "tools" : forced && forced === pending && TABS.some(([id]) => id === forced) ? forced : TABS.some(([id]) => id === savedTab) ? savedTab : "general";
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings.data);
   const set = (patch: Partial<Settings>) => setDraft({ ...draft, ...patch });
 
@@ -104,12 +116,17 @@ export function SettingsPage() {
 
       <div className="mb-6 flex items-center gap-5 border-b border-white/6" role="tablist" aria-label={t("Sections des réglages")}>
         {TABS.map(([id, label]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`-mb-px h-9 border-b-2 px-1 text-[13px] transition-colors duration-150 ${tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg"}`}>
+          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => (setTab(id), setPending(null))} className={`-mb-px h-9 border-b-2 px-1 text-[13px] transition-colors duration-150 ${tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg"}`}>
             {label}
           </button>
         ))}
       </div>
       {tab === "ai" && <AiSettingsCard />}
+      {tab === "doctor" && (
+        <div className="max-w-4xl">
+          <DoctorCard />
+        </div>
+      )}
       {tab === "general" && (
         <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
           <Card className="xl:col-span-2">

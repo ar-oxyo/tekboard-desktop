@@ -20,7 +20,7 @@ fn now() -> i64 {
 
 /// Project key a subject belongs to: its repository, when linked.
 pub fn analyze(state: &AppState, subject_id: i64) -> Result<u64> {
-    crate::claude::executable()?;
+    super::provider::require(super::provider::Feature::Text)?;
     let s = crate::db::get_subject(&state.conn(), subject_id)?.ok_or_else(|| AppError::new("not_found", "Sujet introuvable"))?;
     let path = crate::subjects::file_path(&state.subjects(), &s);
     let text = crate::claude::pdf_text(&path, 60_000).ok_or_else(|| AppError::new("no_text", "Ce PDF ne contient pas de texte lisible (ou pdftotext est absent : sudo apt install poppler-utils)."))?;

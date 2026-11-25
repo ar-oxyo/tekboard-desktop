@@ -39,6 +39,7 @@ pub mod runner;
 pub mod scanner;
 pub mod schedule;
 pub mod settings;
+pub mod skilltree;
 pub mod subjects;
 pub mod templates;
 pub mod testing;
@@ -79,7 +80,18 @@ fn start(app: &mut tauri::App) -> std::result::Result<(), String> {
     let cache_dir = app.path().app_cache_dir().map_err(|e| format!("Dossier de cache introuvable : {e}"))?;
     std::fs::create_dir_all(&cache_dir).map_err(|e| format!("Tekboard ne peut pas écrire dans {} ({e}).", cache_dir.display()))?;
     restrict(&cache_dir);
-    app.manage(AppState { db: std::sync::Arc::new(Mutex::new(conn)), data_dir, cache_dir, jobs: jobs::Jobs::default(), my: Mutex::new(myepitech::Session::default()), my_syncing: Mutex::new(false) });
+    ai::secrets::init(&data_dir);
+    ai::provider::set_current(&ai::chat::AiSettings::load(&conn));
+    let db = std::sync::Arc::new(Mutex::new(conn));
+    // Settings from before 0.7 get a provider (Claude Code when it answers). `claude --version`
+    // can take seconds: not on the way of the window.
+    let migrate_db = db.clone();
+    std::thread::spawn(move || {
+        if let Err(e) = ai::provider::migrate(&migrate_db, || claude::detect().state == "ready") {
+            eprintln!("TekBoard: AI provider not set: {e}");
+        }
+    });
+    app.manage(AppState { db, data_dir, cache_dir, jobs: jobs::Jobs::default(), my: Mutex::new(myepitech::Session::default()), my_syncing: Mutex::new(false) });
     commands_my::start_background(app.handle().clone());
     commands_ai::start_background(app.handle().clone());
     // Artix's tools, reachable by the Claude Code runs TekBoard starts (see ai::ipc).
@@ -258,6 +270,18 @@ pub fn run() {
             commands_ai::ai_context_preview,
             commands_ai::ai_settings_get,
             commands_ai::ai_settings_set,
+            commands_ai::ai_provider_status,
+            commands_ai::ai_openrouter_key,
+            commands_ai::ai_openrouter_key_set,
+            commands_ai::ai_openrouter_models,
+            commands_ai::ai_ollama_info,
+            commands_ai::ai_ollama_pull,
+            commands_ai::ai_provider_test,
+            commands_app::open_help_url,
+            commands_app::doctor_run,
+            commands_app::doctor_fix,
+            commands_app::doctor_export,
+            commands_my::my_skill_tree,
             commands_ai::memory_list,
             commands_ai::memory_add,
             commands_ai::memory_update,
