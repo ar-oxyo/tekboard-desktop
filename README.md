@@ -16,6 +16,7 @@
 - **Planning** : un calendrier qui place tes sessions de travail avec des pauses, des catégories à toi, et les rendus de l'école.
 - **École** : synchronisation MY Epitech en un bouton (projets, dates, sujets, résultats), **logtime** de la semaine, et le **Skill Tree** : ta progression en arbre de compétences, d'après les données officielles de MY Epitech.
 - **Tests** : tests unitaires, coding style (Banana), clone propre du dépôt, et une moulinette simulée dans un bac à sable.
+- **Brain Dump** : une idée, un bug, une commande ou un lien noté en deux secondes (Ctrl+I, un raccourci global ou `tekboard capture`), sans rien choisir. Tout arrive dans une petite **Inbox** où tu ranges plus tard : tâche, note, snippet, projet, TekShare, Playground. Recherche par mots, `#tag`, `projet:`, `type:` ou date.
 - **Artix** : un assistant qui comprend « j'ai un rendez-vous jeudi à 14 h » et l'ajoute, décompose un sujet en tâches, organise ta semaine. Il fonctionne avec **Claude Code, OpenRouter (modèles gratuits) ou une IA locale** — ou pas d'IA du tout.
 - **Labo** :
   - le **Playground** pour écrire et lancer du C tout de suite (sanitizers, Valgrind, bac à sable) ;
@@ -173,6 +174,12 @@ ou `sudo apt remove tek-board` (paquet .deb), ou supprime `~/.local/bin/tekboard
 ## Problèmes fréquents
 
 **Commence par Réglages → Doctor** : il vérifie tout (outils, GitHub, MY Epitech, IA, base de données, dossiers, mises à jour), répare ce qui peut l'être sans risque et exporte un rapport **anonymisé** à joindre à un ticket.
+
+<details>
+<summary>Le raccourci global de capture ne fait rien</summary>
+
+Sous **Wayland** (Ubuntu récent, Fedora…), aucune application ne peut capter un raccourci global : c'est le bureau qui les gère. Dans **Réglages → Général → Capture rapide**, copie la commande `tekboard capture` et associe-la à un raccourci dans les réglages clavier de ton système (GNOME : Paramètres → Clavier → Raccourcis personnalisés). Sous X11, choisis le raccourci directement dans TekBoard. Ctrl+I marche toujours dans la fenêtre de TekBoard.
+</details>
 
 <details>
 <summary>« Claude Code est introuvable » alors qu'il marche dans mon terminal</summary>

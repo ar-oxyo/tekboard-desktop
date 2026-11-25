@@ -2,6 +2,18 @@
 
 Chaque version publiée a sa section ici ; la release GitHub reprend ce texte.
 
+## 0.9.0
+
+**Brain Dump** (Ctrl+I, l'Inbox de la barre latérale, la palette, la fiche projet)
+- La capture rapide devient un vrai espace pour vider sa tête : on écrit, on valide, on reprend son travail. Rien à choisir (ni titre, ni catégorie, ni projet) : le type (idée, bug, amélioration, question, code, commande, lien, tâche, à retenir, image) et les `#tags` sont trouvés par des règles locales, sans IA.
+- Texte sur plusieurs lignes avec un Markdown léger (blocs de code, listes, liens), images collées ou déposées, brouillon gardé à chaque frappe. Entrée enregistre (une nouvelle ligne dans un bloc de code), Maj+Entrée ajoute une ligne, Ctrl+Entrée enregistre et garde la fenêtre ouverte, Échap ferme sans rien perdre.
+- Fenêtre de capture flottante, ouverte depuis n'importe où : raccourci global sous X11 (Ctrl+Alt+Espace par défaut, réglable), commande `tekboard capture` à associer à un raccourci du système sous Wayland, action « Capture rapide » du lanceur d'applications, icône facultative dans la zone de notification. Un seul TekBoard tourne à la fois : un second lancement passe la main au premier.
+- **Inbox** discrète, sans nouvel onglet : associer à un projet, transformer en tâche (elle rejoint le Planning), garder comme note ou snippet, épingler, archiver, supprimer (avec annulation), partager via TekShare, ouvrir le code dans le Playground, ouvrir les liens.
+- Suggestions sans IA : projet nommé dans le texte (« … dans organized … » propose une tâche du projet Organized), conversion évidente, idées proches déjà notées. Artix peut aussi proposer titre, projet, tags, reformulation ou regroupement, uniquement quand tu le demandes ; rien n'est appliqué sans ton clic.
+- Recherche plein texte (SQLite FTS5, sans accents, par préfixe) dans l'Inbox et la palette : mots, `#tag`, `projet:nom`, `type:bug`, `date:AAAA-MM-JJ`, `aujourd'hui`, `hier`.
+- TekShare : une note ou un snippet reçu peut aller directement dans ton Inbox.
+- Les captures restent des lignes de la table des tâches : une conversion ne copie rien, et le Planning ne voit ni les notes, ni les snippets, ni les captures archivées.
+
 ## 0.8.0
 
 **Code Playground** (Labo → Playground, ou « Nouveau brouillon C » dans la palette)

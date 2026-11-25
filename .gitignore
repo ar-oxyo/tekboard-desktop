@@ -12,3 +12,8 @@ src-tauri/gen/
 *.key.password
 .tauri/
 *.pem
+
+# Serena (local state; project.yml and memories are shared)
+.serena/cache/
+.serena/logs/
+.serena/project.local.yml
