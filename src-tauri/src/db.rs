@@ -314,6 +314,17 @@ const MIGRATIONS: &[&str] = &[
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
      );",
+    // v-connect: devices met through TekBoard Connect, pinned by certificate fingerprint.
+    "CREATE TABLE connect_contacts (
+        fp TEXT PRIMARY KEY,
+        nick TEXT NOT NULL,
+        avatar TEXT NOT NULL DEFAULT '',
+        trusted INTEGER NOT NULL DEFAULT 0,
+        blocked INTEGER NOT NULL DEFAULT 0,
+        first_seen INTEGER NOT NULL,
+        last_seen INTEGER NOT NULL,
+        last_addr TEXT
+     );",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

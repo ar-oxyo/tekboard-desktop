@@ -213,6 +213,31 @@ fn ai(out: &mut Vec<Check>, deep: bool) {
     }
 }
 
+/// TekBoard Connect: optional, so "off" is not a problem; when on, is it reachable?
+fn connect(out: &mut Vec<Check>) {
+    let cat = "Connect";
+    let Some(s) = crate::connect::service() else {
+        out.push(check("connect.identity", cat, "Identité de l'appareil", Status::Error, "L'identité de cet appareil n'a pas pu être lue ni créée (dossier de données)."));
+        return;
+    };
+    let v = s.view();
+    if !v.enabled {
+        out.push(check("connect.state", cat, "TekBoard Connect", Status::Unconfigured, "Désactivé (facultatif) : rien n'écoute et rien n'est annoncé sur le réseau.").affects("TekShare, TekLive, TekSpace, tableaux partagés"));
+        return;
+    }
+    out.push(match (&v.ip, v.port) {
+        (Some(ip), Some(port)) => check("connect.state", cat, "TekBoard Connect", Status::Ok, format!("À l'écoute sur {ip}:{port}, empreinte {}.", v.short)),
+        _ => check("connect.state", cat, "TekBoard Connect", Status::Error, v.problems.last().cloned().unwrap_or_else(|| "Activé mais pas démarré.".into())),
+    }.affects("TekShare, TekLive, TekSpace, tableaux partagés"));
+    if v.running {
+        out.push(if v.mdns {
+            check("connect.mdns", cat, "Découverte locale (mDNS)", Status::Ok, format!("Annonce et recherche actives ; {} appareil(s) vu(s).", v.peers.iter().filter(|p| p.discovered).count()))
+        } else {
+            check("connect.mdns", cat, "Découverte locale (mDNS)", Status::Warn, "Indisponible : les autres TekBoard ne te verront pas automatiquement. Le code d'invitation reste possible.")
+        }.affects("liste des personnes à proximité"));
+    }
+}
+
 /// Code Playground and Algorithm Arena: compilers, measuring tools, sandbox limits.
 fn lab(out: &mut Vec<Check>) {
     let cat = "Labo";
@@ -362,6 +387,7 @@ fn run_checks(state: &AppState, f: &Facts) -> Report {
     ai(&mut checks, f.deep);
     epitech_tools(&mut checks);
     lab(&mut checks);
+    connect(&mut checks);
     data(&mut checks, state);
     projects(&mut checks, state);
     updates(&mut checks, f);

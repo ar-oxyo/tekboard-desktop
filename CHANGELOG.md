@@ -25,6 +25,14 @@ Chaque version publiée a sa section ici ; la release GitHub reprend ce texte.
 - Lecture du code sans IA : boucles imbriquées, allocations ou entrées/sorties dans une boucle, `strlen` dans une condition, récursion multiple, tris quadratiques — présentées comme des hypothèses, distinctes des mesures.
 - Artix, sur demande : écrit les générateurs et scénarios en direct (chaque fichier apparaît dès qu'il est complet, rien n'est exécuté avant ton accord), puis rédige le rapport final à partir des seules mesures (ce qui ralentit, preuves, limites, optimisations, compromis), sans toucher au code.
 
+**TekBoard Connect** (Connect → Personnes) — facultatif, désactivé par défaut
+- Retrouve les autres TekBoard du même réseau local qui ont activé Connect, par découverte mDNS / DNS-SD : pseudonyme, avatar et statut (disponible, en train de coder, en session de travail, disponible pour aider, ne pas déranger, invisible).
+- Connexions directes chiffrées en TLS 1.3 mutuel, chaque appareil étant identifié par l'empreinte de son certificat ; aucun serveur, aucun compte, rien ne passe par Internet.
+- Première connexion à deux : les deux écrans affichent le même code à 6 chiffres à comparer avant d'accepter ; l'empreinte est ensuite épinglée et la reconnexion est automatique.
+- Contacts de confiance, blocage, oubli ; messages limités en taille et en débit ; un appareil non appairé ne peut rien envoyer d'autre qu'une demande.
+- Code d'invitation (`tb1:…`) et connexion par adresse quand la découverte ne marche pas, diagnostic réseau en clair (interface, mDNS, test d'une adresse) : quand le réseau de l'école isole les appareils, TekBoard l'explique sans chercher à le contourner (pas de scan, pas de relais, aucune modification du pare-feu).
+- Doctor : catégorie Connect.
+
 ## 0.7.0
 
 **Choisir son IA** (Réglages → Artix (IA), et au premier lancement)

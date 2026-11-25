@@ -1,10 +1,10 @@
-// Eight places instead of fifteen screens. Each section groups the screens of one subject;
+// Nine places instead of sixteen screens. Each section groups the screens of one subject;
 // inside a section, a tab bar switches between them.
 import type { Page } from "../lib/store";
 import { t } from "../lib/i18n";
 
 export interface Section {
-  id: "today" | "projects" | "planning" | "school" | "stats" | "lab" | "resources" | "settings";
+  id: "today" | "projects" | "planning" | "school" | "stats" | "lab" | "connect" | "resources" | "settings";
   label: string;
   pages: Array<{ page: Page; label: string }>;
 }
@@ -16,6 +16,7 @@ export const SECTIONS: Section[] = [
   { id: "school", label: t("École"), pages: [{ page: "myepitech", label: "MY Epitech" }, { page: "skilltree", label: "Skill Tree" }, { page: "logtime", label: "Logtime" }, { page: "subjects", label: t("Sujets") }] },
   { id: "stats", label: "Stats", pages: [{ page: "analytics", label: "Stats" }] },
   { id: "lab", label: t("Labo"), pages: [{ page: "playground", label: "Playground" }, { page: "arena", label: "Arena" }] },
+  { id: "connect", label: "Connect", pages: [{ page: "connect", label: t("Personnes") }] },
   { id: "resources", label: t("Modèles"), pages: [{ page: "templates", label: t("Modèles") }] },
   { id: "settings", label: t("Réglages"), pages: [{ page: "settings", label: t("Réglages") }, { page: "prompts", label: "Prompts" }, { page: "cozy", label: "Cozy Fox" }] },
 ];

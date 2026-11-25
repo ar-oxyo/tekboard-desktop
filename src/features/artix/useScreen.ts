@@ -23,6 +23,7 @@ export const SCREEN_OF: Record<Page, string> = {
   prompts: "settings",
   playground: "lab",
   arena: "lab",
+  connect: "connect",
 };
 
 const TAB_OF: Partial<Record<Page, string>> = { git: "git", testing: "checks", library: "libraries" };

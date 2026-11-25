@@ -803,6 +803,70 @@ export interface Revisions {
   commits: Array<[string, string]>;
 }
 
+// ───────────────────────── TekBoard Connect ─────────────────────────
+export type ConnectStatus = "available" | "coding" | "session" | "dnd" | "invisible" | "helping" | "offline";
+export interface ConnectProfile {
+  nick: string;
+  avatar: string;
+  status: ConnectStatus;
+}
+export interface ConnectConfig {
+  enabled: boolean;
+  profile: ConnectProfile;
+  port: number;
+  interface: string;
+  space: boolean;
+}
+export interface PeerView {
+  fp: string;
+  short: string;
+  profile: ConnectProfile;
+  online: boolean;
+  discovered: boolean;
+  trusted: boolean;
+  blocked: boolean;
+  addr: string | null;
+  app: string | null;
+  since: number | null;
+  lastSeen: number | null;
+}
+export interface PairRequest {
+  id: number;
+  fp: string;
+  short: string;
+  profile: ConnectProfile;
+  addr: string;
+  code: string;
+  state: "incoming" | "waiting" | "confirm" | "silent";
+  at: number;
+}
+export interface ConnectState {
+  enabled: boolean;
+  running: boolean;
+  fp: string;
+  short: string;
+  profile: ConnectProfile;
+  ip: string | null;
+  port: number | null;
+  interface: string;
+  invite: string | null;
+  mdns: boolean;
+  peers: PeerView[];
+  requests: PairRequest[];
+  problems: string[];
+  space: boolean;
+}
+export type Reach = { result: "open" } | { result: "refused" } | { result: "timeout" } | { result: "unreachable"; detail: string };
+export interface ConnectDiagnosis {
+  interfaces: Array<{ name: string; ip: string; kind: string; default: boolean }>;
+  listening: string | null;
+  mdns: boolean;
+  seen: number;
+  probe: Reach | null;
+  probeText: string | null;
+  advice: string[];
+}
+
 export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull" | "playground" | "arena" | "arena_ai" | "arena_report";
 /** Kind-specific facts; see the Rust module that produces each kind. */
 export type RunSummary = Record<string, unknown> & { steps?: JobStep[] };
@@ -1563,6 +1627,14 @@ export const api = {
   arenaRun: (config: BenchConfig) => invoke<number>("arena_run", { config }),
   arenaGenerate: (config: BenchConfig, focus: string) => invoke<number>("arena_generate", { config, focus }),
   arenaReport: (runId: number) => invoke<number>("arena_report", { runId }),
+  connectState: () => invoke<ConnectState>("connect_state"),
+  connectConfigure: (config: ConnectConfig) => invoke<ConnectState>("connect_configure", { config }),
+  connectPair: (fp: string) => invoke<void>("connect_pair", { fp }),
+  connectDial: (target: string) => invoke<void>("connect_dial", { target }),
+  connectAnswer: (id: number, accept: boolean) => invoke<void>("connect_answer", { id, accept }),
+  connectBlock: (fp: string, blocked: boolean) => invoke<void>("connect_block", { fp, blocked }),
+  connectForget: (fp: string) => invoke<void>("connect_forget", { fp }),
+  connectDiagnose: (target: string | null) => invoke<ConnectDiagnosis>("connect_diagnose", { target }),
   jobGet: (id: number) => invoke<JobView>("job_get", { id }),
   jobGetSince: (id: number, logFrom: number, eventsFrom: number) => invoke<JobView>("job_get", { id, logFrom, eventsFrom }),
   jobCancel: (id: number) => invoke<void>("job_cancel", { id }),

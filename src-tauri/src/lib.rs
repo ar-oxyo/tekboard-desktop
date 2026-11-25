@@ -6,12 +6,14 @@ pub mod checker;
 pub mod claude;
 pub mod commands;
 pub mod commands_ai;
+pub mod commands_connect;
 pub mod commands_app;
 pub mod commands_dev;
 pub mod commands_lab;
 pub mod commands_lib;
 pub mod commands_my;
 pub mod commands_plan;
+pub mod connect;
 pub mod cozy;
 pub mod cparse;
 pub mod datamgmt;
@@ -95,6 +97,10 @@ fn start(app: &mut tauri::App) -> std::result::Result<(), String> {
             eprintln!("TekBoard: AI provider not set: {e}");
         }
     });
+    // TekBoard Connect: identity loaded, and listening only if the user turned it on.
+    if let Err(e) = connect::init(data_dir.clone(), db.clone()) {
+        eprintln!("TekBoard: Connect unavailable: {e}");
+    }
     app.manage(AppState { db, data_dir, cache_dir, jobs: jobs::Jobs::default(), my: Mutex::new(myepitech::Session::default()), my_syncing: Mutex::new(false) });
     commands_my::start_background(app.handle().clone());
     commands_ai::start_background(app.handle().clone());
@@ -231,6 +237,14 @@ pub fn run() {
             commands_lab::playground_import_library,
             commands_lab::playground_export_preview,
             commands_lab::playground_export,
+            commands_connect::connect_state,
+            commands_connect::connect_configure,
+            commands_connect::connect_pair,
+            commands_connect::connect_dial,
+            commands_connect::connect_answer,
+            commands_connect::connect_block,
+            commands_connect::connect_forget,
+            commands_connect::connect_diagnose,
             commands_lab::arena_tools,
             commands_lab::arena_list,
             commands_lab::arena_save,
@@ -360,6 +374,10 @@ pub fn run() {
             if let tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit = event {
                 if let Some(state) = app.try_state::<AppState>() {
                     state.jobs.cancel_all();
+                }
+                // Stop advertising and close the connections cleanly.
+                if let Some(c) = connect::service() {
+                    tauri::async_runtime::block_on(c.stop());
                 }
             }
         });

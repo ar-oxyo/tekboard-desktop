@@ -15,6 +15,8 @@ import { useSettings } from "../lib/hooks";
 import { api, asAppError } from "../lib/api";
 import { listenJobs } from "../lib/jobs";
 import { invalidate, listenData, setQueryClient } from "../lib/sync";
+import { listenConnect } from "../lib/connect";
+import { ConnectPage } from "../features/connect/ConnectPage";
 import { doctorProblems } from "../features/settings/DoctorCard";
 import { SkillTreePage } from "../features/skilltree/SkillTreePage";
 import { PAGES, useUi, type Page } from "../lib/store";
@@ -76,7 +78,7 @@ export function navigateTo(page: string, project: string | null, tab: string | n
     if (tab === "libraries") return ui.openLibrary(project);
     return ui.openSheet(project);
   }
-  const map: Record<string, Page> = { today: "overview", projects: "projects", planning: "agenda", school: "myepitech", stats: "analytics", lab: "playground", resources: "templates", settings: "settings" };
+  const map: Record<string, Page> = { today: "overview", projects: "projects", planning: "agenda", school: "myepitech", stats: "analytics", lab: "playground", connect: "connect", resources: "templates", settings: "settings" };
   ui.setPage(map[page] ?? "overview");
 }
 
@@ -167,9 +169,16 @@ export function App() {
     const unauth = listen<{ unauthorized: boolean }>("my-synced", (e) => {
       if (e.payload.unauthorized) useUi.getState().toast({ kind: "error", title: t("MY Epitech a refusé la session"), detail: t("La synchronisation automatique est arrêtée. Clique sur « Sync » (École → MY Epitech) pour te reconnecter.") });
     });
+    // TekBoard Connect pushes its state; a pairing request is worth a notice wherever you are.
+    const connect = listenConnect(qc);
+    const request = listen<string>("connect-request", () => {
+      useUi.getState().toast({ kind: "info", title: t("Demande de connexion TekBoard"), detail: t("Quelqu'un veut se connecter à toi. Vérifie le code avant d'accepter."), action: { label: t("Voir"), run: () => useUi.getState().setPage("connect") } });
+    });
     return () => {
       void off.then((f) => f());
       void unauth.then((f) => f());
+      void connect.then((f) => f());
+      void request.then((f) => f());
     };
   }, [qc]);
   // Artix opens a screen for the user (tool `navigate`).
@@ -212,7 +221,7 @@ export function App() {
       } else if (key === "n" && !e.shiftKey) {
         e.preventDefault();
         openLauncher({ mode: "new" });
-      } else if (/^[1-8]$/.test(key)) {
+      } else if (/^[1-9]$/.test(key)) {
         e.preventDefault();
         setPage(entryOf(SECTIONS[Number(key) - 1]));
       }
@@ -335,6 +344,7 @@ export function App() {
               <PlaygroundPage />
             </Suspense>
           )}
+          {page === "connect" && <ConnectPage />}
           {page === "arena" && (
             <Suspense fallback={<Spinner />}>
               <ArenaPage />
