@@ -66,6 +66,9 @@ interface UiState {
   assistantOpen: boolean;
   assistantAsk: { text: string; project?: string | null } | null;
   openAssistant: (ask?: { text: string; project?: string | null }) => void;
+  /** A resource being shared with TekShare (the share dialog is open while set). */
+  share: import("./api").ShareResource | null;
+  openShare: (r: import("./api").ShareResource | null) => void;
   closeAssistant: () => void;
   /** Conversation shown in Artix's panel, and the turn being answered. */
   artixThread: number | null;
@@ -119,6 +122,8 @@ export const useUi = create<UiState>((set, get) => ({
   assistantOpen: false,
   assistantAsk: null,
   openAssistant: (ask) => set({ assistantOpen: true, assistantAsk: ask ?? null, paletteOpen: false }),
+  share: null,
+  openShare: (share) => set({ share, paletteOpen: false }),
   closeAssistant: () => set({ assistantOpen: false, assistantAsk: null }),
   artixThread: (() => {
     // `tekboard.tikaThread`: the same conversation, saved before the assistant was renamed.

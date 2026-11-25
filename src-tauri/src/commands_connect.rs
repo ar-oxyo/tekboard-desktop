@@ -101,3 +101,57 @@ pub fn connect_diagnose(target: Option<String>) -> Result<Diagnosis> {
     };
     Ok(Diagnosis { interfaces, listening: v.ip.zip(v.port).map(|(ip, p)| format!("{ip}:{p}")), mdns: v.mdns, seen, probe, probe_text, advice })
 }
+
+// ───────────────────────────── TekShare ─────────────────────────────
+
+use crate::commands::AppState;
+use crate::connect::{inbox, share};
+use tauri::{Manager, State};
+
+/// What would be sent (files, size, preview) and what blocks it (secrets…), before sending.
+#[tauri::command(async)]
+pub fn share_check(state: State<'_, AppState>, resource: share::Resource) -> Result<share::Check> {
+    share::check(&state, &resource)
+}
+
+#[tauri::command(async)]
+pub fn share_offer(state: State<'_, AppState>, fp: String, resource: share::Resource, confirmed_school: bool) -> Result<share::Transfer> {
+    let s = svc()?;
+    share::offer(&state, &s, &fp, &resource, confirmed_school)
+}
+
+#[tauri::command(async)]
+pub fn share_list(state: State<'_, AppState>) -> Result<Vec<share::Transfer>> {
+    share::list(&state.conn())
+}
+
+#[tauri::command(async)]
+pub fn share_answer(id: String, accept: bool) -> Result<()> {
+    share::answer(&*svc()?, &id, accept)
+}
+
+#[tauri::command(async)]
+pub fn share_cancel(id: String) -> Result<()> {
+    share::cancel(&*svc()?, &id)
+}
+
+#[tauri::command(async)]
+pub fn share_forget(id: String) -> Result<()> {
+    share::forget(&*svc()?, &id)
+}
+
+#[tauri::command(async)]
+pub fn share_open(id: String) -> Result<inbox::Opened> {
+    inbox::open(&*svc()?, &id)
+}
+
+/// Puts a received resource where it belongs. Nothing is run.
+#[tauri::command(async)]
+pub fn share_import(app: tauri::AppHandle, state: State<'_, AppState>, id: String, target: inbox::Target) -> Result<inbox::Imported> {
+    let downloads = app.path().download_dir().map_err(|_| AppError::new("no_downloads", "Le dossier Téléchargements est introuvable"))?;
+    let r = inbox::import(&state, &*svc()?, &downloads, &id, &target)?;
+    if let Some(dir) = r.open.get("reveal").and_then(|v| v.as_str()) {
+        let _ = crate::workspace::reveal(std::path::Path::new(dir));
+    }
+    Ok(r)
+}

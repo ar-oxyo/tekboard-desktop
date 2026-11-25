@@ -12,6 +12,7 @@ import { Select } from "../../components/Select";
 import { Badge, Button, Card, CardTitle, cn, Dot, EmptyState, ErrorNote, Field, Input, Spinner } from "../../components/ui";
 import { timeAgo } from "../../lib/format";
 import { Avatar } from "./Avatar";
+import { Transfers } from "./Transfers";
 import { t } from "../../lib/i18n";
 
 export function useConnect() {
@@ -54,6 +55,7 @@ export function ConnectPage() {
           </div>
         )}
         <People state={s} />
+        <Transfers />
       </div>
       <div className="space-y-4">
         <ProfileCard state={s} busy={busy} onSave={(profile) => void configure({ profile })} onDisable={() => void configure({ enabled: false })} />

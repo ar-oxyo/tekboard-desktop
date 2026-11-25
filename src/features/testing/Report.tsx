@@ -4,6 +4,7 @@ import { Ban, Check, ChevronDown, ChevronRight, Circle, FolderOpen, Minus, Squar
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CodeView } from "../../components/DiffView";
 import { Badge, Button, cn, Spinner } from "../../components/ui";
+import { useUi } from "../../lib/store";
 import type { JobEvent, JobStatus, JobStep, RunKind, RunSummary, StepStatus } from "../../lib/api";
 import { AgentView } from "./AgentView";
 import { t } from "../../lib/i18n";
@@ -340,6 +341,7 @@ export function Report({ data, onCancel, envActions, onClear }: { data: ReportDa
           <p className="text-xs text-muted">Journal</p>
           <span className="flex items-center gap-3">
             {lines.length > 300 && <button type="button" className="text-xs text-muted hover:text-fg" onClick={() => setFull(!full)}>{full ? t("N'afficher que la fin") : `Show all ${lines.length} lines`}</button>}
+            {data.log.trim() && <button type="button" className="text-xs text-muted hover:text-fg" onClick={() => useUi.getState().openShare({ kind: "log", title: data.title, text: data.log.slice(-200_000) })}>{t("Partager")}</button>}
             {onClear && <button type="button" className="text-xs text-muted hover:text-fg" onClick={onClear} title={t("Vide cette vue. Le journal complet reste dans l'historique.")}>Effacer</button>}
           </span>
         </div>

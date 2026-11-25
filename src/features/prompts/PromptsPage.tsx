@@ -1,10 +1,10 @@
 // Prompt manager: read, edit and personalise the instructions TekBoard gives to Claude Code.
 // Defaults ship with the application; your variants ("presets") are stored with your settings.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, Copy, Eye, RotateCcw, Save, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Copy, Eye, RotateCcw, Save, Share2, ShieldCheck, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Select } from "../../components/Select";
-import { Badge, Button, Card, cn, ErrorNote, Input, PageHeader, Spinner } from "../../components/ui";
+import { Badge, Button, Card, cn, ErrorNote, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
 import { api, asAppError, type PromptDef } from "../../lib/api";
 import { useRepos } from "../../lib/hooks";
 import { displayName } from "../../lib/repos";
@@ -178,6 +178,9 @@ function PromptEditor({ def }: { def: PromptDef }) {
             <p className="text-xs text-muted">{def.access} Expected answer: {def.expects}</p>
           </div>
           <Select className="w-52" label={t("Version affichée")} value={preset} onChange={setPreset} options={options} search={false} />
+          <IconButton label={t("Partager cette version (TekShare)")} onClick={() => useUi.getState().openShare({ kind: "prompt", id: def.id, preset })}>
+            <Share2 className="size-4" />
+          </IconButton>
           {!inUse && !dirty && (
             <Button variant="primary" icon={<Check className="size-3.5" />} busy={activate.isPending} disabled={problem !== null} onClick={() => activate.mutate(preset === DEFAULT ? null : preset)}>
               {preset === DEFAULT ? "Restore Default" : "Use this preset"}

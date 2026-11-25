@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Copy, FileText, FolderInput, LayoutTemplate, Pencil, Star, Trash2 } from "lucide-react";
+import { Copy, FileText, FolderInput, LayoutTemplate, Pencil, Share2, Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Modal } from "../../components/Modal";
 import { Select } from "../../components/Select";
@@ -173,6 +173,9 @@ function TemplateDetail({ template, onDeleted, onCreated }: { template: Template
           </Button>
           <Button size="sm" variant="ghost" icon={<Copy className="size-3.5" />} busy={duplicate.isPending} onClick={() => duplicate.mutate()}>
             Dupliquer
+          </Button>
+          <Button size="sm" variant="ghost" icon={<Share2 className="size-3.5" />} onClick={() => useUi.getState().openShare({ kind: "template", id: template.id })}>
+            {t("Partager")}
           </Button>
           {armed ? (
             <>

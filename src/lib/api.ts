@@ -867,6 +867,71 @@ export interface ConnectDiagnosis {
   advice: string[];
 }
 
+// ───────────────────────── TekShare ─────────────────────────
+export type ShareResource =
+  | { kind: "file"; path: string }
+  | { kind: "folder"; path: string }
+  | { kind: "snippet"; title: string; text: string; lang?: string }
+  | { kind: "draft"; id: number }
+  | { kind: "libraryFiles"; libraryId: number; files: string[] }
+  | { kind: "library"; id: number }
+  | { kind: "template"; id: string }
+  | { kind: "prompt"; id: string; preset: string }
+  | { kind: "tests"; repo: string }
+  | { kind: "arenaRun"; runId: number }
+  | { kind: "log"; title: string; text: string }
+  | { kind: "error"; title: string; text: string }
+  | { kind: "patch"; repo: string }
+  | { kind: "note"; title: string; text: string }
+  | { kind: "config" };
+export interface ShareCheck {
+  kind: string;
+  title: string;
+  files: string[];
+  bytes: number;
+  preview: string;
+  school: string | null;
+  blocked: string[];
+}
+export interface Transfer {
+  id: string;
+  direction: "in" | "out";
+  peer: string;
+  peerNick: string;
+  kind: string;
+  title: string;
+  size: number;
+  sha256: string;
+  status: "offered" | "sending" | "sent" | "receiving" | "received" | "imported" | "declined" | "failed" | "cancelled" | "expired";
+  detail: string | null;
+  progress: number;
+  preview: string;
+  files: string[];
+  school: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+export interface OpenedTransfer {
+  transfer: Transfer;
+  manifest: { v: number; kind: string; title: string; meta: Record<string, unknown>; files: string[] };
+  files: Array<[string, number, string | null]>;
+  destinations: string[];
+}
+export type ImportTarget =
+  | { to: "playground" }
+  | { to: "library"; name: string }
+  | { to: "template"; name: string }
+  | { to: "prompt"; preset: string }
+  | { to: "project"; repo: string; subdir: string }
+  | { to: "patch"; repo: string; apply: boolean }
+  | { to: "arena" }
+  | { to: "downloads" }
+  | { to: "config" };
+export interface Imported {
+  detail: string;
+  open: { page?: string; id?: number; path?: string; runId?: number; reveal?: string } | null;
+}
+
 export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull" | "playground" | "arena" | "arena_ai" | "arena_report";
 /** Kind-specific facts; see the Rust module that produces each kind. */
 export type RunSummary = Record<string, unknown> & { steps?: JobStep[] };
@@ -1635,6 +1700,14 @@ export const api = {
   connectBlock: (fp: string, blocked: boolean) => invoke<void>("connect_block", { fp, blocked }),
   connectForget: (fp: string) => invoke<void>("connect_forget", { fp }),
   connectDiagnose: (target: string | null) => invoke<ConnectDiagnosis>("connect_diagnose", { target }),
+  shareCheck: (resource: ShareResource) => invoke<ShareCheck>("share_check", { resource }),
+  shareOffer: (fp: string, resource: ShareResource, confirmedSchool: boolean) => invoke<Transfer>("share_offer", { fp, resource, confirmedSchool }),
+  shareList: () => invoke<Transfer[]>("share_list"),
+  shareAnswer: (id: string, accept: boolean) => invoke<void>("share_answer", { id, accept }),
+  shareCancel: (id: string) => invoke<void>("share_cancel", { id }),
+  shareForget: (id: string) => invoke<void>("share_forget", { id }),
+  shareOpen: (id: string) => invoke<OpenedTransfer>("share_open", { id }),
+  shareImport: (id: string, target: ImportTarget) => invoke<Imported>("share_import", { id, target }),
   jobGet: (id: number) => invoke<JobView>("job_get", { id }),
   jobGetSince: (id: number, logFrom: number, eventsFrom: number) => invoke<JobView>("job_get", { id, logFrom, eventsFrom }),
   jobCancel: (id: number) => invoke<void>("job_cancel", { id }),

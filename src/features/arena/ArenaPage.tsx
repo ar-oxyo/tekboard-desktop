@@ -5,7 +5,7 @@
 // final report (from the measurements only). Nothing here edits the original code.
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FilePlus2, GitCompare, History, Play, Plus, Save, Sparkles, Square, Trash2, X } from "lucide-react";
+import { FilePlus2, Share2, GitCompare, History, Play, Plus, Save, Sparkles, Square, Trash2, X } from "lucide-react";
 import { api, asAppError, type ArenaResults, type ArenaScenario, type ArenaVariant, type BenchConfig, type DraftFile } from "../../lib/api";
 import { useJob } from "../../lib/jobs";
 import { useUi } from "../../lib/store";
@@ -138,6 +138,11 @@ export default function ArenaPage() {
           <Button variant="ghost" icon={<History className="size-3.5" />} onClick={() => setHistory(true)}>
             {t("Historique")}
           </Button>
+          {shownRunId !== null && !running && results && (
+            <Button variant="ghost" icon={<Share2 className="size-3.5" />} onClick={() => useUi.getState().openShare({ kind: "arenaRun", runId: shownRunId })}>
+              {t("Partager")}
+            </Button>
+          )}
           {viewRun !== null && (
             <Badge>
               {t("Résultat passé")}

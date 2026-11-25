@@ -325,6 +325,25 @@ const MIGRATIONS: &[&str] = &[
         last_seen INTEGER NOT NULL,
         last_addr TEXT
      );",
+    // v-tekshare: transfers in and out (bundles themselves live in the cache).
+    "CREATE TABLE connect_transfers (
+        id TEXT PRIMARY KEY,
+        direction TEXT NOT NULL,
+        peer TEXT NOT NULL,
+        peer_nick TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        title TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        sha256 TEXT NOT NULL,
+        status TEXT NOT NULL,
+        detail TEXT,
+        progress INTEGER NOT NULL DEFAULT 0,
+        preview TEXT NOT NULL DEFAULT '',
+        files TEXT NOT NULL DEFAULT '[]',
+        school TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+     );",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

@@ -33,6 +33,12 @@ Chaque version publiée a sa section ici ; la release GitHub reprend ce texte.
 - Code d'invitation (`tb1:…`) et connexion par adresse quand la découverte ne marche pas, diagnostic réseau en clair (interface, mDNS, test d'une adresse) : quand le réseau de l'école isole les appareils, TekBoard l'explique sans chercher à le contourner (pas de scan, pas de relais, aucune modification du pare-feu).
 - Doctor : catégorie Connect.
 
+**TekShare** (avec TekBoard Connect)
+- Partage direct, entre personnes appairées, de fichiers, dossiers, extraits de code, fonctions C des bibliothèques, bibliothèques, modèles, prompts d'Artix, jeux de tests, benchmarks de l'Arena, journaux, messages d'erreur, patches Git, notes, brouillons du Playground et réglages d'apparence. « Partager » se trouve là où sont ces ressources (Playground, Arena, bibliothèques, modèles, prompts, rapport de tests, menu des projets) et dans Connect.
+- Le destinataire voit l'expéditeur, le type, un aperçu et la taille, puis accepte ou refuse ; rien n'arrive sans son accord. Historique des transferts, progression, annulation.
+- TekShare comprend ce qu'il reçoit et propose la bonne destination : une fonction dans les bibliothèques ou le Playground, un brouillon dans le Playground, un modèle dans les modèles, un prompt dans les prompts, des tests dans un projet, un benchmark dans l'Arena, un patch vérifié (`git apply --check`) puis appliqué sur demande, un journal ou une erreur à Artix, le reste dans Téléchargements.
+- Sécurité : secrets (clés, jetons, cookies) et fichiers sensibles bloqués à l'envoi, avertissement sur les règles pédagogiques pour le code d'un projet de l'école et refus d'envoyer un dépôt d'école entier ; à l'arrivée, quarantaine, vérification de la taille et de l'empreinte SHA-256, extraction refusant chemins absolus, `..`, liens et archives piégées ; rien n'est jamais exécuté ni écrasé ; offres et débit limités.
+
 ## 0.7.0
 
 **Choisir son IA** (Réglages → Artix (IA), et au premier lancement)

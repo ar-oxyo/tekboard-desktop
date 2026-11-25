@@ -3,7 +3,7 @@
 // the sandbox and the right side shows what came out. Artix explains on request only.
 import { lazy, Suspense, useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, FilePlus2, FileCode2, FolderPlus, History, LibraryBig, Lock, LockOpen, Pencil, Play, Plus, Settings2, Sparkles, Square, Trash2, X } from "lucide-react";
+import { Copy, Share2, FilePlus2, FileCode2, FolderPlus, History, LibraryBig, Lock, LockOpen, Pencil, Play, Plus, Settings2, Sparkles, Square, Trash2, X } from "lucide-react";
 import { api, asAppError, type Draft, type DraftFile, type DraftSettings } from "../../lib/api";
 import { useJob } from "../../lib/jobs";
 import { usePref } from "../../lib/hooks";
@@ -296,6 +296,14 @@ function DraftView({ draft, tools, onDefaults, onDuplicate }: { draft: Draft; to
               <MenuItem icon={<Copy className="size-3.5" />} onSelect={onDuplicate}>
                 {t("Dupliquer le brouillon")}
               </MenuItem>
+              <MenuItem icon={<Share2 className="size-3.5" />} onSelect={() => void flush(draft.id).then(() => useUi.getState().openShare({ kind: "draft", id: draft.id }))}>
+                {t("Partager le brouillon (TekShare)…")}
+              </MenuItem>
+              {result.compile && !result.compile.ok && (
+                <MenuItem icon={<Share2 className="size-3.5" />} onSelect={() => useUi.getState().openShare({ kind: "error", title: t("Erreur de compilation · {t}", { t: draft.title }), text: result.compile!.output })}>
+                  {t("Partager l'erreur de compilation…")}
+                </MenuItem>
+              )}
             </Menu>
             {running ? (
               <Button size="sm" variant="danger" icon={<Square className="size-3.5" />} onClick={() => jobId !== null && void api.jobCancel(jobId)}>

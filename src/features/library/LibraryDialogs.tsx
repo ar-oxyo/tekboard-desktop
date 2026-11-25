@@ -1,7 +1,7 @@
 // Dialogs of the Library screen: register a library, import dropped files, inspect one file.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
-import { FolderOpen, RotateCcw } from "lucide-react";
+import { FolderOpen, RotateCcw, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CodeView, DiffView } from "../../components/DiffView";
 import { Modal } from "../../components/Modal";
@@ -264,6 +264,9 @@ export function FileDetailDialog({ catalog, rel, repo, libDir, state, onClose, o
     <Modal open onClose={onClose} width="w-[820px]" title={file.functions[0]?.name ?? rel} description={rel}>
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-1.5">
+          <Button size="sm" variant="ghost" className="order-last ml-auto" icon={<Share2 className="size-3.5" />} onClick={() => useUi.getState().openShare({ kind: "libraryFiles", libraryId: catalog.library.id, files: [rel] })}>
+            {t("Partager")}
+          </Button>
           {file.functions.map((f) => (
             <span key={f.name} className="selectable rounded-md border border-line bg-bg px-2 py-1 font-mono text-[11.5px]" title={f.doc ?? undefined}>
               {f.signature}

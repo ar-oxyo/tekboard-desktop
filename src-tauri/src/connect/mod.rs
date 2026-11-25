@@ -14,8 +14,10 @@
 //!   diagnosis says so and the manual invitation code is the fallback.
 
 pub mod identity;
+pub mod inbox;
 pub mod netdiag;
 pub mod proto;
+pub mod share;
 pub mod store;
 pub mod tls;
 
@@ -155,6 +157,8 @@ pub struct Service {
     handlers: RwLock<Vec<(String, Handler)>>,
     dialing: Mutex<HashMap<String, Instant>>,
     seq: AtomicU64,
+    /// State the modules keep with this service (TekShare's transfers…), by module name.
+    pub ext: Mutex<HashMap<&'static str, Arc<dyn std::any::Any + Send + Sync>>>,
 }
 
 static SERVICE: OnceLock<Arc<Service>> = OnceLock::new();
@@ -173,12 +177,13 @@ fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 }
 
 /// Creates the service (identity loaded or made) and starts it when Connect is on.
-pub fn init(data_dir: PathBuf, db: Arc<Mutex<Connection>>) -> Result<Arc<Service>> {
+pub fn init(data_dir: PathBuf, cache_dir: PathBuf, db: Arc<Mutex<Connection>>) -> Result<Arc<Service>> {
     if let Some(s) = SERVICE.get() {
         return Ok(s.clone());
     }
-    let s = Arc::new(Service::new(&data_dir.join("connect"), db)?);
+    let s = Arc::new(Service::new(&data_dir.join("connect"), db.clone())?);
     let _ = SERVICE.set(s.clone());
+    share::init(&s, db, cache_dir.join("tekshare"));
     if lock(&s.config).enabled {
         let s2 = s.clone();
         tauri::async_runtime::spawn(async move {
@@ -194,7 +199,7 @@ impl Service {
     pub fn new(dir: &std::path::Path, db: Arc<Mutex<Connection>>) -> Result<Service> {
         let identity = identity::load_or_create(dir)?;
         let config = store::load(&lock(&db));
-        Ok(Service { identity, db, config: Mutex::new(config), peers: Default::default(), pending: Default::default(), discovered: Default::default(), running: Default::default(), problems: Default::default(), handlers: Default::default(), dialing: Default::default(), seq: AtomicU64::new(1) })
+        Ok(Service { identity, db, config: Mutex::new(config), peers: Default::default(), pending: Default::default(), discovered: Default::default(), running: Default::default(), problems: Default::default(), handlers: Default::default(), dialing: Default::default(), seq: AtomicU64::new(1), ext: Default::default() })
     }
 
     pub fn config(&self) -> store::Config {

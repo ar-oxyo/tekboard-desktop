@@ -17,6 +17,7 @@ import { listenJobs } from "../lib/jobs";
 import { invalidate, listenData, setQueryClient } from "../lib/sync";
 import { listenConnect } from "../lib/connect";
 import { ConnectPage } from "../features/connect/ConnectPage";
+import { ShareDialog } from "../features/connect/ShareDialog";
 import { doctorProblems } from "../features/settings/DoctorCard";
 import { SkillTreePage } from "../features/skilltree/SkillTreePage";
 import { PAGES, useUi, type Page } from "../lib/store";
@@ -91,6 +92,7 @@ export function App() {
   const launch = useUi((s) => s.launch);
   const sheetPath = useUi((s) => s.sheetPath);
   const tool = useUi((s) => s.tool);
+  const share = useUi((s) => s.share);
   const settings = useSettings();
   const qc = useQueryClient();
   useCaptureShortcut();
@@ -174,11 +176,22 @@ export function App() {
     const request = listen<string>("connect-request", () => {
       useUi.getState().toast({ kind: "info", title: t("Demande de connexion TekBoard"), detail: t("Quelqu'un veut se connecter à toi. Vérifie le code avant d'accepter."), action: { label: t("Voir"), run: () => useUi.getState().setPage("connect") } });
     });
+    // TekShare: an offer is announced wherever you are; the list refreshes on every change.
+    const offer = listen<{ nick: string; title: string; kind: string; size: number }>("tekshare-offer", (e) => {
+      useUi.getState().toast({ kind: "info", title: t("{n} te propose « {t} »", { n: e.payload.nick, t: e.payload.title }), detail: t("Accepte ou refuse dans Connect. Rien n'arrive sans ton accord."), action: { label: t("Voir"), run: () => useUi.getState().setPage("connect") } });
+    });
+    const received = listen<{ title: string }>("tekshare-received", (e) => {
+      useUi.getState().toast({ kind: "ok", title: t("« {t} » est arrivé", { t: e.payload.title }), detail: t("Vérifié. Choisis où le ranger dans Connect."), action: { label: t("Ranger"), run: () => useUi.getState().setPage("connect") } });
+    });
+    const shareChanged = listen("tekshare-changed", () => void qc.invalidateQueries({ queryKey: ["tekshare"] }));
     return () => {
       void off.then((f) => f());
       void unauth.then((f) => f());
       void connect.then((f) => f());
       void request.then((f) => f());
+      void offer.then((f) => f());
+      void received.then((f) => f());
+      void shareChanged.then((f) => f());
     };
   }, [qc]);
   // Artix opens a screen for the user (tool `navigate`).
@@ -359,6 +372,7 @@ export function App() {
       {launch && <LauncherDialog key={JSON.stringify(launch)} request={launch} />}
       {tool?.kind === "package" && <PackageDialog key={tool.repo} repo={tool.repo} />}
       {tool?.kind === "readme" && <ReadmeDialog key={tool.repo} repo={tool.repo} />}
+      {share && <ShareDialog key={JSON.stringify(share)} resource={share} />}
       <EventDialog />
       <TaskDialog />
       <QuickCapture />

@@ -98,7 +98,7 @@ fn start(app: &mut tauri::App) -> std::result::Result<(), String> {
         }
     });
     // TekBoard Connect: identity loaded, and listening only if the user turned it on.
-    if let Err(e) = connect::init(data_dir.clone(), db.clone()) {
+    if let Err(e) = connect::init(data_dir.clone(), cache_dir.clone(), db.clone()) {
         eprintln!("TekBoard: Connect unavailable: {e}");
     }
     app.manage(AppState { db, data_dir, cache_dir, jobs: jobs::Jobs::default(), my: Mutex::new(myepitech::Session::default()), my_syncing: Mutex::new(false) });
@@ -245,6 +245,14 @@ pub fn run() {
             commands_connect::connect_block,
             commands_connect::connect_forget,
             commands_connect::connect_diagnose,
+            commands_connect::share_check,
+            commands_connect::share_offer,
+            commands_connect::share_list,
+            commands_connect::share_answer,
+            commands_connect::share_cancel,
+            commands_connect::share_forget,
+            commands_connect::share_open,
+            commands_connect::share_import,
             commands_lab::arena_tools,
             commands_lab::arena_list,
             commands_lab::arena_save,
