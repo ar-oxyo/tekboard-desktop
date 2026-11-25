@@ -24,6 +24,7 @@ export const SCREEN_OF: Record<Page, string> = {
   playground: "lab",
   arena: "lab",
   connect: "connect",
+  live: "connect",
 };
 
 const TAB_OF: Partial<Record<Page, string>> = { git: "git", testing: "checks", library: "libraries" };

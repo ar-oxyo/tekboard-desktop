@@ -1,5 +1,5 @@
 // Pieces used wherever a repository is shown: status chips, the progress picker and the action menu.
-import { Archive, ArchiveRestore, CircleCheck, CircleDashed, EyeOff, CircleDot, Code2, Copy, FlaskConical, FolderOpen, GitBranch, Globe, GraduationCap, LayoutTemplate, NotebookPen, Rocket, Share2, Star, SquareTerminal, User, Wand2 } from "lucide-react";
+import { Archive, ArchiveRestore, CircleCheck, CircleDashed, EyeOff, CircleDot, Code2, Copy, FlaskConical, FolderOpen, GitBranch, Globe, GraduationCap, LayoutTemplate, NotebookPen, MonitorPlay, Rocket, Share2, Star, SquareTerminal, User, Wand2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Menu, MenuChoice, MenuItem, MenuLabel, MenuSeparator, SubMenu } from "../../components/Menu";
 import { cn, Dot, IconButton } from "../../components/ui";
@@ -153,6 +153,9 @@ export function RepoMenu({ repo, sheet = true }: { repo: RepoInfo; sheet?: boole
       </MenuItem>
       <MenuItem icon={<LayoutTemplate className="size-4" />} onSelect={() => openLauncher({ mode: "existing", path: repo.path })}>
         {t("Appliquer un modèle…")}
+      </MenuItem>
+      <MenuItem icon={<MonitorPlay className="size-4" />} onSelect={() => useUi.getState().openLive(repo.path)} title={t("Coder à plusieurs dans VS Code avec P2P Live Share")}>
+        {t("Collaborer (TekLive)…")}
       </MenuItem>
       <SubMenu icon={<Share2 className="size-4" />} label={t("Partager (TekShare)")}>
         <MenuItem onSelect={() => openShare({ kind: "patch", repo: repo.path })}>{t("Mes modifications non commitées (patch)…")}</MenuItem>

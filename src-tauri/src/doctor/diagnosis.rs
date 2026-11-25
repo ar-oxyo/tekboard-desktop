@@ -238,6 +238,29 @@ fn connect(out: &mut Vec<Check>) {
     }
 }
 
+/// TekLive: VS Code, P2P Live Share and the TekBoard Bridge (all optional).
+fn teklive(out: &mut Vec<Check>) {
+    let cat = "TekLive";
+    let s = crate::teklive::setup();
+    out.push(match &s.code {
+        Some(_) => check("teklive.code", cat, "VS Code", Status::Ok, s.code_version.clone().unwrap_or_else(|| "installé".into())),
+        None => check("teklive.code", cat, "VS Code", Status::Unconfigured, "Absent : les sessions TekLive passent par VS Code (commande `code`)."),
+    }.affects("TekLive (coder à plusieurs)"));
+    if s.code.is_none() {
+        return;
+    }
+    out.push(match &s.extension {
+        Some(v) if v == crate::teklive::TESTED_VERSION => check("teklive.extension", cat, "P2P Live Share", Status::Ok, format!("{v} (version testée avec TekBoard)")),
+        Some(v) => check("teklive.extension", cat, "P2P Live Share", Status::Warn, format!("{v} installée ; TekBoard a été testé avec {} : le relais peut ne pas être compatible.", crate::teklive::TESTED_VERSION)).command(format!("code --install-extension {}@{}", crate::teklive::EXTENSION, crate::teklive::TESTED_VERSION)),
+        None => check("teklive.extension", cat, "P2P Live Share", Status::Unconfigured, "Non installée (TekLive propose de l'installer).").command(format!("code --install-extension {}@{}", crate::teklive::EXTENSION, crate::teklive::TESTED_VERSION)),
+    }.affects("TekLive"));
+    out.push(match &s.bridge {
+        Some(v) if v == crate::teklive::BRIDGE_VERSION => check("teklive.bridge", cat, "TekBoard Bridge", Status::Ok, format!("{v}")),
+        Some(v) => check("teklive.bridge", cat, "TekBoard Bridge", Status::Warn, format!("{v} : une version plus récente vient avec TekBoard (TekLive la met à jour).")),
+        None => check("teklive.bridge", cat, "TekBoard Bridge", Status::Unconfigured, "Non installée (TekLive propose de l'installer) : sans elle, il faut choisir le serveur à la main dans VS Code."),
+    }.affects("lancement automatique des sessions"));
+}
+
 /// Code Playground and Algorithm Arena: compilers, measuring tools, sandbox limits.
 fn lab(out: &mut Vec<Check>) {
     let cat = "Labo";
@@ -388,6 +411,7 @@ fn run_checks(state: &AppState, f: &Facts) -> Report {
     epitech_tools(&mut checks);
     lab(&mut checks);
     connect(&mut checks);
+    teklive(&mut checks);
     data(&mut checks, state);
     projects(&mut checks, state);
     updates(&mut checks, f);

@@ -1,10 +1,10 @@
 import { create } from "zustand";
 import type { PlanEvent, PlanTask } from "./api";
 
-export type Page = "overview" | "projects" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "myepitech" | "logtime" | "cozy" | "settings" | "prompts" | "agenda" | "skilltree" | "playground" | "arena" | "connect";
+export type Page = "overview" | "projects" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "myepitech" | "logtime" | "cozy" | "settings" | "prompts" | "agenda" | "skilltree" | "playground" | "arena" | "connect" | "live";
 
 /** Sidebar order. Ctrl+1 to Ctrl+9 open the first nine. */
-export const PAGES: Page[] = ["overview", "projects", "agenda", "git", "testing", "library", "templates", "myepitech", "skilltree", "logtime", "subjects", "analytics", "cozy", "settings", "prompts", "playground", "arena", "connect"];
+export const PAGES: Page[] = ["overview", "projects", "agenda", "git", "testing", "library", "templates", "myepitech", "skilltree", "logtime", "subjects", "analytics", "cozy", "settings", "prompts", "playground", "arena", "connect", "live"];
 
 export interface Toast {
   id: number;
@@ -33,6 +33,9 @@ interface UiState {
   openLibrary: (path: string | null) => void;
   /** Project selected on the Testing screen. */
   testingRepo: string | null;
+  /** Project chosen for a TekLive session (from the project menu). */
+  liveRepo: string | null;
+  openLive: (path: string) => void;
   openTesting: (path: string | null) => void;
   /** Task whose progress the Testing screen shows. */
   jobId: number | null;
@@ -99,6 +102,8 @@ export const useUi = create<UiState>((set, get) => ({
   libraryRepo: null,
   openLibrary: (libraryRepo) => set({ libraryRepo, page: "library", sheetPath: null, paletteOpen: false }),
   testingRepo: null,
+  liveRepo: null,
+  openLive: (liveRepo) => set({ liveRepo, page: "live", sheetPath: null, paletteOpen: false }),
   openTesting: (testingRepo) => set({ testingRepo, page: "testing", sheetPath: null, paletteOpen: false }),
   jobId: null,
   runId: null,

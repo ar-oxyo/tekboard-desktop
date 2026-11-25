@@ -155,3 +155,56 @@ pub fn share_import(app: tauri::AppHandle, state: State<'_, AppState>, id: Strin
     }
     Ok(r)
 }
+
+// ───────────────────────────── TekLive ─────────────────────────────
+
+use crate::teklive;
+
+#[tauri::command(async)]
+pub fn live_setup() -> teklive::Setup {
+    teklive::setup()
+}
+
+/// Installs P2P Live Share (tested version) or the TekBoard Bridge into VS Code. The window
+/// asks for confirmation before calling this.
+#[tauri::command(async)]
+pub fn live_install(state: State<'_, AppState>, what: String) -> Result<String> {
+    teklive::install(&state.cache_dir.join("teklive"), &what)
+}
+
+#[tauri::command]
+pub async fn live_start(state: State<'_, AppState>, project: String, contacts_only: bool, show_project: bool) -> Result<teklive::Session> {
+    let dir = crate::commands::project_dir(&state, &project)?;
+    let nick = connect::service().map(|s| s.config().profile.nick).unwrap_or_else(|| std::env::var("USER").unwrap_or_default());
+    teklive::start(&dir, &nick, contacts_only, show_project).await
+}
+
+#[tauri::command(async)]
+pub fn live_stop() -> Result<()> {
+    teklive::stop()
+}
+
+#[tauri::command(async)]
+pub fn live_state() -> Option<teklive::Session> {
+    teklive::current()
+}
+
+#[tauri::command(async)]
+pub fn live_invite(fp: String) -> Result<()> {
+    teklive::invite(&fp)
+}
+
+#[tauri::command(async)]
+pub fn live_invitations() -> Vec<teklive::Invitation> {
+    teklive::invitations()
+}
+
+#[tauri::command(async)]
+pub fn live_join(id: String) -> Result<()> {
+    teklive::join(&id)
+}
+
+#[tauri::command(async)]
+pub fn live_decline(id: String) {
+    teklive::decline(&id)
+}

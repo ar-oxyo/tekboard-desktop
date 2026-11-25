@@ -18,6 +18,7 @@ import { invalidate, listenData, setQueryClient } from "../lib/sync";
 import { listenConnect } from "../lib/connect";
 import { ConnectPage } from "../features/connect/ConnectPage";
 import { ShareDialog } from "../features/connect/ShareDialog";
+import { LIVE_KEY, LivePage } from "../features/connect/LivePage";
 import { doctorProblems } from "../features/settings/DoctorCard";
 import { SkillTreePage } from "../features/skilltree/SkillTreePage";
 import { PAGES, useUi, type Page } from "../lib/store";
@@ -184,6 +185,12 @@ export function App() {
       useUi.getState().toast({ kind: "ok", title: t("« {t} » est arrivé", { t: e.payload.title }), detail: t("Vérifié. Choisis où le ranger dans Connect."), action: { label: t("Ranger"), run: () => useUi.getState().setPage("connect") } });
     });
     const shareChanged = listen("tekshare-changed", () => void qc.invalidateQueries({ queryKey: ["tekshare"] }));
+    // TekLive: the session state is pushed; an invitation is announced wherever you are.
+    const liveState = listen("teklive-state", (e) => qc.setQueryData(LIVE_KEY, e.payload));
+    const liveInvite = listen<{ host: string; project: string | null }>("teklive-invite", (e) => {
+      void qc.invalidateQueries({ queryKey: ["teklive-invites"] });
+      useUi.getState().toast({ kind: "info", title: e.payload.project ? t("{h} t'invite à coder sur « {p} »", { h: e.payload.host, p: e.payload.project }) : t("{h} t'invite à une session de code", { h: e.payload.host }), action: { label: t("Voir"), run: () => useUi.getState().setPage("live") } });
+    });
     return () => {
       void off.then((f) => f());
       void unauth.then((f) => f());
@@ -192,6 +199,8 @@ export function App() {
       void offer.then((f) => f());
       void received.then((f) => f());
       void shareChanged.then((f) => f());
+      void liveState.then((f) => f());
+      void liveInvite.then((f) => f());
     };
   }, [qc]);
   // Artix opens a screen for the user (tool `navigate`).
@@ -358,6 +367,7 @@ export function App() {
             </Suspense>
           )}
           {page === "connect" && <ConnectPage />}
+          {page === "live" && <LivePage />}
           {page === "arena" && (
             <Suspense fallback={<Spinner />}>
               <ArenaPage />

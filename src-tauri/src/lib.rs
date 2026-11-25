@@ -49,6 +49,7 @@ pub mod skilltree;
 pub mod subjects;
 pub mod templates;
 pub mod testing;
+pub mod teklive;
 pub mod testrepo;
 pub mod toolenv;
 pub mod updates;
@@ -253,6 +254,15 @@ pub fn run() {
             commands_connect::share_forget,
             commands_connect::share_open,
             commands_connect::share_import,
+            commands_connect::live_setup,
+            commands_connect::live_install,
+            commands_connect::live_start,
+            commands_connect::live_stop,
+            commands_connect::live_state,
+            commands_connect::live_invite,
+            commands_connect::live_invitations,
+            commands_connect::live_join,
+            commands_connect::live_decline,
             commands_lab::arena_tools,
             commands_lab::arena_list,
             commands_lab::arena_save,
@@ -384,6 +394,8 @@ pub fn run() {
                     state.jobs.cancel_all();
                 }
                 // Stop advertising and close the connections cleanly.
+                // A TekLive session ends with TekBoard: its relay stops.
+                let _ = teklive::stop();
                 if let Some(c) = connect::service() {
                     tauri::async_runtime::block_on(c.stop());
                 }

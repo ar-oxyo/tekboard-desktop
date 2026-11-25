@@ -932,6 +932,38 @@ export interface Imported {
   open: { page?: string; id?: number; path?: string; runId?: number; reveal?: string } | null;
 }
 
+// ───────────────────────── TekLive ─────────────────────────
+export interface LiveSetup {
+  code: string | null;
+  codeVersion: string | null;
+  extension: string | null;
+  bridge: string | null;
+  missing: string[];
+}
+export interface LiveSession {
+  project: string;
+  name: string;
+  state: "waiting" | "live" | "stopped";
+  server: string;
+  link: string | null;
+  room: string | null;
+  peers: string[];
+  guests: string[];
+  refused: number;
+  startedAt: number;
+  contactsOnly: boolean;
+  showProject: boolean;
+  invited: string[];
+}
+export interface LiveInvitation {
+  id: string;
+  from: string;
+  host: string;
+  project: string | null;
+  link: string;
+  at: number;
+}
+
 export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull" | "playground" | "arena" | "arena_ai" | "arena_report";
 /** Kind-specific facts; see the Rust module that produces each kind. */
 export type RunSummary = Record<string, unknown> & { steps?: JobStep[] };
@@ -1708,6 +1740,15 @@ export const api = {
   shareForget: (id: string) => invoke<void>("share_forget", { id }),
   shareOpen: (id: string) => invoke<OpenedTransfer>("share_open", { id }),
   shareImport: (id: string, target: ImportTarget) => invoke<Imported>("share_import", { id, target }),
+  liveSetup: () => invoke<LiveSetup>("live_setup"),
+  liveInstall: (what: "extension" | "bridge") => invoke<string>("live_install", { what }),
+  liveStart: (project: string, contactsOnly: boolean, showProject: boolean) => invoke<LiveSession>("live_start", { project, contactsOnly, showProject }),
+  liveStop: () => invoke<void>("live_stop"),
+  liveState: () => invoke<LiveSession | null>("live_state"),
+  liveInvite: (fp: string) => invoke<void>("live_invite", { fp }),
+  liveInvitations: () => invoke<LiveInvitation[]>("live_invitations"),
+  liveJoin: (id: string) => invoke<void>("live_join", { id }),
+  liveDecline: (id: string) => invoke<void>("live_decline", { id }),
   jobGet: (id: number) => invoke<JobView>("job_get", { id }),
   jobGetSince: (id: number, logFrom: number, eventsFrom: number) => invoke<JobView>("job_get", { id, logFrom, eventsFrom }),
   jobCancel: (id: number) => invoke<void>("job_cancel", { id }),

@@ -184,6 +184,7 @@ pub fn init(data_dir: PathBuf, cache_dir: PathBuf, db: Arc<Mutex<Connection>>) -
     let s = Arc::new(Service::new(&data_dir.join("connect"), db.clone())?);
     let _ = SERVICE.set(s.clone());
     share::init(&s, db, cache_dir.join("tekshare"));
+    crate::teklive::init(&s);
     if lock(&s.config).enabled {
         let s2 = s.clone();
         tauri::async_runtime::spawn(async move {

@@ -39,6 +39,14 @@ Chaque version publiée a sa section ici ; la release GitHub reprend ce texte.
 - TekShare comprend ce qu'il reçoit et propose la bonne destination : une fonction dans les bibliothèques ou le Playground, un brouillon dans le Playground, un modèle dans les modèles, un prompt dans les prompts, des tests dans un projet, un benchmark dans l'Arena, un patch vérifié (`git apply --check`) puis appliqué sur demande, un journal ou une erreur à Artix, le reste dans Téléchargements.
 - Sécurité : secrets (clés, jetons, cookies) et fichiers sensibles bloqués à l'envoi, avertissement sur les règles pédagogiques pour le code d'un projet de l'école et refus d'envoyer un dépôt d'école entier ; à l'arrivée, quarantaine, vérification de la taille et de l'empreinte SHA-256, extraction refusant chemins absolus, `..`, liens et archives piégées ; rien n'est jamais exécuté ni écrasé ; offres et débit limités.
 
+**TekLive** (Connect → TekLive, ou « Collaborer » dans le menu d'un projet) — coder à plusieurs avec P2P Live Share
+- TekBoard lance lui-même un relais WebSocket compatible avec l'extension P2P Live Share (kermanx.p2p-live-share 0.1.4, version testée), sur le réseau local : plus besoin de Node.js, de Bun, ni de chercher son adresse IP.
+- Il ouvre le projet dans VS Code, où sa petite extension « TekBoard Bridge » (fournie, installée après confirmation) place ce relais en tête des serveurs et ouvre la liste de l'extension : il suffit d'appuyer sur Entrée. TekBoard voit alors la session s'ouvrir et affiche le vrai lien d'invitation.
+- Invitation directe des contacts TekBoard : ils voient l'hôte et, si tu l'autorises, le nom du projet ; ils acceptent et VS Code rejoint la session tout seul (`code --folder-uri`), après installation de l'extension si besoin.
+- Suivi de la session : état, durée, invités connectés, invitations envoyées, connexions refusées ; arrêt propre (le relais s'arrête avec la session et avec TekBoard).
+- Par défaut, seules les adresses des contacts TekBoard peuvent rejoindre. P2P Live Share n'a pas de droits par participant (un invité peut modifier les fichiers) : TekBoard le dit clairement. Terminal et ports ne sont partagés que si l'hôte le fait lui-même. Aucun accès Internet, aucune modification du pare-feu.
+- Doctor : catégorie TekLive (VS Code, extension, passerelle).
+
 ## 0.7.0
 
 **Choisir son IA** (Réglages → Artix (IA), et au premier lancement)
