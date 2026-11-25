@@ -2,7 +2,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { CalendarCheck, Inbox, Lightbulb, PenLine, Sparkles, FileText, FlaskConical, FolderGit2, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, Plus, RefreshCw, ScrollText, Timer, FileCode2 } from "lucide-react";
+import { CalendarCheck, Code2, GitBranch, SquareTerminal, Inbox, Lightbulb, PenLine, Sparkles, FileText, FlaskConical, FolderGit2, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, Plus, RefreshCw, ScrollText, Timer, FileCode2 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { SECTIONS } from "../../app/sections";
 import { PAGE_ICON } from "../../app/pageIcons";
@@ -55,6 +55,11 @@ export function CommandPalette() {
   }, [search]);
   const captures = useQuery({ queryKey: ["brain", "palette", query], queryFn: () => api.brainList({ view: "all", query, limit: 6 }), enabled: open && query.length >= 2, placeholderData: (p) => p });
 
+  const all = repos.data ?? [];
+  const recent = [...all].filter((r) => r.meta.lastOpenedAt).sort((a, b) => (b.meta.lastOpenedAt ?? 0) - (a.meta.lastOpenedAt ?? 0)).slice(0, 5);
+  const q = search.trim().toLowerCase();
+  const focus = q.length >= 2 ? (all.find((r) => r.name.toLowerCase().startsWith(q) || displayName(r).toLowerCase().startsWith(q)) ?? null) : null;
+
   const run = (fn: () => void) => () => {
     setOpen(false);
     fn();
@@ -79,6 +84,38 @@ export function CommandPalette() {
           <Command loop label="Palette de commandes">
             <Command.Input autoFocus value={search} onValueChange={setSearch} aria-label={t("Rechercher un projet, un sujet, une action, ou demander à Artix")} placeholder={t("Rechercher, ou demander à Artix…")} className="h-12 w-full border-b border-ink/6 bg-transparent px-4 text-sm text-fg placeholder:text-faint focus:outline-none" />
             <Command.List className="max-h-[380px] overflow-y-auto p-1.5">
+              {/* Empty search: the projects opened last, first. */}
+              {!search.trim() && recent.length > 0 && (
+                <Command.Group heading={t("Récents")} className={groupClass}>
+                  {recent.map((repo) => (
+                    <Command.Item key={`recent-${repo.path}`} value={`recent ${repo.name} ${repo.path}`} onSelect={run(() => openSheet(repo.path))} className={itemClass}>
+                      <FolderGit2 className="size-4 shrink-0 text-faint" />
+                      <span className="min-w-0 flex-1 truncate">{displayName(repo)}</span>
+                      <span className="text-xs text-faint">{repo.epitech?.module ?? repo.group}</span>
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              )}
+              {/* Typing a project's name offers what can be done with it. */}
+              {focus && (
+                <Command.Group heading={displayName(focus)} className={groupClass}>
+                  {(
+                    [
+                      { label: t("Ouvrir l'espace de travail"), icon: <FolderGit2 className={ic} />, fn: () => act.workspace.mutate(focus) },
+                      { label: t("Fiche du projet"), icon: <NotebookPen className={ic} />, fn: () => openSheet(focus.path) },
+                      { label: t("Ouvrir dans l'IDE"), icon: <Code2 className={ic} />, fn: () => act.ide.mutate(focus) },
+                      { label: t("Ouvrir un terminal ici"), icon: <SquareTerminal className={ic} />, fn: () => act.terminal.mutate(focus) },
+                      { label: t("Git : commiter, envoyer"), icon: <GitBranch className={ic} />, fn: () => useUi.getState().openGit(focus.path) },
+                      ...TOOLS.map(([id, label, icon]) => ({ label, icon, fn: () => tool(id, focus.path) })),
+                    ] as Array<{ label: string; icon: ReactNode; fn: () => void }>
+                  ).map((a) => (
+                    <Command.Item key={`focus-${a.label}`} forceMount value={`${search} ${a.label}`} onSelect={run(a.fn)} className={itemClass}>
+                      <span className="text-faint">{a.icon}</span>
+                      <span className="min-w-0 flex-1 truncate">{a.label}</span>
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              )}
               {search.trim().length > 2 && (
                 <Command.Group heading="Artix" className={groupClass}>
                   <Command.Item forceMount value={`artix ${search}`} onSelect={ask(search.trim())} className={itemClass}>

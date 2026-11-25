@@ -216,7 +216,7 @@ export function Meter({ value, max, tone = "accent", label, className }: { value
   const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
   return (
     <span role="meter" aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-label={label} className={cn("block h-1.5 overflow-hidden rounded-full bg-ink/8", className)}>
-      <span className={cn("block h-full rounded-full transition-[width] duration-(--dur-base) ease-(--ease)", meterInk[tone])} style={{ width: `${pct}%` }} />
+      <span className={cn("meter-fill block h-full rounded-full transition-[width] duration-(--dur-base) ease-(--ease)", meterInk[tone])} style={{ width: `${pct}%` }} />
     </span>
   );
 }

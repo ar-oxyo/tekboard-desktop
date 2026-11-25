@@ -5,7 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { Check, Inbox, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
-import { useColorMode, useSettings } from "../../lib/hooks";
+import { useAutoAmbiance, useColorMode, useMotionPref, useSettings } from "../../lib/hooks";
 import { listenData, setQueryClient } from "../../lib/sync";
 import { t } from "../../lib/i18n";
 import { IconButton } from "../../components/ui";
@@ -14,6 +14,7 @@ import { CaptureEditor } from "./CaptureEditor";
 export function CaptureApp() {
   const qc = useQueryClient();
   const settings = useSettings();
+  const auto = useAutoAmbiance();
   const [shown, setShown] = useState(0);
   const [saved, setSaved] = useState<string | null>(null);
 
@@ -30,10 +31,11 @@ export function CaptureApp() {
     };
   }, [qc]);
   useEffect(() => {
-    document.documentElement.dataset.theme = settings.data?.theme ?? "aurora";
+    document.documentElement.dataset.theme = auto?.theme ?? settings.data?.theme ?? "aurora";
     document.documentElement.dataset.glass = "off";
-  }, [settings.data?.theme]);
-  useColorMode(settings.data?.theme);
+  }, [settings.data?.theme, auto?.theme]);
+  useColorMode(auto?.theme ?? settings.data?.theme, auto?.mode);
+  useMotionPref();
 
   const hide = (then: string | null = null) => void api.captureClose(then);
 

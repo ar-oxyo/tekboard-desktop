@@ -1,11 +1,12 @@
 // The Today screen's main blocks: what is on now, four indicators, the day's timeline and the
 // projects under way. Everything shown comes from real data; nothing is estimated for the user.
 import { useQuery } from "@tanstack/react-query";
-import { Building2, CalendarDays, ClipboardCheck, Clock3, CloudDownload, Code2, Flag, GitCommitHorizontal, GraduationCap, Lock, Play, SquareTerminal, Sun, TriangleAlert, Wand2, CircleCheck } from "lucide-react";
+import { ArrowDown, ArrowUp, Building2, CalendarDays, ClipboardCheck, Clock3, CloudDownload, Code2, Flag, GitCommitHorizontal, GraduationCap, Lock, Play, SquareTerminal, Sun, TriangleAlert, Wand2, CircleCheck } from "lucide-react";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { Button, cn, IconButton, Meter, Notice, Spinner } from "../../components/ui";
+import { Button, cn, DoneCheck, IconButton, Meter, Notice, Spinner } from "../../components/ui";
+import { Modal } from "../../components/Modal";
 import { api, type BoardItem, type RepoInfo } from "../../lib/api";
-import { useBoard, useNow, useProjectActions, useRepos } from "../../lib/hooks";
+import { useBoard, useNow, usePref, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
 import { addDays, fmtDur, hhmm, MIN, nextUp, startOfDay, toRegister, workload, type CalItem } from "../../lib/plan";
 import { attention, daysLeft, displayName, due } from "../../lib/repos";
 import { useUi } from "../../lib/store";
@@ -175,7 +176,7 @@ export function HeroNow() {
 
 function Tile({ label, icon, value, unit, pct, tone = "accent", note, onClick }: { label: string; icon: ReactNode; value: string; unit?: string; pct: number; tone?: "accent" | "warn"; note: ReactNode; onClick?: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex min-w-0 flex-col gap-2 rounded-xl border border-line bg-surface px-4 py-3.5 text-left transition-colors duration-(--dur-fast) hover:border-line-strong">
+    <button type="button" onClick={onClick} className="lift flex min-w-0 flex-col gap-2 rounded-xl border border-line bg-surface px-4 py-3.5 text-left hover:border-line-strong">
       <span className="flex items-center justify-between text-xs text-muted">
         <span>{label}</span>
         <span className="text-faint [&>svg]:size-4">{icon}</span>
@@ -191,7 +192,7 @@ function Tile({ label, icon, value, unit, pct, tone = "accent", note, onClick }:
 }
 
 /** Four indicators: the week's logtime, credits, today's planned work and the next hand-in. */
-export function StatTiles() {
+export function StatTiles({ hidden = [] }: { hidden?: string[] }) {
   const data = usePlanData();
   const now = useNow().getTime();
   const board = useBoard();
@@ -215,45 +216,53 @@ export function StatTiles() {
   const days = nextDue?.i.day ? daysLeft(nextDue.i.day) : null;
 
   return (
-    <div className="grid grid-cols-2 gap-3 @4xl:grid-cols-4">
+    <div className={cn("grid grid-cols-2 gap-3", ["", "@4xl:grid-cols-1", "@4xl:grid-cols-2", "@4xl:grid-cols-3", "@4xl:grid-cols-4"][4 - hidden.filter((h) => h.startsWith("tile.")).length])}>
+      {!hidden.includes("tile.logtime") && (
       <Tile
-        label={t("Logtime de la semaine")}
-        icon={<Building2 />}
-        value={l && !l.unavailable ? hours(done) : "—"}
-        unit={l && !l.unavailable ? ` / ${l.goalHours} h` : undefined}
-        pct={goal ? (done / goal) * 100 : 0}
-        note={!l || l.unavailable ? t("Synchronise MY Epitech pour le voir") : left === 0 ? t("Objectif atteint") : t("≈ {h} par jour restant", { h: hours(perDay) })}
-        onClick={() => setPage("logtime")}
-      />
+          label={t("Logtime de la semaine")}
+          icon={<Building2 />}
+          value={l && !l.unavailable ? hours(done) : "—"}
+          unit={l && !l.unavailable ? ` / ${l.goalHours} h` : undefined}
+          pct={goal ? (done / goal) * 100 : 0}
+          note={!l || l.unavailable ? t("Synchronise MY Epitech pour le voir") : left === 0 ? t("Objectif atteint") : t("≈ {h} par jour restant", { h: hours(perDay) })}
+          onClick={() => setPage("logtime")}
+        />
+      )}
+      {!hidden.includes("tile.credits") && (
       <Tile
-        label={t("Crédits")}
-        icon={<GraduationCap />}
-        value={o?.creditsAcquired != null ? String(o.creditsAcquired) : "—"}
-        unit={o?.creditsTotal != null ? ` / ${o.creditsTotal}` : undefined}
-        pct={o?.creditsAcquired != null && o.creditsTotal ? (o.creditsAcquired / o.creditsTotal) * 100 : 0}
-        note={o?.creditsAcquired != null ? t("D'après MY Epitech") : t("Synchronise MY Epitech pour les voir")}
-        onClick={() => setPage("myepitech")}
-      />
+          label={t("Crédits")}
+          icon={<GraduationCap />}
+          value={o?.creditsAcquired != null ? String(o.creditsAcquired) : "—"}
+          unit={o?.creditsTotal != null ? ` / ${o.creditsTotal}` : undefined}
+          pct={o?.creditsAcquired != null && o.creditsTotal ? (o.creditsAcquired / o.creditsTotal) * 100 : 0}
+          note={o?.creditsAcquired != null ? t("D'après MY Epitech") : t("Synchronise MY Epitech pour les voir")}
+          onClick={() => setPage("myepitech")}
+        />
+      )}
+      {!hidden.includes("tile.work") && (
       <Tile
-        label={t("Travail prévu aujourd'hui")}
-        icon={<Clock3 />}
-        value={today ? fmtDur(today.work) : "—"}
-        unit={` / ${fmtDur(data.prefs.maxMinutesPerDay)}`}
-        pct={today ? (today.work / data.prefs.maxMinutesPerDay) * 100 : 0}
-        tone={today?.level === "over" ? "warn" : "accent"}
-        note={sessions > 0 ? plural(sessions, "{n} session au planning", "{n} sessions au planning") : t("Rien au planning")}
-        onClick={() => useUi.getState().openPlanning(now)}
-      />
+          label={t("Travail prévu aujourd'hui")}
+          icon={<Clock3 />}
+          value={today ? fmtDur(today.work) : "—"}
+          unit={` / ${fmtDur(data.prefs.maxMinutesPerDay)}`}
+          pct={today ? (today.work / data.prefs.maxMinutesPerDay) * 100 : 0}
+          tone={today?.level === "over" ? "warn" : "accent"}
+          note={sessions > 0 ? plural(sessions, "{n} session au planning", "{n} sessions au planning") : t("Rien au planning")}
+          onClick={() => useUi.getState().openPlanning(now)}
+        />
+      )}
+      {!hidden.includes("tile.due") && (
       <Tile
-        label={t("Prochain rendu")}
-        icon={<Flag />}
-        value={days === null ? "—" : days === 0 ? t("auj.") : String(days)}
-        unit={days !== null && days > 0 ? (days === 1 ? ` ${t("jour")}` : ` ${t("jours")}`) : undefined}
-        pct={days === null ? 0 : Math.max(5, 100 - (days / 14) * 100)}
-        tone={days !== null && days <= 3 ? "warn" : "accent"}
-        note={nextDue ? `${nextDue.i.title} · ${new Date(`${nextDue.i.day}T12:00`).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" })}` : t("Aucun rendu connu")}
-        onClick={() => nextDue?.i.repoPath && useUi.getState().openSheet(nextDue.i.repoPath)}
-      />
+          label={t("Prochain rendu")}
+          icon={<Flag />}
+          value={days === null ? "—" : days === 0 ? t("auj.") : String(days)}
+          unit={days !== null && days > 0 ? (days === 1 ? ` ${t("jour")}` : ` ${t("jours")}`) : undefined}
+          pct={days === null ? 0 : Math.max(5, 100 - (days / 14) * 100)}
+          tone={days !== null && days <= 3 ? "warn" : "accent"}
+          note={nextDue ? `${nextDue.i.title} · ${new Date(`${nextDue.i.day}T12:00`).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" })}` : t("Aucun rendu connu")}
+          onClick={() => nextDue?.i.repoPath && useUi.getState().openSheet(nextDue.i.repoPath)}
+        />
+      )}
     </div>
   );
 }
@@ -385,7 +394,7 @@ function ProjectCard({ repo, load }: { repo: RepoInfo; load?: { remaining: numbe
   const issue = repo.error ? { level: "danger" as const, label: t("Illisible") } : attention(repo)[0];
   const code = repo.my?.unitCode ?? repo.epitech?.module ?? repo.group;
   return (
-    <div className="group flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 transition-colors duration-(--dur-fast) hover:border-line-strong">
+    <div className="lift group flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 hover:border-line-strong">
       <button type="button" onClick={() => openSheet(repo.path)} className="flex items-start justify-between gap-2 text-left">
         <span className="min-w-0">
           <span className="block truncate text-base font-semibold">{displayName(repo)}</span>
@@ -434,5 +443,126 @@ function CloneCard({ item }: { item: BoardItem }) {
         {t("Cloner")}
       </Button>
     </div>
+  );
+}
+
+// ── Today, made to measure: which blocks show, in which order (Settings → Appearance, or the
+// "Personnaliser" button of the screen). Everything visible by default.
+
+export type TodayBlock = "hero" | "tiles" | "day" | "more";
+export type TodayTile = "logtime" | "credits" | "work" | "due";
+export interface TodayLayout {
+  order: TodayBlock[];
+  hidden: Array<TodayBlock | `tile.${TodayTile}` | "timeline" | "projects" | "checklist">;
+}
+export const TODAY_LAYOUT: TodayLayout = { order: ["hero", "tiles", "day", "more"], hidden: [] };
+export const useTodayLayout = () => usePref<TodayLayout>("today.layout", TODAY_LAYOUT);
+
+const BLOCK_LABEL: Record<TodayBlock, string> = { hero: t("Maintenant"), tiles: t("Indicateurs"), day: t("Journée et projets"), more: t("Rendus, charge et activité") };
+const TILE_LABEL: Record<TodayTile, string> = { logtime: t("Logtime de la semaine"), credits: t("Crédits"), work: t("Travail prévu aujourd'hui"), due: t("Prochain rendu") };
+
+export function TodayCustomize({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [layout, setLayout] = useTodayLayout();
+  const hidden = new Set(layout.hidden);
+  const toggle = (k: TodayLayout["hidden"][number]) => setLayout({ ...layout, hidden: hidden.has(k) ? layout.hidden.filter((x) => x !== k) : [...layout.hidden, k] });
+  const move = (b: TodayBlock, by: -1 | 1) => {
+    const order = [...layout.order];
+    const i = order.indexOf(b);
+    const j = i + by;
+    if (j < 0 || j >= order.length) return;
+    [order[i], order[j]] = [order[j], order[i]];
+    setLayout({ ...layout, order });
+  };
+  const box = (k: TodayLayout["hidden"][number], label: string, sub?: boolean) => (
+    <label className={cn("flex min-h-8 flex-1 items-center gap-2.5 text-sm", sub && "pl-7 text-muted")}>
+      <input type="checkbox" className="accent-(--color-accent)" checked={!hidden.has(k)} onChange={() => toggle(k)} />
+      {label}
+    </label>
+  );
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t("Personnaliser Aujourd'hui")}
+      description={t("Choisis ce qui s'affiche et dans quel ordre. Rien n'est supprimé : un bloc masqué revient d'un clic.")}
+      width="w-[520px]"
+      footer={
+        <>
+          <Button variant="ghost" onClick={() => setLayout(TODAY_LAYOUT)}>
+            {t("Rétablir")}
+          </Button>
+          <Button variant="primary" onClick={onClose}>
+            {t("Terminé")}
+          </Button>
+        </>
+      }
+    >
+      <ul className="flex flex-col divide-y divide-line">
+        <li className="py-1.5">{box("checklist", t("Guide de démarrage (tant qu'il reste des étapes)"))}</li>
+        {layout.order.map((b, i) => (
+          <li key={b} className="py-1.5">
+            <div className="flex items-center gap-2">
+              {box(b, BLOCK_LABEL[b])}
+              <IconButton label={t("Monter")} disabled={i === 0} onClick={() => move(b, -1)}>
+                <ArrowUp className="size-4" />
+              </IconButton>
+              <IconButton label={t("Descendre")} disabled={i === layout.order.length - 1} onClick={() => move(b, 1)}>
+                <ArrowDown className="size-4" />
+              </IconButton>
+            </div>
+            {b === "tiles" && !hidden.has("tiles") && (["logtime", "credits", "work", "due"] as TodayTile[]).map((x) => <div key={x}>{box(`tile.${x}`, TILE_LABEL[x], true)}</div>)}
+            {b === "day" && !hidden.has("day") && (
+              <>
+                {box("timeline", t("Frise du jour"), true)}
+                {box("projects", t("Cartes projets"), true)}
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Modal>
+  );
+}
+
+/** First steps, on Today, until each is done (or the student hides the list). */
+export function GettingStarted() {
+  const [layout, setLayout] = useTodayLayout();
+  const settings = useSettings();
+  const repos = useRepos();
+  const my = useQuery({ queryKey: ["my-status"], queryFn: api.myStatus, staleTime: 30_000 });
+  const inbox = useQuery({ queryKey: ["brain-count"], queryFn: api.brainCount, staleTime: 60_000 });
+  const [chosen] = usePref<boolean>("ambianceChosen", false);
+  const ui = useUi.getState;
+  if (layout.hidden.includes("checklist") || !settings.data) return null;
+  const steps: Array<{ done: boolean; label: string; action: () => void }> = [
+    { done: settings.data.roots.length > 0, label: t("Indique où sont tes projets"), action: () => useUi.setState({ page: "settings", settingsTab: "general" }) },
+    { done: (my.data?.lastSync ?? null) !== null, label: t("Synchronise MY Epitech"), action: () => ui().setPage("myepitech") },
+    { done: chosen, label: t("Choisis ton ambiance"), action: () => useUi.setState({ page: "settings", settingsTab: "design" }) },
+    { done: (repos.data ?? []).some((r) => r.meta.favorite), label: t("Épingle un projet (étoile dans Projets)"), action: () => ui().setPage("projects") },
+    { done: (inbox.data ?? 0) > 0, label: t("Note une idée avec Ctrl+I"), action: () => ui().setCaptureOpen(true) },
+  ];
+  const left = steps.filter((s) => !s.done).length;
+  if (left === 0) return null;
+  return (
+    <section className="rounded-xl border border-dashed border-line-strong px-5 py-4" aria-label={t("Premiers pas")}>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold">
+          {t("Premiers pas")} <span className="font-normal text-faint">· {plural(left, "{n} étape restante", "{n} étapes restantes")}</span>
+        </h2>
+        <Button size="sm" variant="ghost" onClick={() => setLayout({ ...layout, hidden: [...layout.hidden, "checklist"] })}>
+          {t("Masquer")}
+        </Button>
+      </div>
+      <ul className="grid grid-cols-1 gap-x-6 @3xl:grid-cols-2">
+        {steps.map((s) => (
+          <li key={s.label}>
+            <button type="button" disabled={s.done} onClick={s.action} className={cn("flex min-h-8 w-full items-center gap-2.5 rounded-(--btn-radius) px-1 text-left text-sm", s.done ? "text-faint line-through" : "hover:bg-ink/5")}>
+              <DoneCheck checked={s.done} label={s.label} onChange={s.action} />
+              {s.label}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

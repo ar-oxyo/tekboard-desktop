@@ -1,12 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, CalendarClock, CalendarDays, ChevronDown, ChevronRight, CloudDownload, FolderGit2, FolderPlus, GitCommitHorizontal, PenLine, Play, Plus, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, CalendarClock, CalendarDays, ChevronDown, ChevronRight, CloudDownload, FolderGit2, FolderPlus, GitCommitHorizontal, PenLine, Play, Plus, RefreshCw, SlidersHorizontal } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button, Code, cn, Dot, EmptyState, ErrorNote, IconButton, Section, SectionLabel, Spinner, Tag } from "../../components/ui";
 import { asAppError, type Activity, type BoardItem, type Candidate, type RepoInfo } from "../../lib/api";
 import { timeAgo, tildify } from "../../lib/format";
 import { keys, useActivity, useBoard, useCandidates, useEnv, useHome, useNow, usePref, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
 import { QuickActions, WorkloadBlock } from "./Today";
-import { HeroNow, ProjectTabs, StatTiles, TimelineBlock } from "./Dashboard";
+import { GettingStarted, HeroNow, ProjectTabs, StatTiles, TimelineBlock, TodayCustomize, useTodayLayout } from "./Dashboard";
 import { Menu, MenuItem } from "../../components/Menu";
 import { attention, currentFocus, displayName, due } from "../../lib/repos";
 import { useUi } from "../../lib/store";
@@ -23,6 +23,13 @@ export function OverviewPage() {
   const now = new Date();
   const today = now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
   const greeting = now.getHours() < 18 ? t("Bonjour") : t("Bonsoir");
+  const [layout] = useTodayLayout();
+  const [customize, setCustomize] = useState(false);
+  useEffect(() => {
+    const on = () => setCustomize(true);
+    window.addEventListener("tekboard:customize-today", on);
+    return () => window.removeEventListener("tekboard:customize-today", on);
+  }, []);
   const firstName = useEnv().data?.identity.name?.trim().split(/\s+/)[0] ?? "";
 
   if (settings.isLoading) return <Loading />;
@@ -37,6 +44,9 @@ export function OverviewPage() {
         </div>
         {hasRoots && (
           <div className="flex shrink-0 items-center gap-2">
+            <IconButton label={t("Personnaliser Aujourd'hui")} onClick={() => setCustomize(true)}>
+              <SlidersHorizontal className="size-4" />
+            </IconButton>
             <IconButton
               label={t("Relire les dépôts et les dates de rendu")}
               onClick={() => {
@@ -75,15 +85,28 @@ export function OverviewPage() {
         <ErrorNote title={t("Impossible de parcourir tes projets")}>{asAppError(repos.error).message}</ErrorNote>
       ) : (
         <>
-          <div className="flex flex-col gap-7">
-            <HeroNow />
-            <StatTiles />
-            <div className="grid grid-cols-1 items-start gap-7 @4xl:grid-cols-[320px_minmax(0,1fr)]">
-              <TimelineBlock />
-              <ProjectTabs />
-            </div>
+          <div className="stagger flex flex-col gap-7">
+            {!layout.hidden.includes("checklist") && <GettingStarted />}
+            {layout.order
+              .filter((b) => !layout.hidden.includes(b))
+              .map((b) =>
+                b === "hero" ? (
+                  <HeroNow key={b} />
+                ) : b === "tiles" ? (
+                  <StatTiles key={b} hidden={layout.hidden} />
+                ) : b === "day" ? (
+                  layout.hidden.includes("timeline") && layout.hidden.includes("projects") ? null : (
+                    <div key={b} className={cn("grid grid-cols-1 items-start gap-7", !layout.hidden.includes("timeline") && !layout.hidden.includes("projects") && "@4xl:grid-cols-[320px_minmax(0,1fr)]")}>
+                      {!layout.hidden.includes("timeline") && <TimelineBlock />}
+                      {!layout.hidden.includes("projects") && <ProjectTabs />}
+                    </div>
+                  )
+                ) : (
+                  <MoreSection key={b} repos={repos.data ?? []} />
+                ),
+              )}
           </div>
-          <MoreSection repos={repos.data ?? []} />
+          <TodayCustomize open={customize} onClose={() => setCustomize(false)} />
         </>
       )}
     </>
@@ -95,7 +118,7 @@ function MoreSection({ repos }: { repos: RepoInfo[] }) {
   const [open, setOpen] = usePref("overview.more", false);
   const flagged = repos.filter((r) => r.progress !== "done" && attention(r).length > 0).length;
   return (
-    <section className="mt-10">
+    <section>
       <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="mb-4 flex items-center gap-1.5 text-sm text-muted hover:text-fg">
         {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
         {t("Rendus, charge et activité")}

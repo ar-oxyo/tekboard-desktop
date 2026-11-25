@@ -161,20 +161,52 @@ export function useProjectActions() {
 }
 
 /** Keeps <html data-mode> in step with the preference, the design and the system setting. */
-export function useColorMode(theme: string | undefined): [ColorMode, (m: ColorMode) => void] {
-  const [mode, setStored] = usePref<ColorMode>("colorMode", storedMode());
+export function useColorMode(theme: string | undefined, forced?: "light" | "dark"): [ColorMode, (m: ColorMode) => void] {
+  const [chosen, setStored] = usePref<ColorMode>("colorMode", storedMode());
+  // The ambiance of the hour, when that option is on, decides the mode without changing the choice.
+  const mode: ColorMode = forced ?? chosen;
   const setPref = (m: ColorMode) => {
     crossFade();
     setStored(m);
   };
   useEffect(() => {
-    localStorage.setItem(MODE_KEY, mode);
+    if (!forced) localStorage.setItem(MODE_KEY, mode);
     applyMode(mode, theme);
     if (mode !== "system") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const on = () => applyMode("system", theme);
     mq.addEventListener("change", on);
     return () => mq.removeEventListener("change", on);
-  }, [mode, theme]);
-  return [mode, setPref];
+  }, [mode, theme, forced]);
+  return [chosen, setPref];
+}
+
+/** A day ambiance and an evening one, switched by the hour (Settings → Appearance). Off by default. */
+export interface AutoAmbiance {
+  on: boolean;
+  dayTheme: string;
+  dayMode: "light" | "dark";
+  nightTheme: string;
+  nightMode: "light" | "dark";
+  /** Hour the evening ambiance starts, and the hour the day one comes back. */
+  nightFrom: number;
+  dayFrom: number;
+}
+export const AUTO_AMBIANCE: AutoAmbiance = { on: false, dayTheme: "aurora", dayMode: "light", nightTheme: "prune", nightMode: "dark", nightFrom: 19, dayFrom: 7 };
+
+export function useAutoAmbiance(): { theme: string; mode: "light" | "dark"; night: boolean } | null {
+  const [a] = usePref<AutoAmbiance>("autoAmbiance", AUTO_AMBIANCE);
+  const h = useNow(60_000).getHours();
+  if (!a.on) return null;
+  const night = a.nightFrom > a.dayFrom ? h >= a.nightFrom || h < a.dayFrom : h >= a.nightFrom && h < a.dayFrom;
+  return night ? { theme: a.nightTheme, mode: a.nightMode, night } : { theme: a.dayTheme, mode: a.dayMode, night };
+}
+
+/** Interface animations on or off (Settings → Appearance); the system's reduced-motion setting always wins. */
+export function useMotionPref(): [boolean, (on: boolean) => void] {
+  const [on, set] = usePref<boolean>("motion", true);
+  useEffect(() => {
+    document.documentElement.dataset.motion = on ? "on" : "off";
+  }, [on]);
+  return [on, set];
 }

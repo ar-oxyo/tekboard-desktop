@@ -946,6 +946,42 @@ code,
     fill 200ms var(--ease) !important;
 }
 
+/* Animations switched off in Settings: everything lands at once. */
+:root[data-motion="off"] *,
+:root[data-motion="off"] *::before,
+:root[data-motion="off"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Discreet entrances: blocks of a screen arrive one after the other, 40 ms apart. */
+.stagger > * {
+  animation: rise-in var(--dur-base) var(--ease) both;
+}
+.stagger > :nth-child(2) { animation-delay: 40ms; }
+.stagger > :nth-child(3) { animation-delay: 80ms; }
+.stagger > :nth-child(4) { animation-delay: 120ms; }
+.stagger > :nth-child(5) { animation-delay: 160ms; }
+/* A meter fills up when it appears. */
+@keyframes meter-in {
+  from { transform: scaleX(0); }
+}
+.meter-fill {
+  transform-origin: left;
+  animation: meter-in 480ms var(--ease) both;
+}
+/* Cards you can open rise by a pixel under the pointer. */
+.lift {
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.lift:hover {
+  transform: translateY(-1px);
+}
+
 /* Task checkbox: ticking draws the logo's ring, then the check. */
 .done-check .done-track {
   fill: none;

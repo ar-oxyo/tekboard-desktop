@@ -7,7 +7,7 @@ import { Button, Card, CardTitle, cn, Code, ErrorNote, Field, IconButton, Input,
 import { COLOR_MODES, crossFade, designHasLight, type ColorMode } from "../../lib/appearance";
 import { api, asAppError, type Settings } from "../../lib/api";
 import { tildify } from "../../lib/format";
-import { keys, useColorMode, useEnv, useHome, usePref, useRepos, useSettings, useTemplates } from "../../lib/hooks";
+import { AUTO_AMBIANCE, keys, useColorMode, useEnv, useMotionPref, type AutoAmbiance, useHome, usePref, useRepos, useSettings, useTemplates } from "../../lib/hooks";
 import { cloneTargets } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { AiSettingsCard } from "./AiSettings";
@@ -324,7 +324,7 @@ export function SettingsPage() {
             />
           </Card>
           <Card>
-            <CardTitle>{t("Effets")}</CardTitle>
+            <CardTitle>{t("Effets et confort")}</CardTitle>
             <label className="flex items-center gap-3 px-4 py-4">
               <input type="checkbox" className="accent-(--color-accent)" checked={draft.glassEffects} onChange={(e) => set({ glassEffects: e.target.checked })} />
               <span>
@@ -332,6 +332,7 @@ export function SettingsPage() {
                 <span className="block text-xs text-faint">{t("Flou derrière la palette et les dialogues. Désactive-le si le défilement ou la saisie paraissent lents.")}</span>
               </span>
             </label>
+            <ComfortSettings />
           </Card>
         </div>
       )}
@@ -354,8 +355,17 @@ const THEMES: Array<{ id: string; name: string; tagline: string; bg: string; car
 
 const MODE_LABEL: Record<ColorMode, string> = { system: t("Système"), light: t("Clair"), dark: t("Sombre") };
 
-export function ThemePicker({ current, onPick }: { current: string; onPick: (id: string) => void }) {
-  const [mode, setMode] = useColorMode(current);
+export function ThemePicker({ current, onPick: pick }: { current: string; onPick: (id: string) => void }) {
+  const [mode, setModeRaw] = useColorMode(current);
+  const [, setChosen] = usePref<boolean>("ambianceChosen", false);
+  const onPick = (id: string) => {
+    setChosen(true);
+    pick(id);
+  };
+  const setMode = (m: ColorMode) => {
+    setChosen(true);
+    setModeRaw(m);
+  };
   const light = designHasLight(current);
   return (
     <div className="p-4">
@@ -508,5 +518,65 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <span className="w-28 shrink-0 text-xs text-faint">{label}</span>
       <span className="min-w-0 flex-1">{children}</span>
     </div>
+  );
+}
+
+const LIGHT_THEMES = THEMES.filter((x) => designHasLight(x.id)).map((x) => ({ value: x.id, label: x.name }));
+const MODES = [
+  { value: "light" as const, label: t("Clair") },
+  { value: "dark" as const, label: t("Sombre") },
+];
+const HOURS = Array.from({ length: 24 }, (_, h) => ({ value: String(h), label: `${h} h` }));
+
+/** Animations, the ambiance of the hour and Today's layout: every extra can be switched off. */
+function ComfortSettings() {
+  const [motion, setMotion] = useMotionPref();
+  const [auto, setAuto] = usePref<AutoAmbiance>("autoAmbiance", AUTO_AMBIANCE);
+  const set = (p: Partial<AutoAmbiance>) => {
+    crossFade();
+    setAuto({ ...auto, ...p });
+  };
+  const toggle = (on: boolean, onChange: (v: boolean) => void, title: string, hint: string) => (
+    <label className="flex items-start gap-3 border-t border-line px-4 py-3.5">
+      <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={on} onChange={(e) => onChange(e.target.checked)} />
+      <span>
+        <span className="block text-sm">{title}</span>
+        <span className="block text-xs text-faint">{hint}</span>
+      </span>
+    </label>
+  );
+  return (
+    <>
+      {toggle(motion, setMotion, t("Animations"), t("Entrées de page, barres qui se remplissent, tâche cochée. Coupées aussi si le système demande moins d'animations."))}
+      {toggle(auto.on, (on) => set({ on }), t("Ambiance selon l'heure"), t("Passe d'une ambiance de jour à une ambiance du soir, sans changer ton choix ci-contre."))}
+      {auto.on && (
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 px-4 pb-4 pl-11 text-sm">
+          <span className="text-muted">{t("Jour")}</span>
+          <Select<string> size="sm" label={t("Ambiance de jour")} value={auto.dayTheme} onChange={(v) => set({ dayTheme: v })} options={LIGHT_THEMES} />
+          <Select<"light" | "dark"> size="sm" label={t("Mode de jour")} value={auto.dayMode} onChange={(v) => set({ dayMode: v })} options={MODES} />
+          <span className="text-muted">{t("Soir")}</span>
+          <Select<string> size="sm" label={t("Ambiance du soir")} value={auto.nightTheme} onChange={(v) => set({ nightTheme: v })} options={LIGHT_THEMES} />
+          <Select<"light" | "dark"> size="sm" label={t("Mode du soir")} value={auto.nightMode} onChange={(v) => set({ nightMode: v })} options={MODES} />
+          <span className="text-muted">{t("Horaires")}</span>
+          <Select<string> size="sm" label={t("Le soir commence à")} value={String(auto.nightFrom)} onChange={(v) => set({ nightFrom: Number(v) })} options={HOURS} />
+          <Select<string> size="sm" label={t("Le jour revient à")} value={String(auto.dayFrom)} onChange={(v) => set({ dayFrom: Number(v) })} options={HOURS} />
+        </div>
+      )}
+      <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3.5">
+        <span>
+          <span className="block text-sm">{t("Écran Aujourd'hui")}</span>
+          <span className="block text-xs text-faint">{t("Blocs affichés, ordre, indicateurs, guide de démarrage.")}</span>
+        </span>
+        <Button
+          size="sm"
+          onClick={() => {
+            useUi.setState({ page: "overview" });
+            window.setTimeout(() => window.dispatchEvent(new CustomEvent("tekboard:customize-today")), 50);
+          }}
+        >
+          {t("Personnaliser…")}
+        </Button>
+      </div>
+    </>
   );
 }

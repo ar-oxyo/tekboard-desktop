@@ -27,7 +27,7 @@ export function applyMode(mode: ColorMode, theme?: string) {
 
 /** Lets the colours cross-fade while the mode or the design changes (not at start-up). */
 export function crossFade() {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.motion === "off") return;
   const root = document.documentElement;
   root.classList.add("switching-theme");
   window.setTimeout(() => root.classList.remove("switching-theme"), 260);
