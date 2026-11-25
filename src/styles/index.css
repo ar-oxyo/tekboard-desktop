@@ -2,35 +2,39 @@
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/jetbrains-mono";
 @import "@fontsource-variable/space-grotesk";
+@import "@fontsource-variable/archivo/wdth.css";
 
-/* Design tokens. Dark-first. Graphite surfaces, one flat violet accent. */
+/* Design tokens. The signature design ("Riso", id `aurora`) is two print inks on stock:
+   Riso blue for action, selection and focus; fluorescent orange for urgency and "now".
+   Dark = black stock (below); light = warm uncoated paper (:root[data-mode="light"]).
+   The four older designs override these further down and stay dark. */
 @theme {
   --font-sans: "Inter Variable", system-ui, sans-serif;
-  --font-display: "Inter Variable", system-ui, sans-serif;
+  --font-display: "Archivo Variable", "Inter Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
 
-  --color-bg: #141415;
-  --color-panel: #0f0f10;
-  --color-surface: #19191b;
-  --color-raised: #232325;
-  --color-hover: #2b2b2e;
-  --color-line: #28282b;
-  --color-line-strong: #3a3a3f;
+  --color-bg: #181715;
+  --color-panel: #121110;
+  --color-surface: #201f1c;
+  --color-raised: #272623;
+  --color-hover: #2b2a26;
+  --color-line: #2e2c28;
+  --color-line-strong: #423f39;
 
-  --color-fg: #ededed;
-  --color-muted: #a1a1a6;
-  --color-faint: #85858b;
+  --color-fg: #efeae0;
+  --color-muted: #aca598;
+  --color-faint: #8d877b;
 
-  --color-accent: #9486ff;
-  --color-accent-strong: #b3a8ff;
-  --color-accent-soft: #9486ff1f;
-  --color-accent-2: #5fd4e8;
-  --color-on-accent: #0c0a1f;
+  --color-accent: #4aa3e3;
+  --color-accent-strong: #78bbee;
+  --color-accent-soft: rgb(74 163 227 / 0.16);
+  --color-accent-2: #ff7a45;
+  --color-on-accent: #0c1620;
 
-  --color-ok: #4cc38a;
-  --color-warn: #e2a93b;
-  --color-danger: #e5646a;
-  --color-info: #7aa7e6;
+  --color-ok: #45c486;
+  --color-warn: #ff8f52;
+  --color-danger: #ff6470;
+  --color-info: #78bbee;
 
   /* Translucent tints: white on dark grounds, near-black on light ones (`bg-ink/5`). */
   --color-ink: #ffffff;
@@ -59,8 +63,34 @@
   --text-3xl: 34px;
   --text-3xl--line-height: 40px;
 
-  --radius-card: 12px;
-  --shadow-pop: 0 24px 60px -16px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.06);
+  --radius-card: 10px;
+  --shadow-pop: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 40px -12px rgb(0 0 0 / 0.65);
+}
+
+/* Warm uncoated paper: the same inks, deepened so they read as text. */
+:root[data-mode="light"] {
+  --color-bg: #f3efe6;
+  --color-panel: #ebe6da;
+  --color-surface: #f9f7f1;
+  --color-raised: #fdfcf8;
+  --color-hover: #e6e0d3;
+  --color-line: #ddd6c7;
+  --color-line-strong: #c4bba8;
+  --color-fg: #1d1b19;
+  --color-muted: #58534b;
+  --color-faint: #6b655a;
+  --color-accent: #0078bf;
+  --color-accent-strong: #005f99;
+  --color-accent-soft: rgb(0 120 191 / 0.13);
+  --color-accent-2: #ff6c2f;
+  --color-on-accent: #ffffff;
+  --color-ok: #0f7044;
+  --color-warn: #a8450b;
+  --color-danger: #b92a37;
+  --color-info: #005f99;
+  --color-ink: #1d1b19;
+  --color-well: rgb(29 27 25 / 0.05);
+  --shadow-pop: 0 1px 2px rgb(29 27 25 / 0.08), 0 14px 36px -12px rgb(29 27 25 / 0.28);
 }
 
 html,
@@ -82,6 +112,7 @@ body {
   user-select: none;
   cursor: default;
   overflow: hidden;
+  caret-color: var(--color-accent);
 }
 
 input,
@@ -93,7 +124,7 @@ code,
 }
 
 ::selection {
-  background: var(--color-accent-soft);
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
 *:focus-visible {
@@ -120,45 +151,68 @@ code,
 
 /* ───────────────────────── Look & feel ─────────────────────────
    Everything decorative reads from the variables below, so a design is just a
-   set of values. Defaults = "Aurora": quiet graphite chrome, colour kept for the
-   content. Other designs override them further down. */
+   set of values. Defaults = Riso: flat stock, hairlines, ink only where it means
+   something. The older designs override them further down. */
 :root {
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  /* Where two inks meet (a selected row that is also urgent), they overprint. */
+  --overprint: screen;
   --backdrop: none;
   --texture: none;
   --texture-size: auto;
   --texture-mask: none;
 
   --card-bg: var(--color-surface);
-  --card-border: rgb(255 255 255 / 0.07);
+  --card-border: var(--color-line);
   --card-shadow: none;
-  --hero-bg: linear-gradient(#1e1e21, #1e1e21) padding-box, linear-gradient(rgb(255 255 255 / 0.13), rgb(255 255 255 / 0.13)) border-box;
-  --hero-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
-  --focus-ring: rgb(148 134 255 / 0.6);
+  --hero-bg: var(--color-surface);
+  --hero-shadow: none;
+  --focus-ring: color-mix(in srgb, var(--color-accent) 60%, transparent);
 
-  --btn-bg: var(--color-accent);
-  --btn-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2);
-  --btn2-bg: var(--color-raised);
-  --btn2-border: rgb(255 255 255 / 0.08);
-  --btn-radius: 8px;
+  --btn-bg: var(--color-fg);
+  --btn-fg: var(--color-bg);
+  --btn-shadow: none;
+  --btn2-bg: transparent;
+  --btn2-border: var(--color-line-strong);
+  --btn-radius: 6px;
 
   --title-fill: linear-gradient(var(--color-fg), var(--color-fg));
   --number-fill: linear-gradient(var(--color-fg), var(--color-fg));
   --title-transform: none;
+  --title-stretch: 78%;
+  --title-weight: 700;
 
   --sidebar-bg: var(--color-panel);
-  --nav-active-bg: var(--color-raised);
-  --nav-active-ring: rgb(255 255 255 / 0.06);
+  --nav-active-bg: var(--color-accent-soft);
+  --nav-active-ring: transparent;
   --nav-bar: transparent;
   --nav-bar-glow: none;
   --logo-glow: none;
-  --row-hover: rgb(255 255 255 / 0.035);
+  --row-hover: color-mix(in srgb, var(--color-ink) 4%, transparent);
 
-  --overlay-bg: #1f1f22;
-  --overlay-bg-glass: rgb(31 31 34 / 0.88);
-  --overlay-shadow: var(--shadow-pop);
-  --field-bg: #111112;
-  --select-bg: #111112;
+  --overlay-bg: var(--color-raised);
+  --overlay-bg-glass: color-mix(in srgb, var(--color-raised) 88%, transparent);
+  --overlay-shadow: var(--shadow-pop), 0 0 0 1px var(--color-line);
+  --field-bg: color-mix(in srgb, var(--color-ink) 3%, transparent);
+  --select-bg: color-mix(in srgb, var(--color-ink) 3%, transparent);
+}
+:root[data-mode="light"] {
+  --overprint: multiply;
+  --field-bg: var(--color-surface);
+  --select-bg: var(--color-surface);
+}
+
+/* The four older designs: dark only, their own faces, accent-filled buttons. */
+:root[data-theme="flat"],
+:root[data-theme="neon"],
+:root[data-theme="cozy"],
+:root[data-theme="terminal"] {
+  --font-display: "Inter Variable", system-ui, sans-serif;
+  --btn-fg: var(--color-on-accent);
+  --title-stretch: 100%;
+  --title-weight: 500;
 }
 
 /* Flat — the original look: solid surfaces, no glow, nothing decorative. */
@@ -451,7 +505,7 @@ code,
 }
 
 .btn-primary {
-  color: var(--color-on-accent);
+  color: var(--btn-fg);
   font-weight: 500;
   border-radius: var(--btn-radius);
   background: var(--btn-bg);
@@ -489,6 +543,7 @@ code,
 
 .display {
   font-family: var(--font-display);
+  font-stretch: var(--title-stretch);
 }
 .tabular {
   font-variant-numeric: tabular-nums;

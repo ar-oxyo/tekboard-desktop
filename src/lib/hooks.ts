@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, asAppError, type Progress, type RepoInfo, type RepoKind } from "./api";
 import { useUi } from "./store";
 import { t } from "./i18n";
+import { applyMode, MODE_KEY, storedMode, type ColorMode } from "./appearance";
 
 export const keys = {
   settings: ["settings"] as const,
@@ -145,4 +146,19 @@ export function useProjectActions() {
     onError: (e) => toast({ kind: "error", title: t("Non modifié"), detail: asAppError(e).message }),
   });
   return { workspace, ide, terminal, files, favorite, copyUrl, progress, kind, remote, launch, visibility };
+}
+
+/** Keeps <html data-mode> in step with the preference, the design and the system setting. */
+export function useColorMode(theme: string | undefined): [ColorMode, (m: ColorMode) => void] {
+  const [mode, setPref] = usePref<ColorMode>("colorMode", storedMode());
+  useEffect(() => {
+    localStorage.setItem(MODE_KEY, mode);
+    applyMode(mode, theme);
+    if (mode !== "system") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const on = () => applyMode("system", theme);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, [mode, theme]);
+  return [mode, setPref];
 }

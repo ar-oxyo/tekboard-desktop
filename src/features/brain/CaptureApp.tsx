@@ -5,7 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { Check, Inbox, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
-import { useSettings } from "../../lib/hooks";
+import { useColorMode, useSettings } from "../../lib/hooks";
 import { listenData, setQueryClient } from "../../lib/sync";
 import { t } from "../../lib/i18n";
 import { IconButton } from "../../components/ui";
@@ -33,6 +33,7 @@ export function CaptureApp() {
     document.documentElement.dataset.theme = settings.data?.theme ?? "aurora";
     document.documentElement.dataset.glass = "off";
   }, [settings.data?.theme]);
+  useColorMode(settings.data?.theme);
 
   const hide = (then: string | null = null) => void api.captureClose(then);
 

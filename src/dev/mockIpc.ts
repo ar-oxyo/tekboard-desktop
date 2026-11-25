@@ -40,12 +40,17 @@ export function installMock() {
   const empty = params.has("empty");
   const fail = new Set((params.get("fail") ?? "").split(",").filter(Boolean));
   const kinds = returnKinds();
+  const mode = params.get("mode");
+  if (mode) localStorage.setItem("tekboard.colorMode", mode);
+  const prefs: Record<string, unknown> = mode ? { colorMode: mode } : {};
 
   mockWindows(params.get("window") === "capture" ? "capture" : "main");
   mockIPC(
     async (cmd, args) => {
       // A short, realistic delay so loading states exist for a frame or two.
       await new Promise((r) => setTimeout(r, 40));
+      if (cmd === "ui_prefs_get") return prefs;
+      if (cmd === "ui_prefs_set") return Object.assign(prefs, (args as { prefs?: object })?.prefs ?? {}), null;
       if (fail.has(cmd)) throw { code: "mock_failure", message: `Échec simulé de ${cmd}` };
       const kind = kinds.get(cmd);
       if (empty && kind === "array") return [];

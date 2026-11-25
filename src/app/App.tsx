@@ -11,7 +11,8 @@ import { ProjectsPage } from "../features/projects/ProjectsPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
 import { SubjectsPage } from "../features/subjects/SubjectsPage";
 import { TemplatesPage } from "../features/templates/TemplatesPage";
-import { useSettings } from "../lib/hooks";
+import { useColorMode, useSettings } from "../lib/hooks";
+import { THEME_KEY } from "../lib/appearance";
 import { api, asAppError } from "../lib/api";
 
 type Startup = Awaited<ReturnType<typeof api.startup>>;
@@ -115,9 +116,12 @@ export function App() {
 
   // Glass only when the user keeps it on and the system does not ask for less transparency.
   const themeOverride = useUi((s) => s.themeOverride);
+  const theme = themeOverride ?? settings.data?.theme ?? "aurora";
   useEffect(() => {
-    document.documentElement.dataset.theme = themeOverride ?? settings.data?.theme ?? "aurora";
-  }, [themeOverride, settings.data?.theme]);
+    document.documentElement.dataset.theme = theme;
+    if (!themeOverride) localStorage.setItem(THEME_KEY, theme);
+  }, [theme, themeOverride]);
+  useColorMode(theme);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-transparency: reduce)").matches;
