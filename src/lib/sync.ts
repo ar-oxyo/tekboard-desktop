@@ -5,7 +5,7 @@
 import { listen } from "@tauri-apps/api/event";
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 
-export type Domain = "plan" | "repos" | "focus" | "memory" | "insights" | "runs" | "subjects" | "my" | "libraries" | "settings" | "prompts" | "templates" | "ai" | "activity" | "playground" | "arena" | "boards";
+export type Domain = "plan" | "repos" | "focus" | "memory" | "insights" | "runs" | "subjects" | "my" | "libraries" | "settings" | "prompts" | "templates" | "ai" | "activity" | "playground" | "arena" | "boards" | "brain";
 
 /** Query key prefixes fed by each domain. */
 export const DOMAIN_KEYS: Record<Domain, QueryKey[]> = {
@@ -27,6 +27,7 @@ export const DOMAIN_KEYS: Record<Domain, QueryKey[]> = {
   playground: [["playground"]],
   arena: [["arena"]],
   boards: [["boards"]],
+  brain: [["brain"], ["brain-count"]],
 };
 
 /** What each writing command changes. Read-only commands are absent. */
@@ -73,8 +74,18 @@ export const COMMAND_DOMAINS: Record<string, Domain[]> = {
   git_sync: ["repos", "activity"],
   git_create_branch: ["repos"],
   git_switch_branch: ["repos"],
-  plan_task_save: ["plan", "insights"],
-  plan_task_delete: ["plan"],
+  plan_task_save: ["plan", "insights", "brain"],
+  plan_task_delete: ["plan", "brain"],
+  brain_save: ["brain", "plan"],
+  brain_edit: ["brain", "plan"],
+  brain_convert: ["brain", "plan"],
+  brain_set_project: ["brain", "plan"],
+  brain_pin: ["brain"],
+  brain_archive: ["brain", "plan"],
+  brain_tags: ["brain"],
+  brain_delete: ["brain", "plan"],
+  brain_restore: ["brain", "plan"],
+  share_import: ["brain"],
   plan_event_save: ["plan", "insights"],
   plan_event_delete: ["plan"],
   plan_project_set: ["plan"],

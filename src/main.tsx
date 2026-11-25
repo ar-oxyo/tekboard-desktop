@@ -1,17 +1,22 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { App } from "./app/App";
 import "./styles/index.css";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: true, staleTime: 15_000 } },
 });
 
+// The floating capture window loads the editor only, not the whole app.
+const capture = new URLSearchParams(window.location.search).get("window") === "capture";
+const Root = capture ? lazy(() => import("./features/brain/CaptureApp").then((m) => ({ default: m.CaptureApp }))) : lazy(() => import("./app/App").then((m) => ({ default: m.App })));
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <Suspense fallback={null}>
+        <Root />
+      </Suspense>
     </QueryClientProvider>
   </React.StrictMode>,
 );

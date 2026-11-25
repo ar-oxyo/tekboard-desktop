@@ -1,9 +1,9 @@
 // Ctrl+K: go anywhere, open any project, start an action, or ask Artix anything. Everything listed here does something real.
 import * as Dialog from "@radix-ui/react-dialog";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { CalendarCheck, CalendarDays, PenLine, Sparkles, ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, PawPrint, Plus, RefreshCw, ScrollText, Settings, Timer, Network, FlaskRound, FileCode2, Gauge, Users, MonitorPlay, Gamepad2, PenTool } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { CalendarCheck, CalendarDays, Inbox, Lightbulb, PenLine, Sparkles, ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, PawPrint, Plus, RefreshCw, ScrollText, Settings, Timer, Network, FlaskRound, FileCode2, Gauge, Users, MonitorPlay, Gamepad2, PenTool } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { SECTIONS } from "../../app/sections";
 import { startFocus } from "../planning/Focus";
 import { suggestPlan } from "../artix/suggest";
@@ -14,6 +14,7 @@ import { displayName } from "../../lib/repos";
 import { useUi, type Page } from "../../lib/store";
 import { usePlayground } from "../playground/store";
 import { t } from "../../lib/i18n";
+import { CTYPE_LABEL, KIND_LABEL } from "../../lib/brain";
 
 const itemClass =
   "flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-[13px] text-muted data-[selected=true]:bg-accent-soft data-[selected=true]:text-fg";
@@ -46,6 +47,13 @@ export function CommandPalette() {
   const act = useProjectActions();
   const [search, setSearch] = useState("");
   const ask = (text: string) => run(() => useUi.getState().openAssistant({ text }));
+  // Captures (and tasks) found by the search index, from two characters on.
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    const id = window.setTimeout(() => setQuery(search.trim()), 150);
+    return () => window.clearTimeout(id);
+  }, [search]);
+  const captures = useQuery({ queryKey: ["brain", "palette", query], queryFn: () => api.brainList({ view: "all", query, limit: 6 }), enabled: open && query.length >= 2, placeholderData: (p) => p });
 
   const run = (fn: () => void) => () => {
     setOpen(false);
@@ -83,12 +91,29 @@ export function CommandPalette() {
                 </Command.Group>
               )}
 
+              {query.length >= 2 && (captures.data?.length ?? 0) > 0 && (
+                <Command.Group heading={t("Captures")} className={groupClass}>
+                  {captures.data!.map((c) => (
+                    <Command.Item key={c.id} value={`capture-${c.id} ${search}`} onSelect={run(() => useUi.getState().openInbox({ view: c.kind === "task" ? "all" : c.archivedAt ? "archived" : "all", focus: c.id }))} className={itemClass}>
+                      <span className="shrink-0 text-faint">
+                        <Lightbulb className="size-4" />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{c.title}</span>
+                      <span className="text-[11px] text-faint">{c.kind === "idea" ? CTYPE_LABEL[c.ctype || "idea"] : KIND_LABEL[c.kind]}</span>
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              )}
+
               <Command.Group heading="Actions" className={groupClass}>
                 <Item icon={<Plus className="size-4" />} onSelect={run(() => openLauncher({ mode: "new" }))} hint="Ctrl N">
                   {t("Nouveau projet : cloner et initialiser")}
                 </Item>
                 <Item icon={<PenLine className="size-4" />} onSelect={run(() => useUi.getState().setCaptureOpen(true))} hint="Ctrl I">
                   {t("Capture rapide : une tâche ou une idée")}
+                </Item>
+                <Item icon={<Inbox className="size-4" />} onSelect={run(() => useUi.getState().openInbox())}>
+                  {t("Ouvrir l'Inbox (captures à ranger)")}
                 </Item>
                 <Item
                   icon={<FileCode2 className="size-4" />}

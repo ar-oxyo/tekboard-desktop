@@ -17,7 +17,9 @@
         "height": 820,
         "minWidth": 860,
         "minHeight": 560,
-        "backgroundColor": "#141415"
+        "backgroundColor": "#141415",
+        "visible": false,
+        "label": "main"
       }
     ],
     "security": {
@@ -46,7 +48,8 @@
     "copyright": "© 2026 Thibault Eininger",
     "linux": {
       "deb": {
-        "section": "education"
+        "section": "education",
+        "desktopTemplate": "tekboard.desktop"
       }
     }
   },

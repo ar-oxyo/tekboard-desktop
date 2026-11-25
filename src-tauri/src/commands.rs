@@ -1010,7 +1010,7 @@ pub fn cozy_restore(state: State<'_, AppState>, name: String) -> Result<cozy::St
 
 // ───────────────────────────── startup ─────────────────────────────
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Startup {
     pub page: Option<String>,
@@ -1034,7 +1034,11 @@ pub struct Startup {
 /// `tekboard --page analytics` or `tekboard --sheet <repository path>` opens the app there.
 #[tauri::command]
 pub fn startup() -> Startup {
-    let args: Vec<String> = std::env::args().collect();
+    parse_args(&std::env::args().collect::<Vec<_>>())
+}
+
+/// Reads `--page`, `--sheet`… from a command line (this process's, or a second `tekboard`'s).
+pub fn parse_args(args: &[String]) -> Startup {
     let value = |flag: &str| args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1)).cloned();
     Startup { page: value("--page"), sheet: value("--sheet"), repo: value("--repo"), pick: value("--pick"), tool: value("--tool"), run: value("--run"), report: value("--report").and_then(|v| v.parse().ok()), anchor: value("--anchor").filter(|a| a.len() <= 40 && a.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')), theme: value("--theme").filter(|t| settings::THEMES.contains(&t.as_str())) }
 }

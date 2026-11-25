@@ -13,6 +13,7 @@ import { AiSettingsCard } from "./AiSettings";
 import { ClaudeCard } from "./ClaudeCard";
 import { DataCard } from "./DataCard";
 import { DoctorCard } from "./DoctorCard";
+import { CaptureCard } from "./CaptureCard";
 import { UpdatesCard } from "./UpdatesCard";
 import { applyLang, t } from "../../lib/i18n";
 
@@ -60,6 +61,8 @@ export function SettingsPage() {
       void qc.invalidateQueries({ queryKey: ["testing-info"] });
       void qc.invalidateQueries({ queryKey: ["run-info"] });
       toast({ kind: "ok", title: t("Réglages enregistrés") });
+      // Capture shortcut and tray icon follow at once.
+      void api.desktopApply().then((st) => qc.setQueryData(["desktop-status"], st));
       // A new language is applied at once (the window reloads; nothing else restarts).
       applyLang(saved.language);
     },
@@ -166,6 +169,7 @@ export function SettingsPage() {
               </Button>
             </div>
           </Card>
+          <CaptureCard draft={draft} set={set} />
           <Card>
             <CardTitle
               right={

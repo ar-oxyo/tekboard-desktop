@@ -47,6 +47,10 @@ pub struct Settings {
     pub onboarding_step: String,
     /// Look for a new release now and then (at most once a day).
     pub update_check: bool,
+    /// Global shortcut that opens the capture window (X11 only). Empty = none.
+    pub capture_shortcut: String,
+    /// Icon in the notification area (capture, inbox, restore point).
+    pub tray_icon: bool,
 }
 
 pub const LANGUAGES: &[&str] = &["fr", "en"];
@@ -55,7 +59,7 @@ pub const SYNC_INTERVALS: &[u32] = &[0, 15, 30, 60, 180];
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { roots: vec![], clone_dir: None, ide_cmd: String::new(), terminal_cmd: String::new(), default_template: None, glass_effects: true, theme: THEMES[0].to_string(), fox_signals: true, onboarded: false, epitech_dirs: vec![], claude_path: None, terminal_run_cmd: String::new(), my_sync_minutes: 0, my_auto_reconnect: false, language: "fr".into(), epitech_only: true, onboarding_step: String::new(), update_check: true }
+        Settings { roots: vec![], clone_dir: None, ide_cmd: String::new(), terminal_cmd: String::new(), default_template: None, glass_effects: true, theme: THEMES[0].to_string(), fox_signals: true, onboarded: false, epitech_dirs: vec![], claude_path: None, terminal_run_cmd: String::new(), my_sync_minutes: 0, my_auto_reconnect: false, language: "fr".into(), epitech_only: true, onboarding_step: String::new(), update_check: true, capture_shortcut: crate::desktop::DEFAULT_SHORTCUT.into(), tray_icon: false }
     }
 }
 
@@ -172,6 +176,10 @@ pub fn save(conn: &Connection, settings: &Settings) -> Result<Settings> {
     }
     if !SYNC_INTERVALS.contains(&s.my_sync_minutes) {
         return Err(AppError::new("invalid_interval", "Intervalle de synchronisation inconnu"));
+    }
+    s.capture_shortcut = s.capture_shortcut.trim().to_string();
+    if !s.capture_shortcut.is_empty() && (s.capture_shortcut.len() > 60 || s.capture_shortcut.parse::<tauri_plugin_global_shortcut::Shortcut>().is_err()) {
+        return Err(AppError::new("invalid_shortcut", format!("Raccourci illisible « {} » (exemple : Ctrl+Alt+Space)", s.capture_shortcut)));
     }
     db::set_setting(conn, KEY, &serde_json::to_string(&s)?)?;
     Ok(s)

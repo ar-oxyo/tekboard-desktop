@@ -1,5 +1,5 @@
 // Planning dialogs, open over any screen: calendar entry, task, quick capture, preferences, weekly review.
-import { Check, ChevronLeft, ChevronRight, Lightbulb, Play, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Play, Trash2 } from "lucide-react";
 import { startFocus } from "./Focus";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Modal } from "../../components/Modal";
@@ -11,6 +11,7 @@ import { addDays, dayKey, dayStartOf, durInput, fmtDur, freeSlots, hhmm, hhmmOf,
 import { useUi } from "../../lib/store";
 import { usePlanActions, usePlanData, usePlanPrefs } from "./usePlan";
 import { locale, t as tr } from "../../lib/i18n";
+import { CaptureEditor } from "../brain/CaptureEditor";
 
 const textarea = "w-full resize-y rounded-md border border-line bg-bg p-2.5 text-[13px] leading-relaxed text-fg placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none";
 
@@ -202,7 +203,7 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
       setError("A title is required.");
       return null;
     }
-    return { ...draft, title: title.trim(), project, priority: Number(priority), estimateMin: minutes, dueDay: due || null, notes, kind: idea ? "idea" : "task" };
+    return { ...draft, title: title.trim(), project, priority: Number(priority), estimateMin: minutes, dueDay: due || null, notes, kind: draft.kind === "note" || draft.kind === "snippet" ? draft.kind : idea ? "idea" : "task" };
   };
   const save = () => {
     const v = value();
@@ -323,66 +324,28 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
 
 // ───────────────────────────── quick capture ─────────────────────────────
 
-/** One line, from any screen (Ctrl+I): lands in the inbox, to be sorted later. */
+/** From any screen (Ctrl+I): the Brain Dump editor, the capture lands in the inbox. */
 export function QuickCapture() {
   const open = useUi((s) => s.captureOpen);
   return open ? <CaptureForm /> : null;
 }
 
 function CaptureForm() {
+  const project = useUi((s) => s.captureProject);
   const close = () => useUi.getState().setCaptureOpen(false);
-  const { projects } = usePlanData();
-  const act = usePlanActions();
   const toast = useUi((s) => s.toast);
-  const [title, setTitle] = useState("");
-  const [project, setProject] = useState<string | null>(null);
-  const [idea, setIdea] = useState(false);
-  const save = (keep: boolean) => {
-    if (!title.trim()) return;
-    act.saveTask.mutate(
-      { title: title.trim(), project, kind: idea ? "idea" : "task" },
-      {
-        onSuccess: () => {
-          toast({ kind: "ok", title: idea ? "Idea kept" : "Added to the inbox" });
-          if (keep) setTitle("");
-          else close();
-        },
-      },
-    );
-  };
   return (
-    <Modal open onClose={close} title={tr("Capture rapide")} description={tr("Entrée l'enregistre dans l'inbox. Ctrl+Entrée enregistre et garde la fenêtre ouverte pour la suivante.")} width="w-[520px]">
-      <form
-        className="flex flex-col gap-2 pb-1"
-        onSubmit={(e) => {
-          e.preventDefault();
-          save(false);
-        }}
-      >
-        <Input
-          autoFocus
-          aria-label={tr("Tâche ou idée")}
-          className="h-10 text-sm"
-          placeholder={tr("Une tâche, une idée, quelque chose à ne pas oublier…")}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-              e.preventDefault();
-              save(true);
-            }
+    <Modal open onClose={close} title={tr("Capture rapide")} description={tr("Écris, valide : c'est dans l'Inbox. Tu rangeras plus tard.")} width="w-[600px]">
+      <div className="pb-1">
+        <CaptureEditor
+          project={project}
+          onClose={close}
+          onSaved={(c, keep) => {
+            toast({ kind: "ok", title: tr("Ajouté à l'Inbox"), detail: c.title, action: { label: tr("Ouvrir l'Inbox"), run: () => useUi.getState().openInbox({ focus: c.id }) } });
+            if (!keep) close();
           }}
         />
-        <div className="flex items-center gap-2">
-          <ProjectSelect className="w-56" size="sm" value={project} onChange={setProject} projects={projects} />
-          <button type="button" role="switch" aria-checked={idea} onClick={() => setIdea(!idea)} className={cn("flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors duration-150", idea ? "border-transparent bg-accent-soft text-accent-strong" : "border-white/8 text-muted hover:text-fg")}>
-            <Lightbulb className="size-3.5" /> Idée
-          </button>
-          <Button className="ml-auto" size="sm" variant="primary" icon={<Plus className="size-3.5" />} busy={act.saveTask.isPending} onClick={() => save(false)}>
-            Noter
-          </Button>
-        </div>
-      </form>
+      </div>
     </Modal>
   );
 }

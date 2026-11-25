@@ -364,6 +364,25 @@ const MIGRATIONS: &[&str] = &[
         scene TEXT NOT NULL,
         PRIMARY KEY (board_id, at)
      );",
+    // v-brain: quick captures live in `tasks` (kind idea, note, snippet), searchable with FTS5.
+    "ALTER TABLE tasks ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;
+     ALTER TABLE tasks ADD COLUMN archived_at INTEGER;
+     ALTER TABLE tasks ADD COLUMN tags TEXT NOT NULL DEFAULT '';
+     ALTER TABLE tasks ADD COLUMN ctype TEXT NOT NULL DEFAULT '';
+     ALTER TABLE tasks ADD COLUMN updated_at INTEGER;
+     CREATE INDEX tasks_kind ON tasks (kind, archived_at);
+     CREATE VIRTUAL TABLE tasks_fts USING fts5(title, notes, tags, content='tasks', content_rowid='id', tokenize='unicode61 remove_diacritics 2');
+     CREATE TRIGGER tasks_fts_ai AFTER INSERT ON tasks BEGIN
+        INSERT INTO tasks_fts(rowid, title, notes, tags) VALUES (new.id, new.title, new.notes, new.tags);
+     END;
+     CREATE TRIGGER tasks_fts_ad AFTER DELETE ON tasks BEGIN
+        INSERT INTO tasks_fts(tasks_fts, rowid, title, notes, tags) VALUES ('delete', old.id, old.title, old.notes, old.tags);
+     END;
+     CREATE TRIGGER tasks_fts_au AFTER UPDATE OF title, notes, tags ON tasks BEGIN
+        INSERT INTO tasks_fts(tasks_fts, rowid, title, notes, tags) VALUES ('delete', old.id, old.title, old.notes, old.tags);
+        INSERT INTO tasks_fts(rowid, title, notes, tags) VALUES (new.id, new.title, new.notes, new.tags);
+     END;
+     INSERT INTO tasks_fts(tasks_fts) VALUES ('rebuild');",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

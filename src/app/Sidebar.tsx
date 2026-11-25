@@ -1,5 +1,7 @@
-import { CalendarDays, ChartNoAxesColumn, FlaskRound, FolderGit2, Users, GraduationCap, LayoutTemplate, Search, Settings, Sun } from "lucide-react";
+import { CalendarDays, ChartNoAxesColumn, Inbox, FlaskRound, FolderGit2, Users, GraduationCap, LayoutTemplate, Search, Settings, Sun } from "lucide-react";
 import type { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../lib/api";
 import { cn, Kbd } from "../components/ui";
 import { Artix } from "../features/artix/Artix";
 import { useEnv } from "../lib/hooks";
@@ -54,6 +56,8 @@ export function Sidebar() {
   const current = sectionOf(page).id;
   const missing = env.data?.tools.filter((t) => t.required && !t.path).length ?? 0;
   const gh = env.data?.github.state;
+  const inbox = useQuery({ queryKey: ["brain-count"], queryFn: api.brainCount, staleTime: 60_000 });
+  const inboxOpen = useUi((s) => s.inbox !== null);
 
   const row = (s: Section) => {
     const n = SECTIONS.indexOf(s) + 1;
@@ -83,6 +87,13 @@ export function Sidebar() {
           <Artix size={20} />
           Artix
           <Kbd>Ctrl J</Kbd>
+        </button>
+        <button type="button" onClick={() => useUi.getState().openInbox()} title={t("Captures à ranger (Ctrl+I pour noter)")} className={cn("nav-item flex h-8 shrink-0 items-center gap-2.5 px-2.5 text-[13px]", inboxOpen ? "font-medium" : "text-muted hover:bg-white/4 hover:text-fg")}>
+          <span className="flex w-4 shrink-0 justify-center text-faint">
+            <Inbox className="size-4" />
+          </span>
+          {t("Inbox")}
+          {(inbox.data ?? 0) > 0 && <span className="ml-auto rounded-full bg-accent-soft px-1.5 text-[11px] text-accent-strong tabular-nums">{inbox.data}</span>}
         </button>
       </nav>
       <div className="flex flex-col gap-0.5 border-t border-white/6 px-3 py-3">

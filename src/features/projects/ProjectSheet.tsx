@@ -13,6 +13,7 @@ import { Countdown, ProgressPicker } from "./RepoBits";
 import { AdvancedTab, GitTab, PlanOverview } from "./SheetPlan";
 import { DocsTab, TestingTab } from "./SheetTabs";
 import { t } from "../../lib/i18n";
+import { ProjectCaptures } from "../brain/ProjectCaptures";
 
 const ProjectBoards = lazy(() => import("../whiteboard/BoardsPage").then((m) => ({ default: m.ProjectBoards })));
 
@@ -267,6 +268,7 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
               {t("Enregistrer")}
             </Button>
           </div>
+          <ProjectCaptures project={repo.path} />
         </>
       )}
     </div>

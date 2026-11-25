@@ -2,12 +2,14 @@ pub mod ai;
 pub mod arena;
 pub mod analytics;
 pub mod boards;
+pub mod brain;
 pub mod cdiag;
 pub mod checker;
 pub mod claude;
 pub mod commands;
 pub mod commands_ai;
 pub mod commands_boards;
+pub mod commands_brain;
 pub mod commands_connect;
 pub mod commands_app;
 pub mod commands_dev;
@@ -21,6 +23,7 @@ pub mod cparse;
 pub mod datamgmt;
 pub mod db;
 pub mod deadlines;
+pub mod desktop;
 pub mod doctor;
 pub mod epitech;
 pub mod focus;
@@ -111,8 +114,24 @@ fn start(app: &mut tauri::App) -> std::result::Result<(), String> {
     if let Err(e) = ai::ipc::serve(app.handle().clone()) {
         eprintln!("TekBoard: tools channel not opened: {e}");
     }
+    // Capture shortcut and tray icon, then the first window (the capture window alone for
+    // `tekboard capture`). Images no capture uses any more are swept on the side.
+    if let Some(state) = app.try_state::<AppState>() {
+        if let Ok(s) = settings::load(&state.conn()) {
+            desktop::apply(app.handle(), &s);
+        }
+    }
+    desktop::first_window(app.handle());
+    let handle = app.handle().clone();
+    std::thread::spawn(move || {
+        if let Some(state) = handle.try_state::<AppState>() {
+            commands_brain::sweep(&state);
+        }
+    });
     Ok(())
 }
+
+pub use desktop::show_main;
 
 /// Tekboard's folders are readable by their owner only (they hold the MY Epitech session).
 fn restrict(dir: &std::path::Path) {
@@ -122,6 +141,9 @@ fn restrict(dir: &std::path::Path) {
 
 pub fn run() {
     tauri::Builder::default()
+        // First: a second `tekboard` hands its arguments over and quits before anything starts.
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| desktop::second_instance(app, argv)))
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(updates::Pending::default())
@@ -332,6 +354,26 @@ pub fn run() {
             commands_plan::plan_category_save,
             commands_plan::plan_category_delete,
             commands_plan::plan_task_save,
+            commands_brain::brain_save,
+            commands_brain::brain_edit,
+            commands_brain::brain_list,
+            commands_brain::brain_count,
+            commands_brain::brain_similar,
+            commands_brain::brain_convert,
+            commands_brain::brain_set_project,
+            commands_brain::brain_pin,
+            commands_brain::brain_archive,
+            commands_brain::brain_tags,
+            commands_brain::brain_delete,
+            commands_brain::brain_restore,
+            commands_brain::brain_attach,
+            commands_brain::brain_image,
+            commands_brain::brain_artix,
+            commands_brain::brain_open_link,
+            commands_brain::capture_open,
+            commands_brain::capture_close,
+            desktop::desktop_status,
+            desktop::desktop_apply,
             commands_plan::plan_task_delete,
             commands_plan::plan_event_save,
             commands_plan::plan_event_delete,

@@ -290,7 +290,7 @@ fn run(state: &AppState, caller: &Caller, name: &str, a: &Value) -> Result<Out> 
                 return Err(AppError::new("not_found", format!("Aucun projet « {key} » : utilise une clé donnée par list_projects.")));
             }
             let conn = state.conn();
-            let tasks: Vec<Value> = w.plan.tasks.iter().filter(|t| t.project.as_deref() == Some(&key)).map(|t| json!({"id": t.id, "titre": t.title, "fait": t.done_at.is_some(), "estimationMin": t.estimate_min, "priorite": t.priority, "echeance": t.due_day, "parent": t.parent_id})).collect();
+            let tasks: Vec<Value> = w.plan.tasks.iter().filter(|t| t.kind == "task" && t.project.as_deref() == Some(&key)).map(|t| json!({"id": t.id, "titre": t.title, "fait": t.done_at.is_some(), "estimationMin": t.estimate_min, "priorite": t.priority, "echeance": t.due_day, "parent": t.parent_id})).collect();
             let brief: Option<Value> = conn.query_row("SELECT brief, stale, updated_at FROM project_briefs WHERE project = ?1", [&key], |r| Ok(json!({"resume": serde_json::from_str::<Value>(&r.get::<_, String>(0)?).unwrap_or(Value::Null), "perime": r.get::<_, i64>(1)? != 0, "misAJour": r.get::<_, i64>(2)?}))).ok();
             let mems: Vec<Value> = memory::list(&conn, Some(&memory::project_scope(&key)), false, now())?.into_iter().take(20).map(|m| json!({"id": m.id, "type": m.kind, "texte": m.content})).collect();
             let runs: Vec<Value> = crate::db::list_runs(&conn, Some(&key), None, 6)?.into_iter().map(|r| json!({"id": r.id, "type": r.kind, "statut": r.status, "titre": r.title, "date": r.started_at, "resume": crate::ai::stream::clip(&summary_text(&r.summary), 300)})).collect();

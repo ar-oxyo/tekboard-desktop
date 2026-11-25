@@ -15,7 +15,8 @@ use serde_json::Value;
 
 /// `block`: time the user is not available (nothing is planned over it).
 pub const EVENT_KINDS: &[&str] = &["session", "event", "reminder", "task", "block"];
-pub const TASK_KINDS: &[&str] = &["task", "idea"];
+/// `note` and `snippet` are kept captures (Brain Dump): they never reach the planning.
+pub const TASK_KINDS: &[&str] = &["task", "idea", "note", "snippet"];
 const MAX_SPAN: i64 = 14 * 86_400;
 const MAX_ESTIMATE: i64 = 2_000 * 60;
 
@@ -29,7 +30,7 @@ pub struct Task {
     pub project: Option<String>,
     /// Sub-task of this task.
     pub parent_id: Option<i64>,
-    /// `task` or `idea` (a note captured on the fly, never scheduled by itself).
+    /// `task`, `idea` (a note captured on the fly, never scheduled by itself), `note` or `snippet`.
     pub kind: String,
     /// 0 none, 1 low, 2 medium, 3 high.
     pub priority: i64,
@@ -164,8 +165,9 @@ const TASK_COLS: &str = "id, title, notes, project, parent_id, kind, priority, e
 const EVENT_COLS: &str = "id, kind, title, start_at, end_at, all_day, project, task_id, color, notes, origin, done, category";
 
 /// Open tasks and those finished in the last 60 days; calendar entries and time logged since 120 days.
+/// Kept notes, snippets and archived captures stay out: they belong to the Brain Dump.
 pub fn state(conn: &Connection, now: i64) -> Result<State> {
-    let mut st = conn.prepare(&format!("SELECT {TASK_COLS} FROM tasks WHERE done_at IS NULL OR done_at >= ?1 ORDER BY done_at IS NOT NULL, priority DESC, COALESCE(due_day, '9999'), id"))?;
+    let mut st = conn.prepare(&format!("SELECT {TASK_COLS} FROM tasks WHERE kind IN ('task', 'idea') AND archived_at IS NULL AND (done_at IS NULL OR done_at >= ?1) ORDER BY done_at IS NOT NULL, priority DESC, COALESCE(due_day, '9999'), id"))?;
     let tasks = st.query_map([now - 60 * 86_400], task_row)?.collect::<std::result::Result<_, _>>()?;
     let mut st = conn.prepare(&format!("SELECT {EVENT_COLS} FROM plan_events WHERE end_at >= ?1 ORDER BY start_at, id"))?;
     let events = st.query_map([now - 120 * 86_400], event_row)?.collect::<std::result::Result<_, _>>()?;
@@ -197,10 +199,11 @@ pub fn save_task(conn: &Connection, t: &Task, now: i64) -> Result<Task> {
     let parent = t.parent_id.filter(|p| *p != t.id && *p > 0);
     let notes: String = t.notes.chars().take(8000).collect();
     let id = if t.id == 0 {
-        conn.execute("INSERT INTO tasks (title, notes, project, parent_id, kind, priority, estimate_min, due_day, done_at, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)", params![title, notes, project, parent, kind, priority, estimate, due, t.done_at, now])?;
+        conn.execute("INSERT INTO tasks (title, notes, project, parent_id, kind, priority, estimate_min, due_day, done_at, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10)", params![title, notes, project, parent, kind, priority, estimate, due, t.done_at, now])?;
         conn.last_insert_rowid()
     } else {
-        let n = conn.execute("UPDATE tasks SET title = ?1, notes = ?2, project = ?3, parent_id = ?4, kind = ?5, priority = ?6, estimate_min = ?7, due_day = ?8, done_at = ?9 WHERE id = ?10", params![title, notes, project, parent, kind, priority, estimate, due, t.done_at, t.id])?;
+        // Pin, tags, archive and the detected type are left alone: only the Brain Dump writes them.
+        let n = conn.execute("UPDATE tasks SET title = ?1, notes = ?2, project = ?3, parent_id = ?4, kind = ?5, priority = ?6, estimate_min = ?7, due_day = ?8, done_at = ?9, updated_at = ?11 WHERE id = ?10", params![title, notes, project, parent, kind, priority, estimate, due, t.done_at, t.id, now])?;
         if n == 0 {
             return Err(AppError::new("not_found", "Cette tâche n'existe plus"));
         }

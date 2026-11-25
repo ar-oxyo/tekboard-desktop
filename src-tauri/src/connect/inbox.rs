@@ -26,7 +26,8 @@ pub struct Opened {
 pub fn destinations(kind: &str) -> Vec<&'static str> {
     match kind {
         "cfunction" => vec!["library", "playground", "downloads"],
-        "snippet" | "draft" => vec!["playground", "downloads"],
+        "snippet" => vec!["playground", "inbox", "downloads"],
+        "draft" => vec!["playground", "downloads"],
         "library" => vec!["library", "downloads"],
         "template" => vec!["template", "downloads"],
         "prompt" => vec!["prompt", "downloads"],
@@ -36,7 +37,7 @@ pub fn destinations(kind: &str) -> Vec<&'static str> {
         "patch" => vec!["patch", "downloads"],
         "config" => vec!["config"],
         "board" => vec!["board", "downloads"],
-        "note" => vec!["downloads", "artix"],
+        "note" => vec!["inbox", "downloads", "artix"],
         "file" | "folder" => vec!["downloads", "playground"],
         _ => vec!["downloads"],
     }
@@ -64,6 +65,8 @@ pub enum Target {
     Downloads,
     Config,
     Board,
+    /// The Brain Dump inbox: the text becomes a capture, sorted later like any other.
+    Inbox,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -108,6 +111,7 @@ pub fn import(state: &AppState, svc: &super::Service, downloads: &Path, id: &str
         Target::Downloads => "downloads",
         Target::Config => "config",
         Target::Board => "board",
+        Target::Inbox => "inbox",
     };
     if !allowed.contains(&name) {
         return Err(AppError::new("invalid_target", "Cette destination ne convient pas à ce type de ressource"));
@@ -234,6 +238,13 @@ pub fn import(state: &AppState, svc: &super::Service, downloads: &Path, id: &str
             let dest = fresh(&parent, &slug(&m.title));
             share::extract(&files, &dest)?;
             done(format!("Enregistré dans {}", dest.display()), json!({"reveal": dest}))
+        }
+        Target::Inbox => {
+            let text = format!("{}\n\n{}\n\n#tekshare", m.title.trim(), text_of(&files)?.trim());
+            let text = if m.kind == "snippet" && !text.contains("```") { format!("{}\n\n```\n{}\n```\n\n#tekshare", m.title.trim(), text_of(&files)?.trim()) } else { text };
+            let c = crate::brain::save(&state.conn(), &text, None, now())?;
+            crate::notify::changed(&["brain", "plan"]);
+            done(format!("Ajouté à l'Inbox · de {}", t.peer_nick), json!({"page": "inbox", "id": c.id}))
         }
         Target::Board => {
             let b = crate::boards::import_json(&state.conn(), &state.data_dir, &text_of(&files)?, None, now())?;

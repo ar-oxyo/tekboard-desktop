@@ -46,6 +46,7 @@ export const DEST_LABEL: Record<string, string> = {
   downloads: t("Enregistrer dans Téléchargements"),
   config: t("Appliquer à mes réglages"),
   board: t("Ajouter à mes tableaux"),
+  inbox: t("Ajouter à mon Inbox"),
 };
 
 /** Paired people connected right now, who can receive (not the invisible or busy ones last). */

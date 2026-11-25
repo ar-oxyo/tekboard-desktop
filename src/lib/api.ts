@@ -45,6 +45,10 @@ export interface Settings {
   onboardingStep: string;
   /** Look for a new release now and then. */
   updateCheck: boolean;
+  /** Global shortcut of the capture window (X11 only). "" = none. */
+  captureShortcut: string;
+  /** Icon in the notification area. */
+  trayIcon: boolean;
 }
 
 /** One of Tekboard's folders. */
@@ -867,6 +871,52 @@ export interface ConnectDiagnosis {
   advice: string[];
 }
 
+// ───────────────────────── Brain Dump ─────────────────────────
+export type CaptureKind = "idea" | "note" | "snippet" | "task";
+export type CaptureType = "idea" | "bug" | "improvement" | "question" | "code" | "command" | "link" | "task" | "info" | "image";
+/** A quick capture: a row of the tasks, `idea` while it waits in the inbox. */
+export interface Capture {
+  id: number;
+  title: string;
+  /** The whole text (the details, for a task). */
+  text: string;
+  project: string | null;
+  kind: CaptureKind;
+  ctype: CaptureType | "";
+  tags: string[];
+  pinned: boolean;
+  archivedAt: number | null;
+  doneAt: number | null;
+  createdAt: number;
+  updatedAt: number | null;
+}
+export type CaptureView = "inbox" | "pinned" | "notes" | "snippets" | "archived" | "kept" | "all";
+export interface CaptureFilter {
+  view: CaptureView;
+  query?: string;
+  project?: string | null;
+  limit?: number;
+}
+/** What Artix suggests for a capture (nothing is applied by itself). */
+export interface CaptureSuggestion {
+  title: string;
+  ctype: CaptureType;
+  project?: string;
+  tags: string[];
+  rewrite?: string;
+  asTask: boolean;
+  similarId?: number;
+}
+export interface DesktopStatus {
+  wayland: boolean;
+  desktop: string;
+  shortcutActive: boolean;
+  shortcutError: string | null;
+  trayAvailable: boolean;
+  trayActive: boolean;
+  captureCommand: string;
+}
+
 // ───────────────────────── TekShare ─────────────────────────
 export type ShareResource =
   | { kind: "file"; path: string }
@@ -928,7 +978,8 @@ export type ImportTarget =
   | { to: "arena" }
   | { to: "downloads" }
   | { to: "config" }
-  | { to: "board" };
+  | { to: "board" }
+  | { to: "inbox" };
 export interface Imported {
   detail: string;
   open: { page?: string; id?: number; path?: string; runId?: number; reveal?: string; board?: string } | null;
@@ -990,7 +1041,7 @@ export interface BoardData {
   files: Record<string, BoardFile>;
 }
 
-export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull" | "playground" | "arena" | "arena_ai" | "arena_report" | "board_ai";
+export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull" | "playground" | "arena" | "arena_ai" | "arena_report" | "board_ai" | "brain";
 /** Kind-specific facts; see the Rust module that produces each kind. */
 export type RunSummary = Record<string, unknown> & { steps?: JobStep[] };
 export interface JobView {
@@ -1283,7 +1334,7 @@ export interface PlanTask {
   notes: string;
   project: string | null;
   parentId: number | null;
-  kind: "task" | "idea";
+  kind: "task" | "idea" | "note" | "snippet";
   /** 0 none, 1 low, 2 medium, 3 high. */
   priority: number;
   estimateMin: number | null;
@@ -1892,6 +1943,29 @@ export const api = {
   focusStop: (done: boolean) => invoke<FocusSession>("focus_stop", { done }),
   focusDiscard: () => invoke<void>("focus_discard"),
   focusStats: (from: number, to: number) => invoke<FocusStats>("focus_stats", { from, to }),
+
+  brainSave: (text: string, project: string | null) => invoke<Capture>("brain_save", { text, project }),
+  brainEdit: (id: number, text: string) => invoke<Capture>("brain_edit", { id, text }),
+  brainList: (filter: CaptureFilter) => invoke<Capture[]>("brain_list", { filter }),
+  brainCount: () => invoke<number>("brain_count"),
+  brainSimilar: (id: number) => invoke<Capture[]>("brain_similar", { id }),
+  brainConvert: (id: number, kind: CaptureKind) => invoke<Capture>("brain_convert", { id, kind }),
+  brainSetProject: (id: number, project: string | null) => invoke<Capture>("brain_set_project", { id, project }),
+  brainPin: (id: number, pinned: boolean) => invoke<Capture>("brain_pin", { id, pinned }),
+  brainArchive: (id: number, archived: boolean) => invoke<Capture>("brain_archive", { id, archived }),
+  brainTags: (id: number, tags: string[]) => invoke<Capture>("brain_tags", { id, tags }),
+  brainDelete: (id: number) => invoke<Capture>("brain_delete", { id }),
+  brainRestore: (capture: Capture) => invoke<Capture>("brain_restore", { capture }),
+  brainAttach: (mime: string, data: string) => invoke<string>("brain_attach", { mime, data }),
+  brainImage: (id: string) => invoke<string>("brain_image", { id }),
+  /** Artix's suggestions for a capture, as a job (value `suggestion`). */
+  brainArtix: (id: number, projects: [string, string][]) => invoke<number>("brain_artix", { id, projects }),
+  brainOpenLink: (id: number, url: string) => invoke<void>("brain_open_link", { id, url }),
+  captureOpen: () => invoke<void>("capture_open"),
+  /** Hides the capture window; `then` brings the main window up there (`inbox`). */
+  captureClose: (then: string | null = null) => invoke<void>("capture_close", { then }),
+  desktopStatus: () => invoke<DesktopStatus>("desktop_status"),
+  desktopApply: () => invoke<DesktopStatus>("desktop_apply"),
 
   startup: () => invoke<{ page: string | null; sheet: string | null; theme: string | null; repo: string | null; pick: string | null; tool: string | null; run: string | null; report: number | null; anchor: string | null }>("startup"),
 };

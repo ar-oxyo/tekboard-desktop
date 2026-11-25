@@ -13,6 +13,8 @@ import { SubjectsPage } from "../features/subjects/SubjectsPage";
 import { TemplatesPage } from "../features/templates/TemplatesPage";
 import { useSettings } from "../lib/hooks";
 import { api, asAppError } from "../lib/api";
+
+type Startup = Awaited<ReturnType<typeof api.startup>>;
 import { listenJobs } from "../lib/jobs";
 import { invalidate, listenData, setQueryClient } from "../lib/sync";
 import { listenConnect } from "../lib/connect";
@@ -33,6 +35,7 @@ import { MyEpitechPage } from "../features/myepitech/MyEpitechPage";
 import { LogtimePage } from "../features/myepitech/LogtimePage";
 import { PlanningPage } from "../features/planning/PlanningPage";
 import { EventDialog, QuickCapture, TaskDialog, useCaptureShortcut } from "../features/planning/Dialogs";
+import { InboxDialog } from "../features/brain/InboxDialog";
 import { FocusBar } from "../features/planning/Focus";
 import { ArtixPanel } from "../features/artix/ArtixPanel";
 import { useNudges } from "../features/artix/Insights";
@@ -122,10 +125,10 @@ export function App() {
     document.documentElement.dataset.glass = on ? "on" : "off";
   }, [settings.data?.glassEffects]);
 
-  // `tekboard --page git` / `--sheet <path>` open the app directly there.
+  // `tekboard --page git` / `--sheet <path>` open the app directly there; a second `tekboard …`
+  // started while this one runs hands its arguments over (`startup-args`).
   useEffect(() => {
-    api.startup().then(
-      (s) => {
+    const apply = (s: Startup) => {
         if (s.page && (PAGES as string[]).includes(s.page)) setPage(s.page as Page);
         if (s.sheet) useUi.getState().openSheet(s.sheet);
         if (s.theme) useUi.setState({ themeOverride: s.theme });
@@ -160,9 +163,18 @@ export function App() {
           setPage("myepitech");
           void runMySync();
         } else if (s.repo && s.run) void startFromCli(s.repo, s.run);
-      },
-      () => undefined,
-    );
+    };
+    api.startup().then(apply, () => undefined);
+    const again = listen<Startup>("startup-args", (e) => apply(e.payload));
+    // The tray icon or the capture window bring the main window up on something.
+    const target = listen<string>("open-target", (e) => {
+      if (e.payload === "inbox") useUi.getState().openInbox();
+      else if (e.payload === "checkpoint") window.dispatchEvent(new CustomEvent("tekboard:checkpoint"));
+    });
+    return () => {
+      void again.then((f) => f());
+      void target.then((f) => f());
+    };
   }, [setPage]);
 
   // Jobs report their progress as events (see lib/jobs.ts).
@@ -404,6 +416,7 @@ export function App() {
       <EventDialog />
       <TaskDialog />
       <QuickCapture />
+      <InboxDialog />
       <FocusBar />
       <Toaster />
     </div>

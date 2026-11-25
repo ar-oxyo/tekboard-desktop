@@ -830,7 +830,7 @@ mod tests {
         until("received", || status(&b, &t.id) == "received").await;
         until("sent", || status(&a, &t.id) == "sent").await;
         let opened = super::super::inbox::open(&b.svc, &t.id).unwrap();
-        assert_eq!(opened.destinations, vec!["playground", "downloads"]);
+        assert_eq!(opened.destinations, vec!["playground", "inbox", "downloads"]);
         let dl = b._dir.path().join("Downloads");
         let r = super::super::inbox::import(&b.state, &b.svc, &dl, &t.id, &super::super::inbox::Target::Downloads).unwrap();
         assert!(r.detail.contains("TekShare"));

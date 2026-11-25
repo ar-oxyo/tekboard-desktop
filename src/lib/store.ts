@@ -88,7 +88,13 @@ interface UiState {
   taskEdit: Partial<PlanTask> | null;
   editTask: (t: Partial<PlanTask> | null) => void;
   captureOpen: boolean;
-  setCaptureOpen: (open: boolean) => void;
+  /** Project the capture starts linked to (from a project sheet). */
+  captureProject: string | null;
+  setCaptureOpen: (open: boolean, project?: string | null) => void;
+  /** Brain Dump inbox (a dialog, no page of its own). */
+  inbox: { view: import("./api").CaptureView; query: string; focus: number | null } | null;
+  openInbox: (o?: { view?: import("./api").CaptureView; query?: string; focus?: number | null }) => void;
+  closeInbox: () => void;
   /** Day the Planning screen should show next time it opens (ms). */
   planDate: number | null;
   openPlanning: (date?: number) => void;
@@ -160,7 +166,11 @@ export const useUi = create<UiState>((set, get) => ({
   taskEdit: null,
   editTask: (taskEdit) => set({ taskEdit }),
   captureOpen: false,
-  setCaptureOpen: (captureOpen) => set({ captureOpen, paletteOpen: false }),
+  captureProject: null,
+  setCaptureOpen: (captureOpen, project) => set({ captureOpen, captureProject: captureOpen ? (project ?? null) : null, paletteOpen: false }),
+  inbox: null,
+  openInbox: (o) => set({ inbox: { view: o?.view ?? "inbox", query: o?.query ?? "", focus: o?.focus ?? null }, paletteOpen: false, captureOpen: false }),
+  closeInbox: () => set({ inbox: null }),
   planDate: null,
   openPlanning: (date) => set({ page: "agenda", planDate: date ?? null, sheetPath: null, paletteOpen: false }),
   toasts: [],

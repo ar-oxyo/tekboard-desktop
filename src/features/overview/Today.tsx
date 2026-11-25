@@ -1,5 +1,5 @@
 // Dashboard blocks centred on the day: what to do now, today's timeline, the coming load, quick actions.
-import { CalendarDays, CalendarPlus, ClipboardCheck, Flag, Lock, PenLine, Play, Plus, Sparkles, Sun, TriangleAlert, Wand2 } from "lucide-react";
+import { CalendarDays, CalendarPlus, ClipboardCheck, Flag, Inbox, Lock, PenLine, Play, Plus, Sparkles, Sun, TriangleAlert, Wand2 } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
@@ -219,6 +219,7 @@ export function WorkloadCard() {
 export function QuickActionsCard() {
   const ui = useUi.getState;
   const [review, setReview] = useState(false);
+  const inboxCount = useQuery({ queryKey: ["brain-count"], queryFn: api.brainCount, staleTime: 60_000 }).data ?? 0;
   const row = (icon: ReactNode, label: string, hint: string, onClick: () => void) => (
     <button type="button" onClick={onClick} className="row-hover flex h-10 w-full items-center gap-3 px-4 text-left text-[13px]">
       <span className="flex w-4 justify-center text-faint">{icon}</span>
@@ -231,6 +232,7 @@ export function QuickActionsCard() {
       <CardTitle>{t("Actions rapides")}</CardTitle>
       <div className="py-1">
         {row(<PenLine className="size-4" />, t("Noter une tâche ou une idée"), "Ctrl I", () => ui().setCaptureOpen(true))}
+        {row(<Inbox className="size-4" />, t("Ranger mon Inbox"), inboxCount ? String(inboxCount) : "", () => ui().openInbox())}
         {row(<CalendarPlus className="size-4" />, t("Planifier ma semaine"), "local", () => ui().openAssistant({ text: "#week" }))}
         {row(<Sparkles className="size-4" />, t("Demander à Artix"), t("utilise des crédits"), () => ui().openAssistant())}
         {row(<ClipboardCheck className="size-4" />, t("Bilan de la semaine"), "", () => setReview(true))}

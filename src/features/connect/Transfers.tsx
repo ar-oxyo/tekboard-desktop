@@ -159,6 +159,7 @@ function ImportDialog({ id, onClose }: { id: string; onClose: () => void }) {
       ui.setPage("arena");
     } else if (o2.page === "boards" && o2.board) ui.openBoard(o2.board);
     else if (o2.page === "sheet" && o2.path) ui.openSheet(o2.path);
+    else if (o2.page === "inbox") ui.openInbox({ focus: o2.id ?? null });
     else if (o2.page === "git" && o2.path) ui.openGit(o2.path);
     else if (["library", "templates", "prompts", "settings"].includes(o2.page)) ui.setPage(o2.page as "library");
   };
@@ -203,6 +204,7 @@ function ImportDialog({ id, onClose }: { id: string; onClose: () => void }) {
                 if (d === "arena") return void go(d, { to: "arena" });
                 if (d === "config") return void go(d, { to: "config" });
                 if (d === "board") return void go(d, { to: "board" });
+                if (d === "inbox") return void go(d, { to: "inbox" });
                 return void go(d, { to: "downloads" });
               };
               return (
