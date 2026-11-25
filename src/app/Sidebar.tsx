@@ -1,10 +1,12 @@
-import { Inbox, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { Inbox, PanelLeftClose, PanelLeftOpen, RefreshCw, Search } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, type RepoInfo } from "../lib/api";
-import { cn, Kbd } from "../components/ui";
+import { cn, Kbd, Spinner } from "../components/ui";
+import { useMySync } from "../features/myepitech/useMySync";
+import { timeAgo } from "../lib/format";
 import { Artix } from "../features/artix/Artix";
-import { useEnv, usePref, useRepos } from "../lib/hooks";
+import { useEnv, useNow, usePref, useRepos } from "../lib/hooks";
 import { displayName } from "../lib/repos";
 import { useUi, type Page } from "../lib/store";
 import { PAGE_ICON } from "./pageIcons";
@@ -129,6 +131,7 @@ export function Sidebar() {
         <NavItem rail={rail} on={artixOpen} icon={<Artix size={18} />} label="Artix" hint="Ctrl+J" onClick={() => (artixOpen ? useUi.getState().closeAssistant() : useUi.getState().openAssistant())} />
         {item("templates")}
         {item("settings")}
+        <SyncLine rail={rail} />
         <Health rail={rail} />
       </div>
     </aside>
@@ -208,7 +211,7 @@ function Health({ rail }: { rail: boolean }) {
       type="button"
       onClick={() => useUi.setState({ page: "settings", settingsTab: "doctor", sheetPath: null })}
       title={`${toolsLine} · ${ghLine} — ${t("Ouvrir le Doctor")}`}
-      className={cn("mt-1 flex h-7 items-center gap-2.5 rounded-(--btn-radius) text-xs transition-colors duration-(--dur-fast) hover:bg-ink/5", rail ? "justify-center" : "px-2.5", ok === false ? "text-warn" : "text-faint hover:text-muted")}
+      className={cn("flex h-7 items-center gap-2.5 rounded-(--btn-radius) text-xs transition-colors duration-(--dur-fast) hover:bg-ink/5", rail ? "justify-center" : "px-2.5", ok === false ? "text-warn" : "text-faint hover:text-muted")}
     >
       <span className="flex w-4 shrink-0 justify-center">
         <span aria-hidden className={cn("size-1.5 rounded-full", ok === null ? "bg-faint" : ok ? "bg-ok" : "bg-warn")} />
@@ -239,5 +242,27 @@ export function SectionTabs() {
         </button>
       ))}
     </div>
+  );
+}
+
+/** When MY Epitech was last synced; a click syncs now. Hidden until a first sync happened. */
+function SyncLine({ rail }: { rail: boolean }) {
+  const status = useQuery({ queryKey: ["my-status"], queryFn: api.myStatus, staleTime: 30_000, refetchInterval: 60_000 });
+  const my = useMySync();
+  useNow(30_000);
+  const last = status.data?.lastSync ?? null;
+  if (last === null && !my.busy) return null;
+  const label = my.busy ? my.label : t("MY Epitech · {ago}", { ago: timeAgo(last!) });
+  return (
+    <button
+      type="button"
+      onClick={() => void my.sync()}
+      disabled={my.busy}
+      title={my.busy ? my.label : t("Synchronisé {ago}. Cliquer pour synchroniser maintenant.", { ago: timeAgo(last!) })}
+      className={cn("mt-1 flex h-7 items-center gap-2.5 rounded-(--btn-radius) text-xs text-faint transition-colors duration-(--dur-fast) hover:bg-ink/5 hover:text-muted disabled:cursor-default", rail ? "justify-center" : "px-2.5")}
+    >
+      <span className="flex w-4 shrink-0 justify-center">{my.busy ? <Spinner className="size-3" /> : <RefreshCw className="size-3" />}</span>
+      {!rail && <span className="truncate">{label}</span>}
+    </button>
   );
 }

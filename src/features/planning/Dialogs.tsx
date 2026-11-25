@@ -4,7 +4,7 @@ import { startFocus } from "./Focus";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Modal } from "../../components/Modal";
 import { Select } from "../../components/Select";
-import { Button, cn, Dot, Field, IconButton, Input, SectionLabel } from "../../components/ui";
+import { Button, cn, Dot, DoneCheck, Field, IconButton, Input, SectionLabel } from "../../components/ui";
 import type { PlanEvent, PlanEventKind, PlanTask } from "../../lib/api";
 import { useNow } from "../../lib/hooks";
 import { addDays, dayKey, dayStartOf, durInput, fmtDur, freeSlots, hhmm, hhmmOf, MIN, minutesOf, missed, parseDur, PRIORITY, startOfWeek, type PlanPrefs, type RhythmMode, RHYTHMS, withMode, type PlanProject } from "../../lib/plan";
@@ -289,7 +289,7 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
             <ul className="flex flex-col">
               {children.map((c) => (
                 <li key={c.id} className="group flex h-8 items-center gap-2 text-sm">
-                  <input type="checkbox" className="accent-(--color-accent)" checked={c.doneAt !== null} onChange={() => act.toggleTask(c)} />
+                  <DoneCheck label={tr("Fait")} checked={c.doneAt !== null} onChange={() => act.toggleTask(c)} />
                   <span className={cn("min-w-0 flex-1 truncate", c.doneAt !== null && "text-faint line-through")}>{c.title}</span>
                   <IconButton label={tr("Supprimer la sous-tâche")} className="opacity-0 group-hover:opacity-100" onClick={() => act.removeTask.mutate(c.id)}>
                     <Trash2 className="size-3.5" />

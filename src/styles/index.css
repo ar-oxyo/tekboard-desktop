@@ -946,6 +946,51 @@ code,
     fill 200ms var(--ease) !important;
 }
 
+/* Task checkbox: ticking draws the logo's ring, then the check. */
+.done-check .done-track {
+  fill: none;
+  stroke: var(--color-line-strong);
+  stroke-width: 1.4;
+}
+.done-check:hover .done-track {
+  stroke: var(--color-accent);
+}
+.done-check .done-ring {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 41 41;
+  stroke-dashoffset: 41;
+}
+.done-check .done-tick {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 10 10;
+  stroke-dashoffset: 10;
+}
+.done-check [data-on] .done-ring,
+.done-check [data-on] .done-tick {
+  stroke-dashoffset: 0;
+}
+.done-check [data-drawing] .done-ring {
+  animation: done-ring 260ms var(--ease) both;
+}
+.done-check [data-drawing] .done-tick {
+  animation: done-tick 160ms var(--ease) 160ms both;
+}
+@keyframes done-ring {
+  from { stroke-dashoffset: 41; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes done-tick {
+  from { stroke-dashoffset: 10; }
+  to { stroke-dashoffset: 0; }
+}
+
 /* Tooltips are printed in reverse: ground-coloured text on a block of ink. */
 .tooltip {
   background: var(--color-fg);

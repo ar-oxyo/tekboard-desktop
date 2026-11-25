@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CalendarCheck, ChevronLeft, ChevronRight, Inbox, Lightbulb, ListFilter, Plus, RefreshCw, Settings2, Sparkles, Tags, Wand2 } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import { Menu, MenuChoice, MenuItem, MenuLabel, MenuSeparator } from "../../components/Menu";
-import { Button, cn, Dot, ErrorNote, IconButton, Spinner, Tag } from "../../components/ui";
+import { Button, cn, Dot, DoneCheck, ErrorNote, IconButton, Spinner, Tag } from "../../components/ui";
 import type { PlanTask } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { useNow, usePref } from "../../lib/hooks";
@@ -257,7 +257,7 @@ function InboxPanel({ data, onDrag, now }: { data: ReturnType<typeof usePlanData
       )}
       {tasks.map((t) => (
         <div key={t.id} onPointerDown={(e) => onDrag(e, t)} className="group row-hover flex cursor-grab items-start gap-2 rounded-md px-2 py-1.5 active:cursor-grabbing" style={{ touchAction: "none" }}>
-          <input type="checkbox" aria-label={tr("Fait")} className="mt-0.5 accent-(--color-accent)" checked={false} onPointerDown={(e) => e.stopPropagation()} onChange={() => act.toggleTask(t)} />
+          <DoneCheck label={tr("Fait")} className="mt-0.5" checked={false} onChange={() => act.toggleTask(t)} />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm">{t.title}</span>
             <span className="flex flex-wrap items-center gap-x-2 text-2xs whitespace-nowrap text-faint">

@@ -2,7 +2,7 @@
 // that hold everything else (Git, Advanced). Each action has one place.
 import { CalendarClock, CalendarPlus, Code2, Copy, FolderOpen, GitBranch, GitCommitHorizontal, Globe, GraduationCap, LayoutTemplate, ListTree, Play, SquareTerminal, Trash2, User, Wand2 } from "lucide-react";
 import { useState, type CSSProperties, type ReactNode } from "react";
-import { Button, cn, Dot, IconButton, Input, SectionLabel } from "../../components/ui";
+import { Button, cn, Dot, DoneCheck, IconButton, Input, SectionLabel } from "../../components/ui";
 import type { RepoInfo } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { useNow, useProjectActions } from "../../lib/hooks";
@@ -146,7 +146,7 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
         <ul className="flex flex-col">
           {open.slice(0, 6).map((t) => (
             <li key={t.id} className="group flex h-8 items-center gap-2 text-sm">
-              <input type="checkbox" aria-label={tr("Fait")} className="accent-(--color-accent)" checked={false} onChange={() => act.toggleTask(t)} />
+              <DoneCheck label={tr("Fait")} checked={false} onChange={() => act.toggleTask(t)} />
               <button type="button" className="min-w-0 flex-1 truncate text-left hover:text-accent-strong" onClick={() => useUi.getState().editTask(t)}>
                 {t.title}
               </button>

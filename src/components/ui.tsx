@@ -1,5 +1,5 @@
 // Small presentational primitives shared by every screen.
-import { createContext, useContext, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
+import { createContext, useContext, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { LoaderCircle } from "lucide-react";
 
@@ -266,5 +266,33 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>
+  );
+}
+
+/**
+ * A task's checkbox. Ticking it draws TekBoard's ring and a check (300 ms) before the task
+ * is marked done, so the row does not vanish under the cursor. Without animations, at once.
+ */
+export function DoneCheck({ checked, onChange, label, className }: { checked: boolean; onChange: () => void; label: string; className?: string }) {
+  const [drawing, setDrawing] = useState(false);
+  const on = checked || drawing;
+  const click = () => {
+    if (drawing) return;
+    const still = document.documentElement.dataset.motion === "off" || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (checked || still) return onChange();
+    setDrawing(true);
+    window.setTimeout(() => {
+      setDrawing(false);
+      onChange();
+    }, 320);
+  };
+  return (
+    <button type="button" role="checkbox" aria-checked={checked} aria-label={label} onPointerDown={(e) => e.stopPropagation()} onClick={click} className={cn("done-check inline-flex size-4 shrink-0 items-center justify-center rounded-full", className)}>
+      <svg viewBox="0 0 16 16" className="size-4" aria-hidden data-on={on ? "" : undefined} data-drawing={drawing ? "" : undefined}>
+        <circle cx="8" cy="8" r="6.5" className="done-track" />
+        <circle cx="8" cy="8" r="6.5" className="done-ring" transform="rotate(-90 8 8)" />
+        <path d="M5.2 8.3l1.9 1.9 3.7-4" className="done-tick" />
+      </svg>
+    </button>
   );
 }

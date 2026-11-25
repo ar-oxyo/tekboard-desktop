@@ -106,11 +106,18 @@ export function useProjectActions() {
       qc.setQueryData<RepoInfo[]>(keys.repos, (old) => old?.map((r) => (r.path === repo.path ? { ...r, progress: status, progressInferred: false, meta: { ...r.meta, status, archived: status === "done" } } : r)));
     },
     onSettled: refresh,
+    onSuccess: (_r, { repo, status }) => {
+      if (repo.progress === status) return;
+      toast({ kind: "ok", title: t("Statut changé : {s}", { s: status === "done" ? t("terminé") : status === "in_progress" ? t("en cours") : t("à faire") }), action: { label: t("Annuler"), run: () => progress.mutate({ repo: { ...repo, progress: status }, status: repo.progress }) } });
+    },
     onError: fail("Statut non modifié"),
   });
   const kind = useMutation({
     mutationFn: ({ repo, kind }: { repo: RepoInfo; kind: RepoKind | null }) => api.projectSetKind(repo.path, kind),
-    onSuccess: refresh,
+    onSuccess: (_r, { repo }) => {
+      refresh();
+      toast({ kind: "ok", title: t("Classement modifié"), action: { label: t("Annuler"), run: () => void api.projectSetKind(repo.path, repo.meta.kindOverride).then(refresh) } });
+    },
     onError: fail("Classement non modifié"),
   });
   const remote = useMutation({
@@ -123,7 +130,7 @@ export function useProjectActions() {
   const launch = useMutation({
     mutationFn: (repo: RepoInfo) => api.projectLaunch(repo.path),
     onSuccess: (bin) => {
-      toast({ kind: "ok", title: `${bin} started in a terminal` });
+      toast({ kind: "ok", title: t("{b} lancé dans un terminal", { b: bin }) });
       void qc.invalidateQueries({ queryKey: keys.activity });
     },
     onError: fail("Le programme n'a pas démarré"),
@@ -131,7 +138,7 @@ export function useProjectActions() {
   const copyUrl = (repo: RepoInfo) => {
     if (!repo.remoteUrl) return;
     navigator.clipboard.writeText(repo.remoteUrl).then(
-      () => toast({ kind: "ok", title: "Remote URL copied" }),
+      () => toast({ kind: "ok", title: t("URL distante copiée") }),
       fail("Copie impossible"),
     );
   };
@@ -141,7 +148,12 @@ export function useProjectActions() {
     onSuccess: (_r, v) => {
       refresh();
       void qc.invalidateQueries({ queryKey: ["hidden-repos"] });
-      toast({ kind: "ok", title: v.visibility === "hidden" ? t("Projet masqué") : v.visibility === "archived" ? t("Projet archivé") : t("Projet restauré"), detail: v.visibility ? t("Son dossier n'a pas bougé. Tu peux le restaurer depuis Projets.") : undefined });
+      toast({
+        kind: "ok",
+        title: v.visibility === "hidden" ? t("Projet masqué") : v.visibility === "archived" ? t("Projet archivé") : t("Projet restauré"),
+        detail: v.visibility ? t("Son dossier n'a pas bougé.") : undefined,
+        action: { label: t("Annuler"), run: () => visibility.mutate({ repo: { ...v.repo, meta: { ...v.repo.meta, visibility: v.visibility } }, visibility: v.repo.meta.visibility }) },
+      });
     },
     onError: (e) => toast({ kind: "error", title: t("Non modifié"), detail: asAppError(e).message }),
   });

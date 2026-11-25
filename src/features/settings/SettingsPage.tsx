@@ -346,9 +346,9 @@ const THEMES: Array<{ id: string; name: string; tagline: string; bg: string; car
   { id: "ardoise", name: "Ardoise", tagline: t("Ardoise froide, cyan et orange : concentration"), bg: "linear-gradient(135deg, #eef2f6 0 50%, #13171c 50% 100%)", card: "#f7f9fb", accent: "#0e7490", text: "#141a21", radius: 6 },
   { id: "prune", name: "Prune", tagline: t("Lie-de-vin et moutarde : chaleur du soir"), bg: "linear-gradient(135deg, #f6eef0 0 50%, #1a1418 50% 100%)", card: "#fbf6f7", accent: "#8e2f63", text: "#24171e", radius: 6 },
   { id: "sumi", name: "Sumi", tagline: t("Encre noire, vermillon et or : minimal"), bg: "linear-gradient(135deg, #f7f5ef 0 50%, #111111 50% 100%)", card: "#fcfbf7", accent: "#b8321f", text: "#141414", radius: 6 },
-  { id: "flat", name: "Flat", tagline: t("Gris-bleu, net et carré"), bg: "#0c0d11", card: "#15181e", accent: "#8f83f7", text: "#e8eaf0", radius: 5 },
+  { id: "flat", obsolete: true, name: "Flat", tagline: t("Gris-bleu, net et carré"), bg: "#0c0d11", card: "#15181e", accent: "#8f83f7", text: "#e8eaf0", radius: 5 },
   { id: "neon", obsolete: true, name: "Neon", tagline: t("Magenta, cyan et une grille"), bg: "radial-gradient(120px 70px at 5% 0%, #ff50d277, transparent 70%), radial-gradient(120px 80px at 100% 100%, #28dcff66, transparent 70%), #07050f", card: "#1a1030", accent: "linear-gradient(120deg,#ff7ad9,#b46bff,#46dcff)", text: "#f4eeff", radius: 7 },
-  { id: "cozy", name: "Cozy", tagline: t("Pastels chauds, coins ronds"), bg: "radial-gradient(120px 70px at 10% 0%, #cba6f755, transparent 70%), radial-gradient(110px 70px at 100% 100%, #fab38744, transparent 70%), #14141f", card: "#25253a", accent: "linear-gradient(135deg,#cba6f7,#f5c2e7)", text: "#cdd6f4", radius: 11 },
+  { id: "cozy", obsolete: true, name: "Cozy", tagline: t("Pastels chauds, coins ronds"), bg: "radial-gradient(120px 70px at 10% 0%, #cba6f755, transparent 70%), radial-gradient(110px 70px at 100% 100%, #fab38744, transparent 70%), #14141f", card: "#25253a", accent: "linear-gradient(135deg,#cba6f7,#f5c2e7)", text: "#cdd6f4", radius: 11 },
   { id: "terminal", obsolete: true, name: "Terminal", tagline: t("Vert phosphore, monospace"), bg: "repeating-linear-gradient(180deg,#5cff8f14 0 1px,transparent 1px 3px), #040704", card: "#080d08", accent: "#5cff8f", text: "#cdf7c8", radius: 2 },
 ];
 
