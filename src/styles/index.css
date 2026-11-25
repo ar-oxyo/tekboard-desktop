@@ -1355,3 +1355,24 @@ code,
   .skill-pulse { animation: none; }
 }
 }
+
+/* Settings read as one sheet: their groups are hairline sections, not boxes. Outside the
+   component layer on purpose, to win over the card's own utilities. */
+.settings-flat .card {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--color-line);
+  border-radius: 0;
+  box-shadow: none;
+}
+.settings-flat .card > header:first-child {
+  border-bottom: 0;
+  height: auto;
+  padding-top: 14px;
+  padding-bottom: 2px;
+}
+.settings-flat .card > header:first-child h2 {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+

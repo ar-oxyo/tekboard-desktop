@@ -58,7 +58,7 @@ export function OnboardingFlow() {
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <img src="/tekboard.svg" alt="" className="size-7" />
-            <span className="display text-md font-medium">Tekboard</span>
+            <span className="display text-md font-(--title-weight)">TekBoard</span>
           </div>
           {step !== "welcome" && (
             <span className="text-xs text-faint tabular-nums">{t("Étape {i} sur {n}", { i: index + 1, n: STEPS.length })}</span>
@@ -289,7 +289,7 @@ function Done({ s }: { s: Settings }) {
   const ai = useAiStatus();
   const rows = [
     [t("Langue"), s.language === "en" ? "English" : "Français"],
-    [t("Apparence"), s.theme.charAt(0).toUpperCase() + s.theme.slice(1)],
+    [t("Apparence"), s.theme === "aurora" ? "Riso" : s.theme.charAt(0).toUpperCase() + s.theme.slice(1)],
     ["MY Epitech", status.data?.lastSync ? t("connecté") : t("plus tard (École → MY Epitech)")],
     [t("Dossiers de projets"), s.roots.length > 0 ? String(s.roots.length) : t("plus tard (Réglages → Général)")],
     ["IA", ai.data ? `${PROVIDER_NAME[ai.data.provider]}${ai.data.provider !== "none" && !ai.data.configured ? ` (${t("à configurer")})` : ""}` : "…"],

@@ -96,7 +96,7 @@ export function SettingsPage() {
   const targets = cloneTargets(repos.data ?? [], draft.roots).filter((t) => draft.roots.some((r) => t === r || t.startsWith(r + "/")));
 
   return (
-    <>
+    <div className="settings-flat">
       <PageHeader
         title={t("Réglages")}
         actions={
@@ -227,7 +227,7 @@ export function SettingsPage() {
             <CardTitle>{t("Espace de travail")}</CardTitle>
             <div className="flex flex-col gap-3 px-4 py-4">
               <Field
-                label="IDE command"
+                label={t("Commande de l'IDE")}
                 hint={
                   <>
                     <Code>{"{dir}"}</Code> est remplacé par le dossier du projet. Lancé directement, sans shell.
@@ -336,7 +336,7 @@ export function SettingsPage() {
           </Card>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
