@@ -3,10 +3,11 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { Check, FolderPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Select } from "../../components/Select";
-import { Button, Card, CardTitle, Code, ErrorNote, Field, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
+import { Button, Card, CardTitle, cn, Code, ErrorNote, Field, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
+import { COLOR_MODES, designHasLight, type ColorMode } from "../../lib/appearance";
 import { api, asAppError, type Settings } from "../../lib/api";
 import { tildify } from "../../lib/format";
-import { keys, useEnv, useHome, usePref, useRepos, useSettings, useTemplates } from "../../lib/hooks";
+import { keys, useColorMode, useEnv, useHome, usePref, useRepos, useSettings, useTemplates } from "../../lib/hooks";
 import { cloneTargets } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { AiSettingsCard } from "./AiSettings";
@@ -322,7 +323,7 @@ export function SettingsPage() {
             />
           </Card>
           <Card>
-            <CardTitle>{t("Apparence")}</CardTitle>
+            <CardTitle>{t("Effets")}</CardTitle>
             <label className="flex items-center gap-3 px-4 py-4">
               <input type="checkbox" className="accent-(--color-accent)" checked={draft.glassEffects} onChange={(e) => set({ glassEffects: e.target.checked })} />
               <span>
@@ -339,16 +340,40 @@ export function SettingsPage() {
 
 // Swatches are fixed colours on purpose: each tile previews its own design, whatever the active one is.
 const THEMES: Array<{ id: string; name: string; tagline: string; bg: string; card: string; accent: string; text: string; radius: number }> = [
-  { id: "aurora", name: "Aurora", tagline: t("Graphite, un seul accent violet"), bg: "#141415", card: "#1e1e21", accent: "#9486ff", text: "#ededed", radius: 8 },
+  { id: "aurora", name: "Riso", tagline: t("Deux encres sur papier, en clair ou en sombre"), bg: "linear-gradient(135deg, #f3efe6 0 50%, #181715 50% 100%)", card: "#f9f7f1", accent: "#0078bf", text: "#1d1b19", radius: 6 },
   { id: "flat", name: "Flat", tagline: t("Gris-bleu, net et carré"), bg: "#0c0d11", card: "#15181e", accent: "#8f83f7", text: "#e8eaf0", radius: 5 },
   { id: "neon", name: "Neon", tagline: t("Magenta, cyan et une grille"), bg: "radial-gradient(120px 70px at 5% 0%, #ff50d277, transparent 70%), radial-gradient(120px 80px at 100% 100%, #28dcff66, transparent 70%), #07050f", card: "#1a1030", accent: "linear-gradient(120deg,#ff7ad9,#b46bff,#46dcff)", text: "#f4eeff", radius: 7 },
   { id: "cozy", name: "Cozy", tagline: t("Pastels chauds, coins ronds"), bg: "radial-gradient(120px 70px at 10% 0%, #cba6f755, transparent 70%), radial-gradient(110px 70px at 100% 100%, #fab38744, transparent 70%), #14141f", card: "#25253a", accent: "linear-gradient(135deg,#cba6f7,#f5c2e7)", text: "#cdd6f4", radius: 11 },
   { id: "terminal", name: "Terminal", tagline: t("Vert phosphore, monospace"), bg: "repeating-linear-gradient(180deg,#5cff8f14 0 1px,transparent 1px 3px), #040704", card: "#080d08", accent: "#5cff8f", text: "#cdf7c8", radius: 2 },
 ];
 
+const MODE_LABEL: Record<ColorMode, string> = { system: t("Système"), light: t("Clair"), dark: t("Sombre") };
+
 export function ThemePicker({ current, onPick }: { current: string; onPick: (id: string) => void }) {
+  const [mode, setMode] = useColorMode(current);
+  const light = designHasLight(current);
   return (
-    <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3" role="radiogroup" aria-label={t("Apparence")}>
+    <div className="p-4">
+    <div className="mb-4 flex flex-wrap items-center gap-3">
+      <span className="text-sm text-muted">{t("Mode")}</span>
+      <div className="flex rounded-(--btn-radius) border border-line p-0.5" role="radiogroup" aria-label={t("Mode")} title={light ? undefined : t("Ce design n'existe qu'en sombre : choisis Riso pour le mode clair.")}>
+        {COLOR_MODES.map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="radio"
+            aria-checked={mode === m}
+            disabled={!light}
+            onClick={() => setMode(m)}
+            className={cn("h-7 rounded-[calc(var(--btn-radius)-2px)] px-3 text-sm transition-colors duration-(--dur-fast) disabled:cursor-not-allowed disabled:opacity-50", mode === m && light ? "bg-ink/8 font-medium text-fg" : "text-muted hover:text-fg")}
+          >
+            {MODE_LABEL[m]}
+          </button>
+        ))}
+      </div>
+      {!light && <span className="text-xs text-faint">{t("Sombre seulement avec ce design.")}</span>}
+    </div>
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" role="radiogroup" aria-label={t("Design")}>
       {THEMES.map((t) => {
         const active = t.id === current;
         return (
@@ -371,6 +396,7 @@ export function ThemePicker({ current, onPick }: { current: string; onPick: (id:
           </button>
         );
       })}
+    </div>
     </div>
   );
 }
