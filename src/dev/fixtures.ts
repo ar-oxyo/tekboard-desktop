@@ -228,10 +228,32 @@ const connect = {
   space: true,
 };
 
+const local = (offset: number, hour: number, min = 0) => {
+  const d = at(offset, hour, min);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+const session = (offset: number, h: number, len: number, title: string) => ({ type: "create_session" as const, project: repos[0]?.path ?? null, title, start: local(offset, h), end: local(offset, h + Math.floor(len / 60), len % 60) });
+const weekProposal = {
+  id: 1,
+  threadId: null,
+  kind: "schedule",
+  title: "Planning · semaine",
+  rationale: "Priorité aux rendus les plus proches.",
+  payload: {
+    actions: [session(1, 9, 120, "Secured : table de hachage"), session(1, 14, 90, "Secured : tests"), session(2, 10, 150, "my_sudo : parsing"), session(3, 9, 120, "Secured : collisions"), session(3, 16, 60, "Maths : 104neutrinos"), session(4, 13, 180, "my_sudo : droits"), { type: "create_task" as const, project: null, title: "Relire le sujet de my_sudo" }],
+    warnings: ["Sans créneau : Wolf3D (4 h)"],
+  },
+  status: "pending",
+  outcome: null,
+  at: now - 60,
+};
+
 export const fixtures: Record<string, Fixture> = {
   my_overview: { syncedAt: now - 40 * 60, account: "camille.martin@epitech.eu", projects: [], creditsAcquired: 12, creditsTotal: 60, blocks: [], exams: [] },
   my_logtime: logtime,
   my_skill_tree: skillTree,
+  // ?proposal=1 shows a week plan waiting in Artix's panel (with ?open=artix).
+  ai_proposals: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("proposal") ? [weekProposal] : []),
   analytics,
   connect_state: connect,
   git_detail: (a: Record<string, unknown>) => {

@@ -74,6 +74,9 @@ interface UiState {
   assistantOpen: boolean;
   assistantAsk: { text: string; project?: string | null } | null;
   openAssistant: (ask?: { text: string; project?: string | null }) => void;
+  /** Takes the pending request and clears it in one step: a request is handled once, even
+   * when an effect runs twice. */
+  takeAssistantAsk: () => { text: string; project?: string | null } | null;
   /** A resource being shared with TekShare (the share dialog is open while set). */
   share: import("./api").ShareResource | null;
   /** People preselected in the share dialog (a TekSpace table). */
@@ -143,6 +146,11 @@ export const useUi = create<UiState>((set, get) => ({
   assistantOpen: false,
   assistantAsk: null,
   openAssistant: (ask) => set({ assistantOpen: true, assistantAsk: ask ?? null, paletteOpen: false }),
+  takeAssistantAsk: () => {
+    const ask = get().assistantAsk;
+    if (ask) set({ assistantAsk: null });
+    return ask;
+  },
   share: null,
   shareTo: [],
   openShare: (share, to) => set({ share, shareTo: to ?? [], paletteOpen: false }),

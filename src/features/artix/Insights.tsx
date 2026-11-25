@@ -34,7 +34,7 @@ export function InsightList({ compact }: { compact?: boolean }) {
   if (!list.data?.length) return null;
   return (
     <ul className="flex flex-col gap-1.5">
-      {list.data.slice(0, compact ? 3 : 10).map((i) => (
+      {list.data.slice(0, compact ? 1 : 10).map((i) => (
         <li key={i.id} className="group flex items-start gap-2.5 rounded-lg border border-ink/7 px-3 py-2.5">
           <span className="mt-0.5 shrink-0 text-accent">{ICON[i.kind] ?? <CalendarClock className="size-4" />}</span>
           <div className="min-w-0 flex-1">

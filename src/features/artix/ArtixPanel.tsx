@@ -4,8 +4,9 @@
 // (break a project down, a suggestion) opens its own conversation instead of mixing into the
 // one in progress.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Brain, Check, ChevronDown, CircleAlert, History, LoaderCircle, MessageSquarePlus, Send, Square, Trash2, Undo2, X } from "lucide-react";
+import { Brain, CalendarClock, Check, ChevronDown, CircleAlert, CornerDownRight, History, LoaderCircle, MessageSquarePlus, Send, Settings2, Square, Trash2, Undo2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Menu, MenuItem } from "../../components/Menu";
 import { cn, IconButton } from "../../components/ui";
 import { api, asAppError, type AiAction, type AiMessage, type AiProposal, type AiStep, type JobEvent } from "../../lib/api";
 import { useJob } from "../../lib/jobs";
@@ -22,7 +23,7 @@ import { Markdown } from "./Markdown";
 import { MemoryView } from "./MemoryView";
 import { Artix, type ArtixState } from "./Artix";
 import { ProposalCard } from "./ProposalCard";
-import { suggestPlan } from "./suggest";
+import { suggestPlan, type PlanScope } from "./suggest";
 import { projectName, suggestionsFor, useScreen } from "./useScreen";
 
 export function ArtixPanel() {
@@ -90,27 +91,40 @@ function Panel() {
     if (!text || running || send.isPending) return;
     setText("");
     setView("chat");
-    const separate = fresh && thread !== null && (messages.data?.length ?? 0) > 0;
+    setNotice(null);
+    // A thread exists only once something was said in it: no need to wait for its messages
+    // (they may still be loading) to know the request needs a conversation of its own.
+    const separate = fresh && thread !== null;
     if (separate) setArtix({ thread: null, job: null });
     send.mutate({ q: text, fresh: separate });
   };
 
   // Requests handed over by other screens. `#…` are TekBoard's own instant computations.
+  // The request is taken and cleared in one step, so it runs once even if the effect runs twice.
   const data = usePlanData();
+  const [notice, setNotice] = useState<{ tone: "info" | "warn"; title: string; text?: string } | null>(null);
   useEffect(() => {
     if (!ask || data.loading) return;
-    useUi.setState({ assistantAsk: null });
+    const a = useUi.getState().takeAssistantAsk();
+    if (!a) return;
     const now = Date.now();
-    if (ask.text === "#day" || ask.text === "#week") void suggestPlan(ask.text === "#day" ? "day" : "week");
-    else if (ask.text === "#reorganize") void suggestPlan("reorganize");
-else if (ask.text === "#free") {
+    const plan = (scope: PlanScope) => {
+      setNotice(null);
+      void suggestPlan(scope, null, true).then((o) => {
+        if (o.status === "nothing") setNotice({ tone: "info", title: scope === "reorganize" ? t("Rien à replacer") : t("Rien à planifier"), text: o.message });
+        else if (o.status === "error") setNotice({ tone: "warn", title: t("Planning non calculé"), text: o.message });
+      });
+    };
+    if (a.text === "#day" || a.text === "#week") plan(a.text === "#day" ? "day" : "week");
+    else if (a.text === "#reorganize") plan("reorganize");
+    else if (a.text === "#free") {
       const slots = freeSlots(data.busy, data.prefs, now, addDays(startOfDay(now), 3), 60).slice(0, 6);
       setText(slots.length ? `Planifie une session dans un de ces créneaux : ${slots.map((s) => `${new Date(s.start).toLocaleDateString(locale(), { weekday: "short", day: "numeric" })} ${hhmm(s.start)}–${hhmm(s.end)}`).join(", ")}` : "Je n'ai aucun créneau d'une heure ces trois jours : que puis-je alléger ?");
       input.current?.focus();
-    } else if (ask.text === "#breakdown") {
-      const name = projectName(ask.project ?? null) ?? t("ce projet");
-      submit(t("Décompose {name} en tâches.", { name: `${name}${ask.project ? ` (${ask.project})` : ""}` }), true);
-    } else submit(ask.text, true);
+    } else if (a.text === "#breakdown") {
+      const name = projectName(a.project ?? null) ?? t("ce projet");
+      submit(t("Décompose {name} en tâches.", { name: `${name}${a.project ? ` (${a.project})` : ""}` }), true);
+    } else submit(a.text, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ask, data.loading]);
 
@@ -119,7 +133,10 @@ else if (ask.text === "#free") {
 
   const byProposal = useMemo(() => new Map((proposals.data ?? []).map((p) => [p.id, p])), [proposals.data]);
   const byAction = useMemo(() => new Map((actions.data ?? []).map((a) => [a.id, a])), [actions.data]);
-  const pendingElsewhere = (proposals.data ?? []).filter((p) => p.status === "pending" && p.threadId !== thread);
+  // Proposals with no conversation show here; those of another conversation are a link to it
+  // (their card belongs there, not on top of whatever is open).
+  const pendingLoose = (proposals.data ?? []).filter((p) => p.status === "pending" && p.threadId === null);
+  const pendingOther = (proposals.data ?? []).filter((p) => p.status === "pending" && p.threadId !== null && p.threadId !== thread);
 
   const liveTool = job.data?.events.filter((e) => e.kind === "tool" && e.status === "running").at(-1);
   const msgs = messages.data ?? [];
@@ -153,9 +170,10 @@ else if (ask.text === "#free") {
         <IconButton label={t("Conversations")} active={view === "history"} onClick={() => setView(view === "history" ? "chat" : "history")}>
           <History className="size-4" />
         </IconButton>
-        <IconButton label={t("Ce que je sais (mémoire)")} active={view === "memory"} onClick={() => setView(view === "memory" ? "chat" : "memory")}>
-          <Brain className="size-4" />
-        </IconButton>
+        <Menu label={t("Plus")}>
+          <MenuItem icon={<Brain className="size-4" />} onSelect={() => setView(view === "memory" ? "chat" : "memory")}>{t("Ce que je sais (mémoire)")}</MenuItem>
+          <MenuItem icon={<Settings2 className="size-4" />} onSelect={() => { useUi.setState({ settingsTab: "ai" }); useUi.getState().setPage("settings"); }}>{t("Réglages de l'IA")}</MenuItem>
+        </Menu>
         <IconButton label={t("Fermer (Ctrl+J)")} onClick={() => useUi.getState().closeAssistant()}>
           <X className="size-4" />
         </IconButton>
@@ -176,23 +194,45 @@ else if (ask.text === "#free") {
                 </button>
               </div>
             )}
-            {empty && (
-              <div className="flex flex-col gap-3 pt-3">
-                <p className="display text-lg font-medium">{greeting()}</p>
-                <p className="text-sm text-muted">{t("Dis-moi ce que tu as à faire : je m'en occupe. Les gros changements attendent ton accord.")}</p>
-                <InsightList compact />
-                <div className="mt-1 flex flex-col gap-1.5">
-                  {suggestions.map((s) => (
-                    <button key={s} type="button" onClick={() => submit(s)} className="rounded-lg border border-ink/7 px-3 py-2 text-left text-sm text-muted transition-colors duration-150 hover:border-accent/40 hover:text-fg">
-                      {s}
-                    </button>
-                  ))}
+            {notice && (
+              <div className={cn("mb-3 flex items-start gap-2 rounded-lg px-3 py-2 text-sm", notice.tone === "warn" ? "bg-warn/8" : "bg-ink/4")}>
+                <div className="min-w-0 flex-1">
+                  <p className="text-fg">{notice.title}</p>
+                  {notice.text && <p className="mt-0.5 text-xs text-muted">{notice.text}</p>}
                 </div>
+                <IconButton label={t("Fermer")} onClick={() => setNotice(null)}><X className="size-3.5" /></IconButton>
               </div>
             )}
-            {pendingElsewhere.length > 0 && (
+            {empty && !notice && pendingLoose.length === 0 && (
+              <div className="flex flex-col gap-4 pt-4">
+                <p className="display text-lg font-medium">{greeting()}</p>
+                <InsightList compact />
+                <ul className="flex flex-col">
+                  {suggestions.slice(0, 3).map((s) => (
+                    <li key={s}>
+                      <button type="button" onClick={() => submit(s)} className="group flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-sm text-muted transition-colors duration-150 hover:bg-hover hover:text-fg">
+                        <CornerDownRight className="size-3.5 shrink-0 text-faint group-hover:text-accent" />
+                        <span className="min-w-0 flex-1">{s}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {pendingOther.length > 0 && (
+              <div className="mb-3 flex flex-col gap-1">
+                {[...new Map(pendingOther.map((p) => [p.threadId!, p])).values()].map((p) => (
+                  <button key={p.id} type="button" onClick={() => setArtix({ thread: p.threadId, job: null })} className="flex items-center gap-2 rounded-lg bg-accent-soft/50 px-3 py-2 text-left text-xs text-fg hover:bg-accent-soft">
+                    <CalendarClock className="size-3.5 shrink-0 text-accent" />
+                    <span className="min-w-0 flex-1 truncate">{t("Proposition en attente : {t}", { t: p.title })}</span>
+                    <span className="shrink-0 text-accent">{t("Ouvrir")}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {pendingLoose.length > 0 && (
               <div className="mb-3 flex flex-col gap-2">
-                {pendingElsewhere.map((p) => (
+                {pendingLoose.map((p) => (
                   <BackendProposal key={p.id} p={p} />
                 ))}
               </div>
@@ -220,7 +260,7 @@ else if (ask.text === "#free") {
           >
             <div className="mb-2 flex items-center gap-1.5 text-2xs text-faint">
               <span className="size-1.5 rounded-full bg-accent/70" />
-              Sur : {PAGE_LABEL[screen.page] ?? "TekBoard"}
+              {t("Sur : {p}", { p: PAGE_LABEL[screen.page] ?? "TekBoard" })}
               {screen.project && ` · ${projectName(screen.project)}`}
               {screen.tab && screen.tab !== "overview" && ` · ${screen.tab}`}
             </div>

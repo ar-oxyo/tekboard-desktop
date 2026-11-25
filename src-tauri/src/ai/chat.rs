@@ -141,6 +141,25 @@ pub fn delete_thread(conn: &Connection, id: i64) -> Result<()> {
     Ok(())
 }
 
+/// The conversation named `title` used in the last seven days, or a new one. Requests that
+/// belong together (the plan of one week) land in the same conversation instead of a new
+/// one each time.
+pub fn thread_named(conn: &Connection, title: &str) -> Result<i64> {
+    let title = crate::ai::stream::clip(title.trim(), 60);
+    let t = now();
+    if let Some(id) = conn.query_row("SELECT id FROM ai_threads WHERE title = ?1 AND updated_at >= ?2 ORDER BY id DESC LIMIT 1", params![title, t - 7 * 86_400], |r| r.get::<_, i64>(0)).optional()? {
+        return Ok(id);
+    }
+    conn.execute("INSERT INTO ai_threads (title, created_at, updated_at) VALUES (?1, ?2, ?2)", params![title, t])?;
+    Ok(conn.last_insert_rowid())
+}
+
+/// A message written by TekBoard itself in Artix's name (a plan computed without AI), so it
+/// shows in the conversation and Artix reads it at the next turn.
+pub fn note(conn: &Connection, thread: i64, text: &str, meta: &Value) -> Result<i64> {
+    add_message(conn, thread, "assistant", text, meta)
+}
+
 fn add_message(conn: &Connection, thread: i64, role: &str, text: &str, meta: &Value) -> Result<i64> {
     let t = now();
     conn.execute("INSERT INTO ai_messages (thread_id, role, text, meta, created_at) VALUES (?1, ?2, ?3, ?4, ?5)", params![thread, role, text, meta.to_string(), t])?;
@@ -161,8 +180,10 @@ fn decisions_since(conn: &Connection, thread: i64, since: i64) -> Result<Vec<Str
     let mut st = conn.prepare("SELECT id, title, status, outcome FROM ai_proposals WHERE thread_id = ?1 AND decided_at >= ?2 ORDER BY id")?;
     for r in st.query_map(params![thread, since], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?, r.get::<_, Option<String>>(3)?)))? {
         let (id, title, status, outcome) = r?;
-        let detail = outcome.and_then(|o| serde_json::from_str::<Value>(&o).ok()).map(|o| if o["accepted"] == true { format!(" ({} sur {} changements appliqués)", o["kept"], o["of"]) } else { String::new() }).unwrap_or_default();
-        out.push(format!("Proposition #{id} « {title} » : {}{detail}.", if status == "accepted" { "acceptée" } else { "refusée" }));
+        let o = outcome.and_then(|o| serde_json::from_str::<Value>(&o).ok()).unwrap_or(Value::Null);
+        let detail = if o["accepted"] == true { format!(" ({} sur {} changements appliqués)", o["kept"], o["of"]) } else { String::new() };
+        let verdict = if status == "accepted" { "acceptée" } else if o["superseded"] == true { "remplacée par une proposition plus récente" } else { "refusée" };
+        out.push(format!("Proposition #{id} « {title} » : {verdict}{detail}."));
     }
     let mut st = conn.prepare("SELECT summary FROM ai_actions WHERE thread_id = ?1 AND status = 'undone' AND created_at >= ?2")?;
     for r in st.query_map(params![thread, since - 3600], |r| r.get::<_, String>(0))? {

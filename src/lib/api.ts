@@ -1932,7 +1932,8 @@ export const api = {
   aiActions: (limit?: number) => invoke<AiAction[]>("ai_actions", { limit: limit ?? null }),
   aiProposals: (status?: string | null) => invoke<AiProposal[]>("ai_proposals", { status: status ?? null }),
   aiProposalDecide: (id: number, accept: boolean, keep: number[] | null) => invoke<unknown>("ai_proposal_decide", { id, accept, keep }),
-  aiTool: (name: string, args: Record<string, unknown>, thread: number | null = null) => invoke<Record<string, unknown>>("ai_tool", { name, args, thread }),
+  /** `threadTitle`: what it proposes goes to the conversation of that name (reused for 7 days). */
+  aiTool: (name: string, args: Record<string, unknown>, thread: number | null = null, threadTitle: string | null = null) => invoke<Record<string, unknown>>("ai_tool", { name, args, thread, threadTitle }),
   memoryList: (scope?: string | null, archived?: boolean) => invoke<Memory[]>("memory_list", { scope: scope ?? null, archived: archived ?? false }),
   memoryAdd: (scope: string, kind: MemoryKind, content: string, pinned: boolean) => invoke<Memory>("memory_add", { scope, kind, content, pinned }),
   memoryUpdate: (id: number, patch: { content?: string; kind?: MemoryKind; pinned?: boolean; archived?: boolean }) => invoke<Memory>("memory_update", { id, patch }),

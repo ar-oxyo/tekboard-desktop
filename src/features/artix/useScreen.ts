@@ -49,8 +49,8 @@ export const projectName = (key: string | null | undefined) => (key ? (key.start
 export function suggestionsFor(s: Screen, hour: number): string[] {
   const name = projectName(s.project);
   if (name) {
-    if (s.tab === "checks") return [`Lance une moulinette sur ${name} et explique les problèmes`, `Quels tests manquent à ${name} ?`, `Prépare-moi une session de 45 min sur ${name}`];
-    return [`Analyse ${name} et dis-moi ce qu'il reste à faire`, `Planifie mes prochaines sessions sur ${name}`, `Prépare-moi une session de 45 min sur ${name}`];
+    if (s.tab === "checks") return [t("Lance une moulinette sur {name} et montre ce qui échoue", { name }), t("Quels tests manquent à {name} ?", { name }), t("Prépare-moi une session de 45 min sur {name}", { name })];
+    return [t("Analyse {name} et dis-moi ce qu'il reste à faire", { name }), t("Planifie mes prochaines sessions sur {name}", { name }), t("Prépare-moi une session de 45 min sur {name}", { name })];
   }
   switch (s.page) {
     case "planning":
