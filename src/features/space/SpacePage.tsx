@@ -14,7 +14,7 @@ import { recipients } from "../../lib/share";
 import { LIVE_KEY } from "../connect/LivePage";
 import { Menu, MenuItem, MenuLabel } from "../../components/Menu";
 import { Select } from "../../components/Select";
-import { Badge, Button, Card, CardTitle, cn, EmptyState, ErrorNote, IconButton, Input } from "../../components/ui";
+import { Badge, Button, Card, CardTitle, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader } from "../../components/ui";
 import { ACCESSORIES, decodeLook, encodeLook, HAIR_COLORS, HAIR_STYLES, OUTFIT_COLORS, OUTFITS, SKINS, type Look } from "./avatar";
 import { drawAvatar } from "./sprites";
 import { roomName, seatById, type TableDef } from "./map";
@@ -77,6 +77,8 @@ function Lobby({ me, connect, onAvatar, onDisable }: { me: { fp: string; nick: s
   const online = new Set(recipients(connect.peers).map((p) => p.fp));
   const list = liveSpaces(spaces, now).filter((s) => online.has(s.host));
   return (
+    <>
+    <PageHeader title="TekSpace" subtitle={t("Un campus en pixel art pour travailler ensemble")} />
     <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-4">
       <div className="space-y-4">
         {error && <ErrorNote>{error}</ErrorNote>}
@@ -119,6 +121,7 @@ function Lobby({ me, connect, onAvatar, onDisable }: { me: { fp: string; nick: s
       </div>
       <AvatarEditor value={me.avatar} seed={me.fp} onSave={onAvatar} />
     </div>
+    </>
   );
 }
 

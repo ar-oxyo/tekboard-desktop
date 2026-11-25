@@ -106,7 +106,7 @@ export default function ArenaPage() {
         <ScenariosCard config={config} onChange={update} />
         <FilesCard files={config.files} onChange={(files) => update({ files })} />
         <OptionsCard config={config} onChange={update} valgrind={tools.data?.valgrind ?? true} />
-        <section className="card p-3">
+        <section className="border-t border-line pt-3">
           <h3 className="mb-1 flex items-center gap-1.5 text-xs text-faint">
             <Sparkles className="size-3.5" /> {t("Construire l'environnement avec Artix")}
           </h3>
@@ -181,7 +181,7 @@ function VariantsCard({ config, onChange }: { config: BenchConfig; onChange: (p:
   const setVariant = (i: number, v: ArenaVariant) => onChange({ variants: config.variants.map((x, j) => (j === i ? v : x)) });
   const first = config.variants[0];
   return (
-    <section className="card space-y-3 p-3">
+    <section className="space-y-3 border-t border-line pt-3">
       <h3 className="text-xs text-faint">{t("Programme mesuré")}</h3>
       {config.variants.length === 0 ? (
         <div className="flex gap-2">
@@ -237,7 +237,7 @@ function ScenariosCard({ config, onChange }: { config: BenchConfig; onChange: (p
   const setScenario = (i: number, s: ArenaScenario) => onChange({ scenarios: config.scenarios.map((x, j) => (j === i ? s : x)) });
   const gens = config.files.filter((f) => f.name.endsWith(".py") || f.name.endsWith(".c"));
   return (
-    <section className="card space-y-2 p-3">
+    <section className="space-y-2 border-t border-line pt-3">
       <div className="flex items-center">
         <h3 className="text-xs text-faint">{t("Scénarios")}</h3>
         <IconButton label={t("Ajouter un scénario")} className="ml-auto" disabled={config.scenarios.length >= 6} onClick={() => onChange({ scenarios: [...config.scenarios, newScenario(config.files)] })}>
@@ -303,7 +303,7 @@ function FilesCard({ files, onChange }: { files: DraftFile[]; onChange: (f: Draf
     setOpen(`gen${i}.py`);
   };
   return (
-    <section className="card p-3">
+    <section className="border-t border-line pt-3">
       <div className="mb-1.5 flex items-center">
         <h3 className="text-xs text-faint">{t("Fichiers du benchmark")}</h3>
         <IconButton label={t("Nouveau générateur")} className="ml-auto" onClick={add}>
@@ -344,7 +344,7 @@ function OptionsCard({ config, onChange, valgrind }: { config: BenchConfig; onCh
     </label>
   );
   return (
-    <details className="card p-3">
+    <details className="border-t border-line pt-3">
       <summary className="cursor-pointer text-xs text-faint">{t("Options de mesure")}</summary>
       <div className="mt-2 grid grid-cols-3 gap-2">
         <Field label={t("Répétitions")}>

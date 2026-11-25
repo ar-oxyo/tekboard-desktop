@@ -1,7 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { PageBarSlot, Spinner } from "../components/ui";
+import { PageBarSlot, PageHeader, Spinner } from "../components/ui";
 import { Toaster } from "../components/Toaster";
 import { Tooltips } from "../components/Tooltips";
 import { LauncherDialog } from "../features/launcher/LauncherDialog";
@@ -427,8 +427,18 @@ export function App() {
               <PlaygroundPage />
             </Suspense>
           )}
-          {page === "connect" && <ConnectPage />}
-          {page === "live" && <LivePage />}
+          {page === "connect" && (
+            <>
+              <PageHeader title={t("Personnes")} subtitle={t("Tes contacts TekBoard sur le réseau local")} />
+              <ConnectPage />
+            </>
+          )}
+          {page === "live" && (
+            <>
+              <PageHeader title="TekLive" subtitle={t("Coder à plusieurs sur un projet, en direct")} />
+              <LivePage />
+            </>
+          )}
           {page === "space" && (
             <Suspense fallback={<Spinner />}>
               <SpacePage />
