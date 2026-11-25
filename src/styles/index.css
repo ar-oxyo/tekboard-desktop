@@ -558,6 +558,12 @@ code,
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+/* Gradient fills exist only for the legacy Neon and Cozy designs; Riso prints solid ink. */
+:root[data-theme="aurora"] .title-gradient,
+:root[data-theme="aurora"] .number-gradient {
+  background: none;
+  color: inherit;
+}
 .title-gradient {
   background: var(--title-fill);
   -webkit-background-clip: text;
@@ -863,8 +869,7 @@ code,
   display: block;
   max-width: 100%;
   border-radius: 5px;
-  border-left: 2px solid var(--c);
-  background: color-mix(in srgb, var(--c) 20%, var(--color-surface));
+  background: color-mix(in srgb, var(--c) 24%, var(--color-surface));
   padding: 1px 6px;
   font-size: 11px;
   line-height: 16px;
@@ -877,8 +882,9 @@ code,
   background: color-mix(in srgb, var(--c) 32%, var(--color-surface));
 }
 .cal-chip[data-my] {
-  border-left-style: dashed;
   background: color-mix(in srgb, var(--c) 10%, var(--color-surface));
+  outline: 1px dashed color-mix(in srgb, var(--c) 70%, transparent);
+  outline-offset: -1px;
 }
 .cal-chip[data-done] {
   opacity: 0.5;
