@@ -196,7 +196,15 @@ Sheet background, 6px radius, hairline that turns blue on focus plus a 3px `acce
 A flat list, no group headings: the everyday places (Today, Projects, Planning, Inbox with count), a small gap, one entry per other section (School, Stats, Lab, Connect), then pinned projects (favourites, dot size = hand-in urgency), and Artix, Templates, Settings and a single health line at the foot. A section with several screens shows them as tabs in the page bar. Active place: blue film + blue icon. Shortcuts: Ctrl+1…9 sections, Ctrl+K palette, Ctrl+B rail, Alt+←/→ history, Ctrl+/ shortcut sheet.
 
 ### Motion
-120ms (`--dur-fast`) for hovers, 180ms (`--dur-base`) for entrances, `--ease` = `cubic-bezier(0.22, 1, 0.36, 1)`. Pages rise 4px; menus scale from their trigger; mode and design changes cross-fade colours for 200ms. Nothing loops except a spinner or a state that is live (Artix thinking, a skill in progress). Everything stops under `prefers-reduced-motion`.
+120ms (`--dur-fast`) for hovers, 180ms (`--dur-base`) for entrances, `--ease` = `cubic-bezier(0.22, 1, 0.36, 1)`. Pages rise 4px; the blocks of Today arrive 40ms apart (`.stagger`); meters fill on appear (`.meter-fill`); cards you open rise 1px (`.lift`); menus scale from their trigger; mode and design changes cross-fade colours for 200ms; ticking a task draws the logo's ring then a check (`DoneCheck`, 300ms before the task is marked). Nothing loops except a spinner or a live state. Everything stops under `prefers-reduced-motion` **and** when the user turns animations off (pref `motion`, `html[data-motion="off"]`).
+
+### Comfort, all switchable (Settings → Appearance → Effets et confort)
+- **Animations** on/off (`useMotionPref`).
+- **Ambiance by the hour** (`useAutoAmbiance`, pref `autoAmbiance`, off by default): a day and an evening ambiance + mode; it overrides the display only, never the saved choice.
+- **Today layout** (`useTodayLayout`, pref `today.layout`): blocks shown and their order, each indicator, the "Premiers pas" checklist; reset in one click.
+
+### Feedback
+Reversible actions confirm with a toast that has **Annuler** (project status, classification, hide/archive, planning deletions, ticking a task). The sidebar health area shows when MY Epitech last synced; a click syncs. The palette lists recent projects first and, when you type a project's name, its actions.
 
 ## Do's and Don'ts
 

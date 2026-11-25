@@ -2383,4 +2383,5 @@ export const en: Record<string, string> = {
   "{b} lancé dans un terminal": "{b} started in a terminal",
   "URL distante copiée": "Remote URL copied",
   "Son dossier n'a pas bougé.": "Its folder has not moved.",
+  "Commande de l'IDE": "IDE command",
 };

@@ -57,8 +57,8 @@ function Inbox({ initial }: { initial: { view: CaptureView; query: string; focus
   const current = items.find((c) => c.id === selected) ?? items[0] ?? null;
 
   return (
-    <Modal open onClose={close} title={t("Inbox")} description={t("Tes captures, à ranger quand tu as le temps. Recherche : mots, #tag, projet:nom, type:bug, hier.")} width="w-[960px]">
-      <div className="flex h-[66vh] min-h-[420px] gap-4">
+    <Modal open onClose={close} title={t("Inbox")} description={t("Tes captures, à ranger quand tu as le temps. Recherche : mots, #tag, projet:nom, type:bug, hier.")} width="w-[1080px]">
+      <div className="flex h-[72vh] min-h-[440px] gap-5">
         <div className="flex w-[340px] shrink-0 flex-col gap-2">
           <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
