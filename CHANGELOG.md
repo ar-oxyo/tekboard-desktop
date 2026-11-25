@@ -47,6 +47,14 @@ Chaque version publiée a sa section ici ; la release GitHub reprend ce texte.
 - Par défaut, seules les adresses des contacts TekBoard peuvent rejoindre. P2P Live Share n'a pas de droits par participant (un invité peut modifier les fichiers) : TekBoard le dit clairement. Terminal et ports ne sont partagés que si l'hôte le fait lui-même. Aucun accès Internet, aucune modification du pare-feu.
 - Doctor : catégorie TekLive (VS Code, extension, passerelle).
 
+**TekSpace** (Connect → TekSpace) — facultatif, désactivable
+- Un petit campus en pixel art, dessiné par TekBoard (aucune image externe) : coworking, bibliothèque, café, salle de concentration, deux salles de réunion, plantes, canapés, ordinateurs.
+- Un personnage personnalisable (peau, coiffure, couleurs, tenue, accessoire), visible aussi dans Connect ; déplacement avec ZQSD, WASD ou les flèches, ou d'un clic (chemin calculé), collisions, pseudonyme et statut au-dessus de chacun.
+- Un espace s'héberge dans ton TekBoard et se rejoint depuis la liste des espaces ouverts par tes contacts, ou sur invitation ; l'hôte fait autorité (pas de traversée de murs ni de téléportation), positions synchronisées et interpolées, départs et pertes de connexion gérés, versions incompatibles refusées avec un message.
+- Des tables où l'on s'assoit : sujet ou projet, accès ouvert ou réservé à un groupe, objectifs partagés volontairement, concentration à plusieurs (minuteur et pauses synchronisés, « Ne pas déranger » facultatif pendant le travail), ressources épinglées, partage TekShare avec la table, invitation de la table dans sa session TekLive.
+- Ambiances sonores générées en direct (pluie, café, cheminée, forêt, bibliothèque, bruit brun), communes à la table, avec volume et coupure propres à chacun ; lien d'invitation Spotify Jam facultatif (seuls les liens Jam s'ouvrent, aucun son ne passe par TekBoard).
+- Léger : chargé seulement à l'ouverture, campus statique dessiné une fois, image redessinée seulement quand quelque chose bouge (30 i/s au plus), rien n'est dessiné quand la page est masquée. Aucun micro, aucune caméra, aucune surveillance de ce que tu fais ailleurs.
+
 ## 0.7.0
 
 **Choisir son IA** (Réglages → Artix (IA), et au premier lancement)

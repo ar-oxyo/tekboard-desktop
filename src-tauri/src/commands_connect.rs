@@ -208,3 +208,64 @@ pub fn live_join(id: String) -> Result<()> {
 pub fn live_decline(id: String) {
     teklive::decline(&id)
 }
+
+// ───────────────────────────── TekSpace / shared whiteboards ─────────────────────────────
+
+/// Sends a TekSpace or whiteboard message to a paired, connected device.
+#[tauri::command(async)]
+pub fn session_send(fp: String, msg: serde_json::Value) -> Result<()> {
+    let t = msg["t"].as_str().unwrap_or("");
+    if !(t.starts_with("space.") || t.starts_with("board.")) {
+        return Err(AppError::new("invalid", "Message de session invalide"));
+    }
+    svc()?.send(&fp, msg)
+}
+
+/// Same message to several devices (skips the ones that left).
+#[tauri::command(async)]
+pub fn session_broadcast(fps: Vec<String>, msg: serde_json::Value) -> Result<usize> {
+    let t = msg["t"].as_str().unwrap_or("");
+    if !(t.starts_with("space.") || t.starts_with("board.")) {
+        return Err(AppError::new("invalid", "Message de session invalide"));
+    }
+    let s = svc()?;
+    Ok(fps.iter().filter(|fp| s.send(fp, msg.clone()).is_ok()).count())
+}
+
+/// A Spotify Jam invitation link, and nothing else: https://open.spotify.com/socialsession/… or https://spotify.link/….
+pub fn valid_jam(url: &str) -> bool {
+    let id_ok = |id: &str| !id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+    if url.len() > 300 || url.chars().any(|c| c.is_whitespace() || c.is_control()) {
+        return false;
+    }
+    if let Some(rest) = url.strip_prefix("https://open.spotify.com/socialsession/") {
+        // An optional `?si=…` tracking parameter is fine; the session id is what matters.
+        let (id, query) = rest.split_once('?').unwrap_or((rest, ""));
+        return id_ok(id) && query.chars().all(|c| c.is_ascii_alphanumeric() || "=&_-".contains(c));
+    }
+    url.strip_prefix("https://spotify.link/").is_some_and(id_ok)
+}
+
+/// Opens a table's Spotify Jam in the browser (TekBoard never plays or relays any audio from it).
+#[tauri::command(async)]
+pub fn space_open_jam(url: String) -> Result<()> {
+    if !valid_jam(&url) {
+        return Err(AppError::new("url_refused", "Seuls les liens d'invitation Spotify Jam s'ouvrent ici."));
+    }
+    crate::workspace::spawn_detached(&["xdg-open".to_string(), url], &std::env::temp_dir()).map_err(|e| AppError::new("no_browser", format!("Le navigateur n'a pas pu démarrer : {e}")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::valid_jam;
+
+    #[test]
+    fn only_spotify_jam_links_open() {
+        assert!(valid_jam("https://open.spotify.com/socialsession/AbC123"));
+        assert!(valid_jam("https://open.spotify.com/socialsession/AbC123?si=xyz"));
+        assert!(valid_jam("https://spotify.link/aBcD12"));
+        for bad in ["http://open.spotify.com/socialsession/a", "https://open.spotify.com/track/a", "https://spotify.link/a b", "https://evil.com/https://spotify.link/a", "https://spotify.link/a?x=1", "https://open.spotify.com/socialsession/", "file:///etc/passwd"] {
+            assert!(!valid_jam(bad), "{bad}");
+        }
+    }
+}

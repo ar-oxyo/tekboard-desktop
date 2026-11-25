@@ -1,10 +1,10 @@
 import { create } from "zustand";
 import type { PlanEvent, PlanTask } from "./api";
 
-export type Page = "overview" | "projects" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "myepitech" | "logtime" | "cozy" | "settings" | "prompts" | "agenda" | "skilltree" | "playground" | "arena" | "connect" | "live";
+export type Page = "overview" | "projects" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "myepitech" | "logtime" | "cozy" | "settings" | "prompts" | "agenda" | "skilltree" | "playground" | "arena" | "connect" | "live" | "space";
 
 /** Sidebar order. Ctrl+1 to Ctrl+9 open the first nine. */
-export const PAGES: Page[] = ["overview", "projects", "agenda", "git", "testing", "library", "templates", "myepitech", "skilltree", "logtime", "subjects", "analytics", "cozy", "settings", "prompts", "playground", "arena", "connect", "live"];
+export const PAGES: Page[] = ["overview", "projects", "agenda", "git", "testing", "library", "templates", "myepitech", "skilltree", "logtime", "subjects", "analytics", "cozy", "settings", "prompts", "playground", "arena", "connect", "live", "space"];
 
 export interface Toast {
   id: number;
@@ -71,7 +71,9 @@ interface UiState {
   openAssistant: (ask?: { text: string; project?: string | null }) => void;
   /** A resource being shared with TekShare (the share dialog is open while set). */
   share: import("./api").ShareResource | null;
-  openShare: (r: import("./api").ShareResource | null) => void;
+  /** People preselected in the share dialog (a TekSpace table). */
+  shareTo: string[];
+  openShare: (r: import("./api").ShareResource | null, to?: string[]) => void;
   closeAssistant: () => void;
   /** Conversation shown in Artix's panel, and the turn being answered. */
   artixThread: number | null;
@@ -128,7 +130,8 @@ export const useUi = create<UiState>((set, get) => ({
   assistantAsk: null,
   openAssistant: (ask) => set({ assistantOpen: true, assistantAsk: ask ?? null, paletteOpen: false }),
   share: null,
-  openShare: (share) => set({ share, paletteOpen: false }),
+  shareTo: [],
+  openShare: (share, to) => set({ share, shareTo: to ?? [], paletteOpen: false }),
   closeAssistant: () => set({ assistantOpen: false, assistantAsk: null }),
   artixThread: (() => {
     // `tekboard.tikaThread`: the same conversation, saved before the assistant was renamed.

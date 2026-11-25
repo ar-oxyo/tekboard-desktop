@@ -185,6 +185,16 @@ pub fn init(data_dir: PathBuf, cache_dir: PathBuf, db: Arc<Mutex<Connection>>) -
     let _ = SERVICE.set(s.clone());
     share::init(&s, db, cache_dir.join("tekshare"));
     crate::teklive::init(&s);
+    // TekSpace and shared whiteboards: their logic runs in the window; Connect only carries
+    // their messages between paired devices, and says when a device is gone.
+    s.on("", |_svc, fp, m| {
+        if let Incoming::Text(v) = m {
+            let t = v["t"].as_str().unwrap_or("");
+            if t.starts_with("space.") || t.starts_with("board.") || t == "connect.gone" {
+                crate::notify::emit("connect-session", json!({"from": fp, "msg": v}));
+            }
+        }
+    });
     if lock(&s.config).enabled {
         let s2 = s.clone();
         tauri::async_runtime::spawn(async move {

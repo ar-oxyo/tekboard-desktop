@@ -21,17 +21,18 @@ export function ShareDialog({ resource }: { resource: ShareResource }) {
   const setPage = useUi((s) => s.setPage);
   const connect = useConnect();
   const check = useQuery({ queryKey: ["share-check", resource], queryFn: () => api.shareCheck(resource), retry: false, staleTime: 0 });
-  const [to, setTo] = useState<string | null>(null);
+  const preset = useUi((s) => s.shareTo);
+  const [to, setTo] = useState<Set<string>>(() => new Set(preset));
   const [school, setSchool] = useState(false);
   const [busy, setBusy] = useState(false);
   const people = recipients(connect.data?.peers ?? []);
   const c = check.data;
-  const reason = !connect.data?.running ? t("TekBoard Connect est désactivé") : c && c.blocked.length > 0 ? t("Envoi bloqué : voir ci-dessus") : !to ? t("Choisis à qui l'envoyer") : c?.school && !school ? t("Confirme le respect des règles de l'école") : null;
+  const reason = !connect.data?.running ? t("TekBoard Connect est désactivé") : c && c.blocked.length > 0 ? t("Envoi bloqué : voir ci-dessus") : to.size === 0 ? t("Choisis à qui l'envoyer") : c?.school && !school ? t("Confirme le respect des règles de l'école") : null;
   const send = async () => {
-    if (!to) return;
+    if (to.size === 0) return;
     setBusy(true);
     try {
-      await api.shareOffer(to, resource, school);
+      for (const fp of to) await api.shareOffer(fp, resource, school);
       toast({ kind: "ok", title: t("Proposé"), detail: t("La personne voit ton offre et décide de l'accepter.") });
       close();
     } catch (e) {
@@ -98,7 +99,7 @@ export function ShareDialog({ resource }: { resource: ShareResource }) {
             <ul className="grid grid-cols-2 gap-1.5">
               {people.map((p) => (
                 <li key={p.fp}>
-                  <button type="button" onClick={() => setTo(p.fp)} className={cn("flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left", to === p.fp ? "border-accent/60 bg-accent-soft/40" : "border-white/8 hover:bg-hover")}>
+                  <button type="button" aria-pressed={to.has(p.fp)} onClick={() => setTo((cur) => { const n = new Set(cur); if (n.has(p.fp)) n.delete(p.fp); else n.add(p.fp); return n; })} className={cn("flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left", to.has(p.fp) ? "border-accent/60 bg-accent-soft/40" : "border-white/8 hover:bg-hover")}>
                     <Avatar profile={p.profile} fp={p.fp} size={28} online />
                     <span className="min-w-0">
                       <span className="block truncate text-[13px] text-fg">{p.profile.nick}</span>
