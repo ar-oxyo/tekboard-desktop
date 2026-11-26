@@ -211,6 +211,30 @@ const analytics = {
   soloRepos: 3,
   sharedRepos: 2,
 };
+const unitTitles = ["B-CPE-110 Programmation élémentaire en C", "B-PSU-100 Programmation système Unix", "B-MUL-100 Programmation graphique", "B-CPE-200 Algorithmique", "B-PSU-200 Mini-shell", "B-MAT-100 Mathématiques", "B-ENG-100 Anglais", "B-PRO-100 Professional Development", "B-INN-100 Innovation", "B-DOP-200 DevOps", "B-SEC-200 Sécurité", "B-WEB-200 Web", "B-AIA-200 Intelligence artificielle", "B-HUB-100 Hub"];
+const academic = {
+  syncedAt: now - 3 * 3600,
+  creditsAcquired: 38,
+  creditsTotal: 41,
+  semester: 2,
+  units: unitTitles.map((title, i) => ({ title, grade: i < 6 ? ["A", "B", "C", "B", "Acquis", "A"][i] : i < 10 ? "in progress" : null, credits: [8, 6, 5, 6, 4, 3, 2, 2, 3, 4, 3, 4, 4, 3][i], validated: [5, 4, 3, 4, 3, 2, 1, 1, 0, 2, 1, 0, 0, 1][i], total: [5, 5, 4, 5, 3, 3, 2, 2, 2, 4, 3, 3, 3, 2][i], countsInGpa: true, alert: null, outcomes: [{ title: "Écrire un Makefile propre", validated: true, mandatory: true, points: 4, total: 4 }, { title: "Gérer la mémoire sans fuite", validated: i % 2 === 0, mandatory: false, points: i % 2 === 0 ? 3 : 1, total: 3 }] })),
+  competencies: ["Développement", "Système", "Algorithmique", "Communication"].map((name, i) => ({ name, available: [24, 12, 10, 8][i], secure: [14, 6, 4, 4][i], reachable: [6, 3, 4, 2][i], alert: null })),
+  exams: [{ label: "Examen C · semaine 6", best: 12, required: 10, max: 20 }, { label: "Examen Shell", best: 7, required: 10, max: 20 }],
+  marks: ["Bootstrap my_ls", "my_ls", "Bootstrap secured", "mysudo", "cuddle", "mytop", "Organized", "Lem-in"].map((title, i) => ({ date: day(-i * 6), title, mark: [17, 14, 20, 12, 15, 9, 13, 16][i], evaluator: null, comment: null })),
+  logtime: Array.from({ length: 30 }, (_, i) => ({ date: day(i - 29), mine: [0, 6, 7, 5, 8, 2, 0][i % 7] * 3600, promo: 5 * 3600 })),
+  tests: [{ project: "secured", module: "B-CPE-200", date: new Date((now - 7200) * 1000).toISOString(), passed: 42, total: 50, runs: 3, styleMajor: 0, styleMinor: 2 }, { project: "mysudo", module: "B-PSU-200", date: null, passed: 18, total: 24, runs: 1, styleMajor: 1, styleMinor: 4 }],
+  graph: [],
+  globalAlert: "green",
+  creditsAlert: null,
+  creditsLost: [],
+  creditsAtRisk: [["B-SEC-200 Sécurité", 3]],
+  level: 4,
+  xp: 1240,
+  xpToNext: 260,
+  projectsTotal: 22,
+  projectsDone: 17,
+  notes: [],
+};
 const connect = {
   enabled: true,
   running: true,
@@ -270,6 +294,7 @@ export const fixtures: Record<string, Fixture> = {
   ai_proposals: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("proposal") ? [weekProposal] : []),
   analytics,
   connect_state: connect,
+  my_academic: academic,
   connect_configure: (a: Record<string, unknown>) => Object.assign(connect, { profile: (a.config as { profile: unknown }).profile }),
   music_now: { title: "Midnight City", artist: "M83", art: null, playing: true, source: "mpris", player: "spotify" },
   spotify_status: { clientId: null, connected: false, redirectUri: "http://127.0.0.1:43821/callback" },
