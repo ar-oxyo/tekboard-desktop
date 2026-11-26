@@ -1375,6 +1375,68 @@ export interface AgendaItem {
   /** Whose agenda: the student account, the AER one, or the same session in both. */
   account: "student" | "aer" | "both";
 }
+// ── Projet HUB (src-tauri/src/hub.rs)
+export type HubStage = "idea" | "prep" | "dev" | "testing" | "pitch" | "done" | "archived";
+export type HubItemKind = "milestone" | "link" | "file" | "log" | "decision" | "member";
+export interface HubProject {
+  id: number;
+  name: string;
+  stage: HubStage;
+  /** Optional texts: pitch, description, problem, solution, objectives, notes… and lists (technologies, skills, dependencies, checklist). */
+  fields: Record<string, string | string[]>;
+  repoPath: string | null;
+  repoUrl: string | null;
+  creditsMin: number | null;
+  creditsMax: number | null;
+  estimateMin: number | null;
+  /** The owner's device for a copy shared with me; null for mine. */
+  owner: string | null;
+  ownerNick: string | null;
+  role: "owner" | "editor" | "viewer";
+  /** On a shared copy: the project's id on its owner's device. */
+  remoteId: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+export interface HubItem {
+  id: number;
+  projectId: number;
+  kind: HubItemKind;
+  title: string;
+  body: string;
+  url: string | null;
+  path: string | null;
+  dueDay: string | null;
+  done: boolean;
+  assignee: string | null;
+  role: "editor" | "viewer" | null;
+  author: string | null;
+  createdAt: number;
+}
+export interface HubFacts {
+  milestones: number;
+  milestonesDone: number;
+  tasks: number;
+  tasksDone: number;
+  minutesWorked: number;
+  minutesPlanned: number;
+  nextMilestone: string | null;
+  nextDue: string | null;
+  resources: number;
+  journal: number;
+  members: number;
+}
+export interface HubRepoView {
+  path: string;
+  branch: string | null;
+  dirty: boolean;
+  ahead: number;
+  behind: number;
+  commits: Array<{ hash: string; subject: string; author: string; date: string }>;
+  week: number;
+  remote: string | null;
+}
+
 /** The AER account, connected beside the student one (Settings → Accounts). */
 export interface AerStatus {
   connected: boolean;
@@ -2041,6 +2103,21 @@ export const api = {
   myImportSubjects: () => invoke<{ imported: number; problems: string[] }>("my_import_subjects"),
   myAgenda: () => invoke<Agenda>("my_agenda"),
   myAerStatus: () => invoke<AerStatus>("my_aer_status"),
+  hubList: () => invoke<Array<{ project: HubProject; facts: HubFacts }>>("hub_list"),
+  hubGet: (id: number) => invoke<{ project: HubProject; items: HubItem[]; facts: HubFacts }>("hub_get", { id }),
+  hubSave: (project: Partial<HubProject> & { name: string }) => invoke<HubProject>("hub_save", { project }),
+  hubDelete: (id: number) => invoke<void>("hub_delete", { id }),
+  hubItemSave: (item: Partial<HubItem> & { projectId: number; kind: HubItemKind; title: string }) => invoke<HubItem>("hub_item_save", { item }),
+  hubItemDelete: (id: number) => invoke<HubItem>("hub_item_delete", { id }),
+  hubFileAdd: (projectId: number, path: string) => invoke<HubItem>("hub_file_add", { projectId, path }),
+  hubFileOpen: (item: number) => invoke<void>("hub_file_open", { item }),
+  hubFilePreview: (item: number) => invoke<string | null>("hub_file_preview", { item }),
+  hubOpenLink: (projectId: number, item: number | null) => invoke<void>("hub_open_link", { projectId, item }),
+  hubRepo: (id: number) => invoke<HubRepoView | null>("hub_repo", { id }),
+  hubExport: (path: string, markdown: string) => invoke<string>("hub_export", { path, markdown }),
+  hubSnapshot: (id: number) => invoke<Record<string, unknown>>("hub_snapshot", { id }),
+  hubMemberRole: (id: number, fp: string) => invoke<"editor" | "viewer" | null>("hub_member_role", { id, fp }),
+  hubImport: (owner: string, ownerNick: string, remoteId: number, role: string, snapshot: Record<string, unknown>) => invoke<HubProject>("hub_import", { owner, ownerNick, remoteId, role, snapshot }),
   /** Adds or syncs the AER account (sign-in window when needed). */
   myAerSync: () => invoke<MySyncReport>("my_aer_sync"),
   myAerForget: () => invoke<void>("my_aer_forget"),

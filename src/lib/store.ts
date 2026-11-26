@@ -1,10 +1,10 @@
 import { create } from "zustand";
 import type { PlanEvent, PlanTask } from "./api";
 
-export type Page = "overview" | "projects" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "myepitech" | "logtime" | "cozy" | "settings" | "prompts" | "agenda" | "skilltree" | "credits" | "playground" | "arena" | "boards" | "connect" | "live" | "space";
+export type Page = "overview" | "projects" | "hub" | "git" | "library" | "testing" | "subjects" | "analytics" | "templates" | "myepitech" | "logtime" | "cozy" | "settings" | "prompts" | "agenda" | "skilltree" | "credits" | "playground" | "arena" | "boards" | "connect" | "live" | "space";
 
 /** Sidebar order. Ctrl+1 to Ctrl+9 open the first nine. */
-export const PAGES: Page[] = ["overview", "projects", "agenda", "git", "testing", "library", "templates", "myepitech", "skilltree", "credits", "logtime", "subjects", "analytics", "cozy", "settings", "prompts", "playground", "arena", "boards", "connect", "live", "space"];
+export const PAGES: Page[] = ["overview", "projects", "hub", "agenda", "git", "testing", "library", "templates", "myepitech", "skilltree", "credits", "logtime", "subjects", "analytics", "cozy", "settings", "prompts", "playground", "arena", "boards", "connect", "live", "space"];
 
 export interface Toast {
   id: number;

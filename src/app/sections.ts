@@ -15,7 +15,7 @@ export interface Section {
 
 export const SECTIONS: Section[] = [
   { id: "today", label: t("Aujourd'hui"), pages: [{ page: "overview", label: t("Aujourd'hui") }] },
-  { id: "projects", label: t("Projets"), pages: [{ page: "projects", label: t("Liste") }, { page: "git", label: "Git" }, { page: "testing", label: "Tests" }, { page: "library", label: t("Bibliothèques") }], tabs: true },
+  { id: "projects", label: t("Projets"), pages: [{ page: "projects", label: t("Liste") }, { page: "hub", label: "HUB" }, { page: "git", label: "Git" }, { page: "testing", label: "Tests" }, { page: "library", label: t("Bibliothèques") }], tabs: true },
   { id: "planning", label: t("Planning"), pages: [{ page: "agenda", label: t("Planning") }] },
   { id: "school", label: t("École"), pages: [{ page: "logtime", label: "Logtime" }, { page: "credits", label: t("Crédits") }, { page: "skilltree", label: "Skill Tree" }, { page: "subjects", label: t("Sujets") }, { page: "myepitech", label: "MY Epitech" }], tabs: true },
   { id: "stats", label: "Stats", pages: [{ page: "analytics", label: "Stats" }] },

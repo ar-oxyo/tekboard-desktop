@@ -5,7 +5,7 @@
 import { listen } from "@tauri-apps/api/event";
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 
-export type Domain = "plan" | "repos" | "focus" | "memory" | "insights" | "runs" | "subjects" | "my" | "libraries" | "settings" | "prompts" | "templates" | "ai" | "activity" | "playground" | "arena" | "boards" | "brain";
+export type Domain = "hub" | "plan" | "repos" | "focus" | "memory" | "insights" | "runs" | "subjects" | "my" | "libraries" | "settings" | "prompts" | "templates" | "ai" | "activity" | "playground" | "arena" | "boards" | "brain";
 
 /** Query key prefixes fed by each domain. */
 export const DOMAIN_KEYS: Record<Domain, QueryKey[]> = {
@@ -28,6 +28,7 @@ export const DOMAIN_KEYS: Record<Domain, QueryKey[]> = {
   arena: [["arena"]],
   boards: [["boards"]],
   brain: [["brain"], ["brain-count"]],
+  hub: [["hub"]],
 };
 
 /** What each writing command changes. Read-only commands are absent. */
@@ -91,6 +92,12 @@ export const COMMAND_DOMAINS: Record<string, Domain[]> = {
   plan_project_set: ["plan"],
   plan_log_add: ["plan", "focus"],
   plan_apply: ["plan", "insights"],
+  hub_save: ["hub"],
+  hub_delete: ["hub", "plan"],
+  hub_item_save: ["hub"],
+  hub_item_delete: ["hub"],
+  hub_file_add: ["hub"],
+  hub_import: ["hub"],
   my_aer_sync: ["my", "plan"],
   my_aer_forget: ["my", "plan"],
   plan_tasks_patch: ["plan", "brain"],

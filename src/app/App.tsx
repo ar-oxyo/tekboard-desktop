@@ -27,6 +27,7 @@ import { LIVE_KEY, LivePage } from "../features/connect/LivePage";
 import "../features/space/lobby";
 import { listenSessions } from "../lib/sessionBus";
 import "../features/whiteboard/bus";
+import "../features/hub/collab";
 import { doctorProblems } from "../features/settings/DoctorCard";
 import { SkillTreePage } from "../features/skilltree/SkillTreePage";
 import { CreditsPage } from "../features/myepitech/CreditsPage";
@@ -62,6 +63,7 @@ const ArenaPage = lazy(() => import("../features/arena/ArenaPage"));
 const BoardsPage = lazy(() => import("../features/whiteboard/BoardsPage"));
 // TekSpace loads only when opened: nothing of it runs or draws before.
 const SpacePage = lazy(() => import("../features/space/SpacePage"));
+const HubPage = lazy(() => import("../features/hub/HubPage"));
 
 const UPDATE_KEY = "tekboard.update.lastCheck";
 
@@ -427,6 +429,7 @@ export function App() {
           <PageBarSlot.Provider value={tabbed ? (barSlot ?? "pending") : null}>
           {page === "overview" && <OverviewPage />}
           {page === "projects" && <ProjectsPage />}
+          {page === "hub" && <HubPage />}
           {page === "git" && <GitPage />}
           {page === "library" && <LibraryPage />}
           {page === "testing" && <TestingPage />}

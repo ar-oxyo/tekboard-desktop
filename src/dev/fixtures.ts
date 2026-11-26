@@ -275,6 +275,29 @@ const weekProposal = {
   at: now - 60,
 };
 
+// Projet HUB: one project well under way, one idea, one shared with the student.
+const hubBase = { repoPath: null, repoUrl: null, creditsMin: null, creditsMax: null, estimateMin: null, owner: null, ownerNick: null, role: "owner", remoteId: null, createdAt: now - 20 * D, updatedAt: now - 3600 };
+const hubProjects = [
+  { ...hubBase, id: 1, name: "Covoit'Tek", stage: "dev", fields: { pitch: "Le covoiturage entre étudiants du campus, sans compte à créer.", problem: "Les étudiants qui habitent loin arrivent seuls en voiture, souvent à vide.", solution: "Une appli qui propose les trajets du jour à partir de l'emploi du temps.", technologies: ["Rust", "React", "SQLite"], skills: ["API REST", "Tests d'intégration"] }, repoPath: "/home/student/delivery/G-SYN-100/SYN/mytop", repoUrl: "https://github.com/camille/covoit-tek", creditsMin: 2, creditsMax: 4, estimateMin: 60 * 60 },
+  { ...hubBase, id: 2, name: "Bot d'entraide C", stage: "idea", fields: {}, creditsMax: 2 },
+  { ...hubBase, id: 3, name: "Robot suiveur de ligne", stage: "testing", fields: { pitch: "Un robot Arduino qui suit une ligne et évite les obstacles." }, owner: "a".repeat(64), ownerNick: "Lou", role: "editor", remoteId: 4, creditsMin: 3, creditsMax: 3 },
+];
+const hubFacts = (id: number) => (id === 1 ? { milestones: 4, milestonesDone: 2, tasks: 6, tasksDone: 3, minutesWorked: 14 * 60 + 30, minutesPlanned: 5 * 60, nextMilestone: "Prototype testé", nextDue: day(6), resources: 3, journal: 3, members: 1 } : { milestones: id === 3 ? 3 : 0, milestonesDone: id === 3 ? 2 : 0, tasks: 0, tasksDone: 0, minutesWorked: id === 3 ? 6 * 60 : 0, minutesPlanned: 0, nextMilestone: null, nextDue: null, resources: 0, journal: 0, members: id === 3 ? 2 : 0 });
+const hubItem = (id: number, kind: string, title: string, extra: Record<string, unknown> = {}) => ({ id, projectId: 1, kind, title, body: "", url: null, path: null, dueDay: null, done: false, assignee: null, role: null, author: null, createdAt: now - id * 7200, ...extra });
+const hubItems = [
+  hubItem(1, "milestone", "Maquette validée", { done: true, dueDay: day(-10) }),
+  hubItem(2, "milestone", "API des trajets", { done: true, dueDay: day(-2) }),
+  hubItem(3, "milestone", "Prototype testé", { dueDay: day(6), assignee: "Lou" }),
+  hubItem(4, "milestone", "Démo au jury", { dueDay: day(20) }),
+  hubItem(5, "link", "Maquettes Figma", { url: "https://figma.com/file/covoit" }),
+  hubItem(6, "link", "Documentation de l'API", { url: "https://github.com/camille/covoit-tek/wiki" }),
+  hubItem(7, "file", "soutenance-v1.pdf", { path: "soutenance-v1.pdf" }),
+  hubItem(8, "decision", "SQLite plutôt que PostgreSQL", { body: "Une seule machine, pas de serveur à maintenir pendant le HUB." }),
+  hubItem(9, "log", "Calcul des trajets à partir de l'emploi du temps", { body: "Reste : les trajets retour du soir." }),
+  hubItem(10, "log", "Premiers tests avec trois étudiants", { author: "Lou" }),
+  hubItem(11, "member", "Lou", { role: "editor" }),
+];
+
 export const fixtures: Record<string, Fixture> = {
   my_overview: { syncedAt: now - 40 * 60, account: "camille.martin@epitech.eu", projects: [], creditsAcquired: 12, creditsTotal: 60, blocks: [], exams: [] },
   my_logtime: logtime,
@@ -344,6 +367,13 @@ export const fixtures: Record<string, Fixture> = {
   brain_count: captures.length,
   brain_list: captures,
   plan_state: plan,
+  hub_list: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("empty") ? [] : hubProjects.map((project) => ({ project, facts: hubFacts(project.id) }))),
+  hub_get: (a: Record<string, unknown>) => {
+    const project = hubProjects.find((x) => x.id === Number(a.id)) ?? hubProjects[0];
+    return { project, items: project.id === 1 ? hubItems : [], facts: hubFacts(project.id) };
+  },
+  hub_repo: (a: Record<string, unknown>) => (Number(a.id) === 1 ? { path: "/home/student/delivery/G-SYN-100/SYN/mytop", branch: "main", dirty: true, ahead: 1, behind: 0, week: 7, remote: "git@github.com:camille/covoit-tek.git", commits: [{ hash: "a1b2c3d4", subject: "Trajets retour : premier jet", author: "Camille", date: new Date((now - 5400) * 1000).toISOString() }, { hash: "e5f6a7b8", subject: "Tests de l'API des trajets", author: "Lou", date: new Date((now - 86400) * 1000).toISOString() }] } : null),
+  hub_file_preview: null,
   // Bulk planning: each chosen task gets a block on the next working days, 10:00 then 14:00.
   plan_suggest_tasks: (a: Record<string, unknown>) => {
     const ids = (a.ids as number[]) ?? [];

@@ -9,6 +9,7 @@ export const SCREEN_OF: Record<Page, string> = {
   overview: "today",
   agenda: "planning",
   projects: "projects",
+  hub: "projects",
   git: "projects",
   testing: "projects",
   library: "projects",
