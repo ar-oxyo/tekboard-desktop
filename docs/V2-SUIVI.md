@@ -20,15 +20,17 @@ Notes de travail :
 - Lot 2 · Crédits : onglet École → Crédits, barème PGE1 2026 (structure de l'xlsx), scénarios (table credit_scenarios).
 - Lot 2 · Moulinette TekBoard : `src-tauri/src/mouli/` (plan IA sur sujet + signatures, Criterion contrôlé par tree-sitter, exécution isolée), vue principale de Tests (table mouli_suites). Test de bout en bout réel avec Criterion (/usr/local).
 
+- Lot 2 · Playground : mesures répétées (outil de l'Arena, dans le bac à sable), cache d'objets (complète / incrémentale), make chronométré, comparaison A/B (`bench.rs`, verdict prudent).
+- Lot 3 : miniatures de tableaux sur anthracite ; couleur d'accent (`lib/color.ts`) ; icône par ambiance (`scripts/theme-icons.mjs`, `desktop::apply_theme_icon`) ; Aujourd'hui en widgets (`overview/layout.ts`, `WidgetGrid.tsx`).
+- Lot 4 : modération (`src/lib/moderation.json`, lue par TS et Rust, vérifiée sur l'hôte TekSpace) ; 24 avatars prédéfinis (`space/avatars.tsx`, profil Connect + TekSpace) ; panneau de table (discussion, réactions, Focus / Musique / Tableau, table favorite, focus et musique affichés sur la carte) ; musique (`music.rs` : MPRIS, OAuth PKCE Spotify, `cargo run --example music_check`).
+
 ## Reste
-- Lot 2 : Playground (mesures précises, compilation incrémentale, mode comparaison A/B).
-- Lot 3 : widgets (corriger au passage le bouton imbriqué dans un bouton de « Premiers pas », Dashboard.tsx), accent, icône, Whiteboard.
-- Lot 4 : TekSpace, Spotify (MPRIS + OAuth), avatars, modération.
 - Lot 5 : Stats, synchro MY, fraîcheur, mini-audit (noté : champ date natif en MM/JJ/AAAA dans WebKit), fusion locale et version 1.0.0.
 
 ## À vérifier dans la vraie appli (pas encore fait)
 - Arena sur un programme lent (ligne « Callgrind n=… · X s sur Y s », annulation) : validé en test Rust de bout en bout seulement.
 - Résultats Arena (sections Hypothèses / Bibliothèques) : non rendus à l'écran faute de fixture de run.
+- Spotify OAuth : impossible de bout en bout sans Client ID (testé : PKCE, analyse des réponses). MPRIS lu en vrai (Firefox) ; Spotify de bureau non lancé ici.
 
 ## Blocages
 - (aucun)

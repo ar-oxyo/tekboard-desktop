@@ -39,6 +39,7 @@ pub mod library;
 pub mod moulinette;
 pub mod mouli;
 pub mod moderation;
+pub mod music;
 pub mod mydata;
 pub mod myepitech;
 pub mod myres;
@@ -314,6 +315,10 @@ pub fn run() {
             commands_connect::session_send,
             commands_connect::session_broadcast,
             commands_connect::space_open_jam,
+            commands_connect::music_now,
+            commands_connect::spotify_status,
+            commands_connect::spotify_login,
+            commands_connect::spotify_logout,
             commands_lab::arena_tools,
             commands_lab::arena_list,
             commands_lab::arena_save,

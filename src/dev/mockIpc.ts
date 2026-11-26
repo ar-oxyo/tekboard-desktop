@@ -49,6 +49,8 @@ export function installMock() {
   // ?open=artix|inbox|palette|shortcuts|capture opens an overlay once the app has started.
   const open = params.get("open");
   const stab = params.get("stab");
+  // ?space=demo: seated at a lively TekSpace table (panel, chat, music, focus).
+  if (params.get("space") === "demo") window.setTimeout(() => void import("./spaceFixture").then((m) => m.seedSpace()), 400);
   if (stab) window.setTimeout(() => useUi.setState({ settingsTab: stab as never }), 500);
   if (open)
     window.setTimeout(() => {

@@ -3,6 +3,7 @@
 // It only talks through a `Transport`, so the same code could run on a standalone server.
 import { free, H, seatById, SPAWN, TABLES, W } from "./map";
 import { MOVE_EVERY, SPACE_VERSION, type ClientMsg, type HostMsg, type Player, type PlayerTick, type SpaceState, type TableState } from "./protocol";
+import { check, refusal } from "../../lib/moderation";
 
 export interface Transport {
   send(fp: string, msg: HostMsg): void;
@@ -15,8 +16,13 @@ const MAX_SPEED = 9;
 const MAX_PLAYERS = 40;
 
 export function emptyTable(id: string): TableState {
-  return { id, owner: null, privacy: "open", members: [], topic: "", goals: {}, focus: null, ambience: null, jam: null, pins: [], board: null };
+  return { id, owner: null, privacy: "open", members: [], topic: "", goals: {}, focus: null, ambience: null, jam: null, pins: [], board: null, chat: [], music: null };
 }
+
+/** Lines of chat kept per table, and the shortest gaps between messages and reactions (ms). */
+const CHAT_KEEP = 50;
+const CHAT_EVERY = 700;
+const REACT_EVERY = 2000;
 
 export class SpaceHost {
   state: SpaceState;
@@ -83,10 +89,30 @@ export class SpaceHost {
     this.changed();
   }
 
+  /** A public text that fails moderation: its author is told why, nobody else sees it. */
+  private refuse(fp: string, ...texts: string[]): boolean {
+    for (const text of texts) {
+      const v = check(text);
+      if (!v.ok) {
+        this.transport.send(fp, { t: "space.refused", space: this.state.id, reason: refusal(v) ?? "" });
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** Applies a checked client message. Returns false when refused. */
   handle(fp: string, msg: ClientMsg): boolean {
     if (msg.space !== this.state.id) return false;
     const p = this.state.players[fp];
+    // Every text others will see is moderated here, on the host: a client cannot skip it.
+    if ((msg.t === "space.join" || msg.t === "space.profile") && this.refuse(fp, msg.nick)) msg = { ...msg, nick: "Invité" };
+    if (msg.t === "space.table" && msg.topic !== undefined && this.refuse(fp, msg.topic)) return false;
+    if (msg.t === "space.goal" && this.refuse(fp, msg.text)) return false;
+    if (msg.t === "space.pin" && this.refuse(fp, msg.title, msg.text)) return false;
+    if (msg.t === "space.board" && msg.board && this.refuse(fp, msg.board.name)) return false;
+    if (msg.t === "space.say" && this.refuse(fp, msg.text)) return false;
+    if (msg.t === "space.music" && msg.music && this.refuse(fp, msg.music.title, msg.music.artist)) return false;
     if (msg.t === "space.join") {
       if (msg.v !== SPACE_VERSION) {
         this.transport.send(fp, { t: "space.bye", space: this.state.id, reason: `version ${msg.v} ≠ ${SPACE_VERSION} : mettez TekBoard à jour tous les deux` });
@@ -149,6 +175,13 @@ export class SpaceHost {
         this.standUp(p);
         this.changed();
         return true;
+      case "space.react": {
+        const t = this.now();
+        if (p.react && t - p.react.at < REACT_EVERY) return false;
+        p.react = { e: msg.react, at: t };
+        this.changed();
+        return true;
+      }
       default:
         break;
     }
@@ -194,6 +227,27 @@ export class SpaceHost {
         table.pins.splice(msg.index, 1);
         break;
       }
+      case "space.say": {
+        const t = this.now();
+        const chat = (table.chat ??= []);
+        const last = chat.filter((l) => l.by === fp).at(-1);
+        if (last && t - last.at < CHAT_EVERY) return false;
+        chat.push({ by: fp, nick: p.nick, text: msg.text, at: t });
+        if (chat.length > CHAT_KEEP) chat.splice(0, chat.length - CHAT_KEEP);
+        break;
+      }
+      case "space.music":
+        // One shared listening per table: whoever shares it, or the table owner, may stop it.
+        if (!msg.music) {
+          if (table.music && table.music.by !== fp && !owner) return false;
+          table.music = null;
+        } else {
+          if (table.music && table.music.by !== fp && this.now() - table.music.at < 90_000) return false;
+          // The cover travels only when the track changes: otherwise the host keeps the one it has.
+          const sameTrack = table.music?.by === fp && table.music.title === msg.music.title && table.music.artist === msg.music.artist;
+          table.music = { ...msg.music, art: msg.music.art ?? (sameTrack ? (table.music?.art ?? null) : null), by: fp, byNick: p.nick };
+        }
+        break;
       default:
         return false;
     }

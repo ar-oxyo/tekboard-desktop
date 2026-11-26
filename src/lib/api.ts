@@ -1631,6 +1631,15 @@ export interface SkillTree {
   notes: string[];
 }
 /** A credit simulation kept by the student (`data` is a `ScenarioData`, see lib/credits.ts). */
+/** What is playing on this computer (MPRIS) or on the Spotify account. */
+export interface NowPlaying {
+  title: string;
+  artist: string;
+  art: string | null;
+  playing: boolean;
+  source: "mpris" | "spotify";
+  player: string;
+}
 export interface CreditScenarioRow {
   id: number;
   name: string;
@@ -1926,6 +1935,10 @@ export const api = {
   liveDecline: (id: string) => invoke<void>("live_decline", { id }),
   sessionSend: (fp: string, msg: Record<string, unknown>) => tauriInvoke<void>("session_send", { fp, msg }),
   sessionBroadcast: (fps: string[], msg: Record<string, unknown>) => tauriInvoke<number>("session_broadcast", { fps, msg }),
+  musicNow: (source: "mpris" | "spotify") => invoke<NowPlaying | null>("music_now", { source }),
+  spotifyStatus: () => invoke<{ clientId: string | null; connected: boolean; redirectUri: string }>("spotify_status"),
+  spotifyLogin: (clientId: string) => invoke<string>("spotify_login", { clientId }),
+  spotifyLogout: () => invoke<void>("spotify_logout"),
   spaceOpenJam: (url: string) => tauriInvoke<void>("space_open_jam", { url }),
   boardList: (project: string | null, query: string | null) => invoke<BoardMeta[]>("board_list", { project, query }),
   boardCreate: (name: string, project: string | null) => invoke<BoardMeta>("board_create", { name, project }),

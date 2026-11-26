@@ -1,3 +1,4 @@
+import { SpotifyCard } from "../space/spotify";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Check, ChevronRight, FolderPlus, RotateCcw, X } from "lucide-react";
@@ -266,6 +267,7 @@ export function SettingsPage() {
             </CardTitle>
             <p className="px-4 py-3 text-xs text-muted">{t("Lis et personnalise ce que TekBoard demande à Claude Code : Artix, la moulinette, la génération de tests, le README, l'analyse. Tes versions sont gardées entre les mises à jour.")}</p>
           </Card>
+          <SpotifyCard />
           </div>
           <EnvironmentCard />
         </div>

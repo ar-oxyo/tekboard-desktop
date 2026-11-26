@@ -257,6 +257,40 @@ pub fn valid_jam(url: &str) -> bool {
     url.strip_prefix("https://spotify.link/").is_some_and(id_ok)
 }
 
+/// What is playing now, from the desktop player (`mpris`) or the Spotify account (`spotify`).
+/// Read on request only (the table's share polls it while visible), never in the background.
+#[tauri::command(async)]
+pub fn music_now(source: String) -> Result<Option<crate::music::NowPlaying>> {
+    match source.as_str() {
+        "mpris" => crate::music::mpris_now(),
+        "spotify" => crate::music::spotify_now(),
+        _ => Err(AppError::new("invalid_source", "Source inconnue")),
+    }
+}
+
+#[tauri::command(async)]
+pub fn spotify_status() -> crate::music::SpotifyStatus {
+    crate::music::status()
+}
+
+/// Opens Spotify's consent page in the browser and waits (3 min at most) for its answer on
+/// the local redirect address; `spotify-linked` tells the window how it ended.
+#[tauri::command(async)]
+pub fn spotify_login(client_id: String) -> Result<String> {
+    let (url, wait) = crate::music::login(client_id.trim())?;
+    crate::workspace::spawn_detached(&["xdg-open".to_string(), url.clone()], &std::env::temp_dir()).map_err(|e| AppError::new("no_browser", format!("Le navigateur n'a pas pu démarrer : {e}")))?;
+    std::thread::spawn(move || {
+        let outcome = wait.join().unwrap_or_else(|_| Err(AppError::new("failed", "Connexion interrompue")));
+        crate::notify::emit("spotify-linked", serde_json::json!({ "ok": outcome.is_ok(), "error": outcome.err().map(|e| e.to_string()) }));
+    });
+    Ok(url)
+}
+
+#[tauri::command(async)]
+pub fn spotify_logout() -> Result<()> {
+    crate::music::logout()
+}
+
 /// Opens a table's Spotify Jam in the browser (TekBoard never plays or relays any audio from it).
 #[tauri::command(async)]
 pub fn space_open_jam(url: String) -> Result<()> {

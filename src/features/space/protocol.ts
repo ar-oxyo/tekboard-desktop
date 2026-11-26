@@ -20,6 +20,42 @@ export interface Player {
   dir: Dir;
   moving: boolean;
   seat: string | null;
+  /** A small reaction shown above the avatar for a few seconds. */
+  react?: { e: Reaction; at: number } | null;
+}
+
+/** Small social signals, rate-limited by the host. */
+export type Reaction = "wave" | "coffee" | "clap" | "fire" | "brain";
+export const REACTIONS: Array<{ id: Reaction; emoji: string }> = [
+  { id: "wave", emoji: "👋" },
+  { id: "coffee", emoji: "☕" },
+  { id: "clap", emoji: "👏" },
+  { id: "fire", emoji: "🔥" },
+  { id: "brain", emoji: "🧠" },
+];
+
+/** A line of the table's chat: kept by the host for the session only (never stored). */
+export interface ChatLine {
+  by: string;
+  nick: string;
+  text: string;
+  at: number;
+}
+
+/** What someone at the table is listening to, read from their own player or account. It is
+ * what they hear, not a synchronised playback. */
+export interface Music {
+  title: string;
+  artist: string;
+  /** Small cover as a data URL, when there is one. */
+  art: string | null;
+  playing: boolean;
+  /** `mpris` (the desktop player) or `spotify` (their Spotify account). */
+  source: "mpris" | "spotify";
+  /** Unix ms of the reading. */
+  at: number;
+  by?: string;
+  byNick?: string;
 }
 
 export interface Focus {
@@ -52,6 +88,10 @@ export interface TableState {
   pins: Pin[];
   /** The table's whiteboard, hosted by one of the people seated there. */
   board: TableBoard | null;
+  /** Chat of the session (last 50 lines, not stored). Absent from older hosts. */
+  chat?: ChatLine[];
+  /** Music shared at the table. Absent from older hosts. */
+  music?: Music | null;
 }
 
 export interface TableBoard {
@@ -86,13 +126,18 @@ export type ClientMsg =
   | { t: "space.pin"; space: string; table: string; title: string; text: string }
   | { t: "space.unpin"; space: string; table: string; index: number }
   | { t: "space.board"; space: string; table: string; board: { session: string; name: string } | null }
-  | { t: "space.profile"; space: string; nick: string; avatar: string; status: string };
+  | { t: "space.profile"; space: string; nick: string; avatar: string; status: string }
+  | { t: "space.say"; space: string; table: string; text: string }
+  | { t: "space.react"; space: string; react: Reaction }
+  | { t: "space.music"; space: string; table: string; music: Music | null };
 
 export type HostMsg =
   | { t: "space.welcome"; state: SpaceState }
   | { t: "space.state"; state: SpaceState }
   | { t: "space.ticks"; space: string; players: PlayerTick[] }
-  | { t: "space.bye"; space: string; reason: string };
+  | { t: "space.bye"; space: string; reason: string }
+  /** The host refused a text (moderation): said to its author only. */
+  | { t: "space.refused"; space: string; reason: string };
 
 export interface Announce {
   t: "space.announce";
@@ -177,6 +222,22 @@ export function readClient(raw: Record<string, unknown>): ClientMsg | null {
     }
     case "space.profile":
       return { t, space, nick: clip(raw.nick, 24) || "?", avatar: clip(raw.avatar, 48), status: clip(raw.status, 16) };
+    case "space.say": {
+      const text = clip(raw.text, 300).trim();
+      return text ? { t, space, table: clip(raw.table, 32), text } : null;
+    }
+    case "space.react":
+      return REACTIONS.some((r) => r.id === raw.react) ? { t, space, react: raw.react as Reaction } : null;
+    case "space.music": {
+      const table = clip(raw.table, 32);
+      if (!table) return null;
+      if (raw.music === null) return { t, space, table, music: null };
+      const m = raw.music as Record<string, unknown> | undefined;
+      const title = clip(m?.title, 120).trim();
+      if (!title || (m?.source !== "mpris" && m?.source !== "spotify")) return null;
+      const art = typeof m?.art === "string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(m.art) && m.art.length <= 200_000 ? m.art : null;
+      return { t, space, table, music: { title, artist: clip(m?.artist, 120), art, playing: m?.playing === true, source: m.source, at: num(m?.at) ?? 0 } };
+    }
     default:
       return null;
   }

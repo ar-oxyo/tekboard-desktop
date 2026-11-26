@@ -270,6 +270,9 @@ export const fixtures: Record<string, Fixture> = {
   ai_proposals: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("proposal") ? [weekProposal] : []),
   analytics,
   connect_state: connect,
+  connect_configure: (a: Record<string, unknown>) => Object.assign(connect, { profile: (a.config as { profile: unknown }).profile }),
+  music_now: { title: "Midnight City", artist: "M83", art: null, playing: true, source: "mpris", player: "spotify" },
+  spotify_status: { clientId: null, connected: false, redirectUri: "http://127.0.0.1:43821/callback" },
   git_detail: (a: Record<string, unknown>) => {
     const r = repos.find((x) => x.path === a.path) ?? repos[0];
     const c = (hash: string, subject: string, h: number) => ({ hash, subject, author: "Camille Martin", date: new Date((now - h * H) * 1000).toISOString() });
