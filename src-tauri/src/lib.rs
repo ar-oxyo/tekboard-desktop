@@ -18,6 +18,7 @@ pub mod commands_app;
 pub mod commands_dev;
 pub mod commands_lab;
 pub mod commands_lib;
+pub mod commands_hub;
 pub mod commands_my;
 pub mod commands_plan;
 pub mod connect;
@@ -32,6 +33,7 @@ pub mod epitech;
 pub mod focus;
 pub mod error;
 pub mod git;
+pub mod hub;
 pub mod github;
 pub mod jobs;
 pub mod launcher;
@@ -360,6 +362,21 @@ pub fn run() {
             commands_my::my_sync_auto,
             commands_my::my_data,
             commands_my::my_forget,
+            commands_hub::hub_list,
+            commands_hub::hub_get,
+            commands_hub::hub_save,
+            commands_hub::hub_delete,
+            commands_hub::hub_item_save,
+            commands_hub::hub_item_delete,
+            commands_hub::hub_file_add,
+            commands_hub::hub_file_open,
+            commands_hub::hub_file_preview,
+            commands_hub::hub_open_link,
+            commands_hub::hub_repo,
+            commands_hub::hub_export,
+            commands_hub::hub_snapshot,
+            commands_hub::hub_member_role,
+            commands_hub::hub_import,
             commands_my::my_aer_status,
             commands_my::my_aer_sync,
             commands_my::my_aer_forget,

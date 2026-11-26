@@ -412,6 +412,41 @@ const MIGRATIONS: &[&str] = &[
         failed INTEGER NOT NULL,
         detail TEXT NOT NULL
      );",
+    // v1.2: Projet HUB (see `hub`). Tasks and sessions stay in the planning (key `hub:<id>`).
+    // `origin` is `<owner fingerprint>#<their id>` for a copy shared with me.
+    "CREATE TABLE hub_projects (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        stage TEXT NOT NULL DEFAULT 'idea',
+        fields TEXT NOT NULL DEFAULT '{}',
+        repo_path TEXT,
+        repo_url TEXT,
+        credits_min REAL,
+        credits_max REAL,
+        estimate_min INTEGER,
+        owner TEXT,
+        owner_nick TEXT,
+        role TEXT NOT NULL DEFAULT 'owner',
+        origin TEXT UNIQUE,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+     );
+     CREATE TABLE hub_items (
+        id INTEGER PRIMARY KEY,
+        project_id INTEGER NOT NULL REFERENCES hub_projects(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL DEFAULT '',
+        url TEXT,
+        path TEXT,
+        due_day TEXT,
+        done INTEGER NOT NULL DEFAULT 0,
+        assignee TEXT,
+        role TEXT,
+        author TEXT,
+        created_at INTEGER NOT NULL
+     );
+     CREATE INDEX hub_items_project ON hub_items(project_id, kind);",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

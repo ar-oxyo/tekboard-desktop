@@ -226,7 +226,7 @@ pub fn live_decline(id: String) {
 #[tauri::command(async)]
 pub fn session_send(fp: String, msg: serde_json::Value) -> Result<()> {
     let t = msg["t"].as_str().unwrap_or("");
-    if !(t.starts_with("space.") || t.starts_with("board.")) {
+    if !(t.starts_with("space.") || t.starts_with("board.") || t.starts_with("hub.")) {
         return Err(AppError::new("invalid", "Message de session invalide"));
     }
     svc()?.send(&fp, msg)

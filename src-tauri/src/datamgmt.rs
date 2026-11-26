@@ -16,7 +16,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 /// Folders of the data directory that a backup carries.
-pub const CARRIED: &[&str] = &["templates", "subjects", "libraries"];
+pub const CARRIED: &[&str] = &["templates", "subjects", "libraries", "hub"];
 const DB_FILE: &str = "tekboard.db";
 const MANIFEST: &str = "manifest.json";
 const FORMAT: u32 = 1;
