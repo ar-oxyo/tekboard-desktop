@@ -11,7 +11,8 @@ pub const MAX_TEXT: usize = 256 * 1024;
 pub const MAX_BINARY: usize = 1024 * 1024 + 64 * 1024;
 pub const SERVICE_TYPE: &str = "_tekboard._tcp.local.";
 
-pub const STATUSES: &[&str] = &["available", "coding", "session", "dnd", "invisible", "helping"];
+/// `break`: away from the desk for a moment (1.2). An older TekBoard shows it as "available".
+pub const STATUSES: &[&str] = &["available", "coding", "session", "dnd", "invisible", "helping", "break"];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

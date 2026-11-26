@@ -191,11 +191,18 @@ export class SpaceHost {
     const owner = table.owner === fp || fp === this.state.host;
     switch (msg.t) {
       case "space.table":
-        if (!owner) return false;
+        if (!owner) {
+          // Anyone seated may share a Jam when the table has none, and change or end their own.
+          const onlyJam = msg.topic === undefined && msg.privacy === undefined && msg.members === undefined && msg.jam !== undefined;
+          if (!onlyJam || (table.jam && table.jamBy !== fp)) return false;
+        }
         if (msg.topic !== undefined) table.topic = msg.topic;
         if (msg.privacy) table.privacy = msg.privacy;
         if (msg.members) table.members = msg.members;
-        if (msg.jam !== undefined) table.jam = msg.jam;
+        if (msg.jam !== undefined) {
+          table.jam = msg.jam;
+          table.jamBy = msg.jam ? fp : null;
+        }
         break;
       case "space.goal":
         if (msg.text.trim()) table.goals[fp] = { text: msg.text, done: msg.done };

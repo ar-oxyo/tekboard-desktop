@@ -4,7 +4,7 @@
 // table's resources. Nothing records what you do elsewhere; microphone and camera are never used.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { DoorOpen, ExternalLink, Music, PenTool, Pin, Play, Send, Share2, Square, Star, Target, Timer, Trash2, UserPlus, Users, Volume2, VolumeX } from "lucide-react";
+import { Coffee, DoorOpen, Music, PenTool, Pin, Play, Send, Share2, Square, Star, Target, Timer, Trash2, UserPlus, Users, Volume2, VolumeX } from "lucide-react";
 import { check, refusal } from "../../lib/moderation";
 import { api, asAppError, type ConnectConfig, type ConnectState, type LiveSession } from "../../lib/api";
 import { useUi } from "../../lib/store";
@@ -21,7 +21,9 @@ import { AvatarPicker } from "./avatars";
 import { SpotifyLink } from "./spotify";
 import { drawAvatar } from "./sprites";
 import { roomName, seatById, TABLES, type TableDef } from "./map";
-import { REACTIONS, SOUNDS, validJam, type Sound, type SpaceState, type TableState } from "./protocol";
+import { REACTIONS, SOUNDS, type Sound, type SpaceState, type TableState } from "./protocol";
+import { TableMusic } from "./TableMusic";
+import { InviteCard } from "./InviteCard";
 import { liveSpaces, useSpaceLobby } from "./lobby";
 import { join, leave, moveLocal, send, setAudience, startHosting, useSpace } from "./client";
 import { SpaceEngine } from "./engine";
@@ -71,6 +73,8 @@ export default function SpacePage() {
 function Lobby({ me, connect, onAvatar, onDisable }: { me: { fp: string; nick: string; avatar: string; status: string }; connect: ConnectState; onAvatar: (a: string) => void; onDisable: () => void }) {
   const { mode, error } = useSpace();
   const spaces = useSpaceLobby((s) => s.spaces);
+  const invites = useSpaceLobby((s) => s.invites);
+  const dismiss = (space: string) => useSpaceLobby.setState((s) => ({ invites: s.invites.filter((i) => i.space !== space) }));
   const [now, setNow] = useState(Date.now());
   const [name, setName] = useState("");
   useEffect(() => {
@@ -85,6 +89,9 @@ function Lobby({ me, connect, onAvatar, onDisable }: { me: { fp: string; nick: s
     <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-4">
       <div className="space-y-4">
         {error && <ErrorNote>{error}</ErrorNote>}
+        {invites.map((i) => (
+          <InviteCard key={i.space} invite={i} busy={mode === "joining"} disabledReason={i.v !== 1 ? t("Version de TekSpace différente : mettez-vous à jour") : !online.has(i.host) ? t("Son TekBoard n'est plus joignable") : null} onJoin={() => (dismiss(i.space), join(me, i.space, i.host))} onDismiss={() => dismiss(i.space)} />
+        ))}
         <Card>
           <CardTitle>
             <Users className="size-4 text-faint" /> {t("Espaces ouverts par tes contacts")}
@@ -290,6 +297,7 @@ function InSpace({ meFp, connect }: { meFp: string; connect: ConnectState }) {
                         {p.nick} {p.fp === space.host && <span className="text-2xs text-faint">· {t("hôte")}</span>}
                       </span>
                       <span className="block truncate text-2xs text-faint">
+                        {p.status === "break" && <Coffee className="mr-1 inline size-3 text-warn" aria-hidden />}
                         {(STATUS[p.status as keyof typeof STATUS] ?? STATUS.available).label}
                         {where ? ` · ${t(where.name)}` : ""}
                       </span>
@@ -353,7 +361,6 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
   const seated = Object.values(space.players).filter((p) => p.seat && seatById(p.seat)?.table.id === def.id);
   const others = seated.filter((p) => p.fp !== meFp);
   const [goal, setGoal] = useState(state.goals[meFp]?.text ?? "");
-  const [jam, setJam] = useState(state.jam ?? "");
   const [pinText, setPinText] = useState("");
   const [work, setWork] = useState(25);
   const [rest, setRest] = useState(5);
@@ -380,9 +387,6 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
     if (!why) then();
   };
   const sendSay = () => moderated(say, () => { send({ t: "space.say", space: space.id, table: def.id, text: say.trim() }); setSay(""); }, setSayError);
-  const music = state.music ?? null;
-  const stale = music ? Date.now() - music.at > 60_000 : false;
-  const mineMusic = music?.by === meFp;
 
   return (
     <Card hero>
@@ -430,7 +434,7 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
           ) : (
             <Button size="sm" variant="secondary" icon={<Timer className="size-3.5" />} onClick={() => send({ t: "space.focus", space: space.id, table: def.id, action: "start", workMin: work, breakMin: rest })} title={t("{w} min de travail, {r} min de pause, pour toute la table", { w: work, r: rest })}>{t("Focus")}</Button>
           )}
-          <Menu trigger={<Button size="sm" variant="secondary" className="w-full" icon={<Music className="size-3.5" />}>{source ? t("Partagé") : t("Musique")}</Button>} label={t("Musique")}>
+          <Menu trigger={<Button size="sm" variant="secondary" className="w-full" icon={<Music className="size-3.5" />}>{source ? t("Partagée") : t("Ma musique")}</Button>} label={t("Ma musique")}>
             <MenuLabel>{t("Partager ce que j'écoute")}</MenuLabel>
             <MenuItem hint={source === "mpris" ? "✓" : undefined} onSelect={() => setSource(source === "mpris" ? null : "mpris")}>{t("Depuis le lecteur de cet ordinateur")}</MenuItem>
             <MenuItem hint={source === "spotify" ? "✓" : undefined} onSelect={() => setSource(source === "spotify" ? null : "spotify")}>{t("Depuis mon compte Spotify")}</MenuItem>
@@ -446,24 +450,8 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
           </div>
         )}
 
-        {/* Shared music: what someone at the table is listening to */}
-        {(music || state.jam) && (
-          <div className="flex items-center gap-3 rounded-(--btn-radius) bg-ink/4 p-2">
-            {music?.art ? <img src={music.art} alt="" className="size-11 shrink-0 rounded-[4px] object-cover" /> : <span className="flex size-11 shrink-0 items-center justify-center rounded-[4px] bg-ink/8"><Music className="size-4 text-faint" /></span>}
-            <div className="min-w-0 flex-1">
-              {music ? (
-                <>
-                  <p className="truncate text-sm text-fg">{music.title}</p>
-                  <p className="truncate text-xs text-muted">{music.artist}</p>
-                  <p className="text-2xs text-faint">{stale ? t("dernier morceau de {n}", { n: mineMusic ? t("toi") : (music.byNick ?? "?") }) : t("{state} · écouté par {n}", { state: music.playing ? t("en lecture") : t("en pause"), n: mineMusic ? t("toi") : (music.byNick ?? "?") })}</p>
-                </>
-              ) : (
-                <p className="text-xs text-muted">{t("La table a une Jam Spotify")}</p>
-              )}
-            </div>
-            {state.jam && <IconButton label={t("Rejoindre la Jam Spotify de la table")} onClick={() => void api.spaceOpenJam(state.jam!).catch((e) => toast({ kind: "error", title: "Spotify", detail: asAppError(e).message }))}><ExternalLink className="size-4" /></IconButton>}
-          </div>
-        )}
+        {/* The table's music: what is playing, and its Jam, joined in one click */}
+        <TableMusic state={state} meFp={meFp} owner={owner} onJam={(jam) => tableMsg({ jam })} />
         {source === "spotify" && <SpotifyLink onGone={() => setSource(null)} />}
 
         {/* Chat of the session and small reactions */}
@@ -504,7 +492,7 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
           <Input className="h-8 text-xs" placeholder={t("Mon objectif pour cette session (Entrée)")} value={goal} maxLength={140} onChange={(e) => setGoal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && moderated(goal, () => send({ t: "space.goal", space: space.id, table: def.id, text: goal, done: false }))} />
         </section>
 
-        {/* Secondary: sounds, pins, Jam link, timer lengths */}
+        {/* Secondary: sounds, pins, timer lengths */}
         <details className="border-t border-ink/6 pt-3">
           <summary className="cursor-pointer text-xs text-muted hover:text-fg">{t("Ambiance, ressources et réglages")}</summary>
           <div className="mt-3 space-y-4">
@@ -530,15 +518,6 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
                 {t("Me mettre en « Ne pas déranger » pendant le travail")}
               </label>
             </section>
-            {owner && (
-              <section className="space-y-1.5">
-                <h3 className="text-xs text-faint">{t("Jam Spotify de la table")}</h3>
-                <div className="flex gap-2">
-                  <Input placeholder={t("Lien d'invitation Spotify Jam")} className="h-8 text-xs" value={jam} onChange={(e) => setJam(e.target.value)} />
-                  <Button size="sm" disabled={jam !== "" && !validJam(jam)} disabledReason={t("Seuls les liens d'invitation Spotify Jam sont acceptés")} onClick={() => tableMsg({ jam: jam || null })}>OK</Button>
-                </div>
-              </section>
-            )}
             <section className="space-y-1.5">
               <h3 className="flex items-center gap-1.5 text-xs text-faint"><Pin className="size-3.5" /> {t("Ressources de la table")}</h3>
               <ul className="space-y-1">

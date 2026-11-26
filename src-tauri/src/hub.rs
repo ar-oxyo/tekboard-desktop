@@ -48,6 +48,8 @@ pub struct Project {
     pub owner_nick: Option<String>,
     /// My role: `owner` for my projects, `editor` or `viewer` on a shared copy.
     pub role: String,
+    /// On a shared copy: the project's id on its owner's device (what messages name).
+    pub remote_id: Option<i64>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -142,10 +144,11 @@ fn project_row(r: &rusqlite::Row) -> rusqlite::Result<Project> {
         role: r.get(11)?,
         created_at: r.get(12)?,
         updated_at: r.get(13)?,
+        remote_id: r.get::<_, Option<String>>(14)?.and_then(|o| o.rsplit_once('#').and_then(|(_, id)| id.parse().ok())),
     })
 }
 
-const PROJECT_COLS: &str = "id, name, stage, fields, repo_path, repo_url, credits_min, credits_max, estimate_min, owner, owner_nick, role, created_at, updated_at";
+const PROJECT_COLS: &str = "id, name, stage, fields, repo_path, repo_url, credits_min, credits_max, estimate_min, owner, owner_nick, role, created_at, updated_at, origin";
 const ITEM_COLS: &str = "id, project_id, kind, title, body, url, path, due_day, done, assignee, role, author, created_at";
 
 fn item_row(r: &rusqlite::Row) -> rusqlite::Result<Item> {
@@ -449,7 +452,7 @@ mod tests {
         // On the member's device.
         let other = db::open_in_memory().unwrap();
         let copy = import_shared(&other, "fp-owner", "Sam", 7, "viewer", &snap, NOW).unwrap();
-        assert_eq!((copy.role.as_str(), copy.owner.as_deref()), ("viewer", Some("fp-owner")));
+        assert_eq!((copy.role.as_str(), copy.owner.as_deref(), copy.remote_id), ("viewer", Some("fp-owner"), Some(7)));
         assert!(save(&other, &Project { name: "Pirate".into(), ..copy.clone() }, NOW).is_err(), "a viewer cannot change the copy");
         assert!(save_item(&other, &Item { project_id: copy.id, kind: "link".into(), title: "x".into(), ..Default::default() }, NOW).is_err());
         // The owner's next state replaces the copy, it never duplicates it.

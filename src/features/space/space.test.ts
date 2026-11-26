@@ -145,6 +145,25 @@ describe("table life (1.0)", () => {
     return ctx;
   }
 
+  it("lets anyone seated share a Jam, and only them or the owner change it", () => {
+    const { h } = seated();
+    const table = h.state.tables["focus-a"];
+    table.owner = "A";
+    const jam = "https://open.spotify.com/socialsession/abc123";
+    // B is only a guest: sharing a Jam is allowed, changing the topic is not.
+    expect(h.handle("B", { t: "space.table", space: "sp1", table: "focus-a", jam })).toBe(true);
+    expect([table.jam, table.jamBy]).toEqual([jam, "B"]);
+    expect(h.handle("B", { t: "space.table", space: "sp1", table: "focus-a", topic: "hack" })).toBe(false);
+    // The owner may end it; then B's next Jam is B's again, and B ends it.
+    expect(h.handle("A", { t: "space.table", space: "sp1", table: "focus-a", jam: null })).toBe(true);
+    expect(h.handle("B", { t: "space.table", space: "sp1", table: "focus-a", jam })).toBe(true);
+    expect(h.handle("B", { t: "space.table", space: "sp1", table: "focus-a", jam: null })).toBe(true);
+    expect([table.jam, table.jamBy]).toEqual([null, null]);
+    // A guest never replaces someone else's Jam.
+    h.handle("A", { t: "space.table", space: "sp1", table: "focus-a", jam });
+    expect(h.handle("B", { t: "space.table", space: "sp1", table: "focus-a", jam: null })).toBe(false);
+  });
+
   it("moderates every public text on the host, and tells only the author", () => {
     const { h, sent } = seated();
     expect(h.handle("A", { t: "space.say", space: "sp1", table: "focus-a", text: "sale n3gre" })).toBe(false);

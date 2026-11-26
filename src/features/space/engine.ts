@@ -301,9 +301,15 @@ export class SpaceEngine {
       c.roundRect(sx - w / 2, sy - 14, w, 16, 8);
       c.fill();
       c.fillStyle = STATUS_DOT[p.status] ?? "#9e9e9e";
-      c.beginPath();
-      c.arc(sx - w / 2 + 8, sy - 6, 3, 0, Math.PI * 2);
-      c.fill();
+      if (p.status === "break") {
+        // On a break: two small pause bars instead of the dot.
+        c.fillRect(sx - w / 2 + 5.5, sy - 9, 2, 6);
+        c.fillRect(sx - w / 2 + 8.5, sy - 9, 2, 6);
+      } else {
+        c.beginPath();
+        c.arc(sx - w / 2 + 8, sy - 6, 3, 0, Math.PI * 2);
+        c.fill();
+      }
       c.fillStyle = "#ffffff";
       c.fillText(label, sx + 4, sy - 2);
       // A reaction floats above the name for a few seconds.
@@ -329,6 +335,7 @@ export class SpaceEngine {
       if (!tb) continue;
       const parts: Array<{ text: string; color: string; art?: string | null }> = [];
       if (tb.focus) parts.push({ text: tb.focus.phase === "work" ? `● Focus · ${Math.max(0, Math.ceil((tb.focus.endsAt - Date.now()) / 60_000))} min` : "● Pause", color: tb.focus.phase === "work" ? "#ffb74d" : "#81c784" });
+      if (tb.jam) parts.push({ text: "♫ Jam Spotify", color: "#1ed760" });
       const m = tb.music;
       if (m && Date.now() - m.at < 120_000) parts.push({ text: `♪ ${m.title.length > 22 ? `${m.title.slice(0, 21)}…` : m.title}${m.playing ? "" : " (pause)"}`, color: "#e0e0e0", art: m.art });
       if (!parts.length) continue;
@@ -387,5 +394,5 @@ const KEYMAP: Record<string, string> = {
   ArrowRight: "right",
 };
 
-const STATUS_DOT: Record<string, string> = { available: "#4caf50", coding: "#9486ff", session: "#29b6f6", dnd: "#ef5350", helping: "#ffb300", invisible: "#9e9e9e" };
+const STATUS_DOT: Record<string, string> = { available: "#4caf50", coding: "#9486ff", session: "#29b6f6", dnd: "#ef5350", helping: "#ffb300", invisible: "#9e9e9e", break: "#d7a86e" };
 

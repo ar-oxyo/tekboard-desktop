@@ -3,9 +3,11 @@
 // block, an invitation code when discovery does not work, and what the network allows.
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, Check, Copy, Link2, Network, Radar, ShieldCheck, Trash2, UserPlus, Wifi, WifiOff, X } from "lucide-react";
+import { Ban, Check, Link2, Network, Radar, ShieldCheck, Trash2, UserPlus, Wifi, WifiOff, X } from "lucide-react";
 import { api, asAppError, type ConnectConfig, type ConnectDiagnosis, type ConnectState, type ConnectStatus, type PairRequest, type PeerView } from "../../lib/api";
 import { CHOOSABLE, CONNECT_KEY, groupPeople, looksLikeTarget, STATUS } from "../../lib/connect";
+import { StatusLabel } from "./StatusLabel";
+import { CopyButton } from "../../components/CopyButton";
 import { useUi } from "../../lib/store";
 import { Menu, MenuItem } from "../../components/Menu";
 import { Select } from "../../components/Select";
@@ -191,7 +193,7 @@ function PersonRow({ p }: { p: PeerView }) {
           {p.profile.nick} {!p.trusted && !p.blocked && <span className="text-xs text-faint">· {t("non vérifié")}</span>}
         </p>
         <p className="truncate text-xs text-faint">
-          <Dot tone={status.tone}>{status.label}</Dot>
+          {p.trusted && !p.online ? <Dot tone={status.tone}>{status.label}</Dot> : <StatusLabel status={p.profile.status} />}
           <span className="ml-2 font-mono">{p.short}</span>
           {!p.online && p.lastSeen ? <span className="ml-2">{t("vu {w}", { w: timeAgo(p.lastSeen) })}</span> : null}
         </p>
@@ -283,13 +285,15 @@ function InviteCard({ state }: { state: ConnectState }) {
       <div className="space-y-3 p-4">
         <p className="text-xs text-muted">{t("Quand la découverte ne marche pas, donne ce code à ton ami (Teams, oral…) ou colle le sien.")}</p>
         {state.invite ? (
-          <div className="flex gap-2">
-            <code className="selectable min-w-0 flex-1 truncate rounded bg-raised px-2 py-1.5 font-mono text-2xs text-fg" title={state.invite}>
-              {state.invite}
-            </code>
-            <Button size="sm" icon={<Copy className="size-3.5" />} onClick={() => void navigator.clipboard.writeText(state.invite!).then(() => toast({ kind: "ok", title: t("Code copié") }))}>
-              {t("Copier")}
-            </Button>
+          <div className="flex items-center gap-3 rounded-(--radius-card) border border-line bg-well p-3">
+            <Avatar profile={state.profile} fp={state.fp} size={36} online />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-fg">{t("Rejoindre {n} sur TekBoard Connect", { n: state.profile.nick || t("cet ordinateur") })}</p>
+              <code className="selectable block truncate font-mono text-2xs text-muted" title={state.invite}>
+                {state.invite}
+              </code>
+            </div>
+            <CopyButton text={state.invite} label={t("Copier le code")} />
           </div>
         ) : (
           <p className="text-xs text-faint">{t("Pas encore à l'écoute.")}</p>

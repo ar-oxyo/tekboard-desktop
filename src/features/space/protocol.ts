@@ -85,6 +85,8 @@ export interface TableState {
   focus: Focus | null;
   ambience: { sound: Sound; since: number } | null;
   jam: string | null;
+  /** Who shared the Jam (any seated person may when there is none). Absent from older hosts. */
+  jamBy?: string | null;
   pins: Pin[];
   /** The table's whiteboard, hosted by one of the people seated there. */
   board: TableBoard | null;

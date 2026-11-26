@@ -836,7 +836,7 @@ export interface Revisions {
 }
 
 // ───────────────────────── TekBoard Connect ─────────────────────────
-export type ConnectStatus = "available" | "coding" | "session" | "dnd" | "invisible" | "helping" | "offline";
+export type ConnectStatus = "available" | "coding" | "session" | "dnd" | "invisible" | "helping" | "break" | "offline";
 export interface ConnectProfile {
   nick: string;
   avatar: string;

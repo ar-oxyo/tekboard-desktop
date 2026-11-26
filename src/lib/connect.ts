@@ -14,10 +14,11 @@ export const STATUS: Record<ConnectStatus, { label: string; tone: "ok" | "warn" 
   dnd: { label: t("Ne pas déranger"), tone: "danger" },
   invisible: { label: t("Invisible"), tone: "neutral" },
   helping: { label: t("Disponible pour aider"), tone: "warn" },
+  break: { label: t("En pause"), tone: "neutral" },
   offline: { label: t("Hors ligne"), tone: "neutral" },
 };
 
-export const CHOOSABLE: ConnectStatus[] = ["available", "coding", "session", "helping", "dnd", "invisible"];
+export const CHOOSABLE: ConnectStatus[] = ["available", "coding", "session", "helping", "break", "dnd", "invisible"];
 
 /** Keeps the cached state in step with the backend; returns the unlisten promise. */
 export function listenConnect(qc: QueryClient) {
