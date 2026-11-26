@@ -2,6 +2,39 @@
 
 Chaque version publiée a sa section ici ; la release GitHub reprend ce texte.
 
+## 1.0.0
+
+**Nouveau design Riso**
+- Interface redessinée, en clair et en sombre : quatre ambiances, barre latérale à une entrée par section, barre de page, moins de boîtes. Les anciens thèmes restent dans « Obsolètes ».
+- Couleur d'accent personnelle (8 encres ou n'importe quelle couleur), ajustée pour rester lisible dans chaque mode ; l'icône de la fenêtre et de la zone de notification suit l'ambiance.
+- **Aujourd'hui en widgets** : mode édition pour déplacer, redimensionner, ajouter ou retirer des blocs, sauvegarde automatique, « Disposition d'origine ». Ta disposition existante est reprise telle quelle. Nouveaux widgets : Crédits, Skill Tree, Inbox récente.
+
+**École**
+- **Simulateur de crédits** (École → Crédits) : barème PGE1 2026, résultats officiels, en attente et simulés toujours séparés, minimum par UE, scénarios enregistrés.
+- **Skill Tree** : la molette zoome sur le pointeur au lieu de faire défiler la page, trackpad et clavier, « Tout afficher » ; nouvelle disposition en couloirs par bloc, sans croisements.
+- **Synchro MY** plus claire : état, dernière synchro, échecs en clair ; réponses brutes et historique repliés. Données de plus d'un jour signalées (barre latérale en orange, une proposition par session) ; Artix connaît leur âge.
+- **Stats** en trois sections (Rythme, Projets, Parcours), listes longues raccourcies et filtrables.
+
+**Tests et Labo**
+- **Moulinette TekBoard** : lit le sujet, propose un plan de tests sourcé (et ce que le sujet ne précise pas), génère des tests Criterion au format Epitech (en-tête, `Test(suite, fonction_comportement)`, sans libc ni calcul de l'attendu par la fonction testée), les lance dans le bac à sable, et montre les résultats sans jamais donner de solution. Relancer les échecs, récupérer les fichiers (aperçu, jamais d'écrasement).
+- **Playground** : temps de make, de compilation et d'exécution séparés, code de retour, mémoire ; compilation incrémentale ; **comparaison A/B** (exécutions répétées, médiane, verdict prudent, diff du code).
+- **Algorithm Arena** : le profilage ne bloque plus (budget borné, progression visible, annulation), hypothèses du projet séparées de celles des bibliothèques et dédoublonnées, générateurs de tests vérifiés avant d'être proposés.
+
+**Planning et Artix**
+- Horaires en 24 h partout, dates en JJ/MM/AAAA, journée de travail qui peut finir après minuit (Artix le comprend). Bandes hors horaires lisibles en sombre.
+- My Week : une conversation par semaine, propositions compactes groupées par jour, plus de doublons.
+- Artix répond plus court et va à l'action, quel que soit le fournisseur.
+
+**Connect**
+- **TekSpace** : panneau de table resserré (Focus, Musique, Tableau), discussion de table éphémère, réactions, table favorite, focus et musique affichés sur la carte ; 24 avatars prédéfinis, aussi dans le profil Connect.
+- **Musique partagée** : ce que joue le lecteur de l'ordinateur (MPRIS) ou ton compte Spotify (connexion avec ton propre Client ID, lecture seule). Jamais présentée comme une écoute synchronisée ; la Jam Spotify reste le moyen d'écouter ensemble.
+- **Modération** locale des pseudos et textes publics : propos haineux, menaces et harcèlement refusés, gros mots ordinaires acceptés, rien n'est envoyé à un service tiers.
+- **TekLive** : adresse `ws://` affichée et copiée au démarrage, choix du réseau, port 8765 avec repli.
+
+**Divers**
+- Miniatures des tableaux blancs sur fond anthracite.
+- Boutons désactivés qui disent pourquoi ; derniers textes anglais traduits.
+
 ## 0.9.0
 
 **Brain Dump** (Ctrl+I, l'Inbox de la barre latérale, la palette, la fiche projet)

@@ -5,11 +5,11 @@
 - Couches : modules métier purs (sans Tauri, testés) ← `commands*.rs` (seule surface IPC, validation des chemins) ← `lib.rs`. Répartition des commandes : `commands.rs` (cœur : dépôts, fiches, git, modèles, sujets, cozy), `commands_lib` (bibliothèques C), `commands_dev` (jobs, checks, packaging, README), `commands_my` (MY Epitech + synchro de fond), `commands_plan` (planning), `commands_ai` (Artix), `commands_lab` (Playground/Arena), `commands_boards`, `commands_brain`, `commands_connect`, `commands_app` (données, mises à jour, bureau).
 - Groupes de modules :
   - Dépôts/Git : `scanner`, `git`, `github`, `launcher`, `epitech` (noms `G-XXX-000-VIL-1-1-nom-N`), `projects`, `workspace`, `analytics`.
-  - École : `myepitech` (fenêtre + `ROUTES`), `myview`, `mydata`, `myres`, `deadlines`, `logtime`, `skilltree`, `subjects`.
-  - Planning : `planner` (tâches/événements/projets plan, clé projet = chemin ou `my:<id>`), `schedule` (créneaux, rythme, validation), `focus`.
-  - Dev C : `cparse`, `library`, `jobs`, `testing`, `testrepo`, `checker`, `moulinette`, `packager`, `readme`, `runner`, `cdiag`, `playground`, `arena/`.
+  - École : `myepitech` (fenêtre + `ROUTES`), `myview` (`freshness` = plus ancienne réponse principale), `mydata`, `myres`, `deadlines`, `logtime`, `skilltree`, `subjects`, `credits` (scénarios du simulateur).
+  - Planning : `planner` (tâches/événements/projets plan, clé projet = chemin ou `my:<id>`), `schedule` (créneaux, rythme, validation ; journée de travail qui peut finir après minuit : `work_day_of`, `hours_label`), `focus`.
+  - Dev C : `cparse`, `library`, `jobs`, `testing`, `testrepo`, `checker`, `moulinette`, `mouli/` (moulinette TekBoard : plan IA depuis le sujet, tests Criterion contrôlés par tree-sitter dans `criterion.rs`, exécution isolée, export), `packager`, `readme`, `runner`, `cdiag`, `playground` (cache d'objets, comparaison A/B), `bench` (répétitions, médiane, verdict), `arena/` (profilage borné).
   - IA : `ai/` (runner, provider, openai, toolloop, stream, sandbox, ipc/mcp, tools, agent_tools, memory, chat, insights, workcopy, agents, subject, fstools), `claude`, `prompts`.
-  - Social : `connect/` (identity, tls, proto, store, share, inbox, netdiag), `teklive/` (relais Live Share), `boards`, `brain`.
+  - Social : `connect/` (identity, tls, proto, store, share, inbox, netdiag), `teklive/` (relais Live Share, port 8765, choix du réseau), `moderation` (même liste que `src/lib/moderation.json`), `music` (MPRIS via busctl, Spotify OAuth PKCE), `boards`, `brain`.
   - App : `settings` (blob JSON validé, `THEMES`, `find_repos`), `db`, `datamgmt` (sauvegarde/restauration/reset), `updates`, `doctor/`, `toolenv` (résolution des programmes indépendante du PATH de session), `notify` (événements `data-changed`/`job-progress`), `desktop` (fenêtres, raccourci global X11, tray), `cozy`, `templates`, `error`.
 - Pour le détail d'un domaine : section correspondante de `docs/ARCHITECTURE.md`. Règles de confiance : `mem:invariants/safety`.
 - Recherche symbolique Rust : le serveur rust-analyzer est déclaré dans `.serena/project.yml` ; si absent de la session, `fs.search_for_pattern` sur `src-tauri/src`.

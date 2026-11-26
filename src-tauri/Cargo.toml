@@ -1,6 +1,6 @@
 [package]
 name = "tekboard"
-version = "0.9.0"
+version = "1.0.0"
 description = "TekBoard — Epitech developer command center"
 authors = ["Thibault Eininger"]
 license = "GPL-3.0-only"
