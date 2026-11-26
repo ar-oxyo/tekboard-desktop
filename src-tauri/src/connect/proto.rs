@@ -23,9 +23,11 @@ pub struct Profile {
     pub status: String,
 }
 
+/// A nickname as shown to others: no control characters, 24 characters at most, and never a
+/// slur or a threat (`crate::moderation`): a refused one is shown as "Anonyme".
 pub fn clean_nick(s: &str) -> String {
     let n: String = s.chars().filter(|c| !c.is_control()).collect::<String>().trim().chars().take(24).collect();
-    if n.is_empty() { "Anonyme".into() } else { n }
+    if n.is_empty() || crate::moderation::refused(&n).is_some() { "Anonyme".into() } else { n }
 }
 
 pub fn clean_status(s: &str) -> String {

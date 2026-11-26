@@ -38,6 +38,7 @@ pub mod logtime;
 pub mod library;
 pub mod moulinette;
 pub mod mouli;
+pub mod moderation;
 pub mod mydata;
 pub mod myepitech;
 pub mod myres;

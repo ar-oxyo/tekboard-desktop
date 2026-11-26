@@ -18,6 +18,10 @@ pub fn connect_state() -> Result<StateView> {
 /// Turns Connect on or off, changes the profile (pseudonym, avatar, status) or the interface.
 #[tauri::command]
 pub async fn connect_configure(config: Config) -> Result<StateView> {
+    // Checked here too: what others see must pass moderation, whatever the window allowed.
+    if let Some(cat) = crate::moderation::refused(&config.profile.nick) {
+        return Err(AppError::new("refused_text", format!("Ce pseudonyme est refusé ({cat}). Les gros mots ordinaires passent, les propos haineux non.")));
+    }
     let s = svc()?;
     s.set_config(config).await?;
     Ok(s.view())
