@@ -123,7 +123,7 @@ describe("deadlines", () => {
     expect(daysLeft("soon", now)).toBeNull();
   });
   it("labels", () => {
-    expect([-3, -1, 0, 1, 5].map(deadlineLabel)).toEqual(["3 days late", "1 day late", "today", "tomorrow", "in 5 days"]);
+    expect([-3, -1, 0, 1, 5].map(deadlineLabel)).toEqual(["3 jours de retard", "1 jour de retard", "aujourd'hui", "demain", "dans 5 jours"]);
   });
   it("lists unfinished projects by urgency", () => {
     const list = deadlines([repo({ name: "later", meta: meta("2026-11-20") }), repo({ name: "late", meta: meta("2026-11-09") }), repo({ name: "done", meta: meta("2026-11-11", true) }), repo({ name: "none" })], now);
@@ -155,20 +155,20 @@ describe("hand-in state", () => {
   const at = new Date(2026, 10, 20, 19, 42).toISOString();
   const on = (d: number, h: number, m = 0) => new Date(2026, 10, d, h, m);
   it("follows the exact hour, not midnight", () => {
-    expect(due("2026-11-20", at, on(11, 12))).toMatchObject({ state: "upcoming", label: "in 9 days", tone: "neutral" });
-    expect(due("2026-11-20", at, on(19, 23))).toMatchObject({ state: "upcoming", label: "tomorrow 19:42", tone: "warn" });
-    expect(due("2026-11-20", at, on(20, 8))).toMatchObject({ state: "today", label: "today 19:42", tone: "warn" });
+    expect(due("2026-11-20", at, on(11, 12))).toMatchObject({ state: "upcoming", label: "dans 9 jours", tone: "neutral" });
+    expect(due("2026-11-20", at, on(19, 23))).toMatchObject({ state: "upcoming", label: "demain 19:42", tone: "warn" });
+    expect(due("2026-11-20", at, on(20, 8))).toMatchObject({ state: "today", label: "aujourd'hui 19:42", tone: "warn" });
     expect(due("2026-11-20", at, on(20, 19, 41))).toMatchObject({ state: "today" });
-    expect(due("2026-11-20", at, on(20, 19, 50))).toMatchObject({ state: "overdue", label: "8 min late", tone: "danger" });
-    expect(due("2026-11-20", at, on(20, 23))).toMatchObject({ state: "overdue", label: "3 h late" });
-    expect(due("2026-11-20", at, on(22, 9))).toMatchObject({ state: "overdue", label: "2 days late" });
+    expect(due("2026-11-20", at, on(20, 19, 50))).toMatchObject({ state: "overdue", label: "8 min de retard", tone: "danger" });
+    expect(due("2026-11-20", at, on(20, 23))).toMatchObject({ state: "overdue", label: "3 h de retard" });
+    expect(due("2026-11-20", at, on(22, 9))).toMatchObject({ state: "overdue", label: "2 jours de retard" });
   });
   it("a day without hour lasts until midnight, and no date is unknown, never invented", () => {
-    expect(due("2026-11-20", null, on(20, 23, 59))).toMatchObject({ state: "today", label: "today", time: null });
-    expect(due("2026-11-20", null, on(21, 0, 1))).toMatchObject({ state: "overdue", label: "1 day late" });
+    expect(due("2026-11-20", null, on(20, 23, 59))).toMatchObject({ state: "today", label: "aujourd'hui", time: null });
+    expect(due("2026-11-20", null, on(21, 0, 1))).toMatchObject({ state: "overdue", label: "1 jour de retard" });
     expect(due(null, null, on(20, 12))).toEqual({ state: "unknown", label: "", tone: "neutral", time: null });
     expect(due("soon", null, on(20, 12)).state).toBe("unknown");
-    expect(due("2026-11-20", "garbage", on(19, 12))).toMatchObject({ state: "upcoming", label: "tomorrow" });
+    expect(due("2026-11-20", "garbage", on(19, 12))).toMatchObject({ state: "upcoming", label: "demain" });
   });
   it("orders by the moment the hand-in closes", () => {
     expect(dueTime("2026-11-20", at)).toBe(Date.parse(at));

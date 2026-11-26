@@ -37,10 +37,10 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
       onStarted(id);
       void qc.invalidateQueries({ queryKey: ["quick-history", repo] });
     },
-    onError: fail("The command did not start"),
+    onError: fail(t("La commande n'a pas démarré")),
   });
-  const forget = useMutation({ mutationFn: (command: string) => api.quickForget(repo, command), onSuccess: () => void qc.invalidateQueries({ queryKey: ["quick-history", repo] }), onError: fail("Not removed") });
-  const openTerminal = useMutation({ mutationFn: () => api.openTerminal(repo), onError: fail("The terminal did not start") });
+  const forget = useMutation({ mutationFn: (command: string) => api.quickForget(repo, command), onSuccess: () => void qc.invalidateQueries({ queryKey: ["quick-history", repo] }), onError: fail(t("Pas supprimé")) });
+  const openTerminal = useMutation({ mutationFn: () => api.openTerminal(repo), onError: fail(t("Le terminal n'a pas démarré")) });
   const busy = running !== null || run.isPending;
   // `clear` is TekBoard's own: it empties the log view and never reaches the system.
   const start = (command: string) => {
@@ -54,7 +54,7 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
     if (!busy) run.mutate(c);
   };
   const recent = (history.data ?? []).filter((c) => !(PRESETS as readonly string[]).includes(c));
-  const chip = "flex h-7 shrink-0 items-center rounded-md border border-white/8 px-2.5 font-mono text-xs text-muted transition-colors hover:border-line-strong hover:text-fg disabled:cursor-not-allowed disabled:opacity-45";
+  const chip = "flex h-7 shrink-0 items-center rounded-md border border-ink/8 px-2.5 font-mono text-xs text-muted transition-colors hover:border-line-strong hover:text-fg disabled:cursor-not-allowed disabled:opacity-45";
   return (
     <div className="card flex flex-wrap items-center gap-1.5 px-2.5 py-2" role="toolbar" aria-label={t("Commandes rapides")}>
       <div className="flex shrink-0">
@@ -114,7 +114,7 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
             aria-label={t("Commande libre")}
             placeholder="./my_hunter -h"
             title={"A program and its arguments, run in the repository folder without a shell.\nQuotes group words; pipes, && and redirections are refused."}
-            className="field h-7 w-full border border-white/8 px-2.5 pr-7 font-mono text-xs text-fg placeholder:font-sans placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none"
+            className="field h-7 w-full border border-ink/8 px-2.5 pr-7 font-mono text-xs text-fg placeholder:font-sans placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none"
           />
           {custom !== "" && (
             <button type="button" aria-label={t("Vider le champ")} onClick={() => setCustom("")} className="absolute top-1/2 right-1.5 -translate-y-1/2 text-faint hover:text-fg">
@@ -150,7 +150,7 @@ export function QuickBar({ repo, running, onClear, onStarted, onStop, terminal }
           ))}
         </Menu>
       )}
-      <IconButton label={terminal ? "Open a terminal in this repository" : "No terminal command is set (Settings)"} disabled={!terminal} onClick={() => openTerminal.mutate()}>
+      <IconButton label={terminal ? t("Ouvrir un terminal dans ce dépôt") : t("Aucune commande de terminal n'est définie (Réglages)")} disabled={!terminal} onClick={() => openTerminal.mutate()}>
         <SquareTerminal className="size-4" />
       </IconButton>
     </div>

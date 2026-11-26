@@ -27,7 +27,7 @@ export function AiSettingsCard() {
     if (saved && !s) setS(saved);
   }, [saved, s]);
   const preview = useQuery({ queryKey: ["ai-context-preview"], queryFn: () => api.aiContextPreview({ page: "settings" }), enabled: false });
-  if (!s || !saved) return <p className="text-[13px] text-muted">{t("Chargement…")}</p>;
+  if (!s || !saved) return <p className="text-sm text-muted">{t("Chargement…")}</p>;
   const provider = saved.provider || "none";
   const claude = provider === "claude";
   const submit = () => save.mutate({ chatModel: s.chatModel, agentModel: s.agentModel, agentMinutes: s.agentMinutes, agentBudgetUsd: s.agentBudgetUsd, autoAnalyze: s.autoAnalyze }, { onSuccess: (v) => (setS(v), toast({ kind: "ok", title: t("Réglages d'Artix enregistrés") })) });
@@ -54,7 +54,7 @@ export function AiSettingsCard() {
                 </Field>
               </>
             )}
-            <label className="col-span-2 flex items-start gap-2 text-[13px] text-muted">
+            <label className="col-span-2 flex items-start gap-2 text-sm text-muted">
               <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={s.autoAnalyze} onChange={(e) => setS({ ...s, autoAnalyze: e.target.checked })} />
               <span>
                 {t("Analyser automatiquement les nouveaux sujets récupérés de MY Epitech")}
@@ -69,9 +69,9 @@ export function AiSettingsCard() {
       {provider !== "none" && (
         <Card>
           <CardTitle right={<Button size="sm" onClick={() => void preview.refetch()} busy={preview.isFetching}>Afficher</Button>}>{t("Ce que Artix reçoit au début d'un message")}</CardTitle>
-          <div className="p-4 text-[13px] text-muted">
+          <div className="p-4 text-sm text-muted">
             <p className="mb-2">Une courte carte de contexte (environ 1 à 2 k tokens) : écran, journée, rendus proches, session en cours, souvenirs utiles. Le reste, Artix le lit avec ses outils quand il en a besoin. Aucun mot de passe ni jeton n'y figure.</p>
-            {preview.data && <pre className="selectable max-h-80 overflow-auto rounded-lg bg-black/25 p-3 font-mono text-xs whitespace-pre-wrap text-fg">{preview.data}</pre>}
+            {preview.data && <pre className="selectable max-h-80 overflow-auto rounded-lg bg-well p-3 font-mono text-xs whitespace-pre-wrap text-fg">{preview.data}</pre>}
             {preview.error && <p className="text-danger">{asAppError(preview.error).message}</p>}
             <p className="mt-2 text-xs text-faint">La mémoire se consulte et se corrige dans le panneau d'Artix (icône cerveau). Les instructions d'Artix se modifient dans Réglages → Prompts.</p>
           </div>

@@ -3,7 +3,7 @@ import { ArrowDownUp, Eye, EyeOff, FolderGit2, GraduationCap, Play, Plus, Refres
 import { useMemo, useState } from "react";
 import { Menu, MenuChoice, MenuLabel } from "../../components/Menu";
 import { Select } from "../../components/Select";
-import { Button, Card, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner, Tag } from "../../components/ui";
+import { Button, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner, Tag } from "../../components/ui";
 import { api, asAppError, type RepoInfo } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { keys, useNow, usePref, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
@@ -61,7 +61,7 @@ export function ProjectsPage() {
     <>
       <PageHeader
         title={t("Projets")}
-        subtitle={hasRoots ? `${all.length} repositor${all.length === 1 ? "y" : "ies"} · ${school} Epitech` : undefined}
+        subtitle={hasRoots ? `${plural(all.length, "{n} dépôt", "{n} dépôts")} · ${school} Epitech` : undefined}
         actions={
           hasRoots && (
             <>
@@ -76,11 +76,9 @@ export function ProjectsPage() {
         }
       />
       {!hasRoots ? (
-        <Card>
-          <EmptyState icon={<FolderGit2 className="size-6" />} title={t("Pas encore de dossier de projets")} action={<Button onClick={() => setPage("overview")}>{t("Configurer")}</Button>}>
-            {t("Dis à TekBoard où sont tes dépôts.")}
-          </EmptyState>
-        </Card>
+        <EmptyState icon={<FolderGit2 className="size-6" />} title={t("Pas encore de dossier de projets")} action={<Button onClick={() => setPage("overview")}>{t("Configurer")}</Button>}>
+          {t("Dis à TekBoard où sont tes dépôts.")}
+        </EmptyState>
       ) : repos.isLoading ? (
         <p className="flex items-center gap-2 py-16 text-muted">
           <Spinner /> {t("Lecture…")}
@@ -89,8 +87,8 @@ export function ProjectsPage() {
         <ErrorNote title={t("Impossible de parcourir tes projets")}>{asAppError(repos.error).message}</ErrorNote>
       ) : (
         <>
-          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div className="relative w-56">
+          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="relative w-44">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
               <Input autoFocus className="pl-8" aria-label={t("Chercher par nom, module ou branche")} placeholder={t("Rechercher")} value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
@@ -103,10 +101,10 @@ export function ProjectsPage() {
                   title={f.title}
                   aria-selected={filter === f.id}
                   onClick={() => setFilter(f.id)}
-                  className={cn("flex h-8 items-center gap-2 rounded-md px-2.5 text-[13px] transition-colors duration-150", filter === f.id ? "bg-raised text-fg" : "text-muted hover:text-fg")}
+                  className={cn("flex h-7 items-center gap-1.5 rounded-(--btn-radius) px-2 text-sm transition-colors duration-(--dur-fast)", filter === f.id ? "bg-ink/7 font-medium text-fg" : "text-muted hover:bg-ink/4 hover:text-fg")}
                 >
                   {f.label}
-                  <span className="font-mono text-[11px] text-faint">{counts[f.id]}</span>
+                  <span className="font-mono text-2xs text-faint">{counts[f.id]}</span>
                 </button>
               ))}
             </div>
@@ -117,7 +115,7 @@ export function ProjectsPage() {
                 aria-checked={epitechOnly}
                 title={t("Masque les dépôts personnels et ce qui n'est pas du cursus. Le classement d'un dépôt se corrige depuis son menu ⋯.")}
                 onClick={() => setEpitechOnly(!epitechOnly)}
-                className={cn("flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors duration-150", epitechOnly ? "border-transparent bg-accent-soft text-accent-strong" : "border-white/8 text-muted hover:border-line-strong hover:text-fg")}
+                className={cn("flex h-7 items-center gap-1.5 rounded-(--btn-radius) border px-2.5 text-xs transition-colors duration-(--dur-fast)", epitechOnly ? "border-transparent bg-accent-soft text-accent-strong" : "border-line text-muted hover:border-line-strong hover:text-fg")}
               >
                 <GraduationCap className="size-3.5" />
                 Epitech Projects Only
@@ -127,17 +125,17 @@ export function ProjectsPage() {
                   size="sm"
                   mono
                   className="w-36"
-                  label="Module"
+                  label={t("Module")}
                   value={activeModule}
                   onChange={setModule}
-                  options={[{ value: "", label: "Tous les modules" }, ...modules.map((m) => ({ value: m.code, label: m.code, hint: m.name ? `${m.name} · ${m.count}` : String(m.count) }))]}
+                  options={[{ value: "", label: t("Tous les modules") }, ...modules.map((m) => ({ value: m.code, label: m.code, hint: m.name ? `${m.name} · ${m.count}` : String(m.count) }))]}
                 />
               )}
               <Menu
                 trigger={
-                  <button type="button" title={t("Ordre de tri")} className="flex h-7 items-center gap-1.5 rounded-md border border-white/8 px-2.5 text-xs text-muted transition-colors duration-150 hover:border-line-strong hover:text-fg">
+                  <button type="button" title={t("Trier : {s}", { s: sortLabel })} className="flex h-7 items-center gap-1.5 rounded-(--btn-radius) border border-line px-2 text-xs text-muted transition-colors duration-(--dur-fast) hover:border-line-strong hover:text-fg">
                     <ArrowDownUp className="size-3.5" />
-                    {sortLabel}
+                    <span className="hidden 2xl:inline">{sortLabel}</span>
                   </button>
                 }
               >
@@ -150,19 +148,28 @@ export function ProjectsPage() {
               </Menu>
             </div>
           </div>
-          <Card>
+          <div>
             {shown.length === 0 ? (
               <EmptyState title={all.length === 0 ? t("Aucun dépôt trouvé") : t("Rien ne correspond")}>
                 {all.length === 0 ? t("Tes dossiers de projets ne contiennent encore aucun dépôt git.") : epitechOnly || activeModule ? t("Essaie une autre recherche, ou désactive « Epitech Projects Only » et le filtre de module.") : t("Essaie une autre recherche ou un autre filtre.")}
               </EmptyState>
             ) : (
               <ul>
+                <li aria-hidden className="flex h-7 items-center gap-3 border-b border-line pr-1 pl-1 text-2xs text-faint">
+                  <span className="w-7 shrink-0" />
+                  <span className="flex-[2]">{t("Projet")}</span>
+                  <span className="w-32 shrink-0">{t("Rendu")}</span>
+                  <span className="flex-[1.6]">Git</span>
+                  <span className={cn("shrink-0", filter !== "todo" && filter !== "in_progress" && filter !== "done" ? "w-28" : "w-6")}>{filter !== "todo" && filter !== "in_progress" && filter !== "done" ? t("Statut") : ""}</span>
+                  <span className="hidden w-24 shrink-0 text-right @3xl:block">{t("Activité")}</span>
+                  <span className="w-14 shrink-0" />
+                </li>
                 {shown.map((repo) => (
                   <RepoRow key={repo.path} repo={repo} now={now} showStatus={filter !== "todo" && filter !== "in_progress" && filter !== "done"} />
                 ))}
               </ul>
             )}
-          </Card>
+          </div>
           {(hidden.data?.length ?? 0) > 0 && (
             <div className="mt-3">
               <button type="button" onClick={() => setShowHidden(!showHidden)} className="flex items-center gap-1.5 text-xs text-faint hover:text-muted">
@@ -170,13 +177,11 @@ export function ProjectsPage() {
                 {plural(hidden.data!.length, "{n} projet masqué", "{n} projets masqués")}
               </button>
               {showHidden && (
-                <Card className="mt-2">
-                  <ul>
-                    {hidden.data!.map((r) => (
-                      <HiddenRow key={r.path} repo={r} />
-                    ))}
-                  </ul>
-                </Card>
+                <ul className="mt-2 border-t border-line">
+                  {hidden.data!.map((r) => (
+                    <HiddenRow key={r.path} repo={r} />
+                  ))}
+                </ul>
               )}
             </div>
           )}
@@ -190,9 +195,9 @@ export function ProjectsPage() {
 function HiddenRow({ repo }: { repo: RepoInfo }) {
   const act = useProjectActions();
   return (
-    <li className="flex h-10 items-center gap-3 border-b border-white/6 px-4 text-[13px] last:border-b-0">
+    <li className="flex h-10 items-center gap-3 border-b border-line px-1 text-sm">
       <span className="min-w-0 flex-1 truncate text-muted">{displayName(repo)}</span>
-      <span className="selectable min-w-0 flex-[2] truncate font-mono text-[11px] text-faint">{repo.path}</span>
+      <span className="selectable min-w-0 flex-[2] truncate font-mono text-2xs text-faint">{repo.path}</span>
       <Button size="sm" variant="ghost" icon={<Eye className="size-3.5" />} busy={act.visibility.isPending} onClick={() => act.visibility.mutate({ repo, visibility: null })}>
         {t("Restaurer")}
       </Button>
@@ -208,13 +213,13 @@ function RepoRow({ repo, now, showStatus }: { repo: RepoInfo; now: Date; showSta
   const active = lastActivity(repo);
   const clean = !repo.error && attention(repo).length === 0;
   return (
-    <li className={cn("group row-hover flex h-11 items-center gap-3 border-b border-white/6 pr-2 pl-2 last:border-b-0", repo.progress === "done" && "text-muted")}>
+    <li className={cn("group ink-row flex h-11 items-center gap-3 rounded-none border-b border-line pr-1 pl-1", repo.progress === "done" && "text-muted")}>
       <FavoriteButton repo={repo} />
-      <button type="button" onClick={() => openSheet(repo.path)} className="flex min-w-0 flex-[2] items-baseline gap-2.5 text-left" title={`${repo.path}\n${repo.kind === "epitech" ? "Epitech" : "Personal"}: ${repo.kindReason}${repo.status?.branch ? `\nBranch ${repo.status.branch}` : ""}`}>
-        <span className="truncate text-[13px] font-medium">{displayName(repo)}</span>
+      <button type="button" onClick={() => openSheet(repo.path)} className="flex min-w-0 flex-[2] items-baseline gap-2.5 text-left" title={`${repo.path}\n${repo.kind === "epitech" ? "Epitech" : t("Personnel")} : ${repo.kindReason}${repo.status?.branch ? `\n${t("Branche {b}", { b: repo.status.branch })}` : ""}`}>
+        <span className="truncate text-sm font-medium">{displayName(repo)}</span>
         {mod ? <Tag title={repo.my?.unitName ?? undefined}>{mod}</Tag> : repo.group && <span className="shrink-0 text-xs text-faint">{repo.group}</span>}
         {repo.duplicateOf && (
-          <span className="shrink-0 rounded border border-warn/40 px-1.5 text-[11px] text-warn" title={t("Même projet que {p}. Si ce dossier est une copie, masque-le depuis son menu ⋯ : rien n'est supprimé.", { p: repo.duplicateOf })}>
+          <span className="shrink-0 rounded border border-warn/40 px-1.5 text-2xs text-warn" title={t("Même projet que {p}. Si ce dossier est une copie, masque-le depuis son menu ⋯ : rien n'est supprimé.", { p: repo.duplicateOf })}>
             {t("copie")}
           </span>
         )}
@@ -229,10 +234,10 @@ function RepoRow({ repo, now, showStatus }: { repo: RepoInfo; now: Date; showSta
       <span className={cn("flex shrink-0", showStatus ? "w-28" : "w-6")}>
         <ProgressPicker repo={repo} compact={!showStatus} />
       </span>
-      <span className="hidden w-24 shrink-0 text-right text-xs text-faint lg:block" title={repo.lastCommit?.subject}>
+      <span className="hidden w-24 shrink-0 text-right text-xs text-faint @3xl:block" title={repo.lastCommit?.subject}>
         {active > 0 ? timeAgo(Math.floor(active / 1000)) : t("aucun commit")}
       </span>
-      <span className="flex shrink-0 items-center">
+      <span className="flex shrink-0 items-center opacity-0 transition-opacity duration-(--dur-fast) group-focus-within:opacity-100 group-hover:opacity-100">
         <IconButton label={t("Ouvrir l'espace de travail (IDE + terminal)")} className="hover:text-accent-strong" onClick={() => act.workspace.mutate(repo)}>
           <Play className="size-4" />
         </IconButton>

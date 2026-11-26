@@ -29,7 +29,7 @@ export function ClaudeBriefDialog({ repo, task, disclosure = false, confirmLabel
       ) : brief.error || !p ? (
         <ErrorNote>{asAppError(brief.error).message}</ErrorNote>
       ) : (
-        <div className="flex flex-col gap-3 text-[13px]">
+        <div className="flex flex-col gap-3 text-sm">
           {!p.available && <ErrorNote>{p.unavailable ?? t("Cette IA ne peut pas faire cette tâche.")}</ErrorNote>}
           <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-2">
             <dt className="text-muted">{t("Peut lire")}</dt><dd>{p.canRead}</dd>

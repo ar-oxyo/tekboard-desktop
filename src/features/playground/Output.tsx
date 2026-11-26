@@ -41,9 +41,9 @@ export function Output({ job, onJump }: { job: JobView | null | undefined; onJum
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-2 border-b border-white/6 px-3 py-2">
+      <div className="flex items-center gap-2 border-b border-ink/6 px-3 py-2">
         {running ? (
-          <span className="flex items-center gap-2 text-[13px] text-muted">
+          <span className="flex items-center gap-2 text-sm text-muted">
             <Spinner /> {t("En cours…")}
           </span>
         ) : head ? (
@@ -60,11 +60,11 @@ export function Output({ job, onJump }: { job: JobView | null | undefined; onJum
           </Dot>
         ))}
       </div>
-      <div role="tablist" className="flex gap-1 border-b border-white/6 px-2">
+      <div role="tablist" className="flex gap-1 border-b border-ink/6 px-2">
         {tabs.map(([id, label, n]) => (
           <button key={id} role="tab" type="button" aria-selected={tab === id} onClick={() => setChosen({ tab: id, job: job.id })} className={cn("-mb-px flex h-8 items-center gap-1.5 border-b-2 px-2.5 text-xs transition-colors", tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
             {label}
-            {n !== null && <span className={cn("rounded px-1 text-[10px] tabular", id === "memory" || c.errors ? "bg-danger/15 text-danger" : "bg-warn/15 text-warn")}>{n}</span>}
+            {n !== null && <span className={cn("rounded px-1 text-3xs tabular", id === "memory" || c.errors ? "bg-danger/15 text-danger" : "bg-warn/15 text-warn")}>{n}</span>}
           </button>
         ))}
       </div>
@@ -80,11 +80,11 @@ export function Output({ job, onJump }: { job: JobView | null | undefined; onJum
               </p>
             )}
             {mem.length === 0 ? (
-              <p className="text-[13px] text-muted">{r.run ? t("Aucun problème mémoire signalé. Active ASan, UBSan ou Valgrind pour les chercher.") : t("Le programme n'a pas tourné.")}</p>
+              <p className="text-sm text-muted">{r.run ? t("Aucun problème mémoire signalé. Active ASan, UBSan ou Valgrind pour les chercher.") : t("Le programme n'a pas tourné.")}</p>
             ) : (
               mem.map((m, i) => (
-                <div key={i} className="rounded-md border border-white/6 bg-black/20 p-2.5">
-                  <div className="flex items-center gap-2 text-[13px]">
+                <div key={i} className="rounded-md border border-ink/6 bg-well p-2.5">
+                  <div className="flex items-center gap-2 text-sm">
                     <MemoryStick className="size-3.5 text-danger" />
                     <span className="font-medium text-fg">{memLabel(m)}</span>
                     <Badge mono>{m.tool}</Badge>
@@ -94,9 +94,9 @@ export function Output({ job, onJump }: { job: JobView | null | undefined; onJum
                       </button>
                     )}
                   </div>
-                  <p className="selectable mt-1 font-mono text-[11.5px] text-muted">{m.message}</p>
+                  <p className="selectable mt-1 font-mono text-2xs text-muted">{m.message}</p>
                   {m.frames.length > 0 && (
-                    <ol className="selectable mt-1.5 space-y-0.5 font-mono text-[11px] text-faint">
+                    <ol className="selectable mt-1.5 space-y-0.5 font-mono text-2xs text-faint">
                       {m.frames.slice(0, 8).map((f, j) => (
                         <li key={j}>
                           {f.function || "?"} {f.file ? `— ${f.file}${f.line ? `:${f.line}` : ""}` : ""}
@@ -116,7 +116,7 @@ export function Output({ job, onJump }: { job: JobView | null | undefined; onJum
 }
 
 function Stream({ text, truncated, empty }: { text: string | undefined; truncated?: boolean; empty: string }) {
-  if (!text) return <p className="p-3 text-[13px] text-muted">{empty}</p>;
+  if (!text) return <p className="p-3 text-sm text-muted">{empty}</p>;
   return (
     <>
       {truncated && <p className="px-3 pt-2 text-xs text-warn">{t("Sortie coupée : seuls les 200 premiers Ko sont gardés.")}</p>}
@@ -126,11 +126,11 @@ function Stream({ text, truncated, empty }: { text: string | undefined; truncate
 }
 
 function Diagnostics({ diags, raw, command, onJump }: { diags: CDiagnostic[]; raw: string; command: string; onJump: (file: string, line: number, col: number | null) => void }) {
-  if (!command) return <p className="p-3 text-[13px] text-muted">{t("Pas encore compilé.")}</p>;
+  if (!command) return <p className="p-3 text-sm text-muted">{t("Pas encore compilé.")}</p>;
   return (
     <div className="space-y-1 p-2">
-      <p className="selectable px-1 pb-1 font-mono text-[11px] text-faint">$ {command}</p>
-      {diags.length === 0 && <p className="px-1 text-[13px] text-ok">{t("Aucune erreur ni aucun avertissement.")}</p>}
+      <p className="selectable px-1 pb-1 font-mono text-2xs text-faint">$ {command}</p>
+      {diags.length === 0 && <p className="px-1 text-sm text-ok">{t("Aucune erreur ni aucun avertissement.")}</p>}
       {diags.map((d, i) => {
         const Icon = d.severity === "error" ? CircleX : d.severity === "warning" ? AlertTriangle : Info;
         const can = d.line !== null && d.file !== "";
@@ -138,8 +138,8 @@ function Diagnostics({ diags, raw, command, onJump }: { diags: CDiagnostic[]; ra
           <button key={i} type="button" disabled={!can} onClick={() => can && onJump(d.file, d.line!, d.col)} className={cn("row-hover flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left", d.severity === "note" && "pl-7")}>
             <Icon className={cn("mt-0.5 size-3.5 shrink-0", d.severity === "error" ? "text-danger" : d.severity === "warning" ? "text-warn" : "text-info")} />
             <span className="min-w-0 flex-1">
-              <span className="block text-[13px] text-fg">{d.message}</span>
-              <span className="font-mono text-[11px] text-faint">
+              <span className="block text-sm text-fg">{d.message}</span>
+              <span className="font-mono text-2xs text-faint">
                 {d.file || (d.origin === "linker" ? t("édition de liens") : "")}
                 {d.line ? `:${d.line}` : ""}
                 {d.col ? `:${d.col}` : ""}

@@ -94,7 +94,7 @@ export function DataCard() {
         <CardTitle>{t("Emplacement des données")}</CardTitle>
         <ul className="py-1">
           {(where.data ?? []).map((l) => (
-            <li key={l.kind} className="flex min-h-11 items-center gap-3 px-4 text-[13px]">
+            <li key={l.kind} className="flex min-h-11 items-center gap-3 px-4 text-sm">
               <span className="w-72 shrink-0 text-muted">{LABEL[l.kind]}</span>
               <span className="selectable min-w-0 flex-1 truncate font-mono text-xs">{tildify(l.path, home)}</span>
               <span className="w-16 shrink-0 text-right text-xs text-faint tabular-nums">{size(l.bytes)}</span>
@@ -114,7 +114,7 @@ export function DataCard() {
       <Card>
         <CardTitle>{t("Sauvegarde")}</CardTitle>
         <div className="flex flex-col gap-3 p-4">
-          <p className="text-[13px] text-muted">{t("Un fichier .zip avec tes réglages, projets suivis, planning, tâches, notes, sujets et modèles. Sans la session MY Epitech ni le cache.")}</p>
+          <p className="text-sm text-muted">{t("Un fichier .zip avec tes réglages, projets suivis, planning, tâches, notes, sujets et modèles. Sans la session MY Epitech ni le cache.")}</p>
           <div className="flex flex-wrap gap-2">
             <Button variant="primary" icon={<HardDriveDownload className="size-3.5" />} busy={exportIt.isPending} onClick={() => exportIt.mutate()}>
               {t("Exporter mes données…")}
@@ -130,19 +130,19 @@ export function DataCard() {
         <CardTitle>{t("Nettoyage")}</CardTitle>
         <div className="flex flex-col gap-3 p-4">
           <div className="flex items-start justify-between gap-3">
-            <p className="text-[13px] text-muted">{t("Le cache contient des copies de test et des fichiers temporaires. Le vider ne fait rien perdre.")}</p>
+            <p className="text-sm text-muted">{t("Le cache contient des copies de test et des fichiers temporaires. Le vider ne fait rien perdre.")}</p>
             <Button size="sm" icon={<Archive className="size-3.5" />} busy={cache.isPending} onClick={() => cache.mutate()}>
               {t("Vider le cache")}
             </Button>
           </div>
           <div className="flex items-start justify-between gap-3 border-t border-line pt-3">
-            <p className="text-[13px] text-muted">{t("Remet les réglages par défaut (dossiers, apparence, langue, Artix). Tes projets, ton planning et tes notes restent.")}</p>
+            <p className="text-sm text-muted">{t("Remet les réglages par défaut (dossiers, apparence, langue, Artix). Tes projets, ton planning et tes notes restent.")}</p>
             <Button size="sm" icon={<RotateCcw className="size-3.5" />} onClick={() => setConfirm("settings")}>
               {t("Réinitialiser les réglages…")}
             </Button>
           </div>
           <div className="flex items-start justify-between gap-3 border-t border-line pt-3">
-            <p className="text-[13px] text-muted">{t("Efface toutes les données de Tekboard sur cet ordinateur et le relance comme au premier jour. Tes dépôts ne sont pas touchés.")}</p>
+            <p className="text-sm text-muted">{t("Efface toutes les données de Tekboard sur cet ordinateur et le relance comme au premier jour. Tes dépôts ne sont pas touchés.")}</p>
             <Button size="sm" variant="danger" icon={<Trash2 className="size-3.5" />} onClick={() => setConfirm("all")}>
               {t("Tout réinitialiser…")}
             </Button>
@@ -152,7 +152,7 @@ export function DataCard() {
 
       <Card className="xl:col-span-2">
         <CardTitle>{t("Désinstaller Tekboard")}</CardTitle>
-        <div className="grid grid-cols-1 gap-4 p-4 text-[13px] md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 p-4 text-sm md:grid-cols-3">
           <div>
             <p className="font-medium">{t("1. Enlever l'application")}</p>
             <p className="mt-1 text-xs text-muted">{t("Paquet .deb : ouvre l'App Center (ou Logiciels), cherche TekBoard, puis Désinstaller. AppImage : supprime simplement le fichier.")}</p>
@@ -184,10 +184,10 @@ export function DataCard() {
             </>
           }
         >
-          <p className="text-[13px]">
+          <p className="text-sm">
             {t("Sauvegarde du {date}, faite avec Tekboard {v}.", { date: new Date(restore.manifest.createdAt * 1000).toLocaleString(locale(), { dateStyle: "long", timeStyle: "short" }), v: restore.manifest.version })}
           </p>
-          <p className="mt-2 text-[13px] text-muted">{t("Elle remplace tes données actuelles. Celles-ci sont d'abord sauvegardées dans le dossier backups, pour pouvoir revenir en arrière.")}</p>
+          <p className="mt-2 text-sm text-muted">{t("Elle remplace tes données actuelles. Celles-ci sont d'abord sauvegardées dans le dossier backups, pour pouvoir revenir en arrière.")}</p>
           {dataDir && <p className="mt-2 text-xs text-faint"><Code>{tildify(`${dataDir}/backups`, home)}</Code></p>}
         </Modal>
       )}
@@ -208,7 +208,7 @@ export function DataCard() {
             </>
           }
         >
-          <p className="text-[13px] text-muted">{t("Les réglages reviennent à leur valeur par défaut et l'assistant de démarrage s'ouvre. Projets suivis, planning, tâches, notes, sujets et modèles sont gardés.")}</p>
+          <p className="text-sm text-muted">{t("Les réglages reviennent à leur valeur par défaut et l'assistant de démarrage s'ouvre. Projets suivis, planning, tâches, notes, sujets et modèles sont gardés.")}</p>
         </Modal>
       )}
 
@@ -228,7 +228,7 @@ export function DataCard() {
             </>
           }
         >
-          <div className="flex flex-col gap-3 text-[13px]">
+          <div className="flex flex-col gap-3 text-sm">
             <p>{t("Sont effacés : réglages, planning, tâches, notes, historique, sujets téléchargés, modèles, session MY Epitech et cache.")}</p>
             <p className="text-muted">{t("Ne sont jamais touchés : tes dépôts, tes dossiers de projets et tout fichier hors des dossiers de Tekboard.")}</p>
             <Button size="sm" className="self-start" icon={<HardDriveDownload className="size-3.5" />} busy={exportIt.isPending} onClick={() => exportIt.mutate()}>

@@ -112,7 +112,7 @@ export default function PlaygroundPage() {
 function DraftTab({ draft, on, onSelect, onClose }: { draft: Draft; on: boolean; onSelect: () => void; onClose: () => void }) {
   const dirty = usePlayground((s) => s.dirty[draft.id]);
   return (
-    <div role="tab" aria-selected={on} className={cn("group flex h-8 shrink-0 items-center gap-1 rounded-md border pr-1 pl-2.5 text-[13px] transition-colors", on ? "border-line bg-surface text-fg" : "border-transparent text-muted hover:bg-hover hover:text-fg")}>
+    <div role="tab" aria-selected={on} className={cn("group flex h-8 shrink-0 items-center gap-1 rounded-md border pr-1 pl-2.5 text-sm transition-colors", on ? "border-line bg-surface text-fg" : "border-transparent text-muted hover:bg-hover hover:text-fg")}>
       <button type="button" className="max-w-48 truncate" onClick={onSelect} title={draft.title}>
         {draft.title}
       </button>
@@ -244,7 +244,7 @@ function DraftView({ draft, tools, onDefaults, onDuplicate }: { draft: Draft; to
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(340px,38%)] gap-3" onKeyDown={onKey}>
       <section className="card flex min-h-0 flex-col overflow-hidden">
-        <div className="flex flex-wrap items-center gap-2 border-b border-white/6 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2 border-b border-ink/6 px-3 py-2">
           <TitleField value={draft.title} onChange={(title) => update({ title })} />
           <Select<DraftSettings["compiler"]> className="w-28" size="sm" label={t("Compilateur")} value={s.compiler} onChange={(compiler) => setSettings({ compiler })} options={compilers.length ? compilers : [{ value: s.compiler, label: s.compiler }]} />
           <Input className="h-7 w-44 font-mono text-xs" aria-label={t("Options de compilation")} value={s.flags} onChange={(e) => setSettings({ flags: e.target.value })} placeholder="-Wall -Wextra" />
@@ -317,27 +317,27 @@ function DraftView({ draft, tools, onDefaults, onDuplicate }: { draft: Draft; to
           </div>
         </div>
         {options && (
-          <div className="grid grid-cols-[1fr_1fr_auto_auto] items-start gap-2 border-b border-white/6 px-3 py-2">
+          <div className="grid grid-cols-[1fr_1fr_auto_auto] items-start gap-2 border-b border-ink/6 px-3 py-2">
             <label className="block">
-              <span className="mb-1 block text-[11px] text-faint">{t("Arguments du programme")}</span>
+              <span className="mb-1 block text-2xs text-faint">{t("Arguments du programme")}</span>
               <Input className="h-7 font-mono text-xs" value={s.args} onChange={(e) => update({ settings: { ...s, args: e.target.value } })} placeholder={'"un argument" deux 3'} />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[11px] text-faint">{t("Entrée standard")}</span>
-              <textarea spellCheck={false} className="field h-16 w-full resize-y border border-white/8 px-2 py-1 font-mono text-xs text-fg" value={s.stdin} onChange={(e) => update({ settings: { ...s, stdin: e.target.value } })} />
+              <span className="mb-1 block text-2xs text-faint">{t("Entrée standard")}</span>
+              <textarea spellCheck={false} className="field h-16 w-full resize-y border border-ink/8 px-2 py-1 font-mono text-xs text-fg" value={s.stdin} onChange={(e) => update({ settings: { ...s, stdin: e.target.value } })} />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[11px] text-faint">{t("Temps (s)")}</span>
+              <span className="mb-1 block text-2xs text-faint">{t("Temps (s)")}</span>
               <Input type="number" min={1} max={120} className="h-7 w-20 text-xs" value={s.timeoutS} onChange={(e) => setSettings({ timeoutS: Math.min(120, Math.max(1, Number(e.target.value) || 10)) })} />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[11px] text-faint">{t("Mémoire (Mo)")}</span>
+              <span className="mb-1 block text-2xs text-faint">{t("Mémoire (Mo)")}</span>
               <Input type="number" min={16} max={4096} className="h-7 w-24 text-xs" value={s.memMb} onChange={(e) => setSettings({ memMb: Math.min(4096, Math.max(16, Number(e.target.value) || 256)) })} />
             </label>
-            {tools && !tools.cgroupLimits && <p className="col-span-4 text-[11px] text-warn">{t("La limite mémoire passe par ulimit sur ce système : elle ne s'applique pas avec ASan ni Valgrind.")}</p>}
+            {tools && !tools.cgroupLimits && <p className="col-span-4 text-2xs text-warn">{t("La limite mémoire passe par ulimit sur ce système : elle ne s'applique pas avec ASan ni Valgrind.")}</p>}
           </div>
         )}
-        <div className="flex items-center gap-0.5 overflow-x-auto border-b border-white/6 px-2">
+        <div className="flex items-center gap-0.5 overflow-x-auto border-b border-ink/6 px-2">
           {sorted.map((f) => (
             <FileTab
               key={f.name}
@@ -363,7 +363,7 @@ function DraftView({ draft, tools, onDefaults, onDuplicate }: { draft: Draft; to
             <MenuItem onSelect={() => addFile(".h")}>{t("En-tête (.h)")}</MenuItem>
           </Menu>
           {file?.library && (
-            <button type="button" className="ml-auto flex items-center gap-1 px-2 text-[11px] text-faint hover:text-fg" onClick={() => setUnlocked((u) => new Set(u).add(file.name))} disabled={!locked}>
+            <button type="button" className="ml-auto flex items-center gap-1 px-2 text-2xs text-faint hover:text-fg" onClick={() => setUnlocked((u) => new Set(u).add(file.name))} disabled={!locked}>
               {locked ? <Lock className="size-3" /> : <LockOpen className="size-3" />}
               {locked ? t("Importé de {l} · lecture seule", { l: file.library }) : t("Importé de {l} · modifiable ici", { l: file.library })}
             </button>
@@ -374,7 +374,7 @@ function DraftView({ draft, tools, onDefaults, onDuplicate }: { draft: Draft; to
             {file && <CodeEditor key={`${draft.id}:${file.name}`} value={file.content} onChange={setContent} readOnly={locked} marks={marks} words={words} onRun={() => void run()} jump={jump} className="h-full overflow-hidden" label={file.name} />}
           </Suspense>
         </div>
-        <div className="flex items-center gap-3 border-t border-white/6 px-3 py-1.5 text-[11px] text-faint">
+        <div className="flex items-center gap-3 border-t border-ink/6 px-3 py-1.5 text-2xs text-faint">
           <span>
             <Kbd>Ctrl</Kbd> <Kbd>{t("Entrée")}</Kbd> {t("compiler et lancer")}
           </span>
@@ -409,17 +409,17 @@ function TitleField({ value, onChange }: { value: string; onChange: (v: string) 
   const [editing, setEditing] = useState(false);
   if (!editing)
     return (
-      <button type="button" className="flex max-w-56 items-center gap-1.5 truncate text-[13px] font-medium text-fg hover:text-accent" onClick={() => setEditing(true)} title={t("Renommer")}>
+      <button type="button" className="flex max-w-56 items-center gap-1.5 truncate text-sm font-medium text-fg hover:text-accent" onClick={() => setEditing(true)} title={t("Renommer")}>
         <span className="truncate">{value}</span>
         <Pencil className="size-3 shrink-0 text-faint" />
       </button>
     );
-  return <Input autoFocus className="h-7 w-48 text-[13px]" defaultValue={value} onBlur={(e) => { onChange(e.target.value.trim() || value); setEditing(false); }} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") setEditing(false); }} />;
+  return <Input autoFocus className="h-7 w-48 text-sm" defaultValue={value} onBlur={(e) => { onChange(e.target.value.trim() || value); setEditing(false); }} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") setEditing(false); }} />;
 }
 
 function Toggle({ on, onChange, disabled, title, children }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean; title?: string; children: string }) {
   return (
-    <button type="button" aria-pressed={on} disabled={disabled} title={title} onClick={() => onChange(!on)} className={cn("h-7 rounded-md border px-2 font-mono text-[11px] transition-colors disabled:cursor-not-allowed disabled:opacity-40", on ? "border-accent/50 bg-accent-soft text-accent-strong" : "border-white/8 text-muted hover:text-fg")}>
+    <button type="button" aria-pressed={on} disabled={disabled} title={title} onClick={() => onChange(!on)} className={cn("h-7 rounded-md border px-2 font-mono text-2xs transition-colors disabled:cursor-not-allowed disabled:opacity-40", on ? "border-accent/50 bg-accent-soft text-accent-strong" : "border-ink/8 text-muted hover:text-fg")}>
       {children}
     </button>
   );
@@ -429,11 +429,11 @@ function FileTab({ file, on, errors, renaming, onSelect, onRename, onStartRename
   if (renaming)
     return <Input autoFocus className="my-1 h-6 w-40 font-mono text-xs" defaultValue={file.name} onBlur={(e) => onRename(e.target.value.trim())} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") onRename(file.name); }} />;
   return (
-    <div className={cn("group -mb-px flex h-8 shrink-0 items-center gap-1 border-b-2 px-2 font-mono text-[12px]", on ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
+    <div className={cn("group -mb-px flex h-8 shrink-0 items-center gap-1 border-b-2 px-2 font-mono text-xs", on ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
       <button type="button" onClick={onSelect} onDoubleClick={file.library ? undefined : onStartRename} title={file.library ? t("Importé de {l}", { l: file.library }) : t("Double-clic pour renommer")}>
         {file.name}
       </button>
-      {errors > 0 && <span className="rounded bg-danger/15 px-1 text-[10px] text-danger">{errors}</span>}
+      {errors > 0 && <span className="rounded bg-danger/15 px-1 text-3xs text-danger">{errors}</span>}
       {onRemove && (
         <button type="button" aria-label={t("Supprimer {f}", { f: file.name })} onClick={() => { if (window.confirm(t("Supprimer {f} du brouillon ?", { f: file.name }))) onRemove(); }} className="text-faint opacity-0 group-hover:opacity-100 hover:text-danger">
           <Trash2 className="size-3" />

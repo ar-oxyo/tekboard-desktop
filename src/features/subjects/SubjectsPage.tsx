@@ -130,14 +130,14 @@ function Suggestions({ items, subjects, repos }: { items: SubjectSuggestion[]; s
   return (
     <Card className="mb-4">
       <CardTitle>{t("Associations à valider")}</CardTitle>
-      <p className="border-b border-white/6 px-4 pb-2 text-xs text-faint">{t("TekBoard n'associe seul que ce qui est certain (même projet MY Epitech, ou un seul dépôt du même nom). Pour le reste, il demande.")}</p>
+      <p className="border-b border-ink/6 px-4 pb-2 text-xs text-faint">{t("TekBoard n'associe seul que ce qui est certain (même projet MY Epitech, ou un seul dépôt du même nom). Pour le reste, il demande.")}</p>
       <ul className="py-1">
         {items.map((it) => {
           const sub = subjects.find((x) => x.id === it.subjectId);
           const repo = repos.find((r) => r.path === it.repoPath);
           if (!sub) return null;
           return (
-            <li key={`${it.subjectId}-${it.repoPath}`} className="flex min-h-10 items-center gap-3 px-4 text-[13px]">
+            <li key={`${it.subjectId}-${it.repoPath}`} className="flex min-h-10 items-center gap-3 px-4 text-sm">
               <FileText className="size-4 shrink-0 text-faint" />
               <span className="min-w-0 flex-1 truncate font-medium">{sub.name}</span>
               <span className="text-faint">→</span>
@@ -169,9 +169,9 @@ function SubjectRow({ subject, repos }: { subject: Subject; repos: RepoInfo[] })
   const [armed, setArmed] = useState(false);
   const fail = (title: string) => (e: unknown) => toast({ kind: "error", title, detail: asAppError(e).message });
   const refresh = () => void qc.invalidateQueries({ queryKey: keys.subjects });
-  const openDoc = useMutation({ mutationFn: () => api.subjectOpen(subject.id), onError: fail("Could not open the document") });
-  const link = useMutation({ mutationFn: (path: string | null) => api.subjectLink(subject.id, path), onSuccess: refresh, onError: fail("Could not link") });
-  const remove = useMutation({ mutationFn: () => api.subjectRemove(subject.id), onSuccess: refresh, onError: fail("Could not remove") });
+  const openDoc = useMutation({ mutationFn: () => api.subjectOpen(subject.id), onError: fail(t("Impossible d'ouvrir le document")) });
+  const link = useMutation({ mutationFn: (path: string | null) => api.subjectLink(subject.id, path), onSuccess: refresh, onError: fail(t("Impossible d'associer")) });
+  const remove = useMutation({ mutationFn: () => api.subjectRemove(subject.id), onSuccess: refresh, onError: fail(t("Impossible de retirer")) });
   const missing = subject.repoPath !== null && !repos.some((r) => r.path === subject.repoPath);
   const briefs = useQuery({ queryKey: ["subject-briefs"], queryFn: api.subjectBriefs });
   const brief = briefs.data?.[String(subject.id)];
@@ -179,9 +179,9 @@ function SubjectRow({ subject, repos }: { subject: Subject; repos: RepoInfo[] })
   const analyze = useMutation({ mutationFn: () => api.subjectAnalyze(subject.id), onSuccess: () => toast({ kind: "info", title: t("Artix lit le sujet"), detail: t("Le résumé sera gardé : le PDF ne sera plus relu.") }), onError: fail("Sujet non analysé") });
 
   return (
-    <li className="group flex h-12 items-center gap-3 border-b border-white/6 pr-2 pl-4 last:border-b-0 row-hover">
+    <li className="group flex h-12 items-center gap-3 border-b border-ink/6 pr-2 pl-4 last:border-b-0 row-hover">
       <FileText className="size-4 shrink-0 text-faint" />
-      <button type="button" onClick={() => openDoc.mutate()} className="selectable min-w-0 flex-[2] truncate text-left text-[13px] font-medium hover:text-accent-strong" title="Ouvrir">
+      <button type="button" onClick={() => openDoc.mutate()} className="selectable min-w-0 flex-[2] truncate text-left text-sm font-medium hover:text-accent-strong" title="Ouvrir">
         {subject.name}
       </button>
       {missing && <Badge tone="warn" title={t("Le dépôt lié n'est plus dans tes dossiers de projets")}>{t("projet introuvable")}</Badge>}
@@ -263,10 +263,10 @@ function ScanPanel({ repos, onClose, onImported }: { repos: RepoInfo[]; onClose:
           </span>
         }
       >
-        {scan.data ? `PDFs in ${tildify(scan.data.dir, home)}` : "Downloads"}
+        {scan.data ? t("PDF dans {d}", { d: tildify(scan.data.dir, home) }) : t("Téléchargements")}
       </CardTitle>
       {scan.isLoading ? (
-        <p className="flex items-center gap-2 px-4 py-5 text-[13px] text-muted">
+        <p className="flex items-center gap-2 px-4 py-5 text-sm text-muted">
           <Spinner /> {t("Lecture de tes téléchargements…")}
         </p>
       ) : scan.error ? (
@@ -274,10 +274,10 @@ function ScanPanel({ repos, onClose, onImported }: { repos: RepoInfo[]; onClose:
           <ErrorNote>{asAppError(scan.error).message}</ErrorNote>
         </div>
       ) : files.length === 0 ? (
-        <p className="px-4 py-5 text-[13px] text-muted">{already > 0 ? "Every PDF in this folder is already in the library." : "No PDF in this folder."}</p>
+        <p className="px-4 py-5 text-sm text-muted">{already > 0 ? t("Tous les PDF de ce dossier sont déjà dans la bibliothèque.") : t("Aucun PDF dans ce dossier.")}</p>
       ) : (
         <>
-          <p className="border-b border-white/6 px-4 py-2 text-xs text-faint">
+          <p className="border-b border-ink/6 px-4 py-2 text-xs text-faint">
             Files are copied, never moved. Ticked ones matched a project by name — check the suggestion before importing.
             {already > 0 && ` ${already} already in the library ${already === 1 ? "is" : "are"} hidden.`}
           </p>
@@ -285,7 +285,7 @@ function ScanPanel({ repos, onClose, onImported }: { repos: RepoInfo[]; onClose:
             {files.map((f) => (
               <li key={f.path} className="flex h-10 items-center gap-3 px-4 row-hover">
                 <input type="checkbox" className="accent-(--color-accent)" aria-label={`Import ${f.name}`} checked={picked.has(f.path)} onChange={() => toggle(f.path)} />
-                <span className="selectable min-w-0 flex-[2] truncate text-[13px]">{f.name}</span>
+                <span className="selectable min-w-0 flex-[2] truncate text-sm">{f.name}</span>
                 {f.suggestedRepo && links[f.path] === f.suggestedRepo && <Badge tone="accent">suggested</Badge>}
                 <ProjectSelect className="w-52 shrink-0" value={links[f.path] ?? null} repos={repos} onChange={(p) => setLinks({ ...links, [f.path]: p })} />
                 <span className="hidden w-16 shrink-0 text-right text-xs text-faint md:block">{formatBytes(f.size)}</span>

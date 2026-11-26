@@ -53,6 +53,8 @@ interface UiState {
   libraryPick: string[];
   paletteOpen: boolean;
   setPaletteOpen: (open: boolean) => void;
+  /** The keyboard shortcuts sheet (Ctrl+/). */
+  shortcutsOpen: boolean;
   /** Repository whose sheet (notes, deadline, build) is open. */
   sheetPath: string | null;
   openSheet: (path: string) => void;
@@ -108,6 +110,7 @@ let nextToast = 1;
 export const useUi = create<UiState>((set, get) => ({
   page: "overview",
   setPage: (page) => set({ page }),
+  shortcutsOpen: false,
   gitRepo: null,
   openGit: (gitRepo) => set({ gitRepo, page: "git", sheetPath: null, paletteOpen: false }),
   libraryRepo: null,

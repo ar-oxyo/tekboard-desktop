@@ -5,7 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { Check, Inbox, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
-import { useSettings } from "../../lib/hooks";
+import { useAutoAmbiance, useColorMode, useMotionPref, useSettings } from "../../lib/hooks";
 import { listenData, setQueryClient } from "../../lib/sync";
 import { t } from "../../lib/i18n";
 import { IconButton } from "../../components/ui";
@@ -14,6 +14,7 @@ import { CaptureEditor } from "./CaptureEditor";
 export function CaptureApp() {
   const qc = useQueryClient();
   const settings = useSettings();
+  const auto = useAutoAmbiance();
   const [shown, setShown] = useState(0);
   const [saved, setSaved] = useState<string | null>(null);
 
@@ -30,16 +31,18 @@ export function CaptureApp() {
     };
   }, [qc]);
   useEffect(() => {
-    document.documentElement.dataset.theme = settings.data?.theme ?? "aurora";
+    document.documentElement.dataset.theme = auto?.theme ?? settings.data?.theme ?? "aurora";
     document.documentElement.dataset.glass = "off";
-  }, [settings.data?.theme]);
+  }, [settings.data?.theme, auto?.theme]);
+  useColorMode(auto?.theme ?? settings.data?.theme, auto?.mode);
+  useMotionPref();
 
   const hide = (then: string | null = null) => void api.captureClose(then);
 
   return (
-    <div className="flex h-screen flex-col gap-2 overflow-hidden border border-white/10 bg-bg p-3 select-none">
+    <div className="flex h-screen flex-col gap-2 overflow-hidden border border-ink/10 bg-bg p-3 select-none">
       <header data-tauri-drag-region className="flex items-center gap-2">
-        <span data-tauri-drag-region className="flex-1 text-[12px] font-medium text-muted">
+        <span data-tauri-drag-region className="flex-1 text-xs font-medium text-muted">
           {t("Capture rapide")}
         </span>
         <IconButton label={t("Ouvrir l'Inbox")} onClick={() => hide("inbox")}>

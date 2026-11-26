@@ -55,9 +55,9 @@ export function Transfers() {
         <Inbox className="size-4 text-faint" /> TekShare
       </CardTitle>
       {all.length === 0 ? (
-        <p className="px-4 py-6 text-center text-[13px] text-muted">{t("Rien d'échangé pour l'instant. « Partager » existe aussi dans le Playground, l'Arena, les bibliothèques, les modèles, les prompts, les tests et le menu des projets.")}</p>
+        <p className="px-4 py-6 text-center text-sm text-muted">{t("Rien d'échangé pour l'instant. « Partager » existe aussi dans le Playground, l'Arena, les bibliothèques, les modèles, les prompts, les tests et le menu des projets.")}</p>
       ) : (
-        <ul className="divide-y divide-white/5">
+        <ul className="divide-y divide-ink/5">
           {[...pending, ...rest].slice(0, 60).map((x) => (
             <TransferRow key={x.id} x={x} onOpen={() => setOpened(x.id)} />
           ))}
@@ -76,7 +76,7 @@ function TransferRow({ x, onOpen }: { x: Transfer; onOpen: () => void }) {
     <li className="flex items-center gap-3 px-4 py-2.5">
       {x.direction === "in" ? <ArrowDownLeft className="size-4 shrink-0 text-info" /> : <ArrowUpRight className="size-4 shrink-0 text-faint" />}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] text-fg">
+        <p className="truncate text-sm text-fg">
           {x.title} <span className="text-xs text-faint">· {KIND_LABEL[x.kind] ?? x.kind}</span>
         </p>
         <p className="truncate text-xs text-faint">
@@ -85,7 +85,7 @@ function TransferRow({ x, onOpen }: { x: Transfer; onOpen: () => void }) {
           {x.detail && <span className="ml-2">{x.detail}</span>}
         </p>
         {moving && (
-          <span className="mt-1 block h-1 overflow-hidden rounded bg-white/5">
+          <span className="mt-1 block h-1 overflow-hidden rounded bg-ink/5">
             <span className="block h-1 bg-accent transition-all" style={{ width: `${percent(x)}%` }} />
           </span>
         )}
@@ -178,7 +178,7 @@ function ImportDialog({ id, onClose }: { id: string; onClose: () => void }) {
           <div className="max-h-64 space-y-2 overflow-y-auto">
             {o.files.slice(0, 8).map(([path, size, text]) => (
               <div key={path}>
-                <p className="font-mono text-[11px] text-faint">
+                <p className="font-mono text-2xs text-faint">
                   {path} · {formatBytes(size)}
                 </p>
                 {text !== null && (o.manifest.kind === "patch" ? <DiffView text={text} className="max-h-48 rounded-md" /> : <CodeView text={text} className="max-h-40 rounded-md" />)}
@@ -188,7 +188,7 @@ function ImportDialog({ id, onClose }: { id: string; onClose: () => void }) {
           </div>
           {o.destinations.some(needsRepo) && <ProjectPicker value={repo} onChange={setRepo} label={t("Projet de destination")} />}
           {o.destinations.some((d) => d === "library" || d === "template" || d === "prompt") && <Input placeholder={t("Nom (facultatif)")} value={name} onChange={(e) => setName(e.target.value)} />}
-          {checked && <p className="text-[13px] text-ok">{checked}</p>}
+          {checked && <p className="text-sm text-ok">{checked}</p>}
           <div className="flex flex-wrap gap-2">
             {o.destinations.map((d) => {
               const label = DEST_LABEL[d] ?? d;

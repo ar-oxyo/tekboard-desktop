@@ -89,22 +89,22 @@ export function UpdatesCard({ settings }: { settings: Settings }) {
 
           {check.error && <ErrorNote title={t("Recherche impossible")}>{asAppError(check.error).message}</ErrorNote>}
           {found === null && !check.isPending && (
-            <p className="flex items-center gap-2 text-[13px] text-ok">
+            <p className="flex items-center gap-2 text-sm text-ok">
               <CircleCheck className="size-4" /> {t("Tekboard est à jour.")}
             </p>
           )}
           {found && (
             <div className="rounded-lg border border-accent/30 bg-accent-soft p-4">
-              <p className="text-[13px] font-medium">{t("Tekboard {v} est disponible", { v: found.version })}</p>
+              <p className="text-sm font-medium">{t("Tekboard {v} est disponible", { v: found.version })}</p>
               {found.notes && (
-                <div className="mt-2 max-h-56 overflow-y-auto text-[13px] text-muted">
+                <div className="mt-2 max-h-56 overflow-y-auto text-sm text-muted">
                   <Markdown text={found.notes} />
                 </div>
               )}
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 {installed ? (
                   <>
-                    <span className="text-[13px] text-ok">{t("Mise à jour installée.")}</span>
+                    <span className="text-sm text-ok">{t("Mise à jour installée.")}</span>
                     <Button variant="primary" icon={<RotateCw className="size-3.5" />} onClick={() => void api.appRestart()}>
                       {t("Redémarrer Tekboard")}
                     </Button>
@@ -132,14 +132,14 @@ export function UpdatesCard({ settings }: { settings: Settings }) {
             </div>
           )}
           {check.isPending && (
-            <p className="flex items-center gap-2 text-[13px] text-muted">
+            <p className="flex items-center gap-2 text-sm text-muted">
               <Spinner /> {t("Recherche sur GitHub…")}
             </p>
           )}
           <label className="flex items-start gap-3 border-t border-line pt-4">
             <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={settings.updateCheck} disabled={autoCheck.isPending} onChange={(e) => autoCheck.mutate(e.target.checked)} />
             <span>
-              <span className="block text-[13px]">{t("Vérifier automatiquement")}</span>
+              <span className="block text-sm">{t("Vérifier automatiquement")}</span>
               <span className="block text-xs text-faint">{t("Une fois par jour au plus, sans rien installer : une notification discrète si une version sort.")}</span>
             </span>
           </label>

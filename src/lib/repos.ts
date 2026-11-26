@@ -1,6 +1,6 @@
 // Pure helpers over repository data. No I/O: covered by unit tests.
 import type { RepoInfo } from "./api";
-import { locale, t } from "./i18n";
+import { locale, plural, t } from "./i18n";
 
 
 /** Short name. A folder renamed after cloning ("… (Copy)") keeps its suffix so two copies stay distinguishable. */
@@ -118,11 +118,10 @@ export function daysLeft(deadline: string, now: Date = new Date()): number | nul
 }
 
 export function deadlineLabel(days: number): string {
-  if (days < -1) return `${-days} days late`;
-  if (days === -1) return "1 day late";
-  if (days === 0) return "today";
-  if (days === 1) return "tomorrow";
-  return `in ${days} days`;
+  if (days < 0) return plural(-days, "{n} jour de retard", "{n} jours de retard");
+  if (days === 0) return t("aujourd'hui");
+  if (days === 1) return t("demain");
+  return t("dans {n} jours", { n: days });
 }
 
 /** Moment the hand-in closes, in ms: the exact instant when known, else the end of the day. `null` without a usable date. */
@@ -141,7 +140,7 @@ export type DueState = "upcoming" | "today" | "overdue" | "unknown";
 
 export interface Due {
   state: DueState;
-  /** "today 19:42", "in 9 days", "2 h late"… Empty when there is no date. */
+  /** "aujourd'hui 19:42", "dans 9 jours", "2 h de retard"… Empty when there is no date. */
   label: string;
   /** Badge colour: late, close (two days or less), or neither. */
   tone: "danger" | "warn" | "neutral";
@@ -160,12 +159,12 @@ export function due(day: string | null, at: string | null, now: Date = new Date(
     const late = now.getTime() - exact;
     if (late > 0) {
       const min = Math.floor(late / 60_000);
-      const label = min < 60 ? `${Math.max(1, min)} min late` : min < 24 * 60 ? `${Math.floor(min / 60)} h late` : deadlineLabel(Math.min(-1, days ?? -Math.floor(min / 1440)));
+      const label = min < 60 ? t("{n} min de retard", { n: Math.max(1, min) }) : min < 24 * 60 ? t("{n} h de retard", { n: Math.floor(min / 60) }) : deadlineLabel(Math.min(-1, days ?? -Math.floor(min / 1440)));
       return { state: "overdue", label, tone: "danger", time };
     }
     const d = days ?? Math.round(-late / 86_400_000);
-    if (d <= 0) return { state: "today", label: `today ${time}`, tone: "warn", time };
-    return { state: "upcoming", label: d === 1 ? `tomorrow ${time}` : deadlineLabel(d), tone: d <= 2 ? "warn" : "neutral", time };
+    if (d <= 0) return { state: "today", label: t("aujourd'hui {time}", { time }), tone: "warn", time };
+    return { state: "upcoming", label: d === 1 ? t("demain {time}", { time }) : deadlineLabel(d), tone: d <= 2 ? "warn" : "neutral", time };
   }
   if (days === null) return { state: "unknown", label: "", tone: "neutral", time: null };
   if (days < 0) return { state: "overdue", label: deadlineLabel(days), tone: "danger", time: null };

@@ -48,7 +48,7 @@ export function ConnectPage() {
         {s.problems.length > 0 && (
           <div className="space-y-1">
             {s.problems.map((p, i) => (
-              <p key={i} className="rounded-md border border-warn/30 bg-warn/10 px-3 py-2 text-[13px] text-warn">
+              <p key={i} className="rounded-md border border-warn/30 bg-warn/10 px-3 py-2 text-sm text-warn">
                 {p}
               </p>
             ))}
@@ -73,9 +73,9 @@ function Intro({ state, busy, onEnable }: { state: ConnectState; busy: boolean; 
       <div className="flex items-start gap-4">
         <Network className="mt-1 size-8 text-accent" />
         <div className="space-y-3">
-          <h2 className="display text-[20px] text-fg">TekBoard Connect</h2>
-          <p className="text-[13px] text-muted">{t("Retrouve les autres utilisateurs de TekBoard sur le même réseau pour partager du code, des tests ou des rapports, coder ensemble dans VS Code ou travailler côte à côte dans TekSpace. Tout est facultatif.")}</p>
-          <ul className="space-y-1.5 text-[13px] text-muted">
+          <h2 className="display text-xl text-fg">TekBoard Connect</h2>
+          <p className="text-sm text-muted">{t("Retrouve les autres utilisateurs de TekBoard sur le même réseau pour partager du code, des tests ou des rapports, coder ensemble dans VS Code ou travailler côte à côte dans TekSpace. Tout est facultatif.")}</p>
+          <ul className="space-y-1.5 text-sm text-muted">
             <li className="flex gap-2">
               <ShieldCheck className="mt-0.5 size-4 shrink-0 text-ok" /> {t("Rien ne passe par Internet ni par un serveur : les ordinateurs se parlent directement, en chiffré (TLS 1.3, identité par certificat).")}
             </li>
@@ -111,14 +111,14 @@ function RequestCard({ r }: { r: PairRequest }) {
     <Card hero className="flex items-center gap-4 p-4">
       <Avatar profile={r.profile} fp={r.fp} size={40} />
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] text-fg">{text}</p>
+        <p className="text-sm text-fg">{text}</p>
         <p className="text-xs text-faint">
           {r.addr} · {t("empreinte")} {r.short}
         </p>
       </div>
       <div className="text-center">
-        <p className="text-[11px] text-faint">{t("Code à comparer")}</p>
-        <p className="display font-mono text-[22px] tracking-widest text-accent-strong tabular">{r.code}</p>
+        <p className="text-2xs text-faint">{t("Code à comparer")}</p>
+        <p className="display font-mono text-xl tracking-widest text-accent-strong tabular">{r.code}</p>
       </div>
       {r.state === "waiting" ? (
         <Button size="sm" variant="ghost" onClick={() => answer(false)}>
@@ -151,7 +151,7 @@ function People({ state }: { state: ConnectState }) {
           {t("Les TekBoard qui ont activé Connect sur ce réseau apparaissent ici. Sinon, échangez vos codes d'invitation (à droite).")}
         </EmptyState>
       ) : (
-        <div className="divide-y divide-white/5">
+        <div className="divide-y divide-ink/5">
           <Group title={t("En ligne")} people={g.online} />
           <Group title={t("À proximité")} people={g.nearby} />
           <Group title={t("Contacts absents")} people={g.offline} />
@@ -186,7 +186,7 @@ function PersonRow({ p }: { p: PeerView }) {
     <li className="row-hover flex items-center gap-3 rounded-md px-2 py-2">
       <Avatar profile={p.profile} fp={p.fp} size={32} online={p.online} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] text-fg">
+        <p className="truncate text-sm text-fg">
           {p.profile.nick} {!p.trusted && !p.blocked && <span className="text-xs text-faint">· {t("non vérifié")}</span>}
         </p>
         <p className="truncate text-xs text-faint">
@@ -241,7 +241,7 @@ function ProfileCard({ state, busy, onSave, onDisable }: { state: ConnectState; 
             <Select<ConnectStatus> size="sm" label={t("Statut")} value={state.profile.status} onChange={(status) => onSave({ ...state.profile, status })} options={CHOOSABLE.map((s) => ({ value: s, label: STATUS[s].label, hint: s === "invisible" ? t("personne ne te voit") : undefined }))} />
           </div>
         </div>
-        <p className="font-mono text-[11px] text-faint" title={state.fp}>
+        <p className="font-mono text-2xs text-faint" title={state.fp}>
           {t("Empreinte de cet appareil")} : {state.short}
         </p>
         <Button size="sm" variant="ghost" icon={<WifiOff className="size-3.5" />} busy={busy} onClick={onDisable}>
@@ -277,7 +277,7 @@ function InviteCard({ state }: { state: ConnectState }) {
         <p className="text-xs text-muted">{t("Quand la découverte ne marche pas, donne ce code à ton ami (Teams, oral…) ou colle le sien.")}</p>
         {state.invite ? (
           <div className="flex gap-2">
-            <code className="selectable min-w-0 flex-1 truncate rounded bg-raised px-2 py-1.5 font-mono text-[11px] text-fg" title={state.invite}>
+            <code className="selectable min-w-0 flex-1 truncate rounded bg-raised px-2 py-1.5 font-mono text-2xs text-fg" title={state.invite}>
               {state.invite}
             </code>
             <Button size="sm" icon={<Copy className="size-3.5" />} onClick={() => void navigator.clipboard.writeText(state.invite!).then(() => toast({ kind: "ok", title: t("Code copié") }))}>
@@ -325,7 +325,7 @@ function DiagnosisCard({ state, onInterface }: { state: ConnectState; onInterfac
           </Button>
         </div>
         {diag && (
-          <div className="space-y-2 text-[12px]">
+          <div className="space-y-2 text-xs">
             {diag.advice.map((a, i) => (
               <p key={i} className="text-warn">
                 {a}

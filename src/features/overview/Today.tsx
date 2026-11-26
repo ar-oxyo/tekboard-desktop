@@ -1,10 +1,10 @@
-// Dashboard blocks centred on the day: what to do now, today's timeline, the coming load, quick actions.
+// Blocks of the Today screen: what to do now, today's timeline, the coming load, quick actions.
 import { CalendarDays, CalendarPlus, ClipboardCheck, Flag, Inbox, Lock, PenLine, Play, Plus, Sparkles, Sun, TriangleAlert, Wand2 } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { api, asAppError } from "../../lib/api";
-import { Button, Card, CardTitle, cn, Dot, Spinner, Tag } from "../../components/ui";
+import { Button, cn, Kbd, Notice, Section, Spinner, Tag } from "../../components/ui";
 import { useNow } from "../../lib/hooks";
 import { addDays, fmtDur, hhmm, MIN, nextUp, startOfDay, toRegister, workload, type CalItem } from "../../lib/plan";
 import { due } from "../../lib/repos";
@@ -16,7 +16,8 @@ import { useLoads, usePlanData } from "../planning/usePlan";
 import { Countdown } from "../projects/RepoBits";
 import { locale, plural, t } from "../../lib/i18n";
 
-export function TodayCard() {
+/** What to do now: the session under way or next, else the project that needs time, else a free day. */
+export function NowBlock() {
   const data = usePlanData();
   const nowDate = useNow(30_000);
   const now = nowDate.getTime();
@@ -31,125 +32,141 @@ export function TodayCard() {
   // The "morning plan": offered (never applied) when nothing is planned and there is work to place.
   const hasWorkLeft = data.projects.some((p) => (p.estimateMin ?? 0) > 0 && p.status !== "done");
   const suggestion = data.prefs.morningPlan && workToday.length === 0 && hasWorkLeft;
-  const greeting = new Date(now).getHours() < 12 ? t("Bonjour") : new Date(now).getHours() < 18 ? t("Bon après-midi") : t("Bonsoir");
 
-  let hero: ReactNode;
+  let kicker: ReactNode;
+  let title: ReactNode;
+  let meta: ReactNode;
+  let actions: ReactNode;
   if (next.kind === "now" || next.kind === "soon") {
     const i = next.item;
-    hero = (
+    kicker = next.kind === "now" ? t("En cours · jusqu'à {h}", { h: hhmm(i.end) }) : t("Ensuite · {h}, dans {d}", { h: hhmm(i.start), d: fmtDur((i.start - now) / MIN) });
+    title = i.title;
+    meta = [i.module, fmtDur((i.end - i.start) / MIN), i.detail].filter(Boolean).join(" · ");
+    actions = (
       <>
-        <p className="text-xs text-faint">{next.kind === "now" ? `Now · until ${hhmm(i.end)}` : `Next · ${hhmm(i.start)}, in ${fmtDur((i.start - now) / MIN)}`}</p>
-        <h3 className="display mt-2 truncate text-[28px] leading-[1.15] font-medium">{i.title}</h3>
-        <p className="mt-1 text-[13px] text-muted">{[i.module, fmtDur((i.end - i.start) / MIN), i.detail].filter(Boolean).join(" · ")}</p>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <Button variant="primary" icon={<Play className="size-3.5" />} onClick={() => startFocus({ title: i.title, project: i.project, taskId: i.event?.taskId ?? null, eventId: i.event?.id ?? null, plannedMin: Math.round((i.end - Math.max(now, i.start)) / MIN) })}>
-            Démarrer
-          </Button>
-          <Button onClick={() => i.event && ui().editEvent(i.event)}>Modifier</Button>
-        </div>
+        <Button variant="primary" icon={<Play className="size-3.5" />} onClick={() => startFocus({ title: i.title, project: i.project, taskId: i.event?.taskId ?? null, eventId: i.event?.id ?? null, plannedMin: Math.round((i.end - Math.max(now, i.start)) / MIN) })}>
+          {t("Démarrer")}
+        </Button>
+        {i.event && <Button onClick={() => ui().editEvent(i.event!)}>{t("Modifier")}</Button>}
       </>
     );
   } else if (next.kind === "plan" || next.kind === "start") {
     const p = next.project;
     const d = due(p.day, p.at, nowDate);
-    hero = (
+    kicker = next.kind === "plan" ? t("A besoin de temps dans ton planning") : t("Rendu le plus proche");
+    title = (
       <>
-        <p className="text-xs text-faint">{next.kind === "plan" ? "Needs time in your calendar" : "Nearest hand-in"}</p>
-        <div className="mt-2 flex flex-wrap items-baseline gap-x-3">
-          <h3 className="display truncate text-[28px] leading-[1.15] font-medium">{p.title}</h3>
-          {p.module && <Tag>{p.module}</Tag>}
-        </div>
-        <p className="mt-1 flex flex-wrap items-center gap-3 text-[13px] text-muted">
-          {d.state !== "unknown" && <Countdown tone={d.tone}>{d.label}</Countdown>}
-          <span>{next.load.why || (p.estimateMin === null ? "no estimate of the work left yet" : "")}</span>
-        </p>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <Button variant="primary" icon={<Play className="size-3.5" />} onClick={() => startFocus({ title: p.title, project: p.key, taskId: null, eventId: null, plannedMin: data.prefs.sessionMinutes })}>
-            Y travailler maintenant
+        {p.title}
+        {p.module && <Tag>{p.module}</Tag>}
+      </>
+    );
+    meta = (
+      <>
+        {d.state !== "unknown" && <Countdown tone={d.tone}>{d.label}</Countdown>}
+        <span>{next.load.why || (p.estimateMin === null ? t("pas encore d'estimation du travail restant") : "")}</span>
+      </>
+    );
+    actions = (
+      <>
+        <Button variant="primary" icon={<Play className="size-3.5" />} onClick={() => startFocus({ title: p.title, project: p.key, taskId: null, eventId: null, plannedMin: data.prefs.sessionMinutes })}>
+          {t("Y travailler maintenant")}
+        </Button>
+        <Button icon={<Wand2 className="size-3.5" />} onClick={() => ui().openAssistant({ text: "#week" })}>
+          {t("Planifier ma semaine")}
+        </Button>
+        {p.repoPath && (
+          <Button variant="ghost" onClick={() => ui().openSheet(p.repoPath!)}>
+            {t("Fiche du projet")}
           </Button>
-          <Button icon={<Wand2 className="size-3.5" />} onClick={() => ui().openAssistant({ text: "#week" })}>
-            {t("Planifier ma semaine")}
-          </Button>
-          {p.repoPath && <Button onClick={() => ui().openSheet(p.repoPath!)}>{t("Projet")}</Button>}
-        </div>
+        )}
       </>
     );
   } else {
-    hero = (
-      <>
-        <p className="text-xs text-faint">{t("Rien d'urgent")}</p>
-        <h3 className="display mt-2 text-[28px] leading-[1.15] font-medium">{t("Ta journée est libre")}</h3>
-        <p className="mt-1 text-[13px] text-muted">{t("Aucune session prévue et aucun rendu proche. Note ce que tu veux faire, ou choisis un projet.")}</p>
-        <div className="mt-5 flex gap-2">
-          <Button icon={<Plus className="size-3.5" />} onClick={() => ui().setCaptureOpen(true)}>
-            {t("Noter une tâche")}
-          </Button>
-        </div>
-      </>
+    kicker = t("Rien d'urgent");
+    title = t("Ta journée est libre");
+    meta = t("Aucune session prévue et aucun rendu proche.");
+    actions = (
+      <Button icon={<Plus className="size-3.5" />} onClick={() => ui().setCaptureOpen(true)}>
+        {t("Noter une tâche")}
+      </Button>
     );
   }
 
   return (
-    <Card hero>
-      <div className="p-6">
-        <div className="flex items-center justify-between text-xs text-faint">
-          <span>{greeting}</span>
-          {data.loading && <Spinner />}
-        </div>
-        <div className="mt-3">{hero}</div>
-      </div>
-      {register.length > 0 && (
-        <div className="flex items-start gap-3 border-t border-white/6 px-6 py-3 text-[13px]">
-          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warn" />
-          <div className="min-w-0 flex-1">
-            <p className="text-muted">Mandatory {register.length === 1 ? "session" : "sessions"} you are not registered to. Register on MY Epitech.</p>
-            <ul className="mt-1">
-              {register.map((i) => (
-                <li key={i.id} className="flex min-h-7 items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate">{i.title}</span>
-                  <span className="shrink-0 text-xs text-faint">{new Date(i.start).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" })}</span>
-                  {i.agenda?.eventId != null && <FreeSlots eventId={i.agenda.eventId} />}
-                </li>
-              ))}
-            </ul>
-          </div>
+    <section className="min-w-0" aria-label={t("Maintenant")}>
+      <p className="flex items-center gap-2 text-xs text-faint">
+        {kicker}
+        {data.loading && <Spinner />}
+      </p>
+      <h2 className="display mt-1.5 flex min-w-0 flex-wrap items-baseline gap-x-3 text-2xl font-(--title-weight) tracking-[-0.015em] [&>span]:tracking-normal">{title}</h2>
+      <p className="mt-1 flex min-h-5 flex-wrap items-center gap-3 text-sm text-muted">{meta}</p>
+      <div className="mt-4 flex flex-wrap gap-2">{actions}</div>
+
+      {(register.length > 0 || peerTodo.length > 0 || suggestion) && (
+        <div className="mt-5 flex flex-col gap-2">
+          {register.length > 0 && (
+            <Notice tone="warn" icon={<TriangleAlert />}>
+              <p>{plural(register.length, "Session obligatoire où tu n'es pas inscrit. Inscris-toi sur MY Epitech.", "Sessions obligatoires où tu n'es pas inscrit. Inscris-toi sur MY Epitech.")}</p>
+              <ul className="mt-1">
+                {register.map((i) => (
+                  <li key={i.id} className="flex min-h-7 items-center gap-2 text-fg">
+                    <span className="min-w-0 flex-1 truncate">{i.title}</span>
+                    <span className="shrink-0 text-xs text-faint">{new Date(i.start).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" })}</span>
+                    {i.agenda?.eventId != null && <FreeSlots eventId={i.agenda.eventId} />}
+                  </li>
+                ))}
+              </ul>
+            </Notice>
+          )}
+          {peerTodo.length > 0 && (
+            <Notice tone="warn" icon={<ClipboardCheck />}>
+              {plural(peerTodo.length, "{n} évaluation de pair à rendre :", "{n} évaluations de pairs à rendre :")} <strong>{[...new Set(peerTodo)].join(", ")}</strong>
+            </Notice>
+          )}
+          {suggestion && (
+            <Notice
+              icon={<Sun />}
+              action={
+                <Button size="sm" onClick={() => void suggestPlan("day")}>
+                  {t("Proposer")}
+                </Button>
+              }
+            >
+              {t("Rien de prévu aujourd'hui. TekBoard peut te proposer une journée réaliste, avec pauses et temps libre.")}
+            </Notice>
+          )}
         </div>
       )}
-      {peerTodo.length > 0 && (
-        <div className="flex items-center gap-3 border-t border-white/6 px-6 py-3 text-[13px]">
-          <ClipboardCheck className="size-4 shrink-0 text-warn" />
-          <span className="min-w-0 flex-1 truncate text-muted">
-            {peerTodo.length} peer evaluation{peerTodo.length > 1 ? "s" : ""} to submit: <span className="text-fg">{[...new Set(peerTodo)].join(", ")}</span>
-          </span>
-        </div>
+    </section>
+  );
+}
+
+/** Today's calendar, in time order. */
+export function ScheduleBlock() {
+  const data = usePlanData();
+  const now = useNow(30_000).getTime();
+  const day = startOfDay(now);
+  const today = useMemo(() => data.items.filter((i) => i.start < addDays(day, 1) && i.end > day && i.kind !== "campus" && !(i.allDay && i.kind !== "deadline" && i.kind !== "holiday")), [data.items, day]);
+  return (
+    <Section
+      title={t("Au programme")}
+      meta={today.length > 0 ? plural(today.length, "{n} entrée", "{n} entrées") : undefined}
+      action={
+        <Button variant="ghost" size="sm" icon={<CalendarDays className="size-3.5" />} onClick={() => useUi.getState().openPlanning(now)}>
+          {t("Planning")}
+        </Button>
+      }
+    >
+      {today.length === 0 ? (
+        <p className="py-3 text-sm text-muted">{t("Rien au calendrier aujourd'hui.")}</p>
+      ) : (
+        <ul>
+          {today.map((i) => (
+            <TodayRow key={i.id} i={i} now={now} />
+          ))}
+        </ul>
       )}
-      {suggestion && (
-        <div className="flex items-center gap-3 border-t border-white/6 px-6 py-3 text-[13px]">
-          <Sun className="size-4 shrink-0 text-accent" />
-          <span className="min-w-0 flex-1 text-muted">{t("Rien de prévu aujourd'hui. TekBoard peut te proposer une journée réaliste, avec pauses et temps libre.")}</span>
-          <Button size="sm" onClick={() => void suggestPlan("day")}>
-            Proposer
-          </Button>
-        </div>
-      )}
-      <div className="border-t border-white/6 px-6 py-3">
-        <div className="mb-1 flex items-center justify-between">
-          <span className="text-xs text-faint">{t("Aujourd'hui")}</span>
-          <button type="button" className="flex items-center gap-1 text-xs text-muted hover:text-fg" onClick={() => ui().openPlanning(now)}>
-            <CalendarDays className="size-3.5" /> {t("Ouvrir le planning")}
-          </button>
-        </div>
-        {today.length === 0 ? (
-          <p className="py-2 text-[13px] text-muted">{t("Rien au calendrier aujourd'hui.")}</p>
-        ) : (
-          <ul>
-            {today.map((i) => (
-              <TodayRow key={i.id} i={i} now={now} />
-            ))}
-          </ul>
-        )}
-      </div>
-    </Card>
+    </Section>
   );
 }
 
@@ -158,42 +175,41 @@ function TodayRow({ i, now }: { i: CalItem; now: number }) {
   const current = i.start <= now && i.end > now;
   const ui = useUi.getState;
   return (
-    <li>
-      <button type="button" onClick={() => (i.event ? ui().editEvent(i.event) : i.project ? ui().openSheet(i.project) : ui().openPlanning(now))} className={cn("row-hover -mx-2 flex min-h-9 w-[calc(100%+1rem)] items-center gap-3 rounded-md px-2 text-left text-[13px]", past && "opacity-50")}>
-        <span className="w-24 shrink-0 font-mono text-xs text-muted">{i.allDay ? "all day" : i.kind === "deadline" ? hhmm(i.end) : `${hhmm(i.start)} – ${hhmm(i.end)}`}</span>
-        <span className="h-4 w-1 shrink-0 rounded-full" style={{ background: i.color } as CSSProperties} />
-        <span className={cn("min-w-0 flex-1 truncate", i.done && "line-through", current && "font-medium")}>{i.title}</span>
-        {i.kind === "deadline" && <Flag className="size-3.5 shrink-0 text-danger" />}
+    <li className="border-b border-line last:border-b-0">
+      <button type="button" onClick={() => (i.event ? ui().editEvent(i.event) : i.project ? ui().openSheet(i.project) : ui().openPlanning(now))} className={cn("ink-row flex min-h-9 w-full items-center gap-3 px-1 text-left text-sm", past && "text-faint")}>
+        <span className={cn("w-[104px] shrink-0 font-mono text-xs whitespace-nowrap", current ? "text-accent-strong" : "text-muted")}>{i.allDay ? t("journée") : i.kind === "deadline" ? hhmm(i.end) : `${hhmm(i.start)} – ${hhmm(i.end)}`}</span>
+        <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: i.color } as CSSProperties} />
+        <span className={cn("min-w-0 flex-1 truncate", i.done && "line-through", current && "font-medium text-fg")}>{i.title}</span>
+        {i.kind === "deadline" && <Flag className="size-3.5 shrink-0 text-accent-2" aria-label={t("Rendu")} />}
         {i.source === "my" && i.kind !== "deadline" && <Lock className="size-3 shrink-0 text-faint" aria-label={t("Depuis MY Epitech")} />}
-        {current && <Dot tone="accent">now</Dot>}
+        {current && <span className="shrink-0 text-xs font-medium text-accent-strong">{t("maintenant")}</span>}
       </button>
     </li>
   );
 }
 
 /** The next seven days as bars: school, planned work, other entries, and hand-ins. */
-export function WorkloadCard() {
+export function WorkloadBlock() {
   const data = usePlanData();
   const now = useNow().getTime();
   const days = workload(data.items, data.prefs, startOfDay(now), 7);
   const span = data.prefs.dayEnd - data.prefs.dayStart;
   return (
-    <Card>
-      <CardTitle right={<span className="text-xs text-faint">{t("{d} de travail max par jour", { d: fmtDur(data.prefs.maxMinutesPerDay) })}</span>}>{t("Prochains jours")}</CardTitle>
-      <ul className="flex flex-col gap-1.5 px-4 py-3">
+    <Section title={t("Sept prochains jours")} meta={t("{d} de travail max par jour", { d: fmtDur(data.prefs.maxMinutesPerDay) })}>
+      <ul className="flex flex-col py-1.5">
         {days.map((d) => {
           const total = d.school + d.work + d.other;
           return (
             <li key={d.day}>
-              <button type="button" onClick={() => useUi.getState().openPlanning(d.day)} className="grid w-full grid-cols-[72px_minmax(0,1fr)_64px] items-center gap-3 text-left text-xs" title={`${t("École")} ${fmtDur(d.school)} · ${t("travail")} ${fmtDur(d.work)} · ${t("autre")} ${fmtDur(d.other)}${d.handIns.length ? `\n${t("Rendu")} : ${d.handIns.join(", ")}` : ""}`}>
-                <span className={cn("capitalize", d.day === startOfDay(now) ? "font-medium text-fg" : "text-muted")}>{new Date(d.day).toLocaleDateString(locale(), { weekday: "short", day: "numeric" })}</span>
-                <span className="relative flex h-2 overflow-hidden rounded-full bg-white/6">
-                  <span className="h-full bg-info/70" style={{ width: `${Math.min(100, (d.school / span) * 100)}%` }} />
+              <button type="button" onClick={() => useUi.getState().openPlanning(d.day)} className="ink-row grid h-7 w-full grid-cols-[64px_minmax(0,1fr)_68px] items-center gap-3 rounded-sm px-1 text-left text-xs" title={`${t("École")} ${fmtDur(d.school)} · ${t("travail")} ${fmtDur(d.work)} · ${t("autre")} ${fmtDur(d.other)}${d.handIns.length ? `\n${t("Rendu")} : ${d.handIns.join(", ")}` : ""}`}>
+                <span className={cn("capitalize", d.day === startOfDay(now) ? "font-semibold text-fg" : "text-muted")}>{new Date(d.day).toLocaleDateString(locale(), { weekday: "short", day: "numeric" })}</span>
+                <span className="relative flex h-1.5 overflow-hidden rounded-full bg-ink/8">
+                  <span className="h-full bg-ink/35" style={{ width: `${Math.min(100, (d.school / span) * 100)}%` }} />
                   <span className="h-full bg-accent" style={{ width: `${Math.min(100, (d.work / span) * 100)}%` }} />
-                  <span className="h-full bg-faint/60" style={{ width: `${Math.min(100, (d.other / span) * 100)}%` }} />
+                  <span className="h-full bg-ink/15" style={{ width: `${Math.min(100, (d.other / span) * 100)}%` }} />
                 </span>
                 <span className="flex items-center justify-end gap-1.5">
-                  {d.handIns.length > 0 && <Flag className="size-3 text-danger" />}
+                  {d.handIns.length > 0 && <Flag className="size-3 text-accent-2" />}
                   <span className={cn("font-mono", d.level === "over" ? "text-danger" : d.level === "busy" ? "text-warn" : "text-faint")}>{total ? fmtDur(total) : t("libre")}</span>
                 </span>
               </button>
@@ -201,50 +217,51 @@ export function WorkloadCard() {
           );
         })}
       </ul>
-      <p className="flex gap-4 border-t border-white/6 px-4 py-2 text-[11px] text-faint">
+      <p className="flex gap-4 pt-1 text-2xs text-faint">
         <span className="flex items-center gap-1.5">
-          <span className="size-1.5 rounded-full bg-info/70" /> {t("école")}
+          <span className="size-1.5 rounded-full bg-ink/35" /> {t("école")}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="size-1.5 rounded-full bg-accent" /> {t("travail prévu")}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-1.5 rounded-full bg-faint/60" /> {t("autre")}
+          <span className="size-1.5 rounded-full bg-ink/15" /> {t("autre")}
         </span>
       </p>
-    </Card>
+    </Section>
   );
 }
 
-export function QuickActionsCard() {
+export function QuickActions() {
   const ui = useUi.getState;
   const [review, setReview] = useState(false);
   const inboxCount = useQuery({ queryKey: ["brain-count"], queryFn: api.brainCount, staleTime: 60_000 }).data ?? 0;
-  const row = (icon: ReactNode, label: string, hint: string, onClick: () => void) => (
-    <button type="button" onClick={onClick} className="row-hover flex h-10 w-full items-center gap-3 px-4 text-left text-[13px]">
-      <span className="flex w-4 justify-center text-faint">{icon}</span>
-      <span className="flex-1">{label}</span>
-      <span className="text-xs text-faint">{hint}</span>
-    </button>
+  const row = (icon: ReactNode, label: string, hint: ReactNode, onClick: () => void) => (
+    <li className="border-b border-line last:border-b-0">
+      <button type="button" onClick={onClick} className="ink-row flex h-9 w-full items-center gap-3 px-1 text-left text-sm">
+        <span className="flex w-4 justify-center text-faint">{icon}</span>
+        <span className="flex-1 truncate">{label}</span>
+        <span className="text-xs text-faint">{hint}</span>
+      </button>
+    </li>
   );
   return (
-    <Card>
-      <CardTitle>{t("Actions rapides")}</CardTitle>
-      <div className="py-1">
-        {row(<PenLine className="size-4" />, t("Noter une tâche ou une idée"), "Ctrl I", () => ui().setCaptureOpen(true))}
+    <Section title={t("Actions rapides")}>
+      <ul>
+        {row(<PenLine className="size-4" />, t("Noter une tâche ou une idée"), <Kbd>Ctrl I</Kbd>, () => ui().setCaptureOpen(true))}
         {row(<Inbox className="size-4" />, t("Ranger mon Inbox"), inboxCount ? String(inboxCount) : "", () => ui().openInbox())}
-        {row(<CalendarPlus className="size-4" />, t("Planifier ma semaine"), "local", () => ui().openAssistant({ text: "#week" }))}
+        {row(<CalendarPlus className="size-4" />, t("Planifier ma semaine"), t("sans IA"), () => ui().openAssistant({ text: "#week" }))}
         {row(<Sparkles className="size-4" />, t("Demander à Artix"), t("utilise des crédits"), () => ui().openAssistant())}
         {row(<ClipboardCheck className="size-4" />, t("Bilan de la semaine"), "", () => setReview(true))}
-        {row(<Plus className="size-4" />, t("Nouveau projet"), "Ctrl N", () => ui().openLauncher({ mode: "new" }))}
-      </div>
+        {row(<Plus className="size-4" />, t("Nouveau projet"), <Kbd>Ctrl N</Kbd>, () => ui().openLauncher({ mode: "new" }))}
+      </ul>
       {review && <ReviewDialog onClose={() => setReview(false)} />}
-    </Card>
+    </Section>
   );
 }
 
 /** Free slots of a session, asked to MY Epitech only when the button is pressed. */
-function FreeSlots({ eventId }: { eventId: number }) {
+export function FreeSlots({ eventId }: { eventId: number }) {
   const [open, setOpen] = useState(false);
   const q = useQuery({ queryKey: ["my-free-slots", eventId], queryFn: () => api.myFreeSlots(eventId), enabled: open, staleTime: 120_000, retry: false });
   const byDay = new Map<string, Array<{ start: string; end: string }>>();
@@ -260,7 +277,7 @@ function FreeSlots({ eventId }: { eventId: number }) {
         </button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content align="end" sideOffset={6} collisionPadding={8} className="menu anim-pop z-[70] max-h-80 w-72 overflow-y-auto p-3 text-[13px]">
+        <Popover.Content align="end" sideOffset={6} collisionPadding={8} className="menu anim-pop z-[70] max-h-80 w-72 overflow-y-auto p-3 text-sm">
           {q.isLoading ? (
             <p className="flex items-center gap-2 text-muted">
               <Spinner /> {t("Demande à MY Epitech…")}

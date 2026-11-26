@@ -15,9 +15,9 @@ export function BranchLabel({ repo, quiet }: { repo: RepoInfo; quiet?: boolean }
   if (!s) return null;
   if (quiet && (s.branch === "main" || s.branch === "master")) return null;
   return (
-    <span className="inline-flex min-w-0 items-center gap-1 font-mono text-xs text-muted" title={s.upstream ? `Tracks ${s.upstream}` : "No upstream"}>
+    <span className="inline-flex min-w-0 items-center gap-1 font-mono text-xs text-muted" title={s.upstream ? t("Suit {u}", { u: s.upstream }) : t("Pas de branche distante suivie")}>
       <GitBranch className="size-3 shrink-0 text-faint" />
-      <span className="truncate">{s.branch ?? "detached"}</span>
+      <span className="truncate">{s.branch ?? t("détachée")}</span>
     </span>
   );
 }
@@ -27,11 +27,11 @@ export function StatusChips({ repo, max = 3 }: { repo: RepoInfo; max?: number })
   if (repo.error) {
     return (
       <Dot tone="danger" ink title={repo.error}>
-        Unreadable
+        {t("Illisible")}
       </Dot>
     );
   }
-  if (items.length === 0) return <span className="text-xs text-faint">Clean</span>;
+  if (items.length === 0) return <span className="text-xs text-faint">{t("Propre")}</span>;
   const rest = items.slice(max);
   return (
     <span className="flex min-w-0 items-center gap-3">
@@ -120,7 +120,7 @@ export function RepoMenu({ repo, sheet = true }: { repo: RepoInfo; sheet?: boole
   const openLauncher = useUi((s) => s.openLauncher);
   const hasRemote = repo.remoteUrl !== null;
   return (
-    <Menu label={`More actions for ${repo.name}`}>
+    <Menu label={t("Autres actions pour {n}", { n: repo.name })}>
       {sheet && (
         <MenuItem icon={<NotebookPen className="size-4" />} onSelect={() => openSheet(repo.path)}>
           {t("Fiche du projet")}
@@ -139,7 +139,7 @@ export function RepoMenu({ repo, sheet = true }: { repo: RepoInfo; sheet?: boole
         {t("Lancer le binaire")}
       </MenuItem>
       <MenuSeparator />
-      <MenuItem icon={<Globe className="size-4" />} disabled={!hasRemote} onSelect={() => act.remote.mutate(repo)} hint={hasRemote ? "Firefox" : "no remote"} title={hasRemote ? (repo.remoteUrl ?? undefined) : "This repository has no remote"}>
+      <MenuItem icon={<Globe className="size-4" />} disabled={!hasRemote} onSelect={() => act.remote.mutate(repo)} hint={hasRemote ? "Firefox" : t("pas de dépôt distant")} title={hasRemote ? (repo.remoteUrl ?? undefined) : t("Ce dépôt n'a pas de dépôt distant")}>
         {t("Ouvrir sur GitHub")}
       </MenuItem>
       <MenuItem icon={<Copy className="size-4" />} disabled={!hasRemote} onSelect={() => act.copyUrl(repo)}>
@@ -201,7 +201,7 @@ export function RepoMenu({ repo, sheet = true }: { repo: RepoInfo; sheet?: boole
 export function FavoriteButton({ repo }: { repo: RepoInfo }) {
   const act = useProjectActions();
   return (
-    <IconButton label={repo.meta.favorite ? "Remove from favorites" : "Add to favorites"} active={repo.meta.favorite} onClick={() => act.favorite.mutate(repo)}>
+    <IconButton label={repo.meta.favorite ? t("Retirer des favoris") : t("Ajouter aux favoris")} active={repo.meta.favorite} className={cn(!repo.meta.favorite && "opacity-0 group-hover:opacity-100 focus-visible:opacity-100")} onClick={() => act.favorite.mutate(repo)}>
       <Star className="size-4" fill={repo.meta.favorite ? "currentColor" : "none"} />
     </IconButton>
   );

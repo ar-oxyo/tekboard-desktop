@@ -66,7 +66,7 @@ export function ReadmeDialog({ repo }: { repo: string }) {
         description={repo.split("/").pop()}
         footer={
           <>
-            <span className="mr-auto text-xs text-muted">{exists ? "README.md exists: compare before replacing it. The current file is saved first." : "This project has no README.md yet."}</span>
+            <span className="mr-auto text-xs text-muted">{exists ? t("README.md existe : compare avant de le remplacer. Le fichier actuel est sauvegardé d'abord.") : t("Ce projet n'a pas encore de README.md.")}</span>
             <Button variant="ghost" onClick={close}>{t("Annuler")}</Button>
             <Button variant="primary" busy={write.isPending} disabled={text === null || text.trim() === "" || running} onClick={() => write.mutate()}>{exists ? "Replace README.md" : "Write README.md"}</Button>
           </>
@@ -80,8 +80,8 @@ export function ReadmeDialog({ repo }: { repo: string }) {
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <div className="flex gap-1">
-                {(["edit", "diff"] as const).map((t) => (
-                  <button key={t} type="button" onClick={() => setTab(t)} className={cn("h-7 rounded-md px-3 text-[13px] transition-colors", tab === t ? "bg-accent-soft text-accent-strong" : "text-muted hover:text-fg")}>{t === "edit" ? "Proposal (editable)" : exists ? "Diff with current" : "What will be written"}</button>
+                {(["edit", "diff"] as const).map((k) => (
+                  <button key={k} type="button" onClick={() => setTab(k)} className={cn("h-7 rounded-md px-3 text-sm transition-colors", tab === k ? "bg-accent-soft text-accent-strong" : "text-muted hover:text-fg")}>{k === "edit" ? t("Proposition (modifiable)") : exists ? t("Différences avec l'actuel") : t("Ce qui sera écrit")}</button>
                 ))}
               </div>
               <label className="ml-auto flex items-center gap-2 text-xs text-muted" title={t("Ajoute une phrase dans la section Tests disant qu'une IA a aidé. Vérifie ce qu'exigent les règles de ton projet.")}>
@@ -94,11 +94,11 @@ export function ReadmeDialog({ repo }: { repo: string }) {
             {source === "claude" && <p className="text-xs text-muted">{t("Écrit par l'IA ({name}) à partir des fichiers lus. Vérifie-le face à ton code avant de l'écrire : elle peut se tromper.", { name: ai.name })}</p>}
             {failed && <ErrorNote title={ai.name}>{failed}</ErrorNote>}
             {tab === "edit" ? (
-              <textarea spellCheck={false} className="field selectable h-[46vh] w-full resize-none border border-white/8 p-3 font-mono text-xs leading-relaxed text-fg focus:border-accent focus:outline-none" value={text ?? ""} onChange={(e) => { setText(e.target.value); if (source === "facts") setSource("claude"); }} />
+              <textarea spellCheck={false} className="field selectable h-[46vh] w-full resize-none border border-ink/8 p-3 font-mono text-xs leading-relaxed text-fg focus:border-accent focus:outline-none" value={text ?? ""} onChange={(e) => { setText(e.target.value); if (source === "facts") setSource("claude"); }} />
             ) : diff.isLoading ? (
               <p className="flex items-center gap-2 py-6 text-muted"><Spinner /> {t("Comparaison…")}</p>
             ) : (diff.data ?? "").trim() === "" ? (
-              <p className="py-6 text-[13px] text-muted">{t("Identique au README.md actuel.")}</p>
+              <p className="py-6 text-sm text-muted">{t("Identique au README.md actuel.")}</p>
             ) : (
               <DiffView text={diff.data!} className="h-[46vh] rounded-md" />
             )}

@@ -96,7 +96,7 @@ export default function ArenaPage() {
     <div className="grid grid-cols-[minmax(340px,420px)_minmax(0,1fr)] gap-4">
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Input className="h-8 flex-1 text-[13px] font-medium" value={config.name} onChange={(e) => update({ name: e.target.value })} aria-label={t("Nom du benchmark")} />
+          <Input className="h-8 flex-1 text-sm font-medium" value={config.name} onChange={(e) => update({ name: e.target.value })} aria-label={t("Nom du benchmark")} />
           <Select<string> className="w-40" size="sm" label={t("Benchmarks enregistrés")} placeholder={t("Enregistrés…")} value={savedId !== null ? String(savedId) : null} onChange={(v) => { const s = saved.data?.find((x) => String(x.id) === v); if (s) set({ config: s.config, savedId: s.id }); }} options={(saved.data ?? []).map((s) => ({ value: String(s.id), label: s.config.name, hint: timeAgo(s.updatedAt) }))} emptyState={{ text: t("Aucun benchmark enregistré") }} />
           <IconButton label={t("Nouveau benchmark")} onClick={() => set({ config: emptyConfig(), savedId: null })}>
             <Plus className="size-4" />
@@ -106,11 +106,11 @@ export default function ArenaPage() {
         <ScenariosCard config={config} onChange={update} />
         <FilesCard files={config.files} onChange={(files) => update({ files })} />
         <OptionsCard config={config} onChange={update} valgrind={tools.data?.valgrind ?? true} />
-        <section className="card p-3">
+        <section className="border-t border-line pt-3">
           <h3 className="mb-1 flex items-center gap-1.5 text-xs text-faint">
             <Sparkles className="size-3.5" /> {t("Construire l'environnement avec Artix")}
           </h3>
-          <p className="mb-2 text-[12px] text-muted">{t("Artix lit le programme et écrit des générateurs de données et des scénarios. Tu les vois apparaître ici, puis tu décides de les utiliser : rien n'est exécuté avant que tu lances le benchmark.")}</p>
+          <p className="mb-2 text-xs text-muted">{t("Artix lit le programme et écrit des générateurs de données et des scénarios. Tu les vois apparaître ici, puis tu décides de les utiliser : rien n'est exécuté avant que tu lances le benchmark.")}</p>
           <div className="flex gap-2">
             <Input className="h-8 text-xs" placeholder={t("Ce que tu veux tester (facultatif) : le tri, la recherche…")} value={focus} onChange={(e) => setFocus(e.target.value)} />
             <Button size="sm" icon={<Sparkles className="size-3.5" />} busy={generating} disabled={!ai.read || config.variants.length === 0} disabledReason={!ai.read ? (ai.why ?? t("L'IA choisie ne lit pas les fichiers")) : t("Choisis d'abord le programme")} onClick={() => void generate()}>
@@ -160,7 +160,7 @@ export default function ArenaPage() {
           <div className="card space-y-2 p-3">
             <JobSteps job={shown} />
             {shown.status === "running" && (
-              <p className="flex items-center gap-2 text-[13px] text-muted">
+              <p className="flex items-center gap-2 text-sm text-muted">
                 <Spinner /> {t("Préparation des copies et compilation…")}
               </p>
             )}
@@ -181,7 +181,7 @@ function VariantsCard({ config, onChange }: { config: BenchConfig; onChange: (p:
   const setVariant = (i: number, v: ArenaVariant) => onChange({ variants: config.variants.map((x, j) => (j === i ? v : x)) });
   const first = config.variants[0];
   return (
-    <section className="card space-y-3 p-3">
+    <section className="space-y-3 border-t border-line pt-3">
       <h3 className="text-xs text-faint">{t("Programme mesuré")}</h3>
       {config.variants.length === 0 ? (
         <div className="flex gap-2">
@@ -209,7 +209,7 @@ function VariantEditor({ v, index, drafts, onChange, onRemove }: { v: ArenaVaria
   const revs = useQuery({ queryKey: ["arena-revs", path], queryFn: () => api.arenaRevisions(path!), enabled: !!path, retry: false });
   const revOptions = [{ value: "", label: t("Dossier de travail (tel quel)"), group: t("Version") }, ...(revs.data?.branches ?? []).map((b) => ({ value: b, label: b, group: t("Branches"), hint: b === revs.data?.current ? t("actuelle") : undefined })), ...(revs.data?.commits ?? []).map(([h, s]) => ({ value: h, label: `${h} ${s}`, group: t("Commits récents") }))];
   return (
-    <div className={cn("space-y-2 rounded-md border border-white/6 p-2.5", index === 1 && "border-dashed")}>
+    <div className={cn("space-y-2 rounded-md border border-ink/6 p-2.5", index === 1 && "border-dashed")}>
       <div className="flex items-center gap-2">
         <Input className="h-7 w-16 text-xs" value={v.label} onChange={(e) => onChange({ ...v, label: e.target.value.slice(0, 24) })} aria-label={t("Nom de la variante")} />
         <Select<"project" | "draft"> size="sm" className="w-32" label={t("Source")} value={v.source.kind} onChange={(k) => onChange({ ...v, source: k === "project" ? { kind: "project", path: "", rev: null } : { kind: "draft", id: drafts[0]?.id ?? 0 } })} options={[{ value: "project", label: t("Projet") }, { value: "draft", label: t("Brouillon"), disabled: drafts.length === 0 }]} />
@@ -237,7 +237,7 @@ function ScenariosCard({ config, onChange }: { config: BenchConfig; onChange: (p
   const setScenario = (i: number, s: ArenaScenario) => onChange({ scenarios: config.scenarios.map((x, j) => (j === i ? s : x)) });
   const gens = config.files.filter((f) => f.name.endsWith(".py") || f.name.endsWith(".c"));
   return (
-    <section className="card space-y-2 p-3">
+    <section className="space-y-2 border-t border-line pt-3">
       <div className="flex items-center">
         <h3 className="text-xs text-faint">{t("Scénarios")}</h3>
         <IconButton label={t("Ajouter un scénario")} className="ml-auto" disabled={config.scenarios.length >= 6} onClick={() => onChange({ scenarios: [...config.scenarios, newScenario(config.files)] })}>
@@ -247,7 +247,7 @@ function ScenariosCard({ config, onChange }: { config: BenchConfig; onChange: (p
       {config.scenarios.map((s, i) => (
         <ScenarioEditor key={i} s={s} gens={gens} onChange={(ns) => setScenario(i, ns)} onRemove={config.scenarios.length > 1 ? () => onChange({ scenarios: config.scenarios.filter((_, j) => j !== i) }) : undefined} />
       ))}
-      <p className="text-[11px] text-faint">{t("Arguments sans shell : {input} = fichier de données, {n} = taille, {seed} = graine. Un générateur est appelé « gen N SEED SORTIE ».")}</p>
+      <p className="text-2xs text-faint">{t("Arguments sans shell : {input} = fichier de données, {n} = taille, {seed} = graine. Un générateur est appelé « gen N SEED SORTIE ».")}</p>
     </section>
   );
 }
@@ -264,7 +264,7 @@ function ScenarioEditor({ s, gens, onChange, onRemove }: { s: ArenaScenario; gen
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outside]);
   return (
-    <div className="space-y-1.5 rounded-md border border-white/6 p-2.5">
+    <div className="space-y-1.5 rounded-md border border-ink/6 p-2.5">
       <div className="flex items-center gap-2">
         <Input className="h-7 flex-1 text-xs" value={s.name} onChange={(e) => onChange({ ...s, name: e.target.value })} aria-label={t("Nom du scénario")} />
         <Select<string> size="sm" className="w-32" label={t("Générateur")} value={s.generator ?? ""} onChange={(g) => onChange({ ...s, generator: g || null, args: g ? s.args : s.args.replace("{input}", "{n}"), stdin: g ? s.stdin : false })} options={[{ value: "", label: t("aucun") }, ...gens.map((g) => ({ value: g.name, label: g.name }))]} />
@@ -280,15 +280,15 @@ function ScenarioEditor({ s, gens, onChange, onRemove }: { s: ArenaScenario; gen
       </div>
       <div className="flex items-center gap-2">
         <Input className="h-7 flex-1 font-mono text-xs" value={s.args} onChange={(e) => onChange({ ...s, args: e.target.value })} aria-label={t("Arguments du programme")} placeholder="{input}" />
-        <label className="flex items-center gap-1 text-[11px] text-muted" title={t("Donner les données sur l'entrée standard")}>
+        <label className="flex items-center gap-1 text-2xs text-muted" title={t("Donner les données sur l'entrée standard")}>
           <input type="checkbox" className="accent-(--color-accent)" disabled={!s.generator} checked={s.stdin} onChange={(e) => onChange({ ...s, stdin: e.target.checked })} />
           stdin
         </label>
-        <button type="button" className="text-[11px] text-accent hover:underline" onClick={() => { const v = doubling(s.sizes[0] ?? 1000, 6); setSizes(v.join(", ")); onChange({ ...s, sizes: v }); }}>
+        <button type="button" className="text-2xs text-accent hover:underline" onClick={() => { const v = doubling(s.sizes[0] ?? 1000, 6); setSizes(v.join(", ")); onChange({ ...s, sizes: v }); }}>
           ×2
         </button>
       </div>
-      {typeof parsed === "string" && <p className="text-[11px] text-danger">{parsed}</p>}
+      {typeof parsed === "string" && <p className="text-2xs text-danger">{parsed}</p>}
     </div>
   );
 }
@@ -303,7 +303,7 @@ function FilesCard({ files, onChange }: { files: DraftFile[]; onChange: (f: Draf
     setOpen(`gen${i}.py`);
   };
   return (
-    <section className="card p-3">
+    <section className="border-t border-line pt-3">
       <div className="mb-1.5 flex items-center">
         <h3 className="text-xs text-faint">{t("Fichiers du benchmark")}</h3>
         <IconButton label={t("Nouveau générateur")} className="ml-auto" onClick={add}>
@@ -312,7 +312,7 @@ function FilesCard({ files, onChange }: { files: DraftFile[]; onChange: (f: Draf
       </div>
       <div className="flex flex-wrap gap-1">
         {files.map((f) => (
-          <span key={f.name} className={cn("group flex items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-[11px]", open === f.name ? "border-accent/50 text-fg" : "border-white/8 text-muted")}>
+          <span key={f.name} className={cn("group flex items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-2xs", open === f.name ? "border-accent/50 text-fg" : "border-ink/8 text-muted")}>
             <button type="button" onClick={() => setOpen(open === f.name ? null : f.name)}>
               {f.name}
             </button>
@@ -321,10 +321,10 @@ function FilesCard({ files, onChange }: { files: DraftFile[]; onChange: (f: Draf
             </button>
           </span>
         ))}
-        {files.length === 0 && <p className="text-[12px] text-muted">{t("Aucun : les tailles sont passées directement au programme.")}</p>}
+        {files.length === 0 && <p className="text-xs text-muted">{t("Aucun : les tailles sont passées directement au programme.")}</p>}
       </div>
       {current && (
-        <div className="mt-2 h-56 overflow-hidden rounded-md border border-white/6">
+        <div className="mt-2 h-56 overflow-hidden rounded-md border border-ink/6">
           <Suspense fallback={<Spinner className="m-3" />}>
             <CodeEditor key={current.name} value={current.content} language={current.name.endsWith(".c") ? "c" : "plain"} onChange={(content) => onChange(files.map((f) => (f.name === current.name ? { ...f, content } : f)))} className="h-full" label={current.name} />
           </Suspense>
@@ -338,13 +338,13 @@ function OptionsCard({ config, onChange, valgrind }: { config: BenchConfig; onCh
   const o = config.options;
   const set = (p: Partial<BenchConfig["options"]>) => onChange({ options: { ...o, ...p } });
   const check = (key: "warmup" | "callgrind" | "massif" | "heap", label: string, title: string, needsValgrind = true) => (
-    <label className="flex items-center gap-1.5 text-[12px] text-muted" title={needsValgrind && !valgrind ? t("Valgrind n'est pas installé") : title}>
+    <label className="flex items-center gap-1.5 text-xs text-muted" title={needsValgrind && !valgrind ? t("Valgrind n'est pas installé") : title}>
       <input type="checkbox" className="accent-(--color-accent)" disabled={needsValgrind && !valgrind} checked={o[key] && (!needsValgrind || valgrind)} onChange={(e) => set({ [key]: e.target.checked })} />
       {label}
     </label>
   );
   return (
-    <details className="card p-3">
+    <details className="border-t border-line pt-3">
       <summary className="cursor-pointer text-xs text-faint">{t("Options de mesure")}</summary>
       <div className="mt-2 grid grid-cols-3 gap-2">
         <Field label={t("Répétitions")}>
@@ -374,31 +374,31 @@ function Generation({ job, onUse }: { job: import("../../lib/api").JobView; onUs
   const current = files.find((f) => f.name === open);
   const running = job.status === "running";
   return (
-    <div className="mt-3 space-y-2 border-t border-white/6 pt-2">
-      <div className="flex items-center gap-2 text-[12px]">
+    <div className="mt-3 space-y-2 border-t border-ink/6 pt-2">
+      <div className="flex items-center gap-2 text-xs">
         {running ? <Spinner /> : <Badge tone={STATUS_TONE[job.status] ?? "neutral"}>{STATUS_LABEL[job.status] ?? job.status}</Badge>}
         <span className="text-muted">{running ? t("Artix lit le code et écrit…") : t("{f} fichier(s), {s} scénario(s)", { f: files.length, s: s.generated?.scenarios.length ?? 0 })}</span>
       </div>
       <ul className="space-y-1">
         {files.map((f) => (
           <li key={f.name} className="anim-rise">
-            <button type="button" className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left font-mono text-[11px] text-fg hover:bg-hover" onClick={() => setOpen(open === f.name ? null : f.name)}>
+            <button type="button" className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left font-mono text-2xs text-fg hover:bg-hover" onClick={() => setOpen(open === f.name ? null : f.name)}>
               <FilePlus2 className="size-3 text-ok" /> bench/{f.name}
               <span className="ml-auto text-faint">{t("{n} lignes", { n: f.content.split("\n").length })}</span>
             </button>
           </li>
         ))}
       </ul>
-      {current && <pre className="selectable max-h-48 overflow-auto rounded-md bg-black/25 p-2 font-mono text-[11px] text-fg/90">{current.content}</pre>}
+      {current && <pre className="selectable max-h-48 overflow-auto rounded-md bg-well p-2 font-mono text-2xs text-fg/90">{current.content}</pre>}
       {s.generated && (
         <>
           {s.generated.scenarios.map((sc) => (
-            <p key={sc.name} className="text-[12px] text-muted">
+            <p key={sc.name} className="text-xs text-muted">
               <span className="text-fg">{sc.name}</span> · {sc.generator ?? t("sans générateur")} · n = {sc.sizes.join(", ")} · <span className="font-mono">{sc.args}</span>
             </p>
           ))}
           {s.generated.hypotheses.length > 0 && (
-            <ul className="space-y-0.5 text-[12px] text-muted">
+            <ul className="space-y-0.5 text-xs text-muted">
               {s.generated.hypotheses.map((h, i) => (
                 <li key={i}>
                   <Badge>{t("hypothèse d'Artix")}</Badge> {h.function && <span className="font-mono">{h.function}()</span>} {h.message}
@@ -406,7 +406,7 @@ function Generation({ job, onUse }: { job: import("../../lib/api").JobView; onUs
               ))}
             </ul>
           )}
-          {s.generated.rejected.length > 0 && <p className="text-[11px] text-warn">{t("Écarté : {r}", { r: s.generated.rejected.join(" ; ") })}</p>}
+          {s.generated.rejected.length > 0 && <p className="text-2xs text-warn">{t("Écarté : {r}", { r: s.generated.rejected.join(" ; ") })}</p>}
           <Button size="sm" variant="primary" disabled={s.generated.scenarios.length === 0} disabledReason={t("Aucun scénario utilisable")} onClick={() => onUse(s.generated!.files, s.generated!.scenarios)}>
             {t("Utiliser ces fichiers et scénarios")}
           </Button>
@@ -423,14 +423,14 @@ function HistoryModal({ open, onClose, onPick }: { open: boolean; onClose: () =>
       {runs.isLoading ? (
         <Spinner />
       ) : (runs.data ?? []).length === 0 ? (
-        <p className="text-[13px] text-muted">{t("Aucun benchmark lancé pour l'instant.")}</p>
+        <p className="text-sm text-muted">{t("Aucun benchmark lancé pour l'instant.")}</p>
       ) : (
         <ul className="max-h-[60vh] space-y-0.5 overflow-y-auto">
           {runs.data!.map((r) => (
             <li key={r.id}>
               <button type="button" className="row-hover flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left" onClick={() => onPick(r.id)}>
                 <Badge tone={STATUS_TONE[r.status] ?? "neutral"}>{STATUS_LABEL[r.status] ?? r.status}</Badge>
-                <span className="min-w-0 flex-1 truncate text-[13px] text-fg">{r.title.replace(/^Arena · /, "")}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-fg">{r.title.replace(/^Arena · /, "")}</span>
                 <span className="text-xs text-faint">{timeAgo(r.startedAt)}</span>
               </button>
             </li>

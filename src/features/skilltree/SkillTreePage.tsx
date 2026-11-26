@@ -26,7 +26,7 @@ const SIZE = { unit: 17, skill: 8, project: 5.5 } as const;
 function Meter({ value, total, color = "var(--color-accent)" }: { value: number; total: number; color?: string }) {
   const pct = total > 0 ? Math.min(100, (value / total) * 100) : 0;
   return (
-    <span className="block h-1.5 w-full overflow-hidden rounded-full bg-white/8" role="img" aria-label={`${value} / ${total}`}>
+    <span className="block h-1.5 w-full overflow-hidden rounded-full bg-ink/8" role="img" aria-label={`${value} / ${total}`}>
       <span className="block h-full rounded-full transition-[width] duration-700" style={{ width: `${pct}%`, background: color }} />
     </span>
   );
@@ -85,9 +85,9 @@ function TreeView({ tree }: { tree: SkillTree }) {
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <Card className="px-4 py-4 md:col-span-2">
           <p className="text-xs text-muted">{t("Crédits")}</p>
-          <p className="display mt-1 text-[30px] leading-tight font-medium">
+          <p className="display mt-1 text-2xl leading-tight font-medium">
             {c.acquired ?? "—"}
-            {c.threshold !== null && <span className="text-[18px] text-muted"> / {c.threshold}</span>}
+            {c.threshold !== null && <span className="text-lg text-muted"> / {c.threshold}</span>}
           </p>
           <div className="mt-2"><Meter value={c.acquired ?? 0} total={c.threshold ?? 0} color="var(--color-ok)" /></div>
           <p className="mt-1.5 text-xs text-faint">
@@ -102,7 +102,7 @@ function TreeView({ tree }: { tree: SkillTree }) {
       </div>
 
       <Card className="relative overflow-hidden">
-        <div className="flex flex-wrap items-center gap-2 border-b border-white/6 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2 border-b border-ink/6 px-3 py-2">
           <Select size="sm" className="w-36" label={t("Année")} value={f.year === null ? "" : String(f.year)} onChange={(v) => setF({ ...f, year: v ? Number(v) : null })} options={[{ value: "", label: t("Toutes les années") }, ...years.map((y) => ({ value: String(y), label: `${y}–${y + 1}` }))]} />
           <Select size="sm" className="w-36" label={t("Semestre")} value={f.semester === null ? "" : String(f.semester)} onChange={(v) => setF({ ...f, semester: v ? Number(v) : null })} options={[{ value: "", label: t("Tous les semestres") }, ...semesters.map((s) => ({ value: String(s), label: t("Semestre {n}", { n: s }) + (s === tree.semester ? ` · ${t("actuel")}` : "") }))]} />
           <Select size="sm" className="w-48" label={t("Domaine (estimation)")} value={f.domain ?? ""} onChange={(v) => setF({ ...f, domain: v || null })} options={[{ value: "", label: t("Tous les domaines") }, ...domains.map((d) => ({ value: d, label: d, hint: t("estimation") }))]} />
@@ -125,7 +125,7 @@ function TreeView({ tree }: { tree: SkillTree }) {
             {tree.branches.map((b) => {
               const got = b.units.filter((u) => byId.get(u)?.status === "acquired").length;
               return (
-                <li key={b.id} className="text-[13px]">
+                <li key={b.id} className="text-sm">
                   <p className="flex items-center gap-2">
                     <span className="size-2 rounded-full" style={{ background: b.color ?? "var(--color-faint)" }} />
                     <span className="min-w-0 flex-1 truncate">{b.name}</span>
@@ -134,7 +134,7 @@ function TreeView({ tree }: { tree: SkillTree }) {
                   {b.threshold !== null && b.threshold > 0 && (
                     <div className="mt-1">
                       <Meter value={b.secure ?? 0} total={b.threshold} color={b.color ?? undefined} />
-                      <p className="mt-0.5 text-[11px] text-faint">{t("{s} crédits assurés · seuil {t}", { s: b.secure ?? 0, t: b.threshold })}</p>
+                      <p className="mt-0.5 text-2xs text-faint">{t("{s} crédits assurés · seuil {t}", { s: b.secure ?? 0, t: b.threshold })}</p>
                     </div>
                   )}
                 </li>
@@ -145,10 +145,10 @@ function TreeView({ tree }: { tree: SkillTree }) {
         <Card>
           <CardTitle right={<span className="text-xs text-muted">{remaining.length}</span>}>{t("Unités restant à valider")}</CardTitle>
           <ul className="flex max-h-72 flex-col overflow-y-auto p-2">
-            {remaining.length === 0 && <li className="p-2 text-[13px] text-muted">{t("Toutes les unités du semestre sont acquises.")}</li>}
+            {remaining.length === 0 && <li className="p-2 text-sm text-muted">{t("Toutes les unités du semestre sont acquises.")}</li>}
             {remaining.map((u) => (
               <li key={u.id}>
-                <button type="button" onClick={() => setSelected(u.id)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-hover">
+                <button type="button" onClick={() => setSelected(u.id)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-hover">
                   <span className="size-2 shrink-0 rounded-full" style={{ background: STATUS[u.status].color }} />
                   <span className="min-w-0 flex-1 truncate">{u.label}</span>
                   {u.validated !== null && u.total !== null && <span className="text-xs text-muted tabular-nums">{u.validated}/{u.total}</span>}
@@ -160,13 +160,13 @@ function TreeView({ tree }: { tree: SkillTree }) {
         </Card>
         <Card>
           <CardTitle>{t("Progression")}</CardTitle>
-          <div className="flex flex-col gap-3 p-4 text-[13px]">
+          <div className="flex flex-col gap-3 p-4 text-sm">
             <dl className="grid grid-cols-[1fr_auto] gap-y-1">
               <dt className="text-muted">{t("Semestres précédents")}</dt><dd className="tabular-nums">{c.prior ?? "—"} cr.</dd>
               <dt className="text-muted">{t("Ce semestre")}</dt><dd className="tabular-nums">{c.thisSemester ?? "—"} cr.</dd>
               <dt className="text-muted">{t("Projets validés")}</dt><dd className="tabular-nums">{projects.filter((p) => p.status === "acquired").length}</dd>
             </dl>
-            <p className="text-[11px] text-faint">{t("MY Epitech ne détaille pas les crédits de chaque semestre passé : seuls ces deux totaux sont affichés.")}</p>
+            <p className="text-2xs text-faint">{t("MY Epitech ne détaille pas les crédits de chaque semestre passé : seuls ces deux totaux sont affichés.")}</p>
             {tree.history.length > 0 ? (
               <>
                 <p className="text-xs font-medium text-muted">{t("Derniers jalons datés")}</p>
@@ -244,9 +244,9 @@ function Canvas({ tree, shown, placed, byId, lit, selected, onHover, onSelect }:
         aria-label={t("Arbre de compétences")}
       >
         <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}>
-          {[RADIUS.unit, RADIUS.skill, RADIUS.project].map((r) => <circle key={r} r={r} fill="none" stroke="currentColor" className="text-white/4" strokeDasharray="2 6" />)}
+          {[RADIUS.unit, RADIUS.skill, RADIUS.project].map((r) => <circle key={r} r={r} fill="none" stroke="currentColor" className="text-ink/4" strokeDasharray="2 6" />)}
           {[...placed.branches].map(([id, b]) => (
-            <path key={`sector-${id}`} d={`M0,0 L${Math.cos(b.from) * 860},${Math.sin(b.from) * 860}`} stroke="currentColor" className="text-white/5" />
+            <path key={`sector-${id}`} d={`M0,0 L${Math.cos(b.from) * 860},${Math.sin(b.from) * 860}`} stroke="currentColor" className="text-ink/5" />
           ))}
           {/* Root to branches, branches to units. */}
           {[...placed.branches].map(([id, b]) => {
@@ -261,17 +261,17 @@ function Canvas({ tree, shown, placed, byId, lit, selected, onHover, onSelect }:
           {tree.links.filter((l) => placed.nodes.has(l.source) && placed.nodes.has(l.target)).map((l) => {
             const on = lit !== null && lit.has(l.source) && lit.has(l.target);
             const src = byId.get(l.source)!;
-            return <path key={`${l.source}-${l.target}`} d={curve(placed.nodes.get(l.target)!, placed.nodes.get(l.source)!)} fill="none" stroke={on ? STATUS[src.status].color : "currentColor"} className={on ? "" : "text-white/12"} strokeWidth={on ? 1.6 : 1} opacity={lit && !on ? 0.3 : 1} />;
+            return <path key={`${l.source}-${l.target}`} d={curve(placed.nodes.get(l.target)!, placed.nodes.get(l.source)!)} fill="none" stroke={on ? STATUS[src.status].color : "currentColor"} className={on ? "" : "text-ink/12"} strokeWidth={on ? 1.6 : 1} opacity={lit && !on ? 0.3 : 1} />;
           })}
           <circle r={46} fill="var(--color-surface)" stroke="var(--color-accent)" strokeOpacity={0.5} strokeWidth={2} />
-          <text textAnchor="middle" y={-4} className="fill-fg text-[15px] font-medium">{tree.credits.acquired ?? "—"}</text>
-          <text textAnchor="middle" y={13} className="fill-muted text-[9px]">{tree.credits.threshold !== null ? `/ ${tree.credits.threshold} ${t("crédits")}` : t("crédits")}</text>
+          <text textAnchor="middle" y={-4} className="fill-fg text-md font-medium">{tree.credits.acquired ?? "—"}</text>
+          <text textAnchor="middle" y={13} className="fill-muted text-3xs">{tree.credits.threshold !== null ? `/ ${tree.credits.threshold} ${t("crédits")}` : t("crédits")}</text>
           {[...placed.branches].map(([id, b]) => {
             const branch = tree.branches.find((x) => x.id === id)!;
             return (
               <g key={`bl-${id}`} transform={`translate(${b.x},${b.y})`}>
                 <circle r={7} fill={branch.color ?? "var(--color-faint)"} />
-                <text x={Math.cos(b.angle) * 14} y={Math.sin(b.angle) * 14 + 4} textAnchor={Math.abs(Math.cos(b.angle)) < 0.3 ? "middle" : Math.cos(b.angle) > 0 ? "start" : "end"} className="fill-fg text-[11px] font-medium">
+                <text x={Math.cos(b.angle) * 14} y={Math.sin(b.angle) * 14 + 4} textAnchor={Math.abs(Math.cos(b.angle)) < 0.3 ? "middle" : Math.cos(b.angle) > 0 ? "start" : "end"} className="fill-fg text-2xs font-medium">
                   {branch.name.length > 24 ? `${branch.name.slice(0, 23)}…` : branch.name}
                 </text>
               </g>
@@ -301,9 +301,9 @@ function Canvas({ tree, shown, placed, byId, lit, selected, onHover, onSelect }:
                 {selected === n.id && <circle r={r + 6} fill="none" stroke="var(--color-fg)" strokeOpacity={0.6} strokeWidth={1.5} />}
                 {n.status === "in_progress" && <circle r={r + 4} fill="none" stroke={s.color} strokeWidth={1.5} className="skill-pulse" />}
                 <circle r={r} fill={filled ? s.color : "var(--color-surface)"} stroke={s.color} strokeWidth={n.kind === "unit" ? 2.5 : 1.6} strokeDasharray={n.status === "locked" ? "3 3" : undefined} />
-                {n.kind === "unit" && n.validated !== null && n.total ? <text textAnchor="middle" y={3.5} className={cn("text-[9px] font-medium tabular-nums", filled ? "fill-bg" : "fill-fg")}>{n.validated}/{n.total}</text> : null}
+                {n.kind === "unit" && n.validated !== null && n.total ? <text textAnchor="middle" y={3.5} className={cn("text-3xs font-medium tabular-nums", filled ? "fill-bg" : "fill-fg")}>{n.validated}/{n.total}</text> : null}
                 {showLabel && (
-                  <text x={flip ? -(r + 5) : r + 5} y={3.5} textAnchor={flip ? "end" : "start"} className={cn(n.kind === "unit" ? "fill-fg text-[11px]" : "fill-muted text-[9px]")}>
+                  <text x={flip ? -(r + 5) : r + 5} y={3.5} textAnchor={flip ? "end" : "start"} className={cn(n.kind === "unit" ? "fill-fg text-2xs" : "fill-muted text-3xs")}>
                     {n.label.length > 34 ? `${n.label.slice(0, 33)}…` : n.label}
                   </text>
                 )}
@@ -323,7 +323,7 @@ function Canvas({ tree, shown, placed, byId, lit, selected, onHover, onSelect }:
 
 function Legend() {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-white/6 px-3 py-2 text-[11px] text-muted">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-ink/6 px-3 py-2 text-2xs text-muted">
       {(Object.keys(STATUS) as SkillStatus[]).map((s) => (
         <span key={s} className="flex items-center gap-1.5">
           <span className="size-2.5 rounded-full border-2" style={{ borderColor: STATUS[s].color, background: s === "acquired" ? STATUS[s].color : "transparent", borderStyle: s === "locked" ? "dashed" : "solid" }} />
@@ -366,11 +366,11 @@ function Sheet({ tree, node: n, byId, onClose, onOpen }: { tree: SkillTree; node
     </ul>
   );
   return (
-    <aside className="glass anim-slide absolute top-[45px] right-0 bottom-0 z-10 flex w-[340px] flex-col gap-3 overflow-y-auto border-l border-white/8 p-4" onClick={(e) => e.stopPropagation()}>
+    <aside className="glass anim-slide absolute top-[45px] right-0 bottom-0 z-10 flex w-[340px] flex-col gap-3 overflow-y-auto border-l border-ink/8 p-4" onClick={(e) => e.stopPropagation()}>
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] tracking-wide text-faint uppercase">{kind}</p>
-          <h3 className="text-[15px] font-medium">{n.label}</h3>
+          <p className="text-2xs tracking-wide text-faint uppercase">{kind}</p>
+          <h3 className="text-md font-medium">{n.label}</h3>
         </div>
         <button type="button" aria-label={t("Fermer")} className="text-muted hover:text-fg" onClick={onClose}><X className="size-4" /></button>
       </div>
@@ -385,7 +385,7 @@ function Sheet({ tree, node: n, byId, onClose, onOpen }: { tree: SkillTree; node
           <p className="mt-1 text-xs text-muted">{t("{a} acquis d'apprentissage validés sur {n}", { a: n.validated, n: n.total })}</p>
         </div>
       )}
-      <dl className="grid grid-cols-[110px_1fr] gap-x-2 gap-y-1.5 text-[13px]">
+      <dl className="grid grid-cols-[110px_1fr] gap-x-2 gap-y-1.5 text-sm">
         {branch && <Row label={t("Bloc")}>{branch.name}</Row>}
         {n.credits !== null && <Row label={t("Crédits")}>{n.credits}</Row>}
         {n.grade && <Row label={t("Grade")}>{n.grade}</Row>}
@@ -396,7 +396,7 @@ function Sheet({ tree, node: n, byId, onClose, onOpen }: { tree: SkillTree; node
         {n.levelPercent !== null && n.kind === "skill" && <Row label={t("Niveau")}>{Math.round(n.levelPercent)} %</Row>}
         {n.domain && (
           <Row label={t("Domaine")}>
-            {n.domain} <span className="ml-1 rounded border border-dashed border-warn/50 px-1 text-[10px] text-warn">{t("estimation TekBoard")}</span>
+            {n.domain} <span className="ml-1 rounded border border-dashed border-warn/50 px-1 text-3xs text-warn">{t("estimation TekBoard")}</span>
           </Row>
         )}
       </dl>
@@ -404,7 +404,7 @@ function Sheet({ tree, node: n, byId, onClose, onOpen }: { tree: SkillTree; node
       {n.kind === "skill" && n.parent && byId.get(n.parent) && (<div><p className="mb-1 text-xs font-medium text-muted">{t("Unité")}</p><List items={[byId.get(n.parent)!]} /></div>)}
       {projects.length > 0 && (<div><p className="mb-1 text-xs font-medium text-muted">{t("Projets qui y contribuent")}</p><List items={projects} /></div>)}
       {n.kind === "project" && trains.length > 0 && (<div><p className="mb-1 text-xs font-medium text-muted">{t("Compétences travaillées")}</p><List items={trains} /></div>)}
-      <p className="mt-auto text-[11px] text-faint">
+      <p className="mt-auto text-2xs text-faint">
         {t("Source : MY Epitech")} ({n.statusFrom === "graph" ? t("graphe de validation") : t("validations")}){n.domainEstimated ? ` · ${t("le domaine est déduit par TekBoard du code des projets.")}` : "."}
       </p>
     </aside>

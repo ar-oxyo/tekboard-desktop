@@ -24,12 +24,12 @@ export function HistoryDialog({ open, onClose, drafts, current, onReopen, onRest
         <section>
           <h3 className="mb-2 text-xs text-faint">{t("Brouillons fermés")}</h3>
           {closed.length === 0 ? (
-            <p className="text-[13px] text-muted">{t("Aucun : un onglet fermé arrive ici, avec son code.")}</p>
+            <p className="text-sm text-muted">{t("Aucun : un onglet fermé arrive ici, avec son code.")}</p>
           ) : (
             <ul className="max-h-56 space-y-0.5 overflow-y-auto">
               {closed.map((d) => (
                 <li key={d.id} className="row-hover flex items-center gap-2 rounded-md px-2 py-1.5">
-                  <span className="min-w-0 flex-1 truncate text-[13px] text-fg">{d.title}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-fg">{d.title}</span>
                   <span className="text-xs text-faint">{t("{n} fichier(s)", { n: d.files.length })} · {timeAgo(d.updatedAt)}</span>
                   <Button size="sm" onClick={() => onReopen(d)}>
                     {t("Rouvrir")}
@@ -55,7 +55,7 @@ export function HistoryDialog({ open, onClose, drafts, current, onReopen, onRest
           {runs.isLoading ? (
             <Spinner />
           ) : shown.length === 0 ? (
-            <p className="text-[13px] text-muted">{t("Aucune exécution enregistrée.")}</p>
+            <p className="text-sm text-muted">{t("Aucune exécution enregistrée.")}</p>
           ) : (
             <ul className="max-h-72 space-y-0.5 overflow-y-auto">
               {shown.map((r) => (
@@ -74,7 +74,7 @@ function RunRow({ run, onRestore }: { run: Run; onRestore: (title: string, files
   return (
     <li className="row-hover flex items-center gap-2 rounded-md px-2 py-1.5">
       <Badge tone={STATUS_TONE[run.status] ?? "neutral"}>{STATUS_LABEL[run.status] ?? run.status}</Badge>
-      <span className="min-w-0 flex-1 truncate text-[13px] text-fg">{run.title.replace(/^Playground · /, "")}</span>
+      <span className="min-w-0 flex-1 truncate text-sm text-fg">{run.title.replace(/^Playground · /, "")}</span>
       <span className="text-xs text-faint">{timeAgo(run.startedAt)}</span>
       <Button size="sm" icon={<RotateCcw className="size-3.5" />} disabled={!snap} disabledReason={t("Cette exécution n'a pas gardé le code")} onClick={() => snap && onRestore(`${run.title.replace(/^Playground · /, "")} (${t("restauré")})`, snap.files, snap.settings)}>
         {t("Restaurer")}
@@ -152,8 +152,8 @@ export function LibraryImportDialog({ open, onClose, onImport }: { open: boolean
                 <label className={cn("row-hover flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5", picked.has(f.rel) && "bg-accent-soft/40")}>
                   <input type="checkbox" className="mt-1 accent-(--color-accent)" checked={picked.has(f.rel)} onChange={() => toggle(f.rel)} />
                   <span className="min-w-0 flex-1">
-                    <span className="block font-mono text-[12px] text-fg">{f.rel}</span>
-                    <span className="block truncate font-mono text-[11px] text-faint">{f.functions.map((fn) => fn.name).join(", ") || t("(aucune fonction publique)")}</span>
+                    <span className="block font-mono text-xs text-fg">{f.rel}</span>
+                    <span className="block truncate font-mono text-2xs text-faint">{f.functions.map((fn) => fn.name).join(", ") || t("(aucune fonction publique)")}</span>
                   </span>
                   {f.deps.length > 0 && <Badge>{t("+{n} dépendance(s)", { n: f.deps.length })}</Badge>}
                 </label>
@@ -216,7 +216,7 @@ export function ExportDialog({ open, onClose, draft, onDone }: { open: boolean; 
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
         </div>
-        <label className="flex items-center gap-2 text-[13px] text-muted">
+        <label className="flex items-center gap-2 text-sm text-muted">
           <input type="checkbox" className="accent-(--color-accent)" checked={git} onChange={(e) => setGit(e.target.checked)} />
           {t("Initialiser un dépôt git (git init)")}
         </label>

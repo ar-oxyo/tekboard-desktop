@@ -63,9 +63,9 @@ export function MyEpitechPage() {
       <PageHeader title="MY Epitech" subtitle={t("Ton propre compte, en lecture seule. Tu te connectes sur le vrai site, TekBoard ne voit jamais ton mot de passe")} actions={syncButton} />
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <Card className="min-w-0">
-          <div className="flex h-11 items-center gap-1 border-b border-white/6 px-3">
+          <div className="flex h-11 items-center gap-1 border-b border-ink/6 px-3">
             {([["projects", t("Projets et rendus")], ["progress", t("Crédits et validations")], ["raw", t("Réponses brutes")]] as const).map(([id, label]) => (
-              <button key={id} type="button" onClick={() => setTab(id)} className={cn("h-7 rounded-md px-2.5 text-[13px] transition-colors duration-150", tab === id ? "bg-raised text-fg" : "text-muted hover:text-fg")}>{label}</button>
+              <button key={id} type="button" onClick={() => setTab(id)} className={cn("h-7 rounded-md px-2.5 text-sm transition-colors duration-150", tab === id ? "bg-raised text-fg" : "text-muted hover:text-fg")}>{label}</button>
             ))}
           </div>
           {tab === "projects" && <MyProjects />}
@@ -81,7 +81,7 @@ export function MyEpitechPage() {
         <div className="flex flex-col gap-4">
           <Card>
             <CardTitle right={s ? <Dot tone={s.connected ? "ok" : mySync.phase === "sign-in" ? "info" : "neutral"}>{s.connected ? t("Connecté") : mySync.phase === "sign-in" ? t("En attente de connexion") : t("Non connecté")}</Dot> : <Spinner />}>{t("Connexion")}</CardTitle>
-            <div className="flex flex-col gap-3 p-4 text-[13px]">
+            <div className="flex flex-col gap-3 p-4 text-sm">
               <button type="button" aria-expanded={showHow} onClick={() => setHow(!showHow)} className="flex items-center gap-1 text-left text-xs text-muted hover:text-fg">
                 {showHow ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />} {t("Comment marche la connexion, et ce qui est gardé")}
               </button>
@@ -124,16 +124,16 @@ export function MyEpitechPage() {
             </div>
           </Card>
           <Card>
-            <button type="button" aria-expanded={showHistory} onClick={() => setShowHistory(!showHistory)} className="flex h-11 w-full items-center gap-2 px-4 text-left text-[13px] font-medium">
+            <button type="button" aria-expanded={showHistory} onClick={() => setShowHistory(!showHistory)} className="flex h-11 w-full items-center gap-2 px-4 text-left text-sm font-medium">
               <span className="mr-auto">{t("Historique des synchronisations")}</span>
               <span className="text-xs font-normal text-faint">{(data.data?.history.length ?? 0) === 0 ? t("aucune") : plural(data.data!.history.length, "{n} synchro", "{n} synchros")}</span>
               {showHistory ? <ChevronDown className="size-3.5 text-faint" /> : <ChevronRight className="size-3.5 text-faint" />}
             </button>
             {showHistory &&
               ((data.data?.history.length ?? 0) === 0 ? (
-                <p className="border-t border-white/6 px-4 py-4 text-[13px] text-muted">{t("Aucune synchronisation")}</p>
+                <p className="border-t border-ink/6 px-4 py-4 text-sm text-muted">{t("Aucune synchronisation")}</p>
               ) : (
-                <ul className="max-h-80 overflow-y-auto border-t border-white/6 py-1">
+                <ul className="max-h-80 overflow-y-auto border-t border-ink/6 py-1">
                   {data.data!.history.map((h) => (
                     <li key={h.at} className="selectable px-4 py-2 text-xs text-muted" title={h.detail || undefined}>
                       <span className="flex items-center gap-3">
@@ -141,7 +141,7 @@ export function MyEpitechPage() {
                         <span className="font-mono">{t("{n} lus", { n: h.ok })}</span>
                         {h.failed > 0 && <Dot tone="warn" mono>{t("{n} indisponibles", { n: h.failed })}</Dot>}
                       </span>
-                      {h.detail && <p className="mt-1 font-mono text-[11px] leading-relaxed text-faint">{h.detail}</p>}
+                      {h.detail && <p className="mt-1 font-mono text-2xs leading-relaxed text-faint">{h.detail}</p>}
                     </li>
                   ))}
                 </ul>
@@ -171,7 +171,7 @@ function EntryRow({ entry }: { entry: MyEntry }) {
       <button type="button" onClick={() => setOpen(!open)} className="row-hover flex min-h-10 w-full items-center gap-2.5 px-4 py-1.5 text-left">
         {open ? <ChevronDown className="size-3.5 shrink-0 text-faint" /> : <ChevronRight className="size-3.5 shrink-0 text-faint" />}
         <span className="min-w-0 flex-1">
-          <span className="block text-[13px]">{entry.label} <span className="font-mono text-[11px] text-faint">{entry.route}</span></span>
+          <span className="block text-sm">{entry.label} <span className="font-mono text-2xs text-faint">{entry.route}</span></span>
           <span className="block truncate text-xs text-muted">{ok ? summary(entry.body) : entry.status === 0 ? "no answer" : `not available (HTTP ${entry.status})`}</span>
         </span>
         <Dot tone={ok ? "ok" : "warn"} mono>{entry.status || "—"}</Dot>

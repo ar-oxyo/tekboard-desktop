@@ -38,17 +38,17 @@ export function GitPage() {
       ) : (repos.data?.length ?? 0) === 0 ? (
         <Card>
           <EmptyState icon={<GitBranch className="size-6" />} title={t("Aucun dépôt")}>
-            Ajoute d'abord un dossier de projets dans Réglages, ou clone un projet.
+            {t("Ajoute d'abord un dossier de projets dans Réglages, ou clone un projet.")}
           </EmptyState>
         </Card>
       ) : (
-        <div className="grid grid-cols-[264px_minmax(0,1fr)] items-start gap-4">
+        <div className="grid grid-cols-[240px_minmax(0,1fr)] items-start gap-6">
           <div>
             <div className="relative mb-2">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
-              <Input className="pl-8" aria-label={t("Filtrer les dépôts")} placeholder="Filtrer" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <Input className="pl-8" aria-label={t("Filtrer les dépôts")} placeholder={t("Filtrer")} value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
-            <ul className="card flex max-h-[calc(100vh-196px)] flex-col gap-0.5 overflow-y-auto p-1.5">
+            <ul className="flex max-h-[calc(100vh-196px)] flex-col gap-px overflow-y-auto">
               {list.map((r) => {
                 const a = attention(r);
                 return (
@@ -57,11 +57,11 @@ export function GitPage() {
                       type="button"
                       onClick={() => openGit(r.path)}
                       aria-current={selected?.path === r.path}
-                      className={cn("flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-[13px] transition-colors duration-150", selected?.path === r.path ? "bg-raised text-fg" : "text-muted hover:bg-white/4 hover:text-fg")}
+                      className={cn("flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-colors duration-150", selected?.path === r.path ? "bg-accent-soft font-medium text-fg" : "text-muted hover:bg-ink/5 hover:text-fg")}
                     >
                       <span className={cn("size-1.5 shrink-0 rounded-full", a.length === 0 ? "bg-line-strong" : a[0].level === "danger" ? "bg-danger" : a[0].level === "warn" ? "bg-warn" : "bg-info")} />
                       <span className="min-w-0 flex-1 truncate">{displayName(r)}</span>
-                      {a[0] && <span className="shrink-0 text-[11px] text-faint">{a[0].label}</span>}
+                      {a[0] && <span className="shrink-0 text-2xs text-faint">{a[0].label}</span>}
                     </button>
                   </li>
                 );
@@ -96,8 +96,8 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
     refresh();
   };
 
-  const stage = useMutation({ mutationFn: (files: string[]) => api.stageFiles(repo.path, files), onSuccess: refresh, onError: fail("Could not stage") });
-  const unstage = useMutation({ mutationFn: (files: string[]) => api.gitUnstage(repo.path, files), onSuccess: refresh, onError: fail("Could not unstage") });
+  const stage = useMutation({ mutationFn: (files: string[]) => api.stageFiles(repo.path, files), onSuccess: refresh, onError: fail(t("Impossible d'indexer")) });
+  const unstage = useMutation({ mutationFn: (files: string[]) => api.gitUnstage(repo.path, files), onSuccess: refresh, onError: fail(t("Impossible de retirer de l'index")) });
   const commit = useMutation({
     mutationFn: () => api.commitStaged(repo.path, message),
     onSuccess: () => {
@@ -106,7 +106,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
       toast({ kind: "ok", title: t("Commité localement") });
       refresh();
     },
-    onError: fail("Commit failed"),
+    onError: fail(t("Le commit a échoué")),
   });
   const sync = useMutation({
     mutationFn: (op: "fetch" | "pull" | "push") => api.gitSync(repo.path, op),
@@ -120,19 +120,19 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
       setConfirmPush(false);
       const err = asAppError(e);
       setOutput(err.message);
-      const hint = err.code === "diverged" ? (op === "push" ? "The remote has commits you do not have. Pull first." : "Your branch and the remote have diverged. Merge or rebase in a terminal.") : err.code === "auth_failed" ? "Authentication failed. Check your SSH key and agent." : err.code === "offline" ? "The remote could not be reached." : undefined;
+      const hint = err.code === "diverged" ? (op === "push" ? t("Le dépôt distant a des commits que tu n'as pas. Récupère-les d'abord (Pull).") : t("Ta branche et le dépôt distant ont divergé. Fais un merge ou un rebase dans un terminal.")) : err.code === "auth_failed" ? t("L'authentification a échoué. Vérifie ta clé SSH et l'agent.") : err.code === "offline" ? t("Le dépôt distant est injoignable.") : undefined;
       toast({ kind: "error", title: `${op[0].toUpperCase()}${op.slice(1)} failed`, detail: hint ?? err.message });
       refresh();
     },
   });
-  const switchBranch = useMutation({ mutationFn: (name: string) => api.gitSwitchBranch(repo.path, name), onSuccess: refresh, onError: fail("Could not switch branch") });
+  const switchBranch = useMutation({ mutationFn: (name: string) => api.gitSwitchBranch(repo.path, name), onSuccess: refresh, onError: fail(t("Impossible de changer de branche")) });
   const createBranch = useMutation({
     mutationFn: (name: string) => api.gitCreateBranch(repo.path, name),
     onSuccess: () => {
       setNewBranch(null);
       refresh();
     },
-    onError: fail("Could not create the branch"),
+    onError: fail(t("Impossible de créer la branche")),
   });
   // Start working: get the remote state first, then open the workspace.
   const start = useMutation({
@@ -146,7 +146,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
       if (d.status.behind > 0) toast({ kind: "info", title: `${d.status.behind} commit${d.status.behind === 1 ? "" : "s"} à récupérer`, detail: "Le dépôt distant a bougé depuis ta dernière synchronisation." });
       refresh();
     },
-    onError: fail("Could not open the workspace"),
+    onError: fail(t("Impossible d'ouvrir l'espace de travail")),
   });
 
   if (detail.isLoading) {
@@ -193,7 +193,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
             </Button>
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-2 border-t border-white/6 px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-2 border-t border-ink/6 px-4 py-2.5">
           <GitBranch className="size-3.5 text-faint" />
           {st.branch === null ? (
             <span className="font-mono text-xs text-warn">detached HEAD</span>
@@ -233,14 +233,14 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
             </form>
           )}
           <span className="ml-auto text-xs text-faint">
-            {!repo.remoteUrl ? "No remote" : st.upstream ? `tracks ${st.upstream}` : st.unborn ? "No commit yet" : "Not published yet"}
-            {st.upstream && st.ahead === 0 && st.behind === 0 && " · in sync as of last fetch"}
+            {!repo.remoteUrl ? t("Pas de dépôt distant") : st.upstream ? t("suit {u}", { u: st.upstream }) : st.unborn ? t("Pas encore de commit") : t("Pas encore publiée")}
+            {st.upstream && st.ahead === 0 && st.behind === 0 && ` · ${t("à jour au dernier fetch")}`}
           </span>
         </div>
 
         {confirmPush && (
-          <div className="border-t border-white/6 bg-raised/50 px-4 py-3">
-            <p className="text-[13px] font-medium">{st.upstream ? `Push ${d.outgoing.length} commit${d.outgoing.length === 1 ? "" : "s"} to ${st.upstream}?` : `Publish branch “${st.branch}” to origin?`}</p>
+          <div className="border-t border-ink/6 bg-raised/50 px-4 py-3">
+            <p className="text-sm font-medium">{st.upstream ? t("Envoyer {n} commit(s) vers {u} ?", { n: d.outgoing.length, u: st.upstream }) : t("Publier la branche « {b} » sur origin ?", { b: st.branch ?? "" })}</p>
             <p className="mt-0.5 text-xs text-muted">{t("Un push normal : si le dépôt distant a des commits plus récents, il est refusé, jamais forcé.")}</p>
             {d.outgoing.length > 0 && (
               <ul className="mt-2 max-h-32 overflow-y-auto rounded-md border border-line bg-bg py-1">
@@ -263,7 +263,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
           </div>
         )}
         {output && (
-          <pre className="selectable max-h-28 overflow-auto border-t border-white/6 bg-bg px-4 py-2 font-mono text-xs whitespace-pre-wrap text-muted" onDoubleClick={() => setOutput(null)}>
+          <pre className="selectable max-h-28 overflow-auto border-t border-ink/6 bg-bg px-4 py-2 font-mono text-xs whitespace-pre-wrap text-muted" onDoubleClick={() => setOutput(null)}>
             {output}
           </pre>
         )}
@@ -280,7 +280,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
             onSelect={(c) => setFile({ path: c.path, staged: true, untracked: false })}
             action={{ label: "Désindexer", icon: <Minus className="size-3.5" />, run: (paths) => unstage.mutate(paths) }}
           />
-          <div className="border-t border-white/6">
+          <div className="border-t border-ink/6">
             <ChangeList
               title="Modifications"
               empty={t("Rien à commiter")}
@@ -292,7 +292,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
             />
           </div>
           <form
-            className="flex flex-col gap-2 border-t border-white/6 p-3"
+            className="flex flex-col gap-2 border-t border-ink/6 p-3"
             onSubmit={(e) => {
               e.preventDefault();
               if (staged.length > 0 && message.trim()) commit.mutate();
@@ -311,11 +311,11 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
           <Card>
             <CardTitle right={d.incoming.length > 0 ? <Dot tone="info">{d.incoming.length} on the remote</Dot> : undefined}>Historique</CardTitle>
             {d.log.length === 0 ? (
-              <p className="px-4 py-4 text-[13px] text-muted">{t("Aucun commit.")}</p>
+              <p className="px-4 py-4 text-sm text-muted">{t("Aucun commit.")}</p>
             ) : (
               <ul className="py-1">
                 {d.log.map((c, i) => (
-                  <li key={c.hash} className="flex h-8 items-center gap-2.5 px-4 text-[13px]" title={`${c.hash}\n${c.author}`}>
+                  <li key={c.hash} className="flex h-8 items-center gap-2.5 px-4 text-sm" title={`${c.hash}\n${c.author}`}>
                     <span className={cn("size-1.5 shrink-0 rounded-full", i < st.ahead ? "bg-accent" : "bg-line-strong")} />
                     <span className="selectable shrink-0 font-mono text-xs text-faint">{c.hash.slice(0, 7)}</span>
                     <span className="selectable min-w-0 flex-1 truncate">{c.subject}</span>
@@ -340,7 +340,7 @@ function ChangeList({ title, empty, changes, letter, selected, onSelect, action 
     <div>
       <div className="flex h-9 items-center justify-between px-3">
         <SectionLabel>
-          {title} <span className="ml-1 font-mono text-[11px]">{changes.length}</span>
+          {title} <span className="ml-1 font-mono text-2xs">{changes.length}</span>
         </SectionLabel>
         {changes.length > 1 && (
           <Button size="sm" variant="ghost" onClick={() => action.run(changes.map((c) => c.path))}>

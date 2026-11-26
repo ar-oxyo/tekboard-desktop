@@ -1,6 +1,6 @@
 // Planning data for every screen that shows it: the user's entries, MY Epitech's, and what follows from both.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { api, asAppError, type ScheduleAction, type PlanEvent, type PlanState, type PlanTask } from "../../lib/api";
 import { useBoard, usePref, useRepos } from "../../lib/hooks";
 import { busySpans, calItems, DEFAULT_PREFS, withMode, planProjects, projectLoad, type Load, type PlanPrefs } from "../../lib/plan";
@@ -71,9 +71,21 @@ export function usePlanActions() {
       ),
     onError: fail("Élément non enregistré"),
   });
+  const current = () => qc.getQueryData<PlanState>(planKey);
+  // What was just deleted, to bring it back from the toast.
+  const removed = useRef(new Map<string, PlanEvent | PlanTask>());
   const removeEvent = useMutation({
     mutationFn: (id: number) => api.planEventDelete(id),
-    onMutate: (id) => optimistic((s) => ({ ...s, events: s.events.filter((x) => x.id !== id) })),
+    onMutate: (id) => {
+      const gone = current()?.events.find((x) => x.id === id);
+      if (gone) removed.current.set(`e${id}`, gone);
+      return optimistic((s) => ({ ...s, events: s.events.filter((x) => x.id !== id) }));
+    },
+    // Deleted, with a way back: the entry is created again as it was.
+    onSuccess: (_r, id) => {
+      const gone = removed.current.get(`e${id}`) as PlanEvent | undefined;
+      if (gone) toast({ kind: "ok", title: t("Supprimé : {x}", { x: gone.title }), action: { label: t("Annuler"), run: () => saveEvent.mutate({ ...gone, id: undefined }) } });
+    },
     onError: fail("Élément non supprimé"),
   });
   const saveTask = useMutation({
@@ -83,7 +95,15 @@ export function usePlanActions() {
   });
   const removeTask = useMutation({
     mutationFn: (id: number) => api.planTaskDelete(id),
-    onMutate: (id) => optimistic((s) => ({ ...s, tasks: s.tasks.filter((x) => x.id !== id) })),
+    onMutate: (id) => {
+      const gone = current()?.tasks.find((x) => x.id === id);
+      if (gone) removed.current.set(`t${id}`, gone);
+      return optimistic((s) => ({ ...s, tasks: s.tasks.filter((x) => x.id !== id) }));
+    },
+    onSuccess: (_r, id) => {
+      const gone = removed.current.get(`t${id}`) as PlanTask | undefined;
+      if (gone) toast({ kind: "ok", title: t("Tâche supprimée : {x}", { x: gone.title }), action: { label: t("Annuler"), run: () => saveTask.mutate({ ...gone, id: undefined }, { onSuccess: () => refresh() }) } });
+    },
     onError: fail("Tâche non supprimée"),
   });
   const setProject = useMutation({
@@ -98,6 +118,10 @@ export function usePlanActions() {
     },
     onError: fail("Plan non appliqué : rien n'a été modifié"),
   });
-  const toggleTask = (t: PlanTask) => saveTask.mutate({ ...t, doneAt: t.doneAt === null ? Math.floor(Date.now() / 1000) : null });
+  const toggleTask = (task: PlanTask) => {
+    const done = task.doneAt === null;
+    saveTask.mutate({ ...task, doneAt: done ? Math.floor(Date.now() / 1000) : null });
+    if (done) toast({ kind: "ok", title: t("Fait : {x}", { x: task.title }), action: { label: t("Annuler"), run: () => saveTask.mutate({ ...task, doneAt: null }) } });
+  };
   return { saveEvent, removeEvent, saveTask, removeTask, setProject, apply, toggleTask, refresh };
 }

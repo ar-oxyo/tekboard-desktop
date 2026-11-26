@@ -255,7 +255,7 @@ export function LibraryPage() {
               <CardTitle>Étiquettes</CardTitle>
               <div className="flex flex-wrap gap-1.5 p-3">
                 {tags.map(([t, n]) => (
-                  <button key={t} type="button" onClick={() => setTag(tag === t ? null : t)} className={cn("h-6 rounded-full border px-2 text-[11px] transition-colors", tag === t ? "border-accent/40 bg-accent-soft text-accent-strong" : "border-line text-muted hover:border-line-strong hover:text-fg")}>
+                  <button key={t} type="button" onClick={() => setTag(tag === t ? null : t)} className={cn("h-6 rounded-full border px-2 text-2xs transition-colors", tag === t ? "border-accent/40 bg-accent-soft text-accent-strong" : "border-line text-muted hover:border-line-strong hover:text-fg")}>
                     {t} <span className="text-faint">{n}</span>
                   </button>
                 ))}
@@ -276,7 +276,7 @@ export function LibraryPage() {
 
         {/* ── centre: catalog */}
         <Card className="min-w-0">
-          <div className="flex items-center gap-2 border-b border-white/6 p-2.5">
+          <div className="flex items-center gap-2 border-b border-ink/6 p-2.5">
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-faint" />
               <Input autoFocus className="pl-8" aria-label={t("Chercher une fonction, une étiquette ou un fichier")} placeholder={t("Rechercher")} value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -284,14 +284,14 @@ export function LibraryPage() {
             <Select className="w-44" label={t("Filtrer par état")} value={stateFilter} onChange={(v) => setStateFilter(v as StateFilter)} disabled={!hasProject} disabledReason={projectState === "none" ? "Choisis un projet à droite pour filtrer selon ce qu'il contient" : projectState === "loading" ? t("Lecture du projet…") : "L'état du projet n'a pas pu être lu (voir à droite)"} options={[{ value: "all", label: t("Tout") }, { value: "in", label: t("Dans le projet") }, { value: "out", label: t("Pas installé") }, { value: "attention", label: t("À vérifier"), hint: attention ? String(attention) : undefined }]} />
           </div>
           {catalog.isLoading ? (
-            <p className="flex items-center gap-2 px-4 py-10 text-[13px] text-muted"><Spinner /> {t("Lecture de la bibliothèque…")}</p>
+            <p className="flex items-center gap-2 px-4 py-10 text-sm text-muted"><Spinner /> {t("Lecture de la bibliothèque…")}</p>
           ) : shown.length === 0 ? (
-            <EmptyState icon={<Search className="size-5" />} title={sources.length === 0 ? "This library has no source file" : "Nothing matches"}>
-              {sources.length === 0 ? "Drop .c files on this window to add some." : "Try fewer words, or clear the folder and tag filters."}
+            <EmptyState icon={<Search className="size-5" />} title={sources.length === 0 ? t("Cette bibliothèque n'a aucun fichier source") : t("Rien ne correspond")}>
+              {sources.length === 0 ? t("Dépose des fichiers .c sur cette fenêtre pour en ajouter.") : t("Essaie moins de mots, ou retire les filtres de dossier et de tag.")}
             </EmptyState>
           ) : (
             <>
-            <label className="flex h-9 cursor-pointer items-center gap-3 border-b border-white/6 px-4 text-xs text-muted hover:text-fg">
+            <label className="flex h-9 cursor-pointer items-center gap-3 border-b border-ink/6 px-4 text-xs text-muted hover:text-fg">
               <input
                 type="checkbox"
                 className="size-4 accent-(--color-accent)"
@@ -310,7 +310,7 @@ export function LibraryPage() {
             </>
           )}
           {(catalog.data?.duplicates.length ?? 0) > 0 && (
-            <p className="selectable border-t border-white/6 px-4 py-2 text-xs text-faint">
+            <p className="selectable border-t border-ink/6 px-4 py-2 text-xs text-faint">
               Defined in several files: {catalog.data!.duplicates.map((d) => `${d.name} (${d.files.join(", ")})`).join(" · ")}. Dependencies on these are marked “assumed”.
             </p>
           )}
@@ -360,18 +360,18 @@ export function LibraryPage() {
           <Card>
             <CardTitle right={plan.isFetching ? <Spinner /> : undefined}>Changements</CardTitle>
             {!hasProject ? (
-              <p className="px-4 py-4 text-[13px] text-muted">{projectState === "none" ? "Choisis un projet pour y installer des fonctions. Sans projet, cocher prépare seulement un préréglage." : projectState === "loading" ? t("Lecture du projet…") : "L'état du projet n'a pas pu être lu : voir le message au-dessus."}</p>
+              <p className="px-4 py-4 text-sm text-muted">{projectState === "none" ? "Choisis un projet pour y installer des fonctions. Sans projet, cocher prépare seulement un préréglage." : projectState === "loading" ? t("Lecture du projet…") : "L'état du projet n'a pas pu être lu : voir le message au-dessus."}</p>
             ) : !planOn ? (
-              <p className="px-4 py-4 text-[13px] text-muted">{t("Coche une fonction pour l'ajouter, décoche-la pour la retirer. Rien n'est écrit avant d'appliquer.")}</p>
+              <p className="px-4 py-4 text-sm text-muted">{t("Coche une fonction pour l'ajouter, décoche-la pour la retirer. Rien n'est écrit avant d'appliquer.")}</p>
             ) : plan.error ? (
               <div className="p-3"><ErrorNote>{asAppError(plan.error).message}</ErrorNote></div>
             ) : plan.data ? (
               <div className="flex flex-col">
                 {plan.data.required.length > 0 && (
-                  <div className="border-b border-white/6 px-3 py-2.5">
+                  <div className="border-b border-ink/6 px-3 py-2.5">
                     <p className="mb-1.5 text-xs text-muted">Nécessaire</p>
                     {plan.data.required.map((r) => (
-                      <label key={r.rel} className="flex min-h-6 items-center gap-2 text-xs" title={`Needed by ${r.neededBy}${r.via.length ? ` (${r.via.join(", ")})` : ""}`}>
+                      <label key={r.rel} className="flex min-h-6 items-center gap-2 text-xs" title={`${t("Requis par {f}", { f: r.neededBy })}${r.via.length ? ` (${r.via.join(", ")})` : ""}`}>
                         <input type="checkbox" className="accent-(--color-accent)" checked onChange={() => flip(exclude, setExclude, r.rel)} />
                         <span className="min-w-0 flex-1 truncate font-mono">{r.rel}</span>
                         <Badge tone={r.kind === "detected" ? "ok" : r.kind === "declared" ? "accent" : "warn"}>{r.kind === "ambiguous" ? "assumed" : r.kind}</Badge>
@@ -380,7 +380,7 @@ export function LibraryPage() {
                   </div>
                 )}
                 {exclude.size > 0 && (
-                  <div className="border-b border-white/6 px-3 py-2 text-xs text-warn">
+                  <div className="border-b border-ink/6 px-3 py-2 text-xs text-warn">
                     Left out: {[...exclude].map((r) => <button key={r} type="button" className="mr-1.5 font-mono underline decoration-dotted" onClick={() => flip(exclude, setExclude, r)} title="Réinclure">{r}</button>)}
                   </div>
                 )}
@@ -389,20 +389,20 @@ export function LibraryPage() {
                   {real.map((a) => <ActionRow key={a.path} action={a} confirmed={confirmed.has(a.path)} onConfirm={() => flip(confirmed, setConfirmed, a.path)} />)}
                 </ul>
                 {kept.length > 0 && (
-                  <p className="border-t border-white/6 px-3 py-2 text-xs text-muted" title={kept.map((k) => `${k.path}: ${k.reason}`).join("\n")}>
+                  <p className="border-t border-ink/6 px-3 py-2 text-xs text-muted" title={kept.map((k) => `${k.path}: ${k.reason}`).join("\n")}>
                     {kept.length} file{kept.length > 1 ? "s" : ""} kept as you have {kept.length > 1 ? "them" : "it"} (not overwritten).
                   </p>
                 )}
                 {plan.data.warnings.map((w) => (
-                  <p key={w} className="selectable flex gap-2 border-t border-white/6 px-3 py-2 text-xs text-warn"><TriangleAlert className="mt-px size-3.5 shrink-0" />{w}</p>
+                  <p key={w} className="selectable flex gap-2 border-t border-ink/6 px-3 py-2 text-xs text-warn"><TriangleAlert className="mt-px size-3.5 shrink-0" />{w}</p>
                 ))}
-                <div className="flex items-center justify-between gap-2 border-t border-white/6 p-3">
-                  <span className="text-xs text-faint">{risky.length > 0 ? `${confirmed.size}/${risky.length} risky change${risky.length > 1 ? "s" : ""} confirmed` : "Existing files are saved first"}</span>
+                <div className="flex items-center justify-between gap-2 border-t border-ink/6 p-3">
+                  <span className="text-xs text-faint">{risky.length > 0 ? `${confirmed.size}/${risky.length} risky change${risky.length > 1 ? "s" : ""} confirmed` : t("Les fichiers existants sont sauvegardés d'abord")}</span>
                   <Button variant="primary" icon={<Check className="size-3.5" />} busy={apply.isPending} disabled={real.length === 0 || plan.isFetching} onClick={() => apply.mutate()}>{t("Appliquer")}</Button>
                 </div>
               </div>
             ) : (
-              <p className="flex items-center gap-2 px-4 py-4 text-[13px] text-muted"><Spinner /> {t("Calcul des changements…")}</p>
+              <p className="flex items-center gap-2 px-4 py-4 text-sm text-muted"><Spinner /> {t("Calcul des changements…")}</p>
             )}
           </Card>
 
@@ -413,7 +413,7 @@ export function LibraryPage() {
               {(presets.data ?? []).map((p) => (
                 <div key={p.id} className="row-hover flex h-8 items-center gap-2 rounded-md pr-1 pl-2">
                   <BookMarked className="size-3.5 text-faint" />
-                  <button type="button" className="min-w-0 flex-1 truncate text-left text-[13px] hover:text-accent-strong" title={t("Cocher ces fonctions (garde ce qui est déjà coché)")} onClick={() => setDesired(new Set([...desired, ...p.files.filter((f) => sources.some((s) => s.rel === f))]))}>
+                  <button type="button" className="min-w-0 flex-1 truncate text-left text-sm hover:text-accent-strong" title={t("Cocher ces fonctions (garde ce qui est déjà coché)")} onClick={() => setDesired(new Set([...desired, ...p.files.filter((f) => sources.some((s) => s.rel === f))]))}>
                     {p.name} <span className="text-xs text-faint">{p.files.length}</span>
                   </button>
                   <IconButton label={`Delete preset ${p.name}`} onClick={() => dropPreset.mutate(p.id)}><Trash2 className="size-3.5" /></IconButton>
@@ -430,7 +430,7 @@ export function LibraryPage() {
           <div className="glass flex flex-col items-center gap-2 border border-accent/50 px-10 py-8 text-center">
             <FilePlus2 className="size-8 text-accent-strong" />
             <p className="display text-lg font-medium">{t("Dépose des fichiers dans ta bibliothèque")}</p>
-            <p className="text-[13px] text-muted">Added to “{lib.name}” after you review them</p>
+            <p className="text-sm text-muted">Added to “{lib.name}” after you review them</p>
           </div>
         </div>
       )}
@@ -444,7 +444,7 @@ export function LibraryPage() {
 function FilterRow({ label, count, active, onClick, mono }: { label: string; count: number; active: boolean; onClick: () => void; mono?: boolean }) {
   return (
     <li>
-      <button type="button" onClick={onClick} className={cn("flex h-7 w-full items-center gap-2 px-3 text-left text-xs transition-colors", active ? "bg-accent-soft text-accent-strong" : "text-muted hover:bg-white/5 hover:text-fg")}>
+      <button type="button" onClick={onClick} className={cn("flex h-7 w-full items-center gap-2 px-3 text-left text-xs transition-colors", active ? "bg-accent-soft text-accent-strong" : "text-muted hover:bg-ink/5 hover:text-fg")}>
         <span className={cn("min-w-0 flex-1 truncate", mono && "font-mono")}>{label}</span>
         <span className="text-faint">{count}</span>
       </button>
@@ -460,18 +460,18 @@ function FileRow({ file, state, checked, replacing, onToggle, onOpen, onReplace 
       <input type="checkbox" aria-label={`${fileTitle(file)} in the project`} className="mt-1 size-4 shrink-0 accent-(--color-accent)" checked={checked} onChange={onToggle} />
       <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
         <span className="flex items-center gap-2">
-          <span className="truncate font-mono text-[13px] font-medium text-fg">{fileTitle(file)}</span>
+          <span className="truncate font-mono text-sm font-medium text-fg">{fileTitle(file)}</span>
           {more > 0 && <span className="shrink-0 text-xs text-faint" title={file.functions.slice(1).map((f) => f.name).join(", ")}>+{more}</span>}
           {badge && <Badge tone={badge.tone} title={badge.title}>{badge.label}</Badge>}
           {replacing && <Badge tone="warn">{t("sera remplacé")}</Badge>}
         </span>
-        <span className="mt-0.5 block truncate font-mono text-[11.5px] text-muted">{file.functions[0]?.signature ?? file.rel}</span>
+        <span className="mt-0.5 block truncate font-mono text-2xs text-muted">{file.functions[0]?.signature ?? file.rel}</span>
         {file.description && <span className="mt-0.5 block truncate text-xs text-muted">{file.description}</span>}
         <span className="mt-1 flex flex-wrap items-center gap-1.5">
-          <span className="font-mono text-[11px] text-faint">{file.rel}</span>
+          <span className="font-mono text-2xs text-faint">{file.rel}</span>
           {file.deps.length > 0 && <Badge title={file.deps.map((d) => `${d.rel}${d.via.length ? ` — ${d.via.join(", ")}` : ""} (${d.kind === "ambiguous" ? "assumed" : d.kind})`).join("\n")}>{file.deps.length} dep{file.deps.length > 1 ? "s" : ""}</Badge>}
-          {[...file.tags, ...file.autoTags.filter((t) => !file.tags.includes(t))].slice(0, 3).map((t) => <span key={t} className="text-[11px] text-faint">#{t}</span>)}
-          {file.parseErrors && <span className="text-[11px] text-warn" title={t("L'analyseur n'a pas compris toutes les lignes (souvent une macro qui prend un type, comme va_arg). Les fonctions listées ont quand même été trouvées.")}>partly parsed</span>}
+          {[...file.tags, ...file.autoTags.filter((t) => !file.tags.includes(t))].slice(0, 3).map((t) => <span key={t} className="text-2xs text-faint">#{t}</span>)}
+          {file.parseErrors && <span className="text-2xs text-warn" title={t("L'analyseur n'a pas compris toutes les lignes (souvent une macro qui prend un type, comme va_arg). Les fonctions listées ont quand même été trouvées.")}>partly parsed</span>}
         </span>
       </button>
       {onReplace && <Button size="sm" variant={replacing ? "secondary" : "ghost"} onClick={onReplace} title={t("Remplacer la copie du projet par la version de la bibliothèque (demande avant d'écraser tes modifications)")}>{replacing ? "Keep mine" : "Use library"}</Button>}
@@ -490,11 +490,11 @@ function ActionRow({ action, confirmed, onConfirm }: { action: LibPlanAction; co
           <span className="truncate">{action.path}</span>
         </button>
       </div>
-      <p className="mt-0.5 pl-1 text-[11px] text-faint">{action.reason}</p>
+      <p className="mt-0.5 pl-1 text-2xs text-faint">{action.reason}</p>
       {action.risky && (
         <label className="mt-1 flex items-center gap-2 rounded-md border border-warn/30 bg-warn/10 px-2 py-1 text-xs text-warn">
           <input type="checkbox" className="accent-(--color-warn)" checked={confirmed} onChange={onConfirm} />
-          {action.op === "delete" ? "Yes, delete my edited copy" : "Yes, replace my edited copy"}
+          {action.op === "delete" ? t("Oui, supprimer ma copie modifiée") : t("Oui, remplacer ma copie modifiée")}
         </label>
       )}
       {open && action.diff && <DiffView text={action.diff} className="mt-1.5 max-h-64 rounded-md" />}
@@ -520,7 +520,7 @@ function PresetSaver({ disabled, count, busy, onSave }: { disabled: boolean; cou
   const [name, setName] = useState("");
   return (
     <form className="mt-1 flex gap-1.5" onSubmit={(e) => { e.preventDefault(); if (name.trim()) { onSave(name.trim()); setName(""); } }}>
-      <Input className="h-7 text-xs" placeholder={disabled ? "Tick functions first" : `Name for these ${count}`} value={name} disabled={disabled} onChange={(e) => setName(e.target.value)} />
+      <Input className="h-7 text-xs" placeholder={disabled ? t("Coche d'abord des fonctions") : t("Nom pour ces {n}", { n: count })} value={name} disabled={disabled} onChange={(e) => setName(e.target.value)} />
       <Button size="sm" type="submit" busy={busy} disabled={disabled || !name.trim()}>{t("Enregistrer")}</Button>
     </form>
   );

@@ -58,7 +58,7 @@ export function OnboardingFlow() {
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <img src="/tekboard.svg" alt="" className="size-7" />
-            <span className="display text-[15px] font-medium">Tekboard</span>
+            <span className="display text-md font-(--title-weight)">TekBoard</span>
           </div>
           {step !== "welcome" && (
             <span className="text-xs text-faint tabular-nums">{t("Étape {i} sur {n}", { i: index + 1, n: STEPS.length })}</span>
@@ -66,7 +66,7 @@ export function OnboardingFlow() {
         </div>
         <div className="mb-6 flex gap-1.5" aria-hidden="true">
           {STEPS.map((id, i) => (
-            <span key={id} className={cn("h-1 flex-1 rounded-full transition-colors duration-300", i <= index ? "bg-accent" : "bg-white/8")} />
+            <span key={id} className={cn("h-1 flex-1 rounded-full transition-colors duration-300", i <= index ? "bg-accent" : "bg-ink/8")} />
           ))}
         </div>
 
@@ -132,10 +132,10 @@ function Welcome() {
   return (
     <>
       <h1 className="display text-2xl font-medium">{t("Bienvenue sur Tekboard")}</h1>
-      <p className="mt-1 text-[13px] text-muted">{t("Ton tableau de bord d'étudiant Epitech. Deux minutes pour le régler, tout se change ensuite dans les Réglages.")}</p>
+      <p className="mt-1 text-sm text-muted">{t("Ton tableau de bord d'étudiant Epitech. Deux minutes pour le régler, tout se change ensuite dans les Réglages.")}</p>
       <ul className="mt-5 flex flex-col gap-3">
         {items.map(({ icon: Icon, text }) => (
-          <li key={text} className="flex items-start gap-3 text-[13px]">
+          <li key={text} className="flex items-start gap-3 text-sm">
             <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent">
               <Icon className="size-4" />
             </span>
@@ -154,7 +154,7 @@ function Personalize({ s, save }: { s: Settings; save: (p: Partial<Settings>) =>
   return (
     <>
       <h2 className="display text-lg font-medium">{t("À ton goût")}</h2>
-      <p className="mt-1 text-[13px] text-muted">{t("Le changement s'affiche tout de suite.")}</p>
+      <p className="mt-1 text-sm text-muted">{t("Le changement s'affiche tout de suite.")}</p>
       <div className="mt-4 max-w-[260px]">
         <Field label={t("Langue")}>
           <Select
@@ -208,12 +208,12 @@ function MyStep() {
   return (
     <>
       <h2 className="display text-lg font-medium">{t("Connecter MY Epitech")}</h2>
-      <p className="mt-1 text-[13px] text-muted">{t("Tekboard récupère tes projets, leurs dates de rendu, tes sujets et ton logtime. Facultatif : tu pourras le faire plus tard depuis École.")}</p>
+      <p className="mt-1 text-sm text-muted">{t("Tekboard récupère tes projets, leurs dates de rendu, tes sujets et ton logtime. Facultatif : tu pourras le faire plus tard depuis École.")}</p>
       <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-faint">
         <li>{t("Tu te connectes sur le vrai site, dans une fenêtre à part (Microsoft et double authentification comme d'habitude). Tekboard ne voit jamais ton mot de passe.")}</li>
         <li>{t("Lecture seule, sur ton propre compte. La fenêtre se ferme seule une fois la synchronisation finie.")}</li>
       </ul>
-      <label className="mt-4 flex items-center gap-2 text-[13px]">
+      <label className="mt-4 flex items-center gap-2 text-sm">
         <input type="checkbox" className="accent-(--color-accent)" checked={consent} onChange={(e) => accept(e.target.checked)} />
         {t("J'accepte de garder une session MY Epitech dans TekBoard sur cet ordinateur")}
       </label>
@@ -228,7 +228,7 @@ function MyStep() {
           {sync.busy ? sync.label : connected ? t("Synchroniser à nouveau") : t("Se connecter et synchroniser")}
         </Button>
         {connected && !sync.busy && (
-          <span className="flex items-center gap-1.5 text-[13px] text-ok">
+          <span className="flex items-center gap-1.5 text-sm text-ok">
             <CircleCheck className="size-4" />
             {report ? [t("Synchronisé"), report.subjectsImported > 0 ? plural(report.subjectsImported, "{n} sujet récupéré", "{n} sujets récupérés") : null].filter(Boolean).join(" · ") : t("Déjà synchronisé")}
           </span>
@@ -247,7 +247,7 @@ function ProjectsStep({ s, save, onSaved }: { s: Settings; save: (p: Partial<Set
         <label className="mt-4 flex items-start gap-3">
           <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={s.epitechOnly} onChange={(e) => void save({ epitechOnly: e.target.checked })} />
           <span>
-            <span className="block text-[13px]">Epitech Projects Only</span>
+            <span className="block text-sm">Epitech Projects Only</span>
             <span className="block text-xs text-faint">{t("Seuls les projets Epitech apparaissent dans les listes, le planning et pour Artix. Décoche pour voir aussi tes projets personnels.")}</span>
           </span>
         </label>
@@ -260,7 +260,7 @@ function EnvStep() {
   return (
     <>
       <h2 className="display text-lg font-medium">{t("Ton environnement")}</h2>
-      <p className="mt-1 text-[13px] text-muted">{t("TekBoard vérifie les outils dont il se sert. Ce qui manque est expliqué : à quoi il sert, ce qui ne marchera pas sans, et comment l'installer (le plus simple : relancer ./install.sh). Rien n'est bloquant ici.")}</p>
+      <p className="mt-1 text-sm text-muted">{t("TekBoard vérifie les outils dont il se sert. Ce qui manque est expliqué : à quoi il sert, ce qui ne marchera pas sans, et comment l'installer (le plus simple : relancer ./install.sh). Rien n'est bloquant ici.")}</p>
       <div className="mt-4 -mx-2">
         <DoctorCard compact />
       </div>
@@ -272,7 +272,7 @@ function AiStep() {
   return (
     <>
       <h2 className="display text-lg font-medium">{t("Choisir une IA pour Artix")}</h2>
-      <p className="mt-1 text-[13px] text-muted">{t("Artix peut s'appuyer sur Claude Code, sur des modèles gratuits en ligne (OpenRouter) ou sur un modèle qui tourne sur ton ordinateur. Facultatif : TekBoard fonctionne aussi sans IA, et tout se change dans Réglages → Artix (IA).")}</p>
+      <p className="mt-1 text-sm text-muted">{t("Artix peut s'appuyer sur Claude Code, sur des modèles gratuits en ligne (OpenRouter) ou sur un modèle qui tourne sur ton ordinateur. Facultatif : TekBoard fonctionne aussi sans IA, et tout se change dans Réglages → Artix (IA).")}</p>
       <div className="mt-4 flex flex-col gap-4">
         <ProviderPicker />
         <ProviderPanel />
@@ -289,7 +289,7 @@ function Done({ s }: { s: Settings }) {
   const ai = useAiStatus();
   const rows = [
     [t("Langue"), s.language === "en" ? "English" : "Français"],
-    [t("Apparence"), s.theme.charAt(0).toUpperCase() + s.theme.slice(1)],
+    [t("Apparence"), s.theme === "aurora" ? "Riso" : s.theme.charAt(0).toUpperCase() + s.theme.slice(1)],
     ["MY Epitech", status.data?.lastSync ? t("connecté") : t("plus tard (École → MY Epitech)")],
     [t("Dossiers de projets"), s.roots.length > 0 ? String(s.roots.length) : t("plus tard (Réglages → Général)")],
     ["IA", ai.data ? `${PROVIDER_NAME[ai.data.provider]}${ai.data.provider !== "none" && !ai.data.configured ? ` (${t("à configurer")})` : ""}` : "…"],
@@ -300,7 +300,7 @@ function Done({ s }: { s: Settings }) {
         <CircleCheck className="size-6" />
         <h2 className="display text-2xl font-medium text-fg">{t("Tekboard est prêt !")}</h2>
       </div>
-      <dl className="mt-4 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1.5 text-[13px]">
+      <dl className="mt-4 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1.5 text-sm">
         {rows.map(([k, v]) => (
           <div key={k} className="contents">
             <dt className="text-muted">{k}</dt>

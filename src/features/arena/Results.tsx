@@ -72,10 +72,10 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
             </label>
           </div>
           <LineChart series={series} xLabel={t("taille n")} yLabel={metrics.find((m) => m[0] === metric)?.[1] ?? ""} formatY={fmt} logX={logScale} logY={logScale} />
-          {metric === "wall" && <p className="mt-1 text-[11px] text-faint">{t("Médiane des exécutions ; la bande montre le minimum et le maximum.")}</p>}
+          {metric === "wall" && <p className="mt-1 text-2xs text-faint">{t("Médiane des exécutions ; la bande montre le minimum et le maximum.")}</p>}
         </section>
       ) : running ? (
-        <p className="flex items-center gap-2 text-[13px] text-muted">
+        <p className="flex items-center gap-2 text-sm text-muted">
           <Spinner /> {t("Les mesures arrivent au fur et à mesure…")}
         </p>
       ) : null}
@@ -88,7 +88,7 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
               const ft = fitLabel(s.fitTime);
               const fi = fitLabel(s.fitIr);
               return (
-                <li key={`${s.variant}-${s.scenario}`} className="flex flex-wrap items-center gap-2 text-[13px]">
+                <li key={`${s.variant}-${s.scenario}`} className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="min-w-32 text-fg">{seriesLabel(r, s)}</span>
                   <span className="text-xs text-faint">{t("temps")}</span>
                   <Badge tone={ft.tone} title={s.fitTime?.why}>
@@ -108,20 +108,20 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
             })}
           </ul>
           {ratio && (
-            <p className="mt-2 text-[13px] text-muted">
+            <p className="mt-2 text-sm text-muted">
               {ratio.ratio >= 1
                 ? t("À n = {n}, {b} est {x}× plus lent que {a}.", { n: compact(ratio.n), a: r.variants[0], b: r.variants[1], x: ratio.ratio.toFixed(2) })
                 : t("À n = {n}, {b} est {x}× plus rapide que {a}.", { n: compact(ratio.n), a: r.variants[0], b: r.variants[1], x: (1 / ratio.ratio).toFixed(2) })}
             </p>
           )}
-          <p className="mt-1 text-[11px] text-faint">{t("Ajustement par moindres carrés sur les tailles mesurées. « ? » : le modèle suivant est trop proche pour conclure. Survole un badge pour le détail.")}</p>
+          <p className="mt-1 text-2xs text-faint">{t("Ajustement par moindres carrés sur les tailles mesurées. « ? » : le modèle suivant est trop proche pour conclure. Survole un badge pour le détail.")}</p>
         </section>
       )}
 
       {r.series.length > 0 && (
         <section className="card overflow-x-auto p-3">
           <h3 className="mb-2 text-xs text-faint">{t("Tableau des résultats")}</h3>
-          <table className="w-full text-[12px] tabular">
+          <table className="w-full text-xs tabular">
             <thead className="text-left text-faint">
               <tr>
                 <th className="py-1 pr-3 font-normal">{t("Série")}</th>
@@ -137,7 +137,7 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
             <tbody>
               {r.series.flatMap((s) =>
                 s.points.map((p) => (
-                  <tr key={`${s.variant}-${s.scenario}-${p.n}`} className="border-t border-white/5 text-fg">
+                  <tr key={`${s.variant}-${s.scenario}-${p.n}`} className="border-t border-ink/5 text-fg">
                     <td className="py-1 pr-3 text-muted">{seriesLabel(r, s)}</td>
                     <td className="pr-3">{compact(p.n)}</td>
                     {p.failed ? (
@@ -177,19 +177,19 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
           <div className="space-y-4">
             {r.series.map((s) => (
               <div key={`${s.variant}-${s.scenario}`}>
-                <p className="mb-1 text-[12px] text-muted">
+                <p className="mb-1 text-xs text-muted">
                   {seriesLabel(r, s)} {s.profiledN !== null && <span className="text-faint">· n = {compact(s.profiledN)}</span>}
                   {s.heapPeak !== null && <span className="ml-3">{t("pic du tas : {b}", { b: bytes(s.heapPeak) })}</span>}
                   {s.heap && <span className="ml-3">{t("{a} allocation(s), {f} libération(s), {b} alloués", { a: compact(s.heap.allocs), f: compact(s.heap.frees), b: bytes(s.heap.bytes) })}</span>}
                 </p>
                 <ul className="space-y-1">
                   {(s.hot?.functions ?? []).slice(0, 8).map((f, i) => (
-                    <li key={i} className="grid grid-cols-[minmax(0,14rem)_1fr_4.5rem] items-center gap-2 text-[12px]">
+                    <li key={i} className="grid grid-cols-[minmax(0,14rem)_1fr_4.5rem] items-center gap-2 text-xs">
                       <span className={cn("truncate font-mono", f.own ? "text-fg" : "text-faint")} title={f.file ?? undefined}>
                         {f.function}
-                        {!f.own && <span className="ml-1 text-[10px]">(libc)</span>}
+                        {!f.own && <span className="ml-1 text-3xs">(libc)</span>}
                       </span>
-                      <span className="h-2 rounded-sm bg-white/5">
+                      <span className="h-2 rounded-sm bg-ink/5">
                         <span className="block h-2 rounded-sm" style={{ width: `${Math.max(1, f.percent)}%`, background: f.own ? "var(--color-accent)" : "var(--color-faint)" }} />
                       </span>
                       <span className="text-right text-muted tabular">{f.percent.toFixed(1)} %</span>
@@ -207,13 +207,13 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
           <h3 className="mb-1 flex items-center gap-1.5 text-xs text-faint">
             <Lightbulb className="size-3.5" /> {t("Hypothèses (lues dans le code, pas mesurées)")}
           </h3>
-          <p className="mb-2 text-[11px] text-faint">{t("Des pistes à confirmer avec les mesures ci-dessus : une boucle imbriquée n'est lente que si elle parcourt beaucoup de données.")}</p>
+          <p className="mb-2 text-2xs text-faint">{t("Des pistes à confirmer avec les mesures ci-dessus : une boucle imbriquée n'est lente que si elle parcourt beaucoup de données.")}</p>
           <ul className="space-y-1">
             {r.hypotheses.slice(0, 30).map((h, i) => (
-              <li key={i} className="flex items-start gap-2 text-[12px]">
+              <li key={i} className="flex items-start gap-2 text-xs">
                 <Badge tone={h.weight === "high" ? "warn" : "neutral"}>{h.provenance === "artix" ? "Artix" : t("lecture du code")}</Badge>
                 <span className="min-w-0 flex-1 text-fg">{h.message}</span>
-                <span className="shrink-0 font-mono text-[11px] text-faint">
+                <span className="shrink-0 font-mono text-2xs text-faint">
                   {h.function}() · {h.file}
                   {h.line ? `:${h.line}` : ""}
                 </span>
@@ -231,7 +231,7 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
           <ul className="mt-2 space-y-2">
             {r.inputs.map((i) => (
               <li key={`${i.scenario}-${i.n}`}>
-                <p className="text-[12px] text-muted">
+                <p className="text-xs text-muted">
                   {r.config?.scenarios[i.scenario]?.name} · n = {compact(i.n)} · {bytes(i.bytes)}
                 </p>
                 <CodeView text={i.head + (i.bytes > i.head.length ? "\n…" : "")} className="max-h-24 rounded-md" />
@@ -242,7 +242,7 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
       )}
 
       {(r.notes.length > 0 || r.machine?.cpu) && (
-        <section className="space-y-1 text-[12px] text-muted">
+        <section className="space-y-1 text-xs text-muted">
           {r.notes.map((n, i) => (
             <p key={i} className="flex gap-1.5">
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" /> {n}
@@ -264,7 +264,7 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
               {report ? t("Réécrire le rapport") : t("Écrire le rapport")}
             </Button>
           </div>
-          {report ? <Markdown text={report} className="mt-2 text-[13px]" /> : <p className="mt-1 text-[12px] text-muted">{t("Artix explique ce qui ralentit le programme à partir des seules mesures ci-dessus, avec les preuves, les limites et les compromis. Il ne modifie pas le code.")}</p>}
+          {report ? <Markdown text={report} className="mt-2 text-sm" /> : <p className="mt-1 text-xs text-muted">{t("Artix explique ce qui ralentit le programme à partir des seules mesures ci-dessus, avec les preuves, les limites et les compromis. Il ne modifie pas le code.")}</p>}
         </section>
       )}
     </div>

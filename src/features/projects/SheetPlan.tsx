@@ -2,7 +2,7 @@
 // that hold everything else (Git, Advanced). Each action has one place.
 import { CalendarClock, CalendarPlus, Code2, Copy, FolderOpen, GitBranch, GitCommitHorizontal, Globe, GraduationCap, LayoutTemplate, ListTree, Play, SquareTerminal, Trash2, User, Wand2 } from "lucide-react";
 import { useState, type CSSProperties, type ReactNode } from "react";
-import { Button, cn, Dot, IconButton, Input, SectionLabel } from "../../components/ui";
+import { Button, cn, Dot, DoneCheck, IconButton, Input, SectionLabel } from "../../components/ui";
 import type { RepoInfo } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { useNow, useProjectActions } from "../../lib/hooks";
@@ -50,8 +50,8 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <section className="flex flex-col gap-3 rounded-lg border border-white/7 p-4">
+    <div className="grid grid-cols-2 divide-x divide-line">
+      <section className="flex flex-col gap-3 pr-6">
         <SectionLabel>{tr("Où tu en es")}</SectionLabel>
         {(my?.tooManyAbsences || my?.nonCompliant) && (
           <p className="-mt-1 rounded-md border border-warn/30 bg-warn/10 px-2.5 py-1.5 text-xs text-warn">
@@ -59,15 +59,15 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
           </p>
         )}
         <div>
-          <div className="mb-1.5 flex items-baseline justify-between text-[13px]">
-            <span>{progress ? `${progress.done} of ${progress.total} tasks done` : "No task yet"}</span>
+          <div className="mb-1.5 flex items-baseline justify-between text-sm">
+            <span>{progress ? tr("{d} tâche(s) faite(s) sur {n}", { d: progress.done, n: progress.total }) : tr("Pas encore de tâche")}</span>
             {load && load.risk !== "unknown" && <Dot tone={RISK_TONE[load.risk]}>{load.why}</Dot>}
           </div>
-          <span className="block h-1.5 overflow-hidden rounded-full bg-white/6">
+          <span className="block h-1.5 overflow-hidden rounded-full bg-ink/6">
             <span className="block h-full rounded-full transition-all duration-300" style={{ width: `${progress ? (progress.done / progress.total) * 100 : 0}%`, background: project?.color ?? "var(--color-accent)" } as CSSProperties} />
           </span>
         </div>
-        <dl className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-x-3 gap-y-2 text-[13px]">
+        <dl className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-x-3 gap-y-2 text-sm">
           <dt className="text-muted">{tr("Travail restant")}</dt>
           <dd>
             {estimate === null ? (
@@ -79,14 +79,14 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
             )}
           </dd>
           <dt className="text-muted">Planifié</dt>
-          <dd>{fmtDur(load?.planned ?? 0)} in the calendar</dd>
+          <dd>{tr("{d} au planning", { d: fmtDur(load?.planned ?? 0) })}</dd>
           <dt className="text-muted">{tr("Temps passé")}</dt>
           <dd>{logged > 0 ? fmtDur(logged) : <span className="text-faint">{tr("rien d'enregistré")}</span>}</dd>
           <dt className="text-muted">{tr("Priorité")}</dt>
           <dd className="flex gap-1">
             {PRIORITY.map((label, i) => (
               <button key={label} type="button" aria-pressed={(project?.priority ?? 0) === i} onClick={() => act.setProject.mutate({ key, priority: i })} className={cn("h-6 rounded-md px-2 text-xs transition-colors duration-150", (project?.priority ?? 0) === i ? "bg-raised text-fg" : "text-faint hover:text-fg")}>
-                {i === 0 ? "None" : label}
+                {i === 0 ? tr("Aucune") : label}
               </button>
             ))}
           </dd>
@@ -126,9 +126,9 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
         )}
       </section>
 
-      <section className="flex flex-col gap-2 rounded-lg border border-white/7 p-4">
-        <SectionLabel>Ensuite</SectionLabel>
-        <div className="flex items-center gap-2 text-[13px]">
+      <section className="flex flex-col gap-2 pl-6">
+        <SectionLabel>{tr("Ensuite")}</SectionLabel>
+        <div className="flex items-center gap-2 text-sm">
           <CalendarClock className="size-4 shrink-0 text-faint" />
           {next ? (
             <>
@@ -145,8 +145,8 @@ export function PlanOverview({ repo }: { repo: RepoInfo }) {
         </div>
         <ul className="flex flex-col">
           {open.slice(0, 6).map((t) => (
-            <li key={t.id} className="group flex h-8 items-center gap-2 text-[13px]">
-              <input type="checkbox" aria-label={tr("Fait")} className="accent-(--color-accent)" checked={false} onChange={() => act.toggleTask(t)} />
+            <li key={t.id} className="group flex h-8 items-center gap-2 text-sm">
+              <DoneCheck label={tr("Fait")} checked={false} onChange={() => act.toggleTask(t)} />
               <button type="button" className="min-w-0 flex-1 truncate text-left hover:text-accent-strong" onClick={() => useUi.getState().editTask(t)}>
                 {t.title}
               </button>
@@ -197,7 +197,7 @@ export function GitTab({ repo }: { repo: RepoInfo }) {
   const s = repo.status;
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px]">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
         <BranchLabel repo={repo} />
         <StatusChips repo={repo} max={4} />
         {s && s.upstream && (
@@ -207,7 +207,7 @@ export function GitTab({ repo }: { repo: RepoInfo }) {
         )}
       </div>
       {repo.lastCommit && (
-        <p className="flex min-w-0 items-center gap-2 text-[13px] text-muted">
+        <p className="flex min-w-0 items-center gap-2 text-sm text-muted">
           <GitCommitHorizontal className="size-4 shrink-0 text-faint" />
           <span className="selectable truncate">{repo.lastCommit.subject}</span>
           <span className="shrink-0 text-faint">{timeAgo(repo.lastCommit.date)}</span>
@@ -217,7 +217,7 @@ export function GitTab({ repo }: { repo: RepoInfo }) {
         <Button variant="primary" icon={<GitBranch className="size-3.5" />} onClick={() => openGit(repo.path)}>
           Indexer, commiter et synchroniser
         </Button>
-        <Button icon={<Globe className="size-3.5" />} disabled={!repo.remoteUrl} onClick={() => act.remote.mutate(repo)} title={repo.remoteUrl ?? "This repository has no remote"}>
+        <Button icon={<Globe className="size-3.5" />} disabled={!repo.remoteUrl} onClick={() => act.remote.mutate(repo)} title={repo.remoteUrl ?? tr("Ce dépôt n'a pas de dépôt distant")}>
           {tr("Ouvrir sur GitHub")}
         </Button>
         <Button variant="ghost" icon={<Copy className="size-3.5" />} disabled={!repo.remoteUrl} onClick={() => act.copyUrl(repo)}>
@@ -234,7 +234,7 @@ export function AdvancedTab({ repo }: { repo: RepoInfo }) {
   const openLauncher = useUi((s) => s.openLauncher);
   const row = (icon: ReactNode, label: string, hint: string, onClick: () => void, active?: boolean) => (
     <li>
-      <button type="button" onClick={onClick} className={cn("row-hover flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left text-[13px]", active && "text-accent-strong")}>
+      <button type="button" onClick={onClick} className={cn("row-hover flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left text-sm", active && "text-accent-strong")}>
         <span className="flex w-4 justify-center text-faint">{icon}</span>
         <span className="flex-1">{label}</span>
         <span className="text-xs text-faint">{hint}</span>
@@ -243,18 +243,18 @@ export function AdvancedTab({ repo }: { repo: RepoInfo }) {
   );
   return (
     <div className="flex flex-col gap-4">
-      <ul className="rounded-lg border border-line bg-bg py-1">
-        {row(<Code2 className="size-4" />, "Open in the IDE only", "without the terminal", () => act.ide.mutate(repo))}
-        {row(<SquareTerminal className="size-4" />, "Open a terminal here", "", () => act.terminal.mutate(repo))}
-        {row(<FolderOpen className="size-4" />, "Show in Files", "", () => act.files.mutate(repo))}
-        {row(<LayoutTemplate className="size-4" />, "Apply a template…", "adds files, asks first", () => openLauncher({ mode: "existing", path: repo.path }))}
+      <ul className="divide-y divide-line border-y border-line">
+        {row(<Code2 className="size-4" />, tr("Ouvrir dans l'IDE seulement"), tr("sans le terminal"), () => act.ide.mutate(repo))}
+        {row(<SquareTerminal className="size-4" />, tr("Ouvrir un terminal ici"), "", () => act.terminal.mutate(repo))}
+        {row(<FolderOpen className="size-4" />, tr("Afficher dans Fichiers"), "", () => act.files.mutate(repo))}
+        {row(<LayoutTemplate className="size-4" />, tr("Appliquer un modèle…"), tr("ajoute des fichiers, demande d'abord"), () => openLauncher({ mode: "existing", path: repo.path }))}
       </ul>
       <div>
-        <SectionLabel className="mb-1.5">Classification — {repo.kindReason}</SectionLabel>
-        <ul className="rounded-lg border border-line bg-bg py-1">
-          {row(<GraduationCap className="size-4" />, "Epitech project", repo.meta.kindOverride === "epitech" ? "chosen" : "", () => act.kind.mutate({ repo, kind: "epitech" }), repo.meta.kindOverride === "epitech")}
-          {row(<User className="size-4" />, "Personal project", repo.meta.kindOverride === "personal" ? "chosen" : "", () => act.kind.mutate({ repo, kind: "personal" }), repo.meta.kindOverride === "personal")}
-          {row(<Wand2 className="size-4" />, "Automatic", repo.meta.kindOverride === null ? `now: ${repo.kind}` : "", () => act.kind.mutate({ repo, kind: null }), repo.meta.kindOverride === null)}
+        <SectionLabel className="mb-1.5">{tr("Classement")} · {repo.kindReason}</SectionLabel>
+        <ul className="divide-y divide-line border-y border-line">
+          {row(<GraduationCap className="size-4" />, tr("Projet Epitech"), repo.meta.kindOverride === "epitech" ? tr("choisi") : "", () => act.kind.mutate({ repo, kind: "epitech" }), repo.meta.kindOverride === "epitech")}
+          {row(<User className="size-4" />, tr("Projet personnel"), repo.meta.kindOverride === "personal" ? tr("choisi") : "", () => act.kind.mutate({ repo, kind: "personal" }), repo.meta.kindOverride === "personal")}
+          {row(<Wand2 className="size-4" />, tr("Automatique"), repo.meta.kindOverride === null ? tr("actuellement : {k}", { k: repo.kind === "epitech" ? "Epitech" : tr("personnel") }) : "", () => act.kind.mutate({ repo, kind: null }), repo.meta.kindOverride === null)}
         </ul>
       </div>
     </div>

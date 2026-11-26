@@ -19,7 +19,7 @@ const STATE: Record<ClaudeReport["state"], { label: string; tone: "ok" | "danger
 
 const SOURCE: Record<NonNullable<ClaudeReport["source"]>, string> = {
   settings: "the path you set below",
-  path: "this application's PATH",
+  path: t("le PATH de cette application"),
   user: "a per-user install folder (not in the PATH a desktop application receives)",
   shell: "your login shell's PATH (not in the PATH a desktop application receives)",
 };
@@ -69,11 +69,11 @@ export function ClaudeCard({ configured, onPick, saving }: { configured: string 
         Claude Code
       </CardTitle>
       {!d ? (
-        <p className="flex items-center gap-2 px-4 py-5 text-[13px] text-muted">
+        <p className="flex items-center gap-2 px-4 py-5 text-sm text-muted">
           <Spinner /> Recherche de Claude Code…
         </p>
       ) : (
-        <div className="flex flex-col gap-3 px-4 py-3.5 text-[13px]">
+        <div className="flex flex-col gap-3 px-4 py-3.5 text-sm">
           <dl className="grid grid-cols-[84px_minmax(0,1fr)] gap-x-3 gap-y-1.5">
             <dt className="text-xs text-faint">Exécutable</dt>
             <dd className="selectable min-w-0 font-mono text-xs break-all">
@@ -137,10 +137,10 @@ export function ClaudeCard({ configured, onPick, saving }: { configured: string 
                 {missing.length > 0 ? (
                   <>
                     <p className="mt-1.5 text-fg">{t("Dans le PATH de ton shell mais pas dans celui de l'application :")}</p>
-                    <ul className="selectable mt-0.5 font-mono text-[11px]">{missing.map((p) => <li key={p}>{tildify(p, home)}</li>)}</ul>
+                    <ul className="selectable mt-0.5 font-mono text-2xs">{missing.map((p) => <li key={p}>{tildify(p, home)}</li>)}</ul>
                   </>
                 ) : (
-                  <p className="mt-1.5">{d.shellPath.length === 0 ? "Your login shell did not answer in time; only the PATH and the per-user folders were searched." : "Here both are the same: this application was probably started from a terminal."}</p>
+                  <p className="mt-1.5">{d.shellPath.length === 0 ? t("Ton shell de connexion n'a pas répondu à temps : seuls le PATH et les dossiers propres à l'utilisateur ont été parcourus.") : t("Ici les deux sont identiques : l'application a sans doute été lancée depuis un terminal.")}</p>
                 )}
               </div>
             )}

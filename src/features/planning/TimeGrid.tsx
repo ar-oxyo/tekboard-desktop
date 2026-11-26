@@ -32,7 +32,7 @@ export function dropTarget(x: number, y: number): DropTarget | null {
   return { day, time: atMinutes(day, minutes) };
 }
 
-export const itemTitle = (i: CalItem) => [`${KIND_LABEL[i.kind]} · ${i.title}`, i.allDay ? null : `${hhmm(i.start)} – ${hhmm(i.end)} (${fmtDur((i.end - i.start) / MIN)})`, i.module, i.detail, i.unregistered ? "You are not registered to this session" : null, i.source === "my" ? "From MY Epitech — read-only" : null].filter(Boolean).join("\n");
+export const itemTitle = (i: CalItem) => [`${KIND_LABEL[i.kind]} · ${i.title}`, i.allDay ? null : `${hhmm(i.start)} – ${hhmm(i.end)} (${fmtDur((i.end - i.start) / MIN)})`, i.module, i.detail, i.unregistered ? t("Tu n'es pas inscrit à cette séance") : null, i.source === "my" ? "From MY Epitech — read-only" : null].filter(Boolean).join("\n");
 
 interface Props {
   days: number[];
@@ -148,24 +148,24 @@ export function TimeGrid({ days, items, now, prefs, ghost, onCreate, onOpen, onM
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="grid shrink-0 border-b border-white/6" style={{ gridTemplateColumns: cols }}>
+      <div className="grid shrink-0 border-b border-ink/6" style={{ gridTemplateColumns: cols }}>
         <div />
         {days.map((d) => {
           const date = new Date(d);
           const isToday = d === today;
           return (
-            <button key={d} type="button" onClick={() => onPickDay(d)} title={t("Ouvrir ce jour")} className="flex h-11 items-center justify-center gap-2 border-l border-white/6 text-xs text-muted transition-colors duration-150 hover:text-fg">
+            <button key={d} type="button" onClick={() => onPickDay(d)} title={t("Ouvrir ce jour")} className="flex h-11 items-center justify-center gap-2 border-l border-ink/6 text-xs text-muted transition-colors duration-150 hover:text-fg">
               <span className="capitalize">{date.toLocaleDateString(locale(), { weekday: "short" })}</span>
-              <span className={cn("flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[13px]", isToday ? "bg-accent font-medium text-on-accent" : "text-fg")}>{date.getDate()}</span>
+              <span className={cn("flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-sm", isToday ? "bg-accent font-medium text-on-accent" : "text-fg")}>{date.getDate()}</span>
             </button>
           );
         })}
       </div>
       {hasAllDay && (
-        <div className="grid shrink-0 border-b border-white/6" style={{ gridTemplateColumns: cols }}>
-          <div className="flex items-center justify-end pr-2 text-[10px] text-faint">{t("toute la journée")}</div>
+        <div className="grid shrink-0 border-b border-ink/6" style={{ gridTemplateColumns: cols }}>
+          <div className="flex items-center justify-end pr-2 text-3xs text-faint">{t("toute la journée")}</div>
           {days.map((d) => (
-            <div key={d} data-day={d} className="flex min-h-7 flex-col gap-0.5 border-l border-white/6 p-0.5">
+            <div key={d} data-day={d} className="flex min-h-7 flex-col gap-0.5 border-l border-ink/6 p-0.5">
               {allDay
                 .filter((i) => i.start < addDays(d, 1) && i.end > d)
                 .map((i) => (
@@ -182,7 +182,7 @@ export function TimeGrid({ days, items, now, prefs, ghost, onCreate, onOpen, onM
         <div className="relative grid" style={{ gridTemplateColumns: cols, height: 24 * HOUR }}>
           <div className="relative">
             {Array.from({ length: 23 }, (_, h) => (
-              <span key={h} className="absolute right-2 -translate-y-1/2 font-mono text-[10px] text-faint" style={{ top: (h + 1) * HOUR }}>
+              <span key={h} className="absolute right-2 -translate-y-1/2 font-mono text-3xs text-faint" style={{ top: (h + 1) * HOUR }}>
                 {String(h + 1).padStart(2, "0")}:00
               </span>
             ))}
@@ -197,7 +197,7 @@ export function TimeGrid({ days, items, now, prefs, ghost, onCreate, onOpen, onM
             const shown = ghost && ghost.start < end && ghost.end > d ? ghost : null;
             const off = !prefs.workDays.includes(new Date(d).getDay());
             return (
-              <div key={d} data-day={d} data-timeline onPointerDown={draw} className="cal-col relative border-l border-white/6" style={{ backgroundSize: `100% ${HOUR}px` }}>
+              <div key={d} data-day={d} data-timeline onPointerDown={draw} className="cal-col relative border-l border-ink/6" style={{ backgroundSize: `100% ${HOUR}px` }}>
                 <div className="cal-off pointer-events-none absolute inset-x-0 top-0" style={{ height: off ? "100%" : (prefs.dayStart / 60) * HOUR }} />
                 {!off && <div className="cal-off pointer-events-none absolute inset-x-0 bottom-0" style={{ top: (prefs.dayEnd / 60) * HOUR }} />}
                 {blocks.map(({ item, col, cols: n }) => (
@@ -217,7 +217,7 @@ export function TimeGrid({ days, items, now, prefs, ghost, onCreate, onOpen, onM
                 {dragged && (
                   <div className="cal-event pointer-events-none absolute right-1 left-0.5 z-20 px-2 py-1" data-dragging style={{ ...box(dragged.start, dragged.end, d), "--c": draggedItem?.color ?? "var(--color-accent)" } as CSSProperties}>
                     <p className="truncate text-xs font-medium">{draggedItem?.title ?? "New entry"}</p>
-                    <p className="font-mono text-[10px] text-muted">
+                    <p className="font-mono text-3xs text-muted">
                       {hhmm(dragged.start)} – {hhmm(dragged.end)} · {fmtDur((dragged.end - dragged.start) / MIN)}
                     </p>
                   </div>
@@ -225,15 +225,15 @@ export function TimeGrid({ days, items, now, prefs, ghost, onCreate, onOpen, onM
                 {shown && (
                   <div className="cal-event pointer-events-none absolute right-1 left-0.5 z-20 px-2 py-1" data-dragging style={{ ...box(shown.start, shown.end, d), "--c": "var(--color-accent)" } as CSSProperties}>
                     <p className="truncate text-xs font-medium">{shown.title}</p>
-                    <p className="font-mono text-[10px] text-muted">
+                    <p className="font-mono text-3xs text-muted">
                       {hhmm(shown.start)} – {hhmm(shown.end)}
                     </p>
                   </div>
                 )}
                 {d === today && (
                   <div className="pointer-events-none absolute inset-x-0 z-30 flex items-center" style={{ top: (minutesIn(now, d) / 60) * HOUR }}>
-                    <span className="-ml-1 size-2 rounded-full bg-danger" />
-                    <span className="h-px flex-1 bg-danger" />
+                    <span className="-ml-1 size-2 rounded-full bg-accent-2" />
+                    <span className="h-0.5 flex-1 bg-accent-2" />
                   </div>
                 )}
               </div>
@@ -270,18 +270,18 @@ function Block({ item, day, col, cols, past, onGrab, onOpen }: { item: CalItem; 
       className={cn("cal-event absolute overflow-hidden px-1.5", height < 30 ? "py-0" : "py-1", mine ? "cursor-grab active:cursor-grabbing" : "cursor-default")}
       style={{ ...style, left: `calc(${col * width}% + 2px)`, width: `calc(${width}% - 5px)`, "--c": item.color } as CSSProperties}
     >
-      <p className={cn("flex items-center gap-1 truncate font-medium", height < 30 ? "text-[11px] leading-[14px]" : "text-xs")}>
+      <p className={cn("flex items-center gap-1 truncate font-medium", height < 30 ? "text-2xs leading-[14px]" : "text-xs")}>
         {!mine && <Lock className="size-2.5 shrink-0 opacity-60" />}
         <span className="truncate">{item.title}</span>
       </p>
       {height >= 34 && (
-        <p className="truncate font-mono text-[10px] text-muted">
+        <p className="truncate font-mono text-3xs text-muted">
           {hhmm(item.start)} – {hhmm(item.end)}
           {item.exam ? " · exam" : ""}
-          {item.unregistered ? " · not registered" : ""}
+          {item.unregistered ? ` · ${t("non inscrit")}` : ""}
         </p>
       )}
-      {height >= 56 && (item.module || item.detail) && <p className="truncate text-[10px] text-faint">{item.module ?? item.detail}</p>}
+      {height >= 56 && (item.module || item.detail) && <p className="truncate text-3xs text-faint">{item.module ?? item.detail}</p>}
       {mine && (
         <>
           <span className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize" onPointerDown={(e) => onGrab(e, item, "start")} />

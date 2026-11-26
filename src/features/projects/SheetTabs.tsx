@@ -17,12 +17,12 @@ export function TestingTab({ repo }: { repo: RepoInfo }) {
   return (
     <div className="flex flex-col gap-3">
       {runs.isLoading ? <Spinner /> : latest.size === 0 ? (
-        <p className="text-[13px] text-muted">{t("Rien n'a encore été lancé sur ce projet.")}</p>
+        <p className="text-sm text-muted">{t("Rien n'a encore été lancé sur ce projet.")}</p>
       ) : (
-        <ul className="rounded-lg border border-line bg-bg py-1">
+        <ul className="divide-y divide-line border-y border-line">
           {[...latest.values()].map((r) => (
             <li key={r.id}>
-              <button type="button" className="row-hover flex h-9 w-full items-center gap-2.5 px-3 text-left text-[13px]" onClick={() => { openTesting(repo.path); useUi.setState({ runId: r.id }); }}>
+              <button type="button" className="row-hover flex h-9 w-full items-center gap-2.5 px-3 text-left text-sm" onClick={() => { openTesting(repo.path); useUi.setState({ runId: r.id }); }}>
                 <span className="w-36 shrink-0">{KIND_LABEL[r.kind] ?? r.kind}</span>
                 <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
                 <span className="ml-auto text-xs text-faint">{timeAgo(r.startedAt)}</span>
@@ -47,7 +47,7 @@ export function DocsTab({ repo, subjects, onOpenSubject }: { repo: RepoInfo; sub
       <div>
         <span className="mb-1 block text-xs font-medium text-muted">Sujet</span>
         {subjects.length === 0 ? (
-          <p className="text-[13px] text-muted">{t("Aucun sujet n'est lié.")} <button type="button" className="text-accent-strong hover:underline" onClick={() => { useUi.getState().closeSheet(); setPage("subjects"); }}>{t("Lie-en un depuis École → Sujets")}</button> {t("pour l'ouvrir d'ici et que la moulinette le lise.")}</p>
+          <p className="text-sm text-muted">{t("Aucun sujet n'est lié.")} <button type="button" className="text-accent-strong hover:underline" onClick={() => { useUi.getState().closeSheet(); setPage("subjects"); }}>{t("Lie-en un depuis École → Sujets")}</button> {t("pour l'ouvrir d'ici et que la moulinette le lise.")}</p>
         ) : (
           <ul className="flex flex-wrap gap-2">
             {subjects.map((s) => <li key={s.id}><Button size="sm" icon={<FileText className="size-3.5" />} onClick={() => onOpenSubject(s.id)}>{s.name}</Button></li>)}

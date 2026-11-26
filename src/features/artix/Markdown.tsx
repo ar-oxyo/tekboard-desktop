@@ -14,7 +14,7 @@ function inline(text: string, key: string): ReactNode[] {
     if (m.index > last) out.push(text.slice(last, m.index));
     const t = m[0];
     const k = `${key}-${n++}`;
-    if (m[1]) out.push(<code key={k} className="rounded bg-white/7 px-1 py-px font-mono text-[12px] text-accent-strong">{t.slice(1, -1)}</code>);
+    if (m[1]) out.push(<code key={k} className="rounded bg-ink/7 px-1 py-px font-mono text-xs text-accent-strong">{t.slice(1, -1)}</code>);
     else if (m[2]) out.push(<strong key={k} className="font-semibold text-fg">{t.slice(2, -2)}</strong>);
     else out.push(<em key={k}>{t.slice(1, -1)}</em>);
     last = m.index + t.length;
@@ -85,13 +85,13 @@ export function Markdown({ text, className }: { text: string; className?: string
         switch (b.kind) {
           case "code":
             return (
-              <pre key={k} className="selectable my-2 overflow-x-auto rounded-lg border border-white/6 bg-black/30 p-2.5 font-mono text-[12px] leading-relaxed">
+              <pre key={k} className="selectable my-2 overflow-x-auto rounded-lg border border-ink/6 bg-well p-2.5 font-mono text-xs leading-relaxed">
                 {b.text}
               </pre>
             );
           case "h":
             return (
-              <p key={k} className="mt-3 mb-1 text-[13px] font-semibold text-fg first:mt-0">
+              <p key={k} className="mt-3 mb-1 text-sm font-semibold text-fg first:mt-0">
                 {inline(b.text, k)}
               </p>
             );

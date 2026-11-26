@@ -24,10 +24,10 @@ export function ProjectCaptures({ project }: { project: string }) {
         <ul className="flex flex-col gap-0.5">
           {items.map((c) => (
             <li key={c.id}>
-              <button type="button" onClick={() => useUi.getState().openInbox({ view: "all", focus: c.id })} className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[13px] text-muted hover:bg-white/4 hover:text-fg">
+              <button type="button" onClick={() => useUi.getState().openInbox({ view: "all", focus: c.id })} className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-muted hover:bg-ink/4 hover:text-fg">
                 <Lightbulb className="size-3.5 shrink-0 text-faint" />
                 <span className="min-w-0 flex-1 truncate">{c.title}</span>
-                <span className="text-[11px] text-faint">{c.kind === "idea" ? CTYPE_LABEL[c.ctype || "idea"] : KIND_LABEL[c.kind]}</span>
+                <span className="text-2xs text-faint">{c.kind === "idea" ? CTYPE_LABEL[c.ctype || "idea"] : KIND_LABEL[c.kind]}</span>
               </button>
             </li>
           ))}

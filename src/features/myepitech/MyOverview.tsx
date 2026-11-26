@@ -16,24 +16,24 @@ const day = (iso: string | null) => (iso ? new Date(iso).toLocaleString(locale()
 export function MyProjects() {
   const o = useQuery({ queryKey: ["my-overview"], queryFn: api.myOverview, staleTime: 0 });
   const [showPast, setShowPast] = useState(false);
-  if (o.isLoading) return <p className="flex items-center gap-2 px-4 py-8 text-[13px] text-muted"><Spinner /> {tr("Lecture des données synchronisées…")}</p>;
+  if (o.isLoading) return <p className="flex items-center gap-2 px-4 py-8 text-sm text-muted"><Spinner /> {tr("Lecture des données synchronisées…")}</p>;
   if (o.error || !o.data) return <div className="p-4"><ErrorNote>{asAppError(o.error).message}</ErrorNote></div>;
   const all = o.data.projects;
   const ongoing = all.filter((p) => p.ongoing || p.upcoming);
   const past = all.filter((p) => !p.ongoing && !p.upcoming);
   // Dates reach the repositories by themselves; what is left here are the ones you typed differently.
   const typed = all.filter((p) => p.repoPath && p.deadline && p.repoDeadlineSource === "manual" && p.repoDeadline !== p.deadline);
-  if (all.length === 0) return <p className="px-4 py-6 text-[13px] text-muted">{tr("Aucun projet dans les données synchronisées. Connecte-toi puis clique sur « Synchroniser ».")}</p>;
+  if (all.length === 0) return <p className="px-4 py-6 text-sm text-muted">{tr("Aucun projet dans les données synchronisées. Connecte-toi puis clique sur « Synchroniser ».")}</p>;
   return (
     <div>
-      <div className="flex items-center gap-2 border-b border-white/6 px-4 py-2.5 text-xs text-muted">
+      <div className="flex items-center gap-2 border-b border-ink/6 px-4 py-2.5 text-xs text-muted">
         <span className="mr-auto">{all.filter((p) => p.ongoing).length} ongoing · {all.filter((p) => p.upcoming).length} to come · {past.length} finished{o.data.syncedAt ? ` · synced ${timeAgo(o.data.syncedAt)}` : ""}</span>
         {typed.length > 0 && <span className="text-warn" title={typed.map((p) => `${p.name}: you typed ${p.repoDeadline}, MY Epitech says ${p.deadline}`).join("\n")}>{typed.length} date{typed.length > 1 ? "s" : ""} typed by you differ{typed.length > 1 ? "" : "s"}</span>}
       </div>
       <ul>{ongoing.map((p) => <ProjectRow key={p.id} p={p} />)}</ul>
       {past.length > 0 && (
         <>
-          <button type="button" onClick={() => setShowPast(!showPast)} className="flex h-9 w-full items-center gap-2 border-t border-white/6 px-4 text-left text-xs text-muted hover:text-fg">
+          <button type="button" onClick={() => setShowPast(!showPast)} className="flex h-9 w-full items-center gap-2 border-t border-ink/6 px-4 text-left text-xs text-muted hover:text-fg">
             {showPast ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />} {past.length} finished project{past.length > 1 ? "s" : ""}
           </button>
           {showPast && <ul>{past.map((p) => <ProjectRow key={p.id} p={p} />)}</ul>}
@@ -50,20 +50,20 @@ function ProjectRow({ p }: { p: MyProject }) {
   const t = p.lastTest;
   const upcoming = p.activities.filter((a) => a.end && new Date(a.end).getTime() > Date.now());
   return (
-    <li className="border-b border-white/6 last:border-b-0">
+    <li className="border-b border-ink/6 last:border-b-0">
       <div className="flex min-h-12 items-center gap-4 px-4 py-2">
         <button type="button" onClick={() => setOpen(!open)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
           {open ? <ChevronDown className="size-3.5 shrink-0 text-faint" /> : <ChevronRight className="size-3.5 shrink-0 text-faint" />}
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-2">
-              <span className="truncate text-[13px] font-medium">{p.name}</span>
+              <span className="truncate text-sm font-medium">{p.name}</span>
               <Tag>{p.unitCode}</Tag>
             </span>
             <span className="block truncate text-xs text-muted">Hand-in {day(p.end)}</span>
           </span>
         </button>
         {t && t.total !== null && (
-          <Dot mono tone={t.passed === t.total ? "ok" : (t.passed ?? 0) === 0 ? "danger" : "warn"} title={`Latest automated test run${t.date ? `, ${new Date(t.date).toLocaleString()}` : ""}`}>
+          <Dot mono tone={t.passed === t.total ? "ok" : (t.passed ?? 0) === 0 ? "danger" : "warn"} title={`Latest automated test run${t.date ? `, ${new Date(t.date).toLocaleString(locale())}` : ""}`}>
             {t.passed}/{t.total} tests
           </Dot>
         )}
@@ -78,7 +78,7 @@ function ProjectRow({ p }: { p: MyProject }) {
       </div>
       {open && (
         <div className="flex flex-col gap-2 px-4 pb-3 pl-[42px] text-xs">
-          {p.unitName && <p className="text-muted">{p.unitName}{p.groupMax !== null && ` · ${p.groupMax === 1 ? "solo" : `groups of up to ${p.groupMax}`}`}{p.url && <span className="selectable ml-2 font-mono text-[11px] text-faint">{p.url}</span>}</p>}
+          {p.unitName && <p className="text-muted">{p.unitName}{p.groupMax !== null && ` · ${p.groupMax === 1 ? "solo" : `groups of up to ${p.groupMax}`}`}{p.url && <span className="selectable ml-2 font-mono text-2xs text-faint">{p.url}</span>}</p>}
           {p.repoPath && <p className="text-muted">{tr("Rendu dans TekBoard :")} <span className={p.repoDeadline === p.deadline ? "text-ok" : "text-warn"}>{p.repoDeadline ?? "none"}</span>{p.repoDeadlineSource === "manual" ? " (typed by you" : p.repoDeadlineSource === "my" ? " (from MY Epitech" : " ("}{p.repoDeadline !== p.deadline && p.deadline ? `${p.repoDeadlineSource ? ", " : ""}MY Epitech says ${p.deadline})` : ")"}</p>}
           {p.group.length > 1 && <p className="selectable text-muted">Group{p.groupName ? ` “${p.groupName}”` : ""}: {p.group.join(", ")}</p>}
           {t && (
@@ -111,7 +111,7 @@ export function MyProgress() {
   const o = useQuery({ queryKey: ["my-overview"], queryFn: api.myOverview, staleTime: 0 });
   if (!o.data) return o.isLoading ? <p className="px-4 py-6 text-muted"><Spinner /></p> : null;
   const d = o.data;
-  if (d.creditsAcquired === null && d.blocks.length === 0 && d.exams.length === 0) return <p className="px-4 py-6 text-[13px] text-muted">{tr("Aucune donnée de validation dans les réponses synchronisées.")}</p>;
+  if (d.creditsAcquired === null && d.blocks.length === 0 && d.exams.length === 0) return <p className="px-4 py-6 text-sm text-muted">{tr("Aucune donnée de validation dans les réponses synchronisées.")}</p>;
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="flex flex-wrap gap-2">
@@ -122,7 +122,7 @@ export function MyProgress() {
       {d.blocks.length > 0 && (
         <ul className="rounded-lg border border-line bg-bg py-1">
           {d.blocks.map((b) => (
-            <li key={b.title} className="flex min-h-8 items-center gap-2.5 px-3 text-[13px]">
+            <li key={b.title} className="flex min-h-8 items-center gap-2.5 px-3 text-sm">
               <span className="min-w-0 flex-1 truncate">{b.title}</span>
               <span className="text-xs text-muted">{b.validated}/{b.total} outcomes</span>
               {b.credits !== null && <span className="w-16 text-right text-xs text-faint">{b.credits} credit{b.credits === 1 ? "" : "s"}</span>}
@@ -141,7 +141,7 @@ function Tile({ label, value, hint, tone }: { label: string; value: number | str
     <div className="min-w-28 rounded-lg border border-line bg-bg px-3 py-2">
       <p className="text-xs text-muted">{label}</p>
       <p className={cn("display mt-1 text-xl font-medium", tone === "ok" && "text-ok", tone === "warn" && "text-warn")}>{value}</p>
-      {hint && <p className="text-[11px] text-faint">{hint}</p>}
+      {hint && <p className="text-2xs text-faint">{hint}</p>}
     </div>
   );
 }

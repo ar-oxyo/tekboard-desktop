@@ -2,9 +2,10 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { CalendarCheck, CalendarDays, Inbox, Lightbulb, PenLine, Sparkles, ChartNoAxesColumn, FileText, FlaskConical, FolderGit2, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, PawPrint, Plus, RefreshCw, ScrollText, Settings, Timer, Network, FlaskRound, FileCode2, Gauge, Users, MonitorPlay, Gamepad2, PenTool } from "lucide-react";
+import { CalendarCheck, Code2, GitBranch, SquareTerminal, Inbox, Lightbulb, PenLine, Sparkles, FileText, FlaskConical, FolderGit2, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, Plus, RefreshCw, ScrollText, Timer, FileCode2 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { SECTIONS } from "../../app/sections";
+import { PAGE_ICON } from "../../app/pageIcons";
 import { startFocus } from "../planning/Focus";
 import { suggestPlan } from "../artix/suggest";
 import { Badge } from "../../components/ui";
@@ -17,11 +18,10 @@ import { t } from "../../lib/i18n";
 import { CTYPE_LABEL, KIND_LABEL } from "../../lib/brain";
 
 const itemClass =
-  "flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-[13px] text-muted data-[selected=true]:bg-accent-soft data-[selected=true]:text-fg";
+  "flex h-9 cursor-default items-center gap-2.5 rounded-md px-2.5 text-sm text-muted data-[selected=true]:bg-accent-soft data-[selected=true]:text-fg";
 const groupClass = "[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-normal [&_[cmdk-group-heading]]:text-faint ";
 
 const ic = "size-4";
-const PAGE_ICON: Partial<Record<Page, ReactNode>> = { overview: <LayoutDashboard className={ic} />, projects: <FolderGit2 className={ic} />, git: <GitBranch className={ic} />, library: <LibraryBig className={ic} />, testing: <FlaskConical className={ic} />, subjects: <FileText className={ic} />, analytics: <ChartNoAxesColumn className={ic} />, templates: <LayoutTemplate className={ic} />, myepitech: <GraduationCap className={ic} />, skilltree: <Network className={ic} />, cozy: <PawPrint className={ic} />, settings: <Settings className={ic} />, agenda: <CalendarDays className={ic} />, prompts: <PenLine className={ic} />, playground: <FlaskRound className={ic} />, arena: <Gauge className={ic} />, boards: <PenTool className={ic} />, connect: <Users className={ic} />, live: <MonitorPlay className={ic} />, space: <Gamepad2 className={ic} /> };
 /** Every screen, with the shortcut of its section (Ctrl+1 to Ctrl+7 open the sections). */
 const GO: Array<[Page, string, ReactNode, string | undefined]> = SECTIONS.flatMap((sec, i) => sec.pages.map((p, j) => [p.page, sec.pages.length > 1 ? `${sec.label} · ${p.label}` : sec.label, PAGE_ICON[p.page], j === 0 ? `Ctrl ${i + 1}` : undefined] as [Page, string, ReactNode, string | undefined]));
 type ToolId = "testing" | "library" | "package" | "readme";
@@ -55,6 +55,11 @@ export function CommandPalette() {
   }, [search]);
   const captures = useQuery({ queryKey: ["brain", "palette", query], queryFn: () => api.brainList({ view: "all", query, limit: 6 }), enabled: open && query.length >= 2, placeholderData: (p) => p });
 
+  const all = repos.data ?? [];
+  const recent = [...all].filter((r) => r.meta.lastOpenedAt).sort((a, b) => (b.meta.lastOpenedAt ?? 0) - (a.meta.lastOpenedAt ?? 0)).slice(0, 5);
+  const q = search.trim().toLowerCase();
+  const focus = q.length >= 2 ? (all.find((r) => r.name.toLowerCase().startsWith(q) || displayName(r).toLowerCase().startsWith(q)) ?? null) : null;
+
   const run = (fn: () => void) => () => {
     setOpen(false);
     fn();
@@ -73,12 +78,44 @@ export function CommandPalette() {
         <Dialog.Overlay className="scrim anim-fade fixed inset-0 z-40" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="glass anim-pop fixed top-[42%] left-1/2 z-50 w-[600px] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-hidden border border-white/10 focus:outline-none"
+          className="glass anim-pop fixed top-[42%] left-1/2 z-50 w-[600px] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 overflow-hidden border border-ink/10 focus:outline-none"
         >
           <Dialog.Title className="sr-only">Palette de commandes</Dialog.Title>
           <Command loop label="Palette de commandes">
-            <Command.Input autoFocus value={search} onValueChange={setSearch} aria-label={t("Rechercher un projet, un sujet, une action, ou demander à Artix")} placeholder={t("Rechercher, ou demander à Artix…")} className="h-12 w-full border-b border-white/6 bg-transparent px-4 text-sm text-fg placeholder:text-faint focus:outline-none" />
+            <Command.Input autoFocus value={search} onValueChange={setSearch} aria-label={t("Rechercher un projet, un sujet, une action, ou demander à Artix")} placeholder={t("Rechercher, ou demander à Artix…")} className="h-12 w-full border-b border-ink/6 bg-transparent px-4 text-sm text-fg placeholder:text-faint focus:outline-none" />
             <Command.List className="max-h-[380px] overflow-y-auto p-1.5">
+              {/* Empty search: the projects opened last, first. */}
+              {!search.trim() && recent.length > 0 && (
+                <Command.Group heading={t("Récents")} className={groupClass}>
+                  {recent.map((repo) => (
+                    <Command.Item key={`recent-${repo.path}`} value={`recent ${repo.name} ${repo.path}`} onSelect={run(() => openSheet(repo.path))} className={itemClass}>
+                      <FolderGit2 className="size-4 shrink-0 text-faint" />
+                      <span className="min-w-0 flex-1 truncate">{displayName(repo)}</span>
+                      <span className="text-xs text-faint">{repo.epitech?.module ?? repo.group}</span>
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              )}
+              {/* Typing a project's name offers what can be done with it. */}
+              {focus && (
+                <Command.Group heading={displayName(focus)} className={groupClass}>
+                  {(
+                    [
+                      { label: t("Ouvrir l'espace de travail"), icon: <FolderGit2 className={ic} />, fn: () => act.workspace.mutate(focus) },
+                      { label: t("Fiche du projet"), icon: <NotebookPen className={ic} />, fn: () => openSheet(focus.path) },
+                      { label: t("Ouvrir dans l'IDE"), icon: <Code2 className={ic} />, fn: () => act.ide.mutate(focus) },
+                      { label: t("Ouvrir un terminal ici"), icon: <SquareTerminal className={ic} />, fn: () => act.terminal.mutate(focus) },
+                      { label: t("Git : commiter, envoyer"), icon: <GitBranch className={ic} />, fn: () => useUi.getState().openGit(focus.path) },
+                      ...TOOLS.map(([id, label, icon]) => ({ label, icon, fn: () => tool(id, focus.path) })),
+                    ] as Array<{ label: string; icon: ReactNode; fn: () => void }>
+                  ).map((a) => (
+                    <Command.Item key={`focus-${a.label}`} forceMount value={`${search} ${a.label}`} onSelect={run(a.fn)} className={itemClass}>
+                      <span className="text-faint">{a.icon}</span>
+                      <span className="min-w-0 flex-1 truncate">{a.label}</span>
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              )}
               {search.trim().length > 2 && (
                 <Command.Group heading="Artix" className={groupClass}>
                   <Command.Item forceMount value={`artix ${search}`} onSelect={ask(search.trim())} className={itemClass}>
@@ -86,7 +123,7 @@ export function CommandPalette() {
                     <span className="min-w-0 flex-1 truncate">
                       {t("Demander à Artix :")} <span className="text-fg">{search.trim()}</span>
                     </span>
-                    <span className="text-[11px] text-faint">Entrée</span>
+                    <span className="text-2xs text-faint">Entrée</span>
                   </Command.Item>
                 </Command.Group>
               )}
@@ -99,7 +136,7 @@ export function CommandPalette() {
                         <Lightbulb className="size-4" />
                       </span>
                       <span className="min-w-0 flex-1 truncate">{c.title}</span>
-                      <span className="text-[11px] text-faint">{c.kind === "idea" ? CTYPE_LABEL[c.ctype || "idea"] : KIND_LABEL[c.kind]}</span>
+                      <span className="text-2xs text-faint">{c.kind === "idea" ? CTYPE_LABEL[c.ctype || "idea"] : KIND_LABEL[c.kind]}</span>
                     </Command.Item>
                   ))}
                 </Command.Group>
@@ -248,7 +285,7 @@ function Item({ icon, children, onSelect, hint }: { icon: ReactNode; children: R
     <Command.Item onSelect={onSelect} className={itemClass}>
       <span className="shrink-0 text-faint">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{children}</span>
-      {hint && <span className="text-[11px] text-faint">{hint}</span>}
+      {hint && <span className="text-2xs text-faint">{hint}</span>}
     </Command.Item>
   );
 }

@@ -46,7 +46,7 @@ const PROVIDERS: Array<{ id: AiProviderKind; name: string; icon: ReactNode; text
 
 export function ProviderPicker() {
   const { settings, save } = useAiSettings();
-  if (!settings) return <p className="flex items-center gap-2 text-[13px] text-muted"><Spinner /> {t("Chargement…")}</p>;
+  if (!settings) return <p className="flex items-center gap-2 text-sm text-muted"><Spinner /> {t("Chargement…")}</p>;
   const current = settings.provider || "none";
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-label={t("Fournisseur d'IA")}>
@@ -62,7 +62,7 @@ export function ProviderPicker() {
             onClick={() => !on && save.mutate({ provider: p.id })}
             className={cn("flex flex-col gap-1.5 rounded-(--radius-card) border p-3 text-left transition-colors duration-150", on ? "border-accent bg-accent/8" : "border-line hover:border-line-strong")}
           >
-            <span className="flex items-center gap-2 text-[13px] font-medium text-fg">
+            <span className="flex items-center gap-2 text-sm font-medium text-fg">
               <span className={on ? "text-accent" : "text-muted"}>{p.icon}</span>
               {p.name}
               {on && <Check className="ml-auto size-3.5 text-accent" />}
@@ -190,7 +190,7 @@ function OpenRouterPanel() {
         </div>
       </Field>
       {models.error && <ErrorNote>{asAppError(models.error).message}</ErrorNote>}
-      <label className="flex items-start gap-2 text-[13px] text-muted">
+      <label className="flex items-start gap-2 text-sm text-muted">
         <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={settings.allowPaid || showPaid} onChange={(e) => (e.target.checked ? (settings.allowPaid ? setShowPaid(true) : setConfirmPaid(true)) : (setShowPaid(false), save.mutate({ allowPaid: false })))} />
         <span>
           {t("Autoriser les modèles payants")}
@@ -210,7 +210,7 @@ function OpenRouterPanel() {
           </>
         }
       >
-        <p className="px-5 pb-4 text-[13px] text-muted">{t("Tu peux revenir en arrière à tout moment en décochant la case.")}</p>
+        <p className="px-5 pb-4 text-sm text-muted">{t("Tu peux revenir en arrière à tout moment en décochant la case.")}</p>
       </Modal>
     </div>
   );
@@ -241,13 +241,13 @@ function OllamaPanel() {
   const progress = typeof job.data?.summary.progress === "number" ? (job.data.summary.progress as number) : null;
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2 text-[13px]">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
         {!d ? <span className="flex items-center gap-2 text-muted"><Spinner /> {t("Recherche d'Ollama…")}</span> : d.running ? <Badge tone="ok">Ollama {d.version}</Badge> : <Badge tone={d.installed ? "warn" : "danger"}>{d.installed ? t("Installé, arrêté") : t("Non installé")}</Badge>}
         {d && <span className="text-xs text-faint">{t("Mémoire {ram} Go", { ram: Math.round(d.hardware.ramGb) })}{d.hardware.gpu ? ` · ${d.hardware.gpu} (${Math.round(d.hardware.vramGb ?? 0)} Go)` : ""}</span>}
         <Button size="sm" variant="ghost" className="ml-auto" icon={<RefreshCw className="size-3.5" />} busy={info.isFetching} onClick={() => void info.refetch()}>{t("Revérifier")}</Button>
       </div>
       {d && !d.running && (
-        <div className="flex flex-col gap-2 rounded-lg border border-line bg-bg p-3 text-[13px] text-muted">
+        <div className="flex flex-col gap-2 rounded-lg border border-line bg-bg p-3 text-sm text-muted">
           <p>{d.detail}</p>
           {d.installed ? <Code>ollama serve</Code> : <Code>curl -fsSL https://ollama.com/install.sh | sh</Code>}
           <HelpLink url="https://ollama.com/download/linux">{t("Instructions officielles d'Ollama")}</HelpLink>
@@ -260,7 +260,7 @@ function OllamaPanel() {
           </Field>
           {!hasRecommended && (
             <div className="flex flex-col gap-2 rounded-lg border border-line bg-bg p-3">
-              <p className="text-[13px] text-fg">{t("Recommandé pour ton ordinateur :")} <span className="font-mono">{d.recommended.model}</span> <span className="text-xs text-faint">({t("{n} Go à télécharger", { n: d.recommended.downloadGb })})</span></p>
+              <p className="text-sm text-fg">{t("Recommandé pour ton ordinateur :")} <span className="font-mono">{d.recommended.model}</span> <span className="text-xs text-faint">({t("{n} Go à télécharger", { n: d.recommended.downloadGb })})</span></p>
               <p className="text-xs text-muted">{d.recommended.why}</p>
               <div><Button size="sm" variant="primary" icon={<Download className="size-3.5" />} busy={pull.isPending || pulling} onClick={() => pull.mutate(d.recommended.model)}>{t("Installer ce modèle")}</Button></div>
             </div>
@@ -271,7 +271,7 @@ function OllamaPanel() {
           </form>
           {job.data && (
             <div className="flex flex-col gap-1">
-              <div className="h-1.5 overflow-hidden rounded-full bg-white/8"><div className="h-full bg-accent transition-[width] duration-300" style={{ width: `${Math.round((progress ?? 0) * 100)}%` }} /></div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-ink/8"><div className="h-full bg-accent transition-[width] duration-300" style={{ width: `${Math.round((progress ?? 0) * 100)}%` }} /></div>
               <span className={cn("text-xs", job.data.status === "failed" ? "text-danger" : "text-muted")}>
                 {job.data.status === "running" ? `${job.data.title} · ${(job.data.summary.progressText as string) ?? t("préparation…")}` : job.data.status === "success" ? t("Modèle installé et choisi.") : String(job.data.summary.error ?? job.data.status)}
               </span>

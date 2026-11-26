@@ -21,7 +21,7 @@ export function Toaster() {
             {t.kind === "error" ? <CircleAlert className="size-4" /> : t.kind === "ok" ? <CircleCheck className="size-4" /> : <Info className="size-4" />}
           </span>
           <div className="selectable min-w-0 flex-1">
-            <p className="text-[13px] font-medium">{t.title}</p>
+            <p className="text-sm font-medium">{t.title}</p>
             {t.detail && <p className="mt-0.5 text-xs break-words text-muted">{t.detail}</p>}
             {t.action && (
               <button

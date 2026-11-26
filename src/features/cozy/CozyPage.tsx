@@ -43,17 +43,17 @@ export function CozyPage() {
   const status = useQuery({ queryKey: ["cozy"], queryFn: api.cozyStatus, staleTime: 0 });
   const fail = (title: string) => (e: unknown) => toast({ kind: "error", title, detail: asAppError(e).message });
 
-  const update = useMutation({ mutationFn: (patch: Companion) => api.cozyUpdate(patch), onSuccess: (s) => qc.setQueryData(["cozy"], s), onError: fail("Could not change the setting") });
-  const send = useMutation({ mutationFn: (cmd: string) => api.cozySend(cmd), onError: fail("The fox did not get the command") });
+  const update = useMutation({ mutationFn: (patch: Companion) => api.cozyUpdate(patch), onSuccess: (s) => qc.setQueryData(["cozy"], s), onError: fail(t("Impossible de changer le réglage")) });
+  const send = useMutation({ mutationFn: (cmd: string) => api.cozySend(cmd), onError: fail(t("Le renard n'a pas reçu la commande")) });
   const restore = useMutation({
     mutationFn: (name: string) => api.cozyRestore(name),
     onSuccess: (s) => {
       qc.setQueryData(["cozy"], s);
       toast({ kind: "ok", title: t("Configuration précédente restaurée") });
     },
-    onError: fail("Could not restore"),
+    onError: fail(t("Impossible de restaurer")),
   });
-  const saveSettings = useMutation({ mutationFn: (s: Settings) => api.saveSettings(s), onSuccess: (s) => qc.setQueryData(keys.settings, s), onError: fail("Not saved") });
+  const saveSettings = useMutation({ mutationFn: (s: Settings) => api.saveSettings(s), onSuccess: (s) => qc.setQueryData(keys.settings, s), onError: fail(t("Pas enregistré")) });
 
   if (status.isLoading) {
     return (
@@ -100,7 +100,7 @@ export function CozyPage() {
               <NumberRow label={t("Rappel d'eau")} unit="min" hint={t("0 le désactive")} value={c.water} fallback="default" min={0} max={240} step={5} onCommit={(v) => update.mutate({ water: v })} />
               <NumberRow label={t("Visites d'oiseaux")} unit="min" hint={t("Intervalle moyen")} value={c.birdEvery} fallback="default" min={1} max={120} step={1} onCommit={(v) => update.mutate({ birdEvery: v })} />
             </div>
-            <p className="selectable border-t border-white/6 px-4 py-2.5 text-xs text-faint">
+            <p className="selectable border-t border-ink/6 px-4 py-2.5 text-xs text-faint">
               Écrit dans le bloc <Code>companion</Code> block of <Code>{tildify(s.widgetsPath, home)}</Code>. “default” means the key is absent and the fox uses its own value.
             </p>
           </Card>
@@ -127,7 +127,7 @@ export function CozyPage() {
                 </Button>
               ))}
             </div>
-            <div className="border-t border-white/6 px-4 py-3">
+            <div className="border-t border-ink/6 px-4 py-3">
               <p className="mb-2 text-xs text-muted">{t("Aperçu des tenues, jusqu'au prochain rechargement")}</p>
               <div className="flex flex-wrap gap-1.5">
                 {PREVIEW.map((p) => (
@@ -137,7 +137,7 @@ export function CozyPage() {
                 ))}
               </div>
             </div>
-            <div className="flex items-center justify-between border-t border-white/6 px-4 py-3">
+            <div className="flex items-center justify-between border-t border-ink/6 px-4 py-3">
               <span className="text-xs text-muted">{t("Aperçu de la fusée et rechargement du code")}</span>
               <span className="flex gap-1.5">
                 <Button size="sm" variant="ghost" onClick={() => send.mutate("push")}>
@@ -156,7 +156,7 @@ export function CozyPage() {
           <Card>
             <CardTitle>{t("Configurations sauvegardées")}</CardTitle>
             {s.backups.length === 0 ? (
-              <p className="px-4 py-4 text-[13px] text-muted">{t("Une copie de widgets.json est sauvegardée ici avant chaque changement fait depuis TekBoard.")}</p>
+              <p className="px-4 py-4 text-sm text-muted">{t("Une copie de widgets.json est sauvegardée ici avant chaque changement fait depuis TekBoard.")}</p>
             ) : (
               <ul className="max-h-48 overflow-y-auto py-1">
                 {s.backups.slice(0, 20).map((name) => (
@@ -186,7 +186,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   return (
     <label className="flex min-h-10 items-center gap-3 px-4 py-1.5">
       <span className="min-w-0 flex-1">
-        <span className="block text-[13px]">{label}</span>
+        <span className="block text-sm">{label}</span>
         {hint && <span className="block text-xs text-faint">{hint}</span>}
       </span>
       {children}
@@ -222,7 +222,7 @@ function NumberRow({ label, hint, unit, value, fallback, min, max, step, onCommi
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-        className="h-7 w-20 rounded-md border border-line bg-bg px-2 text-right text-[13px] text-fg placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none"
+        className="h-7 w-20 rounded-md border border-line bg-bg px-2 text-right text-sm text-fg placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none"
       />
       <span className="w-7 text-xs text-faint">{unit}</span>
     </Row>

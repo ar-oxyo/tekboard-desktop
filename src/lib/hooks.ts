@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, asAppError, type Progress, type RepoInfo, type RepoKind } from "./api";
 import { useUi } from "./store";
 import { t } from "./i18n";
+import { applyMode, crossFade, MODE_KEY, storedMode, type ColorMode } from "./appearance";
 
 export const keys = {
   settings: ["settings"] as const,
@@ -105,11 +106,18 @@ export function useProjectActions() {
       qc.setQueryData<RepoInfo[]>(keys.repos, (old) => old?.map((r) => (r.path === repo.path ? { ...r, progress: status, progressInferred: false, meta: { ...r.meta, status, archived: status === "done" } } : r)));
     },
     onSettled: refresh,
+    onSuccess: (_r, { repo, status }) => {
+      if (repo.progress === status) return;
+      toast({ kind: "ok", title: t("Statut changé : {s}", { s: status === "done" ? t("terminé") : status === "in_progress" ? t("en cours") : t("à faire") }), action: { label: t("Annuler"), run: () => progress.mutate({ repo: { ...repo, progress: status }, status: repo.progress }) } });
+    },
     onError: fail("Statut non modifié"),
   });
   const kind = useMutation({
     mutationFn: ({ repo, kind }: { repo: RepoInfo; kind: RepoKind | null }) => api.projectSetKind(repo.path, kind),
-    onSuccess: refresh,
+    onSuccess: (_r, { repo }) => {
+      refresh();
+      toast({ kind: "ok", title: t("Classement modifié"), action: { label: t("Annuler"), run: () => void api.projectSetKind(repo.path, repo.meta.kindOverride).then(refresh) } });
+    },
     onError: fail("Classement non modifié"),
   });
   const remote = useMutation({
@@ -122,7 +130,7 @@ export function useProjectActions() {
   const launch = useMutation({
     mutationFn: (repo: RepoInfo) => api.projectLaunch(repo.path),
     onSuccess: (bin) => {
-      toast({ kind: "ok", title: `${bin} started in a terminal` });
+      toast({ kind: "ok", title: t("{b} lancé dans un terminal", { b: bin }) });
       void qc.invalidateQueries({ queryKey: keys.activity });
     },
     onError: fail("Le programme n'a pas démarré"),
@@ -130,7 +138,7 @@ export function useProjectActions() {
   const copyUrl = (repo: RepoInfo) => {
     if (!repo.remoteUrl) return;
     navigator.clipboard.writeText(repo.remoteUrl).then(
-      () => toast({ kind: "ok", title: "Remote URL copied" }),
+      () => toast({ kind: "ok", title: t("URL distante copiée") }),
       fail("Copie impossible"),
     );
   };
@@ -140,9 +148,65 @@ export function useProjectActions() {
     onSuccess: (_r, v) => {
       refresh();
       void qc.invalidateQueries({ queryKey: ["hidden-repos"] });
-      toast({ kind: "ok", title: v.visibility === "hidden" ? t("Projet masqué") : v.visibility === "archived" ? t("Projet archivé") : t("Projet restauré"), detail: v.visibility ? t("Son dossier n'a pas bougé. Tu peux le restaurer depuis Projets.") : undefined });
+      toast({
+        kind: "ok",
+        title: v.visibility === "hidden" ? t("Projet masqué") : v.visibility === "archived" ? t("Projet archivé") : t("Projet restauré"),
+        detail: v.visibility ? t("Son dossier n'a pas bougé.") : undefined,
+        action: { label: t("Annuler"), run: () => visibility.mutate({ repo: { ...v.repo, meta: { ...v.repo.meta, visibility: v.visibility } }, visibility: v.repo.meta.visibility }) },
+      });
     },
     onError: (e) => toast({ kind: "error", title: t("Non modifié"), detail: asAppError(e).message }),
   });
   return { workspace, ide, terminal, files, favorite, copyUrl, progress, kind, remote, launch, visibility };
+}
+
+/** Keeps <html data-mode> in step with the preference, the design and the system setting. */
+export function useColorMode(theme: string | undefined, forced?: "light" | "dark"): [ColorMode, (m: ColorMode) => void] {
+  const [chosen, setStored] = usePref<ColorMode>("colorMode", storedMode());
+  // The ambiance of the hour, when that option is on, decides the mode without changing the choice.
+  const mode: ColorMode = forced ?? chosen;
+  const setPref = (m: ColorMode) => {
+    crossFade();
+    setStored(m);
+  };
+  useEffect(() => {
+    if (!forced) localStorage.setItem(MODE_KEY, mode);
+    applyMode(mode, theme);
+    if (mode !== "system") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const on = () => applyMode("system", theme);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, [mode, theme, forced]);
+  return [chosen, setPref];
+}
+
+/** A day ambiance and an evening one, switched by the hour (Settings → Appearance). Off by default. */
+export interface AutoAmbiance {
+  on: boolean;
+  dayTheme: string;
+  dayMode: "light" | "dark";
+  nightTheme: string;
+  nightMode: "light" | "dark";
+  /** Hour the evening ambiance starts, and the hour the day one comes back. */
+  nightFrom: number;
+  dayFrom: number;
+}
+export const AUTO_AMBIANCE: AutoAmbiance = { on: false, dayTheme: "aurora", dayMode: "light", nightTheme: "prune", nightMode: "dark", nightFrom: 19, dayFrom: 7 };
+
+export function useAutoAmbiance(): { theme: string; mode: "light" | "dark"; night: boolean } | null {
+  const [a] = usePref<AutoAmbiance>("autoAmbiance", AUTO_AMBIANCE);
+  const h = useNow(60_000).getHours();
+  if (!a.on) return null;
+  const night = a.nightFrom > a.dayFrom ? h >= a.nightFrom || h < a.dayFrom : h >= a.nightFrom && h < a.dayFrom;
+  return night ? { theme: a.nightTheme, mode: a.nightMode, night } : { theme: a.dayTheme, mode: a.dayMode, night };
+}
+
+/** Interface animations on or off (Settings → Appearance); the system's reduced-motion setting always wins. */
+export function useMotionPref(): [boolean, (on: boolean) => void] {
+  const [on, set] = usePref<boolean>("motion", true);
+  useEffect(() => {
+    document.documentElement.dataset.motion = on ? "on" : "off";
+  }, [on]);
+  return [on, set];
 }

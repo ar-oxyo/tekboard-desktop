@@ -66,7 +66,7 @@ impl Default for Settings {
 const KEY: &str = "app";
 
 /// Designs the UI knows how to render. The first one is the default.
-pub const THEMES: &[&str] = &["aurora", "flat", "neon", "cozy", "terminal"];
+pub const THEMES: &[&str] = &["aurora", "sauge", "ardoise", "prune", "sumi", "flat", "neon", "cozy", "terminal"];
 
 pub fn load(conn: &Connection) -> Result<Settings> {
     match db::get_setting(conn, KEY)? {

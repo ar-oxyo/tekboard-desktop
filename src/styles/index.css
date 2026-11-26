@@ -2,38 +2,295 @@
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/jetbrains-mono";
 @import "@fontsource-variable/space-grotesk";
+@import "@fontsource-variable/archivo/wdth.css";
 
-/* Design tokens. Dark-first. Graphite surfaces, one flat violet accent. */
+/* Design tokens. The signature design ("Riso", id `aurora`) is two print inks on stock:
+   Riso blue for action, selection and focus; fluorescent orange for urgency and "now".
+   Dark = black stock (below); light = warm uncoated paper (:root[data-mode="light"]).
+   The four older designs override these further down and stay dark. */
 @theme {
   --font-sans: "Inter Variable", system-ui, sans-serif;
-  --font-display: "Inter Variable", system-ui, sans-serif;
+  --font-display: "Archivo Variable", "Inter Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
 
-  --color-bg: #141415;
-  --color-panel: #0f0f10;
-  --color-surface: #19191b;
-  --color-raised: #232325;
-  --color-hover: #2b2b2e;
-  --color-line: #28282b;
-  --color-line-strong: #3a3a3f;
+  --color-bg: #181715;
+  --color-panel: #121110;
+  --color-surface: #201f1c;
+  --color-raised: #272623;
+  --color-hover: #2b2a26;
+  --color-line: #2e2c28;
+  --color-line-strong: #423f39;
 
-  --color-fg: #ededed;
-  --color-muted: #a1a1a6;
-  --color-faint: #85858b;
+  --color-fg: #efeae0;
+  --color-muted: #aca598;
+  --color-faint: #8d877b;
 
-  --color-accent: #9486ff;
-  --color-accent-strong: #b3a8ff;
-  --color-accent-soft: #9486ff1f;
-  --color-accent-2: #5fd4e8;
-  --color-on-accent: #0c0a1f;
+  --color-accent: #4aa3e3;
+  --color-accent-strong: #78bbee;
+  --color-accent-soft: rgb(74 163 227 / 0.16);
+  --color-accent-2: #ff7a45;
+  --color-on-accent: #0c1620;
 
-  --color-ok: #4cc38a;
-  --color-warn: #e2a93b;
-  --color-danger: #e5646a;
-  --color-info: #7aa7e6;
+  --color-ok: #45c486;
+  --color-warn: #ff8f52;
+  --color-danger: #ff6470;
+  --color-info: #78bbee;
+
+  /* Second data series (others' work): Riso teal. */
+  --color-chart-2: #3fb8ad;
+
+  /* Translucent tints: white on dark grounds, near-black on light ones (`bg-ink/5`). */
+  --color-ink: #ffffff;
+  /* Sunken wells: code, logs, editors. */
+  --color-well: rgb(0 0 0 / 0.22);
+
+  /* Type scale. 13px is the body; hierarchy comes from weight and tone first. */
+  --text-3xs: 10px;
+  --text-3xs--line-height: 14px;
+  --text-2xs: 11px;
+  --text-2xs--line-height: 15px;
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-sm: 13px;
+  --text-sm--line-height: 19px;
+  --text-base: 14px;
+  --text-base--line-height: 20px;
+  --text-md: 15px;
+  --text-md--line-height: 21px;
+  --text-lg: 18px;
+  --text-lg--line-height: 24px;
+  --text-xl: 22px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 34px;
+  --text-3xl: 34px;
+  --text-3xl--line-height: 40px;
 
   --radius-card: 12px;
-  --shadow-pop: 0 24px 60px -16px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.06);
+  --shadow-pop: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 40px -12px rgb(0 0 0 / 0.65);
+}
+
+/* Warm uncoated paper: the same inks, deepened so they read as text. */
+:root[data-mode="light"] {
+  --color-bg: #f3efe6;
+  --color-panel: #ebe6da;
+  --color-surface: #f9f7f1;
+  --color-raised: #fdfcf8;
+  --color-hover: #e6e0d3;
+  --color-line: #ddd6c7;
+  --color-line-strong: #c4bba8;
+  --color-fg: #1d1b19;
+  --color-muted: #58534b;
+  --color-faint: #6b655a;
+  --color-accent: #006bab;
+  --color-accent-strong: #00578b;
+  --color-accent-soft: rgb(0 107 171 / 0.12);
+  --color-accent-2: #ff6c2f;
+  --color-on-accent: #ffffff;
+  --color-ok: #0f7044;
+  --color-warn: #a8450b;
+  --color-danger: #b92a37;
+  --color-info: #00578b;
+  --color-ink: #1d1b19;
+  --color-well: rgb(29 27 25 / 0.05);
+  --color-chart-2: #00838a;
+  --shadow-pop: 0 1px 2px rgb(29 27 25 / 0.08), 0 14px 36px -12px rgb(29 27 25 / 0.28);
+}
+
+/* ───────────────────────── Ambiances ─────────────────────────
+   Same system as Riso (two inks with fixed meanings, hairlines, light and dark), other
+   colours. Only colour tokens change; everything else comes from the Riso defaults. */
+/* Sauge — encre verte et ambre : calme, naturel. */
+:root[data-theme="sauge"] {
+  --color-bg: #141815;
+  --color-panel: #0f1310;
+  --color-surface: #1b201c;
+  --color-raised: #222823;
+  --color-hover: #262d27;
+  --color-line: #2a312b;
+  --color-line-strong: #3d473e;
+  --color-fg: #e8ede4;
+  --color-muted: #a3ad9f;
+  --color-faint: #869182;
+  --color-accent: #5fbf8a;
+  --color-accent-strong: #8fd6ad;
+  --color-accent-soft: rgb(95 191 138 / 0.16);
+  --color-accent-2: #f2a541;
+  --color-on-accent: #0d1a12;
+  --color-ok: #9ccc65;
+  --color-warn: #f2a541;
+  --color-danger: #ef6b5b;
+  --color-info: #7fb3d5;
+  --color-chart-2: #d9a441;
+  --color-ink: #ffffff;
+}
+:root[data-theme="sauge"][data-mode="light"] {
+  --color-bg: #eef1e8;
+  --color-panel: #e4e8dc;
+  --color-surface: #f6f8f2;
+  --color-raised: #fbfcf8;
+  --color-hover: #dfe4d6;
+  --color-line: #d3d9c8;
+  --color-line-strong: #b7c0aa;
+  --color-fg: #1a211b;
+  --color-muted: #4f5a4f;
+  --color-faint: #5c675b;
+  --color-accent: #2f7a4f;
+  --color-accent-strong: #245f3d;
+  --color-accent-soft: rgb(47 122 79 / 0.12);
+  --color-accent-2: #e08a1e;
+  --color-on-accent: #ffffff;
+  --color-ok: #3a630a;
+  --color-warn: #8f5306;
+  --color-danger: #b3362a;
+  --color-info: #2f6690;
+  --color-chart-2: #a06a12;
+  --color-ink: #1a211b;
+  --color-well: color-mix(in srgb, #1a211b 5%, transparent);
+}
+/* Ardoise — ardoise froide, cyan et orange : concentration. */
+:root[data-theme="ardoise"] {
+  --color-bg: #13171c;
+  --color-panel: #0e1216;
+  --color-surface: #1a2027;
+  --color-raised: #212831;
+  --color-hover: #252d37;
+  --color-line: #2a323d;
+  --color-line-strong: #3c4756;
+  --color-fg: #e6ebf1;
+  --color-muted: #9eaab8;
+  --color-faint: #8793a2;
+  --color-accent: #22b8cf;
+  --color-accent-strong: #66d9e8;
+  --color-accent-soft: rgb(34 184 207 / 0.16);
+  --color-accent-2: #fb923c;
+  --color-on-accent: #04161a;
+  --color-ok: #4cc38a;
+  --color-warn: #fb923c;
+  --color-danger: #f87171;
+  --color-info: #66d9e8;
+  --color-chart-2: #f0b45b;
+  --color-ink: #ffffff;
+}
+:root[data-theme="ardoise"][data-mode="light"] {
+  --color-bg: #eef2f6;
+  --color-panel: #e3e9f0;
+  --color-surface: #f7f9fb;
+  --color-raised: #fdfeff;
+  --color-hover: #dde4ec;
+  --color-line: #d2dae4;
+  --color-line-strong: #b3bfcd;
+  --color-fg: #141a21;
+  --color-muted: #4a5666;
+  --color-faint: #5a6575;
+  --color-accent: #0e7490;
+  --color-accent-strong: #155e75;
+  --color-accent-soft: rgb(14 116 144 / 0.11);
+  --color-accent-2: #ea580c;
+  --color-on-accent: #ffffff;
+  --color-ok: #0f6430;
+  --color-warn: #a8470a;
+  --color-danger: #b91c1c;
+  --color-info: #155e75;
+  --color-chart-2: #a8670f;
+  --color-ink: #141a21;
+  --color-well: color-mix(in srgb, #141a21 5%, transparent);
+}
+/* Prune — lie-de-vin et moutarde : chaleur du soir. */
+:root[data-theme="prune"] {
+  --color-bg: #1a1418;
+  --color-panel: #140f13;
+  --color-surface: #221a20;
+  --color-raised: #2a2128;
+  --color-hover: #30262d;
+  --color-line: #33282f;
+  --color-line-strong: #4a3a44;
+  --color-fg: #f1e8ec;
+  --color-muted: #b3a2ab;
+  --color-faint: #97868f;
+  --color-accent: #d77fb0;
+  --color-accent-strong: #e8a6c9;
+  --color-accent-soft: rgb(215 127 176 / 0.16);
+  --color-accent-2: #e0b341;
+  --color-on-accent: #22101a;
+  --color-ok: #7fc88e;
+  --color-warn: #e0b341;
+  --color-danger: #f0727a;
+  --color-info: #a9b8f0;
+  --color-chart-2: #e0b341;
+  --color-ink: #ffffff;
+}
+:root[data-theme="prune"][data-mode="light"] {
+  --color-bg: #f6eef0;
+  --color-panel: #eee3e7;
+  --color-surface: #fbf6f7;
+  --color-raised: #fffbfc;
+  --color-hover: #e9dce1;
+  --color-line: #e0d2d8;
+  --color-line-strong: #c7b0ba;
+  --color-fg: #24171e;
+  --color-muted: #5e4a55;
+  --color-faint: #6c5863;
+  --color-accent: #8e2f63;
+  --color-accent-strong: #74244f;
+  --color-accent-soft: rgb(142 47 99 / 0.10);
+  --color-accent-2: #c99419;
+  --color-on-accent: #ffffff;
+  --color-ok: #24642f;
+  --color-warn: #805a06;
+  --color-danger: #b42a3a;
+  --color-info: #3b4f9e;
+  --color-chart-2: #8a6307;
+  --color-ink: #24171e;
+  --color-well: color-mix(in srgb, #24171e 5%, transparent);
+}
+/* Sumi — encre noire, vermillon et or : minimal, très contrasté. */
+:root[data-theme="sumi"] {
+  --color-bg: #111111;
+  --color-panel: #0b0b0b;
+  --color-surface: #1a1a19;
+  --color-raised: #222221;
+  --color-hover: #262625;
+  --color-line: #2c2c2a;
+  --color-line-strong: #42423f;
+  --color-fg: #f2f0ea;
+  --color-muted: #aeaba3;
+  --color-faint: #8f8c84;
+  --color-accent: #e8553f;
+  --color-accent-strong: #f28473;
+  --color-accent-soft: rgb(232 85 63 / 0.16);
+  --color-accent-2: #e9b949;
+  --color-on-accent: #1a0905;
+  --color-ok: #8cc084;
+  --color-warn: #e9b949;
+  --color-danger: #ff6b8b;
+  --color-info: #9ab8d8;
+  --color-chart-2: #9ab8d8;
+  --color-ink: #ffffff;
+}
+:root[data-theme="sumi"][data-mode="light"] {
+  --color-bg: #f7f5ef;
+  --color-panel: #efece4;
+  --color-surface: #fcfbf7;
+  --color-raised: #ffffff;
+  --color-hover: #e8e4da;
+  --color-line: #dedad0;
+  --color-line-strong: #c4beb0;
+  --color-fg: #141414;
+  --color-muted: #4d4b46;
+  --color-faint: #5f5b54;
+  --color-accent: #b8321f;
+  --color-accent-strong: #962716;
+  --color-accent-soft: rgb(184 50 31 / 0.10);
+  --color-accent-2: #c99419;
+  --color-on-accent: #ffffff;
+  --color-ok: #306628;
+  --color-warn: #86600a;
+  --color-danger: #a3204a;
+  --color-info: #2c5a85;
+  --color-chart-2: #2c5a85;
+  --color-ink: #141414;
+  --color-well: color-mix(in srgb, #141414 5%, transparent);
 }
 
 html,
@@ -55,6 +312,7 @@ body {
   user-select: none;
   cursor: default;
   overflow: hidden;
+  caret-color: var(--color-accent);
 }
 
 input,
@@ -66,13 +324,16 @@ code,
 }
 
 ::selection {
-  background: var(--color-accent-soft);
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
-*:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  border-radius: 6px;
+/* In the base layer so a component's own focus utilities (focus:outline-none…) still win. */
+@layer base {
+  *:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
 }
 
 ::-webkit-scrollbar {
@@ -93,45 +354,68 @@ code,
 
 /* ───────────────────────── Look & feel ─────────────────────────
    Everything decorative reads from the variables below, so a design is just a
-   set of values. Defaults = "Aurora": quiet graphite chrome, colour kept for the
-   content. Other designs override them further down. */
+   set of values. Defaults = Riso: flat stock, hairlines, ink only where it means
+   something. The older designs override them further down. */
 :root {
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  /* Where two inks meet (a selected row that is also urgent), they overprint. */
+  --overprint: screen;
   --backdrop: none;
   --texture: none;
   --texture-size: auto;
   --texture-mask: none;
 
   --card-bg: var(--color-surface);
-  --card-border: rgb(255 255 255 / 0.07);
+  --card-border: var(--color-line);
   --card-shadow: none;
-  --hero-bg: linear-gradient(#1e1e21, #1e1e21) padding-box, linear-gradient(rgb(255 255 255 / 0.13), rgb(255 255 255 / 0.13)) border-box;
-  --hero-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
-  --focus-ring: rgb(148 134 255 / 0.6);
+  --hero-bg: var(--color-surface);
+  --hero-shadow: none;
+  --focus-ring: color-mix(in srgb, var(--color-accent) 60%, transparent);
 
-  --btn-bg: var(--color-accent);
-  --btn-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2);
-  --btn2-bg: var(--color-raised);
-  --btn2-border: rgb(255 255 255 / 0.08);
-  --btn-radius: 8px;
+  --btn-bg: var(--color-fg);
+  --btn-fg: var(--color-bg);
+  --btn-shadow: none;
+  --btn2-bg: transparent;
+  --btn2-border: var(--color-line-strong);
+  --btn-radius: 6px;
 
   --title-fill: linear-gradient(var(--color-fg), var(--color-fg));
   --number-fill: linear-gradient(var(--color-fg), var(--color-fg));
   --title-transform: none;
+  --title-stretch: 78%;
+  --title-weight: 700;
 
   --sidebar-bg: var(--color-panel);
-  --nav-active-bg: var(--color-raised);
-  --nav-active-ring: rgb(255 255 255 / 0.06);
+  --nav-active-bg: var(--color-accent-soft);
+  --nav-active-ring: transparent;
   --nav-bar: transparent;
   --nav-bar-glow: none;
   --logo-glow: none;
-  --row-hover: rgb(255 255 255 / 0.035);
+  --row-hover: color-mix(in srgb, var(--color-ink) 4%, transparent);
 
-  --overlay-bg: #1f1f22;
-  --overlay-bg-glass: rgb(31 31 34 / 0.88);
-  --overlay-shadow: var(--shadow-pop);
-  --field-bg: #111112;
-  --select-bg: #111112;
+  --overlay-bg: var(--color-raised);
+  --overlay-bg-glass: color-mix(in srgb, var(--color-raised) 88%, transparent);
+  --overlay-shadow: var(--shadow-pop), 0 0 0 1px var(--color-line);
+  --field-bg: color-mix(in srgb, var(--color-ink) 3%, transparent);
+  --select-bg: color-mix(in srgb, var(--color-ink) 3%, transparent);
+}
+:root[data-mode="light"] {
+  --overprint: multiply;
+  --field-bg: var(--color-surface);
+  --select-bg: var(--color-surface);
+}
+
+/* The four older designs: dark only, their own faces, accent-filled buttons. */
+:root[data-theme="flat"],
+:root[data-theme="neon"],
+:root[data-theme="cozy"],
+:root[data-theme="terminal"] {
+  --font-display: "Inter Variable", system-ui, sans-serif;
+  --btn-fg: var(--color-on-accent);
+  --title-stretch: 100%;
+  --title-weight: 500;
 }
 
 /* Flat — the original look: solid surfaces, no glow, nothing decorative. */
@@ -371,6 +655,9 @@ code,
   --select-bg: #080d08;
 }
 
+/* Component classes live in a layer below the utilities: a utility on an element (rounded-md,
+   bg-…) always wins over the class it is combined with. */
+@layer components {
 .app-bg {
   position: fixed;
   inset: 0;
@@ -424,7 +711,7 @@ code,
 }
 
 .btn-primary {
-  color: var(--color-on-accent);
+  color: var(--btn-fg);
   font-weight: 500;
   border-radius: var(--btn-radius);
   background: var(--btn-bg);
@@ -462,9 +749,16 @@ code,
 
 .display {
   font-family: var(--font-display);
+  font-stretch: var(--title-stretch);
 }
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+/* Gradient fills exist only for the legacy Neon and Cozy designs; Riso prints solid ink. */
+:root:is([data-theme="aurora"], [data-theme="sauge"], [data-theme="ardoise"], [data-theme="prune"], [data-theme="sumi"]) .title-gradient,
+:root:is([data-theme="aurora"], [data-theme="sauge"], [data-theme="ardoise"], [data-theme="prune"], [data-theme="sumi"]) .number-gradient {
+  background: none;
+  color: inherit;
 }
 .title-gradient {
   background: var(--title-fill);
@@ -512,6 +806,38 @@ code,
 .logo-glow {
   filter: var(--logo-glow);
 }
+/* A row you can act on: hovering lays down a film of blue ink. An urgent mark under it
+   (orange) overprints with the blue, like two Riso passes on the same sheet. */
+.ink-row {
+  border-radius: var(--btn-radius);
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.ink-row:hover,
+.ink-row:focus-visible {
+  background: var(--color-accent-soft);
+}
+.ink-urgent {
+  background: color-mix(in srgb, var(--color-accent-2) 26%, transparent);
+  mix-blend-mode: var(--overprint);
+}
+/* Today: one column in a narrow window (or with Artix open), what matters first; two
+   columns when there is room, hand-ins beside the day. */
+.today-grid {
+  display: grid;
+  gap: 2.25rem 3rem;
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "now" "due" "sched" "load" "quick";
+}
+.today-grid > * {
+  min-width: 0;
+}
+@container (min-width: 56rem) {
+  .today-grid {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    grid-template-areas: "now due" "sched due" "load quick";
+  }
+}
 .row-hover {
   transition: background 0.1s ease;
 }
@@ -521,6 +847,12 @@ code,
 .field {
   background: var(--field-bg);
   border-radius: var(--btn-radius);
+}
+/* A field in focus says so with its border and a soft ring, not the global outline on top. */
+.field:focus-visible,
+.field:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
 }
 /* Drop-down lists and action menus: one panel style for the five designs. */
 .select-trigger {
@@ -603,6 +935,110 @@ code,
 .scrim {
   background: rgb(0 0 0 / 0.6);
 }
+/* Changing mode or design: colours cross-fade for a moment instead of snapping. */
+:root.switching-theme *,
+:root.switching-theme *::before,
+:root.switching-theme *::after {
+  transition:
+    background-color 200ms var(--ease),
+    border-color 200ms var(--ease),
+    color 200ms var(--ease),
+    fill 200ms var(--ease) !important;
+}
+
+/* Animations switched off in Settings: everything lands at once. */
+:root[data-motion="off"] *,
+:root[data-motion="off"] *::before,
+:root[data-motion="off"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Discreet entrances: blocks of a screen arrive one after the other, 40 ms apart. */
+.stagger > * {
+  animation: rise-in var(--dur-base) var(--ease) both;
+}
+.stagger > :nth-child(2) { animation-delay: 40ms; }
+.stagger > :nth-child(3) { animation-delay: 80ms; }
+.stagger > :nth-child(4) { animation-delay: 120ms; }
+.stagger > :nth-child(5) { animation-delay: 160ms; }
+/* A meter fills up when it appears. */
+@keyframes meter-in {
+  from { transform: scaleX(0); }
+}
+.meter-fill {
+  transform-origin: left;
+  animation: meter-in 480ms var(--ease) both;
+}
+/* Cards you can open rise by a pixel under the pointer. */
+.lift {
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.lift:hover {
+  transform: translateY(-1px);
+}
+
+/* Task checkbox: ticking draws the logo's ring, then the check. */
+.done-check .done-track {
+  fill: none;
+  stroke: var(--color-line-strong);
+  stroke-width: 1.4;
+}
+.done-check:hover .done-track {
+  stroke: var(--color-accent);
+}
+.done-check .done-ring {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 41 41;
+  stroke-dashoffset: 41;
+}
+.done-check .done-tick {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 10 10;
+  stroke-dashoffset: 10;
+}
+.done-check [data-on] .done-ring,
+.done-check [data-on] .done-tick {
+  stroke-dashoffset: 0;
+}
+.done-check [data-drawing] .done-ring {
+  animation: done-ring 260ms var(--ease) both;
+}
+.done-check [data-drawing] .done-tick {
+  animation: done-tick 160ms var(--ease) 160ms both;
+}
+@keyframes done-ring {
+  from { stroke-dashoffset: 41; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes done-tick {
+  from { stroke-dashoffset: 10; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* Tooltips are printed in reverse: ground-coloured text on a block of ink. */
+.tooltip {
+  background: var(--color-fg);
+  color: var(--color-bg);
+  border-radius: 5px;
+  line-height: 16px;
+  box-shadow: 0 4px 14px -4px rgb(0 0 0 / 0.35);
+  animation: fade-in var(--dur-fast) var(--ease);
+}
+:root[data-mode="light"] .scrim {
+  background: rgb(29 27 25 / 0.3);
+}
 
 /* Overlays are centred with Tailwind's `translate` property (and menus are placed by
    Radix on their wrapper): the entrance animates `scale` and `opacity` only, never
@@ -628,7 +1064,7 @@ code,
 @keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -647,7 +1083,7 @@ code,
   animation: fade-in 0.18s var(--ease);
 }
 .anim-rise {
-  animation: rise-in 0.3s var(--ease);
+  animation: rise-in var(--dur-base) var(--ease);
 }
 .anim-spin {
   animation: spin 0.7s linear infinite;
@@ -670,7 +1106,7 @@ code,
   cursor: crosshair;
 }
 .cal-off {
-  background: rgb(0 0 0 / 0.14);
+  background: color-mix(in srgb, var(--color-ink) 4%, transparent);
 }
 .cal-event {
   border-radius: calc(var(--btn-radius) * 0.75);
@@ -710,8 +1146,7 @@ code,
   display: block;
   max-width: 100%;
   border-radius: 5px;
-  border-left: 2px solid var(--c);
-  background: color-mix(in srgb, var(--c) 20%, var(--color-surface));
+  background: color-mix(in srgb, var(--c) 24%, var(--color-surface));
   padding: 1px 6px;
   font-size: 11px;
   line-height: 16px;
@@ -724,8 +1159,9 @@ code,
   background: color-mix(in srgb, var(--c) 32%, var(--color-surface));
 }
 .cal-chip[data-my] {
-  border-left-style: dashed;
   background: color-mix(in srgb, var(--c) 10%, var(--color-surface));
+  outline: 1px dashed color-mix(in srgb, var(--c) 70%, transparent);
+  outline-offset: -1px;
 }
 .cal-chip[data-done] {
   opacity: 0.5;
@@ -818,9 +1254,6 @@ code,
   transform-origin: 16px 4.4px;
   animation: spin 1.1s linear infinite;
 }
-.artix-idle .artix-figure {
-  animation: artix-float 4.8s var(--ease) infinite;
-}
 .artix-idle .artix-eye {
   animation: artix-blink 5.5s infinite;
 }
@@ -851,11 +1284,6 @@ code,
 .artix-attention .artix-light {
   fill: var(--color-warn);
   animation: artix-glow 1.6s var(--ease) infinite;
-}
-@keyframes artix-float {
-  50% {
-    transform: translateY(-0.8px);
-  }
 }
 @keyframes artix-blink {
   0%,
@@ -926,3 +1354,25 @@ code,
 @media (prefers-reduced-motion: reduce) {
   .skill-pulse { animation: none; }
 }
+}
+
+/* Settings read as one sheet: their groups are hairline sections, not boxes. Outside the
+   component layer on purpose, to win over the card's own utilities. */
+.settings-flat .card {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--color-line);
+  border-radius: 0;
+  box-shadow: none;
+}
+.settings-flat .card > header:first-child {
+  border-bottom: 0;
+  height: auto;
+  padding-top: 14px;
+  padding-bottom: 2px;
+}
+.settings-flat .card > header:first-child h2 {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+

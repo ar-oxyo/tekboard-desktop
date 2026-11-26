@@ -106,7 +106,7 @@ export function CaptureEditor({ project: initialProject, onSaved, onClose, autoF
       }}
     >
       {preview ? (
-        <div className="min-h-[96px] overflow-y-auto rounded-lg border border-white/8 bg-black/15 px-3 py-2" style={{ maxHeight: floating ? 150 : 320 }}>
+        <div className="min-h-[96px] overflow-y-auto rounded-lg border border-ink/8 bg-well px-3 py-2" style={{ maxHeight: floating ? 150 : 320 }}>
           <CaptureText text={text || t("Rien à afficher")} />
         </div>
       ) : (
@@ -117,7 +117,7 @@ export function CaptureEditor({ project: initialProject, onSaved, onClose, autoF
           spellCheck
           value={text}
           placeholder={t("Une idée, un bug, une commande, un lien… Écris, valide, c'est rangé.")}
-          className="selectable min-h-[72px] w-full resize-none rounded-lg border border-white/8 bg-black/15 px-3 py-2.5 text-[13.5px] leading-relaxed text-fg placeholder:text-faint focus:border-accent/50 focus:outline-none"
+          className="selectable min-h-[72px] w-full resize-none rounded-lg border border-ink/8 bg-well px-3 py-2.5 text-sm leading-relaxed text-fg placeholder:text-faint focus:border-accent/50 focus:outline-none"
           onChange={(e) => setText(e.target.value)}
           onPaste={(e) => {
             const files = [...e.clipboardData.files];
@@ -159,11 +159,11 @@ export function CaptureEditor({ project: initialProject, onSaved, onClose, autoF
             )}
           </div>
         ) : (
-          <button type="button" onClick={() => setPickProject(true)} className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-faint transition-colors duration-150 hover:bg-white/5 hover:text-fg">
+          <button type="button" onClick={() => setPickProject(true)} className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-faint transition-colors duration-150 hover:bg-ink/5 hover:text-fg">
             <FolderGit2 className="size-3.5" /> {t("Projet")}
           </button>
         )}
-        <button type="button" onClick={() => file.current?.click()} className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-faint transition-colors duration-150 hover:bg-white/5 hover:text-fg" title={t("Ajouter une image (ou colle-la directement)")}>
+        <button type="button" onClick={() => file.current?.click()} className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-faint transition-colors duration-150 hover:bg-ink/5 hover:text-fg" title={t("Ajouter une image (ou colle-la directement)")}>
           <ImagePlus className="size-3.5" /> {t("Image")}
         </button>
         <input
@@ -178,11 +178,11 @@ export function CaptureEditor({ project: initialProject, onSaved, onClose, autoF
           }}
         />
         {text.trim() && (
-          <button type="button" onClick={() => setPreview(!preview)} className={cn("flex h-7 items-center gap-1.5 rounded-md px-2 text-xs transition-colors duration-150 hover:bg-white/5", preview ? "text-accent-strong" : "text-faint hover:text-fg")}>
+          <button type="button" onClick={() => setPreview(!preview)} className={cn("flex h-7 items-center gap-1.5 rounded-md px-2 text-xs transition-colors duration-150 hover:bg-ink/5", preview ? "text-accent-strong" : "text-faint hover:text-fg")}>
             {preview ? <Pencil className="size-3.5" /> : <Eye className="size-3.5" />} {preview ? t("Écrire") : t("Aperçu")}
           </button>
         )}
-        <span className="ml-auto hidden items-center gap-1 text-[11px] text-faint sm:flex">
+        <span className="ml-auto hidden items-center gap-1 text-2xs text-faint sm:flex">
           <Kbd>↵</Kbd> {t("enregistrer")} · <Kbd>⇧↵</Kbd> {t("ligne")} · <Kbd>Échap</Kbd> {t("fermer")}
         </span>
         <Button size="sm" variant="primary" busy={busy} disabled={!text.trim()} onClick={() => void save(false)}>

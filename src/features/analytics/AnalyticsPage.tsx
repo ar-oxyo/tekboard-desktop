@@ -7,13 +7,13 @@ import { api, asAppError, type Analytics, type DayCount, type RepoStat } from ".
 import { timeAgo } from "../../lib/format";
 import { useSettings } from "../../lib/hooks";
 import { AcademicSection } from "./Academic";
-import { locale, t } from "../../lib/i18n";
+import { locale, plural, t } from "../../lib/i18n";
 
-// Chart colours, validated for the dark surface (lightness band, CVD separation, contrast).
-const YOU = "#7c6ef2";
-const OTHERS = "#2fa594";
-// One hue, more = brighter on a dark surface. Step 0 is "no commit".
-const HEAT = ["#1d212a", "#3a3373", "#5549b3", "#7c6ef2", "#b6adff"];
+// Chart colours come from the design: your work in blue ink, others' in teal.
+const YOU = "var(--color-accent)";
+const OTHERS = "var(--color-chart-2)";
+// One ink, more = denser. Step 0 is "no commit".
+const HEAT = ["color-mix(in srgb, var(--color-ink) 7%, transparent)", "color-mix(in srgb, var(--color-accent) 30%, transparent)", "color-mix(in srgb, var(--color-accent) 55%, transparent)", "color-mix(in srgb, var(--color-accent) 80%, transparent)", "var(--color-accent)"];
 
 export function AnalyticsPage() {
   const settings = useSettings();
@@ -50,10 +50,10 @@ function Body({ a }: { a: Analytics }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label={t("Tes commits")} value={a.myCommits.toLocaleString()} note={`${a.repos.filter((r) => r.mine > 0).length} repositories`} />
-        <Stat label={t("Jours actifs")} value={String(a.activeDays)} note="in the last 53 weeks" />
-        <Stat label={t("Série en cours")} value={`${a.currentStreak} day${a.currentStreak === 1 ? "" : "s"}`} note={`longest: ${a.longestStreak}`} />
-        <Stat label={t("Dernier commit")} value={a.lastCommit ? timeAgo(a.lastCommit) : "—"} note={topRepo ? `most active: ${topRepo.name}` : undefined} />
+        <Stat label={t("Tes commits")} value={a.myCommits.toLocaleString(locale())} note={plural(a.repos.filter((r) => r.mine > 0).length, "{n} dépôt", "{n} dépôts")} />
+        <Stat label={t("Jours actifs")} value={String(a.activeDays)} note={t("sur les 53 dernières semaines")} />
+        <Stat label={t("Série en cours")} value={plural(a.currentStreak, "{n} jour", "{n} jours")} note={t("record : {n}", { n: a.longestStreak })} />
+        <Stat label={t("Dernier commit")} value={a.lastCommit ? timeAgo(a.lastCommit) : "—"} note={topRepo ? t("le plus actif : {r}", { r: topRepo.name }) : undefined} />
       </div>
 
       <Card>
@@ -84,23 +84,23 @@ function Body({ a }: { a: Analytics }) {
           <CardTitle
             right={
               <span className="flex items-center gap-3 text-xs text-muted">
-                <Key color={YOU} label="Toi" />
-                <Key color={OTHERS} label="Les autres" />
+                <Key color={YOU} label={t("Toi")} />
+                <Key color={OTHERS} label={t("Les autres")} />
               </span>
             }
           >
             Commits par projet
           </CardTitle>
           <RepoBars repos={a.repos} />
-          <p className="border-t border-white/6 px-4 py-2.5 text-xs text-faint">
+          <p className="border-t border-ink/6 px-4 py-2.5 text-xs text-faint">
             {a.soloRepos} solo · {a.sharedRepos} shared. A commit count compares volume, not the value of each contribution.
           </p>
         </Card>
         <Card className="self-start">
-          <CardTitle>Langages</CardTitle>
+          <CardTitle>{t("Langages")}</CardTitle>
           <Languages a={a} />
-          <p className="border-t border-white/6 px-4 py-2.5 text-xs text-faint">
-            Lines in tracked files of repositories you committed to{topLang ? "" : " (none found)"}. A line of code is not a unit of productivity.
+          <p className="border-t border-ink/6 px-4 py-2.5 text-xs text-faint">
+            {t("Lignes des fichiers suivis dans les dépôts où tu as commité")}{topLang ? "" : ` ${t("(aucune trouvée)")}`}. {t("Une ligne de code n'est pas une unité de productivité.")}
           </p>
         </Card>
       </div>
@@ -108,7 +108,7 @@ function Body({ a }: { a: Analytics }) {
       <AcademicSection />
 
       <p className="selectable text-xs text-faint">
-        “You” = commits authored as {a.myEmails.length > 0 ? a.myEmails.join(", ") : "nobody: git user.email is not set"}. {a.totalCommits.toLocaleString()} commits read in total, merges excluded, each commit counted once even when cloned twice.
+        “You” = commits authored as {a.myEmails.length > 0 ? a.myEmails.join(", ") : "nobody: git user.email is not set"}. {a.totalCommits.toLocaleString(locale())} commits read in total, merges excluded, each commit counted once even when cloned twice.
       </p>
     </div>
   );
@@ -118,7 +118,7 @@ export function Stat({ label, value, note }: { label: string; value: string; not
   return (
     <Card className="px-4 py-4">
       <p className="text-xs text-muted">{label}</p>
-      <p className="display number-gradient mt-1 text-[30px] leading-tight font-medium">{value}</p>
+      <p className="display number-gradient mt-1 text-2xl leading-tight font-medium">{value}</p>
       {note && <p className="mt-0.5 truncate text-xs text-faint">{note}</p>}
     </Card>
   );
@@ -162,12 +162,12 @@ function heatStep(count: number, max: number): number {
 
 function HeatLegend() {
   return (
-    <span className="flex items-center gap-1 text-[11px] text-faint">
-      fewer
+    <span className="flex items-center gap-1 text-2xs text-faint">
+      {t("moins")}
       {HEAT.map((c) => (
         <span key={c} className="size-2.5 rounded-[3px]" style={{ background: c }} />
       ))}
-      more
+      {t("plus")}
     </span>
   );
 }
@@ -206,12 +206,12 @@ function Heatmap({ days }: { days: DayCount[] }) {
     <div data-chart className="relative" style={{ width }}>
       <svg width={width} height={height} role="img" aria-label={t("Commits par jour sur les 53 dernières semaines")}>
         {months.map((m) => (
-          <text key={m.col} x={left + m.col * (size + gap)} y={10} className="fill-(--color-faint) text-[10px]">
+          <text key={m.col} x={left + m.col * (size + gap)} y={10} className="fill-(--color-faint) text-3xs">
             {m.label}
           </text>
         ))}
-        {["Mon", "Wed", "Fri"].map((d, i) => (
-          <text key={d} x={0} y={top + (i * 2) * (size + gap) + 10} className="fill-(--color-faint) text-[10px]">
+        {[t("Lun"), t("Mer"), t("Ven")].map((d, i) => (
+          <text key={d} x={0} y={top + (i * 2) * (size + gap) + 10} className="fill-(--color-faint) text-3xs">
             {d}
           </text>
         ))}
@@ -225,8 +225,8 @@ function Heatmap({ days }: { days: DayCount[] }) {
                 width={size}
                 height={size}
                 rx={3}
-                fill={HEAT[heatStep(d.count, max)]}
-                onMouseEnter={(e) => tip.show(e, `${new Date(d.date + "T00:00:00").toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short", year: "numeric" })}: ${d.count} commit${d.count === 1 ? "" : "s"}`)}
+                style={{ fill: HEAT[heatStep(d.count, max)] }}
+                onMouseEnter={(e) => tip.show(e, `${new Date(d.date + "T00:00:00").toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short", year: "numeric" })} : ${plural(d.count, "{n} commit", "{n} commits")}`)}
                 onMouseLeave={tip.hide}
               />
             ),
@@ -252,14 +252,14 @@ export function Columns({ data, everyLabel }: { data: Array<{ key: string; label
           </div>
         ))}
       </div>
-      <div className="mt-1.5 flex gap-[2px] border-t border-white/6 pt-1">
+      <div className="mt-1.5 flex gap-[2px] border-t border-ink/6 pt-1">
         {data.map((d, i) => (
-          <span key={d.key} className="min-w-0 flex-1 text-center text-[10px] text-faint">
+          <span key={d.key} className="min-w-0 flex-1 text-center text-3xs text-faint">
             {i % everyLabel === 0 ? d.label : ""}
           </span>
         ))}
       </div>
-      <span className="absolute top-0 right-0 text-[10px] text-faint">max {max}</span>
+      <span className="absolute top-0 right-0 text-3xs text-faint">max {max}</span>
       {tip.node}
     </div>
   );
@@ -276,7 +276,7 @@ function RepoBars({ repos }: { repos: RepoStat[] }) {
           const people = r.contributors.slice(0, 5).map((c) => `${c.name}${c.me ? " (you)" : ""}: ${c.commits}`).join(" · ");
           return (
             <li key={r.path} className="flex h-8 items-center gap-3 px-4" onMouseEnter={(e) => tip.show(e, people)} onMouseLeave={tip.hide}>
-              <span className="w-36 shrink-0 truncate text-[13px]">{r.name}</span>
+              <span className="w-36 shrink-0 truncate text-sm">{r.name}</span>
               <span className="flex h-3 min-w-0 flex-1 items-center gap-[2px]">
                 {r.mine > 0 && <span className="h-full rounded-[4px]" style={{ width: `${(r.mine / max) * 100}%`, background: YOU, minWidth: 3 }} />}
                 {r.others > 0 && <span className="h-full rounded-[4px]" style={{ width: `${(r.others / max) * 100}%`, background: OTHERS, minWidth: 3 }} />}
@@ -299,17 +299,17 @@ function Languages({ a }: { a: Analytics }) {
   const total = a.languages.reduce((n, l) => n + l.lines, 0);
   const shown = a.languages.slice(0, 8);
   const max = Math.max(1, ...shown.map((l) => l.lines));
-  if (shown.length === 0) return <p className="px-4 py-4 text-[13px] text-muted">{t("Aucun fichier source reconnu.")}</p>;
+  if (shown.length === 0) return <p className="px-4 py-4 text-sm text-muted">{t("Aucun fichier source reconnu.")}</p>;
   return (
     <ul className="py-2">
       {shown.map((l) => (
         <li key={l.name} className="flex h-8 items-center gap-3 px-4" title={`${l.files} file${l.files === 1 ? "" : "s"}`}>
-          <span className="w-24 shrink-0 truncate text-[13px]">{l.name}</span>
+          <span className="w-24 shrink-0 truncate text-sm">{l.name}</span>
           <span className="flex h-3 min-w-0 flex-1 items-center">
             <span className="h-full rounded-[4px]" style={{ width: `${(l.lines / max) * 100}%`, background: YOU, minWidth: 3 }} />
           </span>
           <span className="w-28 shrink-0 text-right text-xs text-muted">
-            {l.lines.toLocaleString()} <span className="text-faint">· {Math.round((l.lines / total) * 100)}%</span>
+            {l.lines.toLocaleString(locale())} <span className="text-faint">· {Math.round((l.lines / total) * 100)}%</span>
           </span>
         </li>
       ))}

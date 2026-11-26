@@ -54,57 +54,57 @@ export function ProposalCard({ title, rationale, warnings, actions, origin, stat
   const ceiling = data.prefs.maxMinutesPerDay;
   const decided = status !== "pending";
   return (
-    <section className={cn("mt-2 overflow-hidden rounded-xl border", decided ? "border-white/7 opacity-80" : "border-accent/35 bg-accent-soft/30")}>
+    <section className={cn("mt-2 overflow-hidden rounded-xl border", decided ? "border-ink/7 opacity-80" : "border-accent/35 bg-accent-soft/30")}>
       <header className="flex items-start gap-2 px-3 pt-2.5 pb-2">
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium">{title}</p>
+          <p className="text-sm font-medium">{title}</p>
           {rationale && <p className="mt-0.5 text-xs text-muted">{rationale}</p>}
         </div>
-        <span className="shrink-0 pt-0.5 text-[11px] text-faint">{origin === "auto" ? t("calculé par TekBoard") : t("vérifié par le moteur")}</span>
+        <span className="shrink-0 pt-0.5 text-2xs text-faint">{origin === "auto" ? t("calculé par TekBoard") : t("vérifié par le moteur")}</span>
       </header>
       {warnings?.map((w) => (
         <p key={w} className="flex items-start gap-1.5 px-3 pb-1.5 text-xs text-warn">
           <AlertTriangle className="mt-0.5 size-3 shrink-0" /> {w}
         </p>
       ))}
-      <ul className="max-h-72 overflow-y-auto border-t border-white/6 py-1">
+      <ul className="max-h-72 overflow-y-auto border-t border-ink/6 py-1">
         {rows.map(({ a, i, d, clash }) => (
           <li key={i}>
-            <label className={cn("row-hover flex items-start gap-2 px-3 py-1.5 text-[13px]", !decided && "cursor-pointer")}>
+            <label className={cn("row-hover flex items-start gap-2 px-3 py-1.5 text-sm", !decided && "cursor-pointer")}>
               {!decided && <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={!off.has(i)} onChange={() => setOff((s) => (s.has(i) ? new Set([...s].filter((x) => x !== i)) : new Set([...s, i])))} />}
               <span className="w-16 shrink-0 text-xs text-faint">{d.verb}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate">{d.text}</span>
-                {d.when && <span className="block truncate font-mono text-[11px] text-muted">{d.when}</span>}
+                {d.when && <span className="block truncate font-mono text-2xs text-muted">{d.when}</span>}
                 {clash && (
-                  <span className="flex items-center gap-1 text-[11px] text-warn">
+                  <span className="flex items-center gap-1 text-2xs text-warn">
                     <AlertTriangle className="size-3" /> {clash}
                   </span>
                 )}
               </span>
-              {a.type === "create_session" && <span className="shrink-0 font-mono text-[11px] text-faint">{fmtDur((fromLocalIso(a.end) - fromLocalIso(a.start)) / MIN)}</span>}
+              {a.type === "create_session" && <span className="shrink-0 font-mono text-2xs text-faint">{fmtDur((fromLocalIso(a.end) - fromLocalIso(a.start)) / MIN)}</span>}
             </label>
           </li>
         ))}
       </ul>
       {perDay.length > 0 && (
-        <div className="flex flex-col gap-1 border-t border-white/6 px-3 py-2">
+        <div className="flex flex-col gap-1 border-t border-ink/6 px-3 py-2">
           {perDay.map(([day, added]) => {
             const pct = Math.min(100, (added / ceiling) * 100);
             return (
-              <div key={day} className="flex items-center gap-2 text-[11px] text-muted">
+              <div key={day} className="flex items-center gap-2 text-2xs text-muted">
                 <span className="w-20 shrink-0">{new Date(fromLocalIso(`${day}T12:00`)).toLocaleDateString(locale(), { weekday: "short", day: "numeric" })}</span>
-                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/6">
+                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink/6">
                   <span className={cn("block h-full rounded-full", pct > 95 ? "bg-warn" : "bg-accent")} style={{ width: `${pct}%` }} />
                 </span>
                 <span className="w-20 shrink-0 text-right font-mono">+{fmtDur(added)}</span>
               </div>
             );
           })}
-          <p className="text-[10px] text-faint">{t("Barre : travail ajouté face au plafond de {d} par jour.", { d: fmtDur(ceiling) })}</p>
+          <p className="text-3xs text-faint">{t("Barre : travail ajouté face au plafond de {d} par jour.", { d: fmtDur(ceiling) })}</p>
         </div>
       )}
-      <footer className="flex items-center gap-2 border-t border-white/6 px-3 py-2">
+      <footer className="flex items-center gap-2 border-t border-ink/6 px-3 py-2">
         {decided ? (
           <span className={cn("flex items-center gap-1.5 text-xs", status === "accepted" ? "text-ok" : "text-muted")}>
             {status === "accepted" ? <Check className="size-3.5" /> : <X className="size-3.5" />}
