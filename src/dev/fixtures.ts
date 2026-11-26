@@ -252,6 +252,7 @@ export const fixtures: Record<string, Fixture> = {
   my_overview: { syncedAt: now - 40 * 60, account: "camille.martin@epitech.eu", projects: [], creditsAcquired: 12, creditsTotal: 60, blocks: [], exams: [] },
   my_logtime: logtime,
   my_skill_tree: skillTree,
+  credit_scenario_save: (a: Record<string, unknown>) => ({ id: typeof a.id === "number" ? a.id : 1, name: a.name, data: a.data, updatedAt: now }),
   // ?proposal=1 shows a week plan waiting in Artix's panel (with ?open=artix).
   ai_proposals: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("proposal") ? [weekProposal] : []),
   analytics,

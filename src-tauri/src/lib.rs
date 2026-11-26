@@ -1,6 +1,7 @@
 pub mod ai;
 pub mod arena;
 pub mod analytics;
+pub mod credits;
 pub mod boards;
 pub mod brain;
 pub mod cdiag;
@@ -401,6 +402,9 @@ pub fn run() {
             commands_app::doctor_fix,
             commands_app::doctor_export,
             commands_my::my_skill_tree,
+            commands_my::credit_scenarios,
+            commands_my::credit_scenario_save,
+            commands_my::credit_scenario_delete,
             commands_ai::memory_list,
             commands_ai::memory_add,
             commands_ai::memory_update,

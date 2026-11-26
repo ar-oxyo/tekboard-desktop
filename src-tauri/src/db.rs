@@ -383,6 +383,14 @@ const MIGRATIONS: &[&str] = &[
         INSERT INTO tasks_fts(rowid, title, notes, tags) VALUES (new.id, new.title, new.notes, new.tags);
      END;
      INSERT INTO tasks_fts(tasks_fts) VALUES ('rebuild');",
+    // v1.0: credit simulations (the barème and the choices of a scenario, as JSON).
+    "CREATE TABLE credit_scenarios (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        data TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+     );",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

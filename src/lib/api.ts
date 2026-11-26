@@ -1555,6 +1555,13 @@ export interface SkillTree {
   history: Array<{ at: number; label: string; kind: "mark" | "project" }>;
   notes: string[];
 }
+/** A credit simulation kept by the student (`data` is a `ScenarioData`, see lib/credits.ts). */
+export interface CreditScenarioRow {
+  id: number;
+  name: string;
+  data: unknown;
+  updatedAt: number;
+}
 export type DoctorStatus = "ok" | "warn" | "error" | "unconfigured";
 export interface DoctorCheck {
   id: string;
@@ -1922,6 +1929,9 @@ export const api = {
   aiSettingsGet: () => invoke<AiSettings>("ai_settings_get"),
   aiSettingsSet: (settings: AiSettings) => invoke<AiSettings>("ai_settings_set", { settings }),
   mySkillTree: () => invoke<SkillTree>("my_skill_tree"),
+  creditScenarios: () => invoke<CreditScenarioRow[]>("credit_scenarios"),
+  creditScenarioSave: (id: number | null, name: string, data: unknown) => invoke<CreditScenarioRow>("credit_scenario_save", { id, name, data }),
+  creditScenarioDelete: (id: number) => invoke<void>("credit_scenario_delete", { id }),
   doctorRun: (deep = false) => invoke<DoctorReport>("doctor_run", { deep }),
   doctorFix: (id: string) => invoke<string>("doctor_fix", { id }),
   doctorExport: () => invoke<string>("doctor_export"),

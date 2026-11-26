@@ -28,6 +28,7 @@ import { listenSessions } from "../lib/sessionBus";
 import "../features/whiteboard/bus";
 import { doctorProblems } from "../features/settings/DoctorCard";
 import { SkillTreePage } from "../features/skilltree/SkillTreePage";
+import { CreditsPage } from "../features/myepitech/CreditsPage";
 import { PAGES, useUi, type Page } from "../lib/store";
 import { AnalyticsPage } from "../features/analytics/AnalyticsPage";
 import { CozyPage } from "../features/cozy/CozyPage";
@@ -419,6 +420,7 @@ export function App() {
           {page === "analytics" && <AnalyticsPage />}
           {page === "myepitech" && <MyEpitechPage />}
           {page === "skilltree" && <SkillTreePage />}
+          {page === "credits" && <CreditsPage />}
           {page === "logtime" && <LogtimePage />}
           {page === "cozy" && <CozyPage />}
           {page === "templates" && <TemplatesPage />}

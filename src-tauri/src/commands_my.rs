@@ -643,3 +643,19 @@ mod slot_tests {
 pub fn my_skill_tree(state: State<'_, AppState>) -> crate::skilltree::Tree {
     crate::skilltree::build(&state.conn())
 }
+
+/// Credit simulations kept by the student (never official figures).
+#[tauri::command(async)]
+pub fn credit_scenarios(state: State<'_, AppState>) -> Result<Vec<crate::credits::Scenario>> {
+    crate::credits::list(&state.conn())
+}
+
+#[tauri::command(async)]
+pub fn credit_scenario_save(state: State<'_, AppState>, id: Option<i64>, name: String, data: serde_json::Value) -> Result<crate::credits::Scenario> {
+    crate::credits::save(&state.conn(), id, &name, &data, now())
+}
+
+#[tauri::command(async)]
+pub fn credit_scenario_delete(state: State<'_, AppState>, id: i64) -> Result<()> {
+    crate::credits::delete(&state.conn(), id)
+}
