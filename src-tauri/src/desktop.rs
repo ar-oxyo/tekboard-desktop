@@ -53,8 +53,29 @@ pub fn second_instance(app: &AppHandle, argv: Vec<String>) {
 /// with nothing running): nothing else to keep TekBoard alive for, unless the tray icon is on.
 pub fn capture_done(app: &AppHandle) {
     let main_visible = app.get_webview_window(MAIN).and_then(|w| w.is_visible().ok()).unwrap_or(true);
-    if !main_visible && !tray_active() && !SHORTCUT.lock().unwrap_or_else(|e| e.into_inner()).active {
+    if !main_visible && !stays_in_background() {
         app.exit(0);
+    }
+}
+
+/// Whether something can bring TekBoard back once its window is gone: tray icon or shortcut.
+fn stays_in_background() -> bool {
+    tray_active() || SHORTCUT.lock().unwrap_or_else(|e| e.into_inner()).active
+}
+
+/// Closing the main window hides it when TekBoard stays in the background, and quits
+/// otherwise. It is never destroyed: hidden windows (MY Epitech session, capture) would keep
+/// the process alive with no window left for the next `tekboard` to show.
+pub fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
+    let tauri::WindowEvent::CloseRequested { api, .. } = event else { return };
+    if window.label() != MAIN {
+        return;
+    }
+    api.prevent_close();
+    if stays_in_background() {
+        let _ = window.hide();
+    } else {
+        window.app_handle().exit(0);
     }
 }
 

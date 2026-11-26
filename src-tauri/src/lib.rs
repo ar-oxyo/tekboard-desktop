@@ -153,6 +153,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(updates::Pending::default())
         .manage(commands_app::StartupNotices::default())
+        .on_window_event(desktop::on_window_event)
         .setup(|app| {
             if let Err(e) = start(app) {
                 // No crash and no half-started window: the reason, then quit.
