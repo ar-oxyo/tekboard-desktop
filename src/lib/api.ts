@@ -2010,6 +2010,7 @@ export const api = {
   aiSettingsGet: () => invoke<AiSettings>("ai_settings_get"),
   aiSettingsSet: (settings: AiSettings) => invoke<AiSettings>("ai_settings_set", { settings }),
   mySkillTree: () => invoke<SkillTree>("my_skill_tree"),
+  appSetIcon: (theme: string) => invoke<void>("app_set_icon", { theme }),
   creditScenarios: () => invoke<CreditScenarioRow[]>("credit_scenarios"),
   creditScenarioSave: (id: number | null, name: string, data: unknown) => invoke<CreditScenarioRow>("credit_scenario_save", { id, name, data }),
   creditScenarioDelete: (id: number) => invoke<void>("credit_scenario_delete", { id }),

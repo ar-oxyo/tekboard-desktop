@@ -26,6 +26,15 @@ fn idle(state: &AppState) -> Result<()> {
     Ok(())
 }
 
+/// The window and tray icon follow the design shown (`theme` must be a known design).
+#[tauri::command]
+pub fn app_set_icon(app: tauri::AppHandle, theme: String) -> Result<()> {
+    if !crate::settings::THEMES.contains(&theme.as_str()) {
+        return Err(crate::error::AppError::new("invalid_theme", "Ambiance inconnue"));
+    }
+    crate::desktop::apply_theme_icon(&app, &theme).map_err(|e| crate::error::AppError::new("icon_failed", e.to_string()))
+}
+
 #[tauri::command(async)]
 pub fn data_locations(state: State<'_, AppState>) -> Vec<Location> {
     datamgmt::locations(&state.data_dir, &state.cache_dir)

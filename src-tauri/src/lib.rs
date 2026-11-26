@@ -166,6 +166,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_settings,
             commands_app::startup_notices,
+            commands_app::app_set_icon,
             commands_app::data_locations,
             commands_app::data_open,
             commands_app::data_export,

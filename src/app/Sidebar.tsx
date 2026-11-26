@@ -14,22 +14,23 @@ import { entryOf, pageLabel, SECTIONS, sectionOf } from "./sections";
 import { t } from "../lib/i18n";
 
 export function Logo({ className }: { className?: string }) {
-  // Same drawing as public/tekboard.svg: a T inside a progress ring.
+  // Same drawing as public/tekboard.svg: a T inside a progress ring. The ink is the design's
+  // accent (or the personal one), like the window and tray icons (src-tauri/icons/themes).
   return (
     <svg viewBox="0 0 512 512" className={className} aria-hidden>
       <defs>
         <linearGradient id="tb-logo-bg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#25222f" />
-          <stop offset="1" stopColor="#121117" />
+          <stop offset="0" stopColor="#22201d" />
+          <stop offset="1" stopColor="#121110" />
         </linearGradient>
         <linearGradient id="tb-logo-ink" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#c3b9ff" />
-          <stop offset="1" stopColor="#7c68f2" />
+          <stop offset="0" style={{ stopColor: "color-mix(in srgb, var(--color-accent) 50%, #ffffff)" }} />
+          <stop offset="1" style={{ stopColor: "color-mix(in srgb, var(--color-accent) 85%, #ffffff)" }} />
         </linearGradient>
       </defs>
       <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#tb-logo-bg)" />
       <rect x="21" y="21" width="470" height="470" rx="107" fill="none" stroke="#fff" strokeOpacity=".09" strokeWidth="10" />
-      <circle cx="256" cy="256" r="150" fill="none" stroke="#9486ff" strokeOpacity=".16" strokeWidth="34" />
+      <circle cx="256" cy="256" r="150" fill="none" style={{ stroke: "var(--color-accent)" }} strokeOpacity=".16" strokeWidth="34" />
       <circle cx="256" cy="256" r="150" fill="none" stroke="url(#tb-logo-ink)" strokeWidth="34" strokeLinecap="round" strokeDasharray="700 243" transform="rotate(-90 256 256)" />
       <path d="M194 202H318M256 202V318" fill="none" stroke="url(#tb-logo-ink)" strokeWidth="50" strokeLinecap="round" />
     </svg>
