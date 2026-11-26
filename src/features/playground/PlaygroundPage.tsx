@@ -58,7 +58,8 @@ export default function PlaygroundPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-7.5rem)] min-h-[520px] flex-col gap-3">
+    // 8.5rem: the page padding and the tab bar above. Narrow, the page scrolls instead.
+    <div className="flex flex-col gap-3 @[56rem]:h-[calc(100vh-8.5rem)] @[56rem]:min-h-[520px]">
       <div className="flex items-center gap-1 overflow-x-auto">
         {open.map((d) => (
           <DraftTab key={d.id} draft={d} on={current?.id === d.id} onSelect={() => setActive(d.id)} onClose={() => void close(d)} />
@@ -243,24 +244,11 @@ function DraftView({ draft, tools, onDefaults, onDuplicate }: { draft: Draft; to
   };
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(340px,38%)] gap-3" onKeyDown={onKey}>
+    <div className="grid grid-cols-[minmax(0,1fr)] grid-rows-[32rem_24rem] gap-3 @[56rem]:min-h-0 @[56rem]:flex-1 @[56rem]:grid-cols-[minmax(0,1fr)_minmax(340px,38%)] @[56rem]:grid-rows-[minmax(0,1fr)]" onKeyDown={onKey}>
       <section className="card flex min-h-0 flex-col overflow-hidden">
-        <div className="flex flex-wrap items-center gap-2 border-b border-ink/6 px-3 py-2">
+        <div className="flex flex-col gap-2 border-b border-line px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2">
           <TitleField value={draft.title} onChange={(title) => update({ title })} />
-          <Select<DraftSettings["compiler"]> className="w-28" size="sm" label={t("Compilateur")} value={s.compiler} onChange={(compiler) => setSettings({ compiler })} options={compilers.length ? compilers : [{ value: s.compiler, label: s.compiler }]} />
-          <Input className="h-7 w-44 font-mono text-xs" aria-label={t("Options de compilation")} value={s.flags} onChange={(e) => setSettings({ flags: e.target.value })} placeholder="-Wall -Wextra" />
-          <Toggle on={s.asan} onChange={(asan) => setSettings({ asan })} title={t("AddressSanitizer : débordements, use-after-free, fuites")}>
-            ASan
-          </Toggle>
-          <Toggle on={s.ubsan} onChange={(ubsan) => setSettings({ ubsan })} title={t("UndefinedBehaviorSanitizer : dépassements d'entiers, décalages, divisions par zéro")}>
-            UBSan
-          </Toggle>
-          <Toggle on={s.valgrind} disabled={!tools?.valgrind} onChange={(valgrind) => setSettings({ valgrind, ...(valgrind ? { asan: false } : {}) })} title={tools?.valgrind ? t("Lancer sous Valgrind (memcheck)") : t("Valgrind n'est pas installé")}>
-            Valgrind
-          </Toggle>
-          <IconButton label={t("Limites et entrées")} active={options} onClick={() => setOptions(!options)}>
-            <Settings2 className="size-4" />
-          </IconButton>
           <div className="ml-auto flex items-center gap-1.5">
             <Menu
               trigger={
@@ -318,6 +306,23 @@ function DraftView({ draft, tools, onDefaults, onDuplicate }: { draft: Draft; to
                 {t("Compiler et lancer")}
               </Button>
             )}
+          </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select<DraftSettings["compiler"]> className="w-28" size="sm" label={t("Compilateur")} value={s.compiler} onChange={(compiler) => setSettings({ compiler })} options={compilers.length ? compilers : [{ value: s.compiler, label: s.compiler }]} />
+            <Input className="h-7 w-44 font-mono text-xs" aria-label={t("Options de compilation")} value={s.flags} onChange={(e) => setSettings({ flags: e.target.value })} placeholder="-Wall -Wextra" />
+            <Toggle on={s.asan} onChange={(asan) => setSettings({ asan })} title={t("AddressSanitizer : débordements, use-after-free, fuites")}>
+              ASan
+            </Toggle>
+            <Toggle on={s.ubsan} onChange={(ubsan) => setSettings({ ubsan })} title={t("UndefinedBehaviorSanitizer : dépassements d'entiers, décalages, divisions par zéro")}>
+              UBSan
+            </Toggle>
+            <Toggle on={s.valgrind} disabled={!tools?.valgrind} onChange={(valgrind) => setSettings({ valgrind, ...(valgrind ? { asan: false } : {}) })} title={tools?.valgrind ? t("Lancer sous Valgrind (memcheck)") : t("Valgrind n'est pas installé")}>
+              Valgrind
+            </Toggle>
+            <IconButton label={t("Limites et entrées")} active={options} onClick={() => setOptions(!options)}>
+              <Settings2 className="size-4" />
+            </IconButton>
           </div>
         </div>
         {options && (
@@ -434,7 +439,7 @@ function FileTab({ file, on, errors, renaming, onSelect, onRename, onStartRename
   if (renaming)
     return <Input autoFocus className="my-1 h-6 w-40 font-mono text-xs" defaultValue={file.name} onBlur={(e) => onRename(e.target.value.trim())} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") onRename(file.name); }} />;
   return (
-    <div className={cn("group -mb-px flex h-8 shrink-0 items-center gap-1 border-b-2 px-2 font-mono text-xs", on ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
+    <div className={cn("group flex h-8 shrink-0 items-center gap-1 border-b-2 px-2 font-mono text-xs", on ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
       <button type="button" onClick={onSelect} onDoubleClick={file.library ? undefined : onStartRename} title={file.library ? t("Importé de {l}", { l: file.library }) : t("Double-clic pour renommer")}>
         {file.name}
       </button>

@@ -76,6 +76,13 @@ const theme = EditorView.theme(
   { dark: true },
 );
 
+/** The packaged app's CSP carries a nonce (Tauri adds it for the splash `<style>` of
+ * index.html), which cancels `'unsafe-inline'`: without this nonce CodeMirror's own styles are
+ * refused and the editor falls apart. Empty in dev, where there is no CSP. */
+function styleNonce(): string {
+  return document.querySelector<HTMLStyleElement>("style[nonce]")?.nonce ?? "";
+}
+
 function toDiagnostics(state: EditorState, marks: EditorMark[]): Diagnostic[] {
   const out: Diagnostic[] = [];
   for (const m of marks) {
@@ -137,6 +144,7 @@ export default function CodeEditor({ value, onChange, readOnly, marks, words, on
           highlightSelectionMatches(),
           language === "c" ? [cpp(), syntaxHighlighting(highlight)] : [],
           theme,
+          EditorView.cspNonce.of(styleNonce()),
           editable.current.of([EditorState.readOnly.of(!!readOnly), EditorView.editable.of(!readOnly)]),
           Prec.highest(keymap.of([{ key: "Mod-Enter", run: () => (live.current.onRun?.(), true), preventDefault: true }])),
           keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...completionKeymap, indentWithTab]),

@@ -282,9 +282,10 @@ export const fixtures: Record<string, Fixture> = {
   board_list: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("boards") ? boards : []),
   // ?drafts=1: two Playground drafts; comparing them gives a finished job.
   playground_list: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("drafts") ? drafts : []),
-  playground_tools: { compilers: [{ name: "gcc", path: "/usr/bin/gcc", version: "14.2" }, { name: "clang", path: "/usr/bin/clang", version: "19.1" }], valgrind: "3.24", sandbox: "bwrap 0.11", cgroupLimits: true },
+  playground_tools: { compilers: [{ name: "gcc", path: "/usr/bin/gcc", version: "14.2" }, { name: "clang", path: "/usr/bin/clang", version: "19.1" }], valgrind: "3.24", sandbox: null, cgroupLimits: true },
   playground_save: (a: Record<string, unknown>) => ({ ...drafts[0], id: a.id, title: a.title, files: a.files, settings: a.settings }),
   playground_compare: 77,
+  sandbox_check: null,
   job_get: (a: Record<string, unknown>) => (a.id === 77 ? compareJob : null),
   // ?mouli=1: a plan and a report of the TekBoard moulinette.
   mouli_state: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("mouli") ? { suite: mouliSuite, report: mouliReport } : { suite: null, report: null }),
