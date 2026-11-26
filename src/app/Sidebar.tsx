@@ -1,3 +1,4 @@
+import { useMyFreshness } from "../features/myepitech/freshness";
 import { Inbox, PanelLeftClose, PanelLeftOpen, RefreshCw, Search } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -252,6 +253,8 @@ function SyncLine({ rail }: { rail: boolean }) {
   const my = useMySync();
   useNow(30_000);
   const last = status.data?.lastSync ?? null;
+  // The data itself may be older than the last sync (a part failed): the oldest answer decides.
+  const { at, stale } = useMyFreshness();
   if (last === null && !my.busy) return null;
   const label = my.busy ? my.label : t("MY Epitech · {ago}", { ago: timeAgo(last!) });
   return (
@@ -259,8 +262,8 @@ function SyncLine({ rail }: { rail: boolean }) {
       type="button"
       onClick={() => void my.sync()}
       disabled={my.busy}
-      title={my.busy ? my.label : t("Synchronisé {ago}. Cliquer pour synchroniser maintenant.", { ago: timeAgo(last!) })}
-      className={cn("mt-1 flex h-7 items-center gap-2.5 rounded-(--btn-radius) text-xs text-faint transition-colors duration-(--dur-fast) hover:bg-ink/5 hover:text-muted disabled:cursor-default", rail ? "justify-center" : "px-2.5")}
+      title={my.busy ? my.label : stale && at !== null ? t("Données relues {ago} : plus d'un jour. Cliquer pour synchroniser maintenant.", { ago: timeAgo(at) }) : t("Synchronisé {ago}. Cliquer pour synchroniser maintenant.", { ago: timeAgo(last!) })}
+      className={cn("mt-1 flex h-7 items-center gap-2.5 rounded-(--btn-radius) text-xs transition-colors duration-(--dur-fast) hover:bg-ink/5 hover:text-muted disabled:cursor-default", stale && !my.busy ? "text-warn" : "text-faint", rail ? "justify-center" : "px-2.5")}
     >
       <span className="flex w-4 shrink-0 justify-center">{my.busy ? <Spinner className="size-3" /> : <RefreshCw className="size-3" />}</span>
       {!rail && <span className="truncate">{label}</span>}

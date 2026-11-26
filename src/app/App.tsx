@@ -1,3 +1,4 @@
+import { useStaleMyPrompt } from "../features/myepitech/freshness";
 import { listen } from "@tauri-apps/api/event";
 import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -138,6 +139,7 @@ export function App() {
   useColorMode(theme, themeOverride ? undefined : auto?.mode);
   useMotionPref();
   useAccent();
+  useStaleMyPrompt();
   // The window and tray icon follow the design shown (not available in the browser preview).
   useEffect(() => {
     if ("__TAURI_INTERNALS__" in window) void api.appSetIcon(theme).catch(() => undefined);

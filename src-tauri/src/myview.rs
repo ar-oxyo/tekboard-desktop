@@ -246,13 +246,25 @@ fn instant(iso: Option<&str>) -> Option<DateTime<Utc>> {
 const ALL: &str = "/units/instances/projects?page=1&limit=50&registeredOnly=true";
 const ONGOING: &str = "/units/instances/projects?page=1&limit=50&status=ongoing&registeredOnly=true";
 
+/// How old the synced data is: the OLDEST of the main answers kept (fixed routes of a sync),
+/// so one fresh answer cannot hide another left stale by a failed or partial sync. Per-project
+/// details and dated windows (events) are not counted: they come and go with the projects.
+pub fn freshness(conn: &Connection) -> Option<i64> {
+    crate::myepitech::ROUTES
+        .iter()
+        .map(|(r, _)| *r)
+        .filter(|r| !r.contains('{'))
+        .filter_map(|r| conn.query_row("SELECT fetched_at FROM my_cache WHERE route = ?1", [r], |x| x.get::<_, i64>(0)).ok())
+        .min()
+}
+
 pub fn overview(conn: &Connection, repos: &[RepoInfo]) -> Overview {
     overview_at(conn, repos, Utc::now())
 }
 
 pub fn overview_at(conn: &Connection, repos: &[RepoInfo], now: DateTime<Utc>) -> Overview {
     let mut o = Overview::default();
-    o.synced_at = conn.query_row("SELECT MAX(fetched_at) FROM my_cache", [], |r| r.get(0)).ok().flatten();
+    o.synced_at = freshness(conn);
     o.account = cached(conn, "/auth/verify").and_then(|v| s(&v["login"]));
     let ongoing_ids: Vec<i64> = cached(conn, ONGOING).and_then(|v| v["data"].as_array().map(|a| a.iter().filter_map(|p| p["id"].as_i64()).collect())).unwrap_or_default();
     let list = cached(conn, ALL).or_else(|| cached(conn, ONGOING));
@@ -422,6 +434,19 @@ mod tests {
         assert_eq!((after.projects[0].ongoing, after.projects[0].upcoming), (false, false), "over as soon as the hand-in passes");
         assert_eq!(during.projects[0].group, vec!["a@epitech.eu", "b@epitech.eu"]);
         assert_eq!(during.projects[0].repo_enabled, Some(true));
+    }
+
+    #[test]
+    fn freshness_is_the_oldest_main_answer() {
+        let conn = db::open_in_memory().unwrap();
+        assert_eq!(freshness(&conn), None);
+        let at = |route: &str, t: i64| conn.execute("INSERT OR REPLACE INTO my_cache (route, fetched_at, status, body) VALUES (?1, ?2, 200, '{}')", rusqlite::params![route, t]).unwrap();
+        at("/auth/verify", 1000);
+        at("/students/exams", 400);
+        // Per-project details and dated windows do not count.
+        at("/units/instances/projects/9/test-results", 10);
+        at("/events?startDate=2026-01-01T00:00:00.000Z&endDate=2026-02-01T00:00:00.000Z", 20);
+        assert_eq!(freshness(&conn), Some(400));
     }
 
     #[test]

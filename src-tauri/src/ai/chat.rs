@@ -197,6 +197,23 @@ fn decisions_since(conn: &Connection, thread: i64, since: i64) -> Result<Vec<Str
 }
 
 /// The context card given at the start of a turn.
+/// How old the MY Epitech data is, for Artix: past a day it must say so before relying on it.
+pub fn my_freshness_line(synced_at: Option<i64>, now: i64) -> String {
+    match synced_at {
+        None => "Données MY Epitech : jamais synchronisées (crédits, notes et rendus inconnus).".into(),
+        Some(at) => {
+            let h = (now - at).max(0) / 3600;
+            if h >= 24 {
+                format!("Données MY Epitech : relues il y a {} j, anciennes. Le signaler avant de s'appuyer sur crédits, notes ou rendus ; proposer sync_my_epitech.", h / 24)
+            } else if h >= 1 {
+                format!("Données MY Epitech : relues il y a {h} h.")
+            } else {
+                "Données MY Epitech : relues il y a moins d'une heure.".into()
+            }
+        }
+    }
+}
+
 pub fn context_card(state: &AppState, screen: &Screen, thread: Option<i64>, since: i64) -> Result<String> {
     let mut lines: Vec<String> = Vec::new();
     let t = now();
@@ -246,6 +263,7 @@ pub fn context_card(state: &AppState, screen: &Screen, thread: Option<i64>, sinc
         if !soon.is_empty() {
             lines.push(format!("Rendus proches : {}", soon.join(" ; ")));
         }
+        lines.push(my_freshness_line(overview.synced_at, t));
     }
     let conn = state.conn();
     if let Some(f) = crate::focus::current(&conn)? {
@@ -368,6 +386,15 @@ fn job_events(job: &crate::jobs::Job) -> Vec<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn artix_is_told_how_old_my_data_is() {
+        assert!(my_freshness_line(None, 1000).contains("jamais"));
+        assert!(my_freshness_line(Some(1000), 1000 + 600).contains("moins d'une heure"));
+        assert!(my_freshness_line(Some(0), 5 * 3600).contains("5 h"));
+        let old = my_freshness_line(Some(0), 3 * 86400);
+        assert!(old.contains("3 j") && old.contains("sync_my_epitech"), "{old}");
+    }
 
     #[test]
     fn decisions_reach_the_next_turn() {
