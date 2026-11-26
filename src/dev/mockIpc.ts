@@ -3,7 +3,7 @@
 // Loaded by main.tsx only when `import.meta.env.DEV` and outside the Tauri webview; never
 // part of a production bundle.
 //
-// URL parameters: `?page=projects&theme=aurora&mode=light&sheet=<path>&empty=1&fail=cmd1,cmd2`
+// URL parameters: `?page=projects&theme=aurora&mode=light&sheet=<path>&empty=1&fail=cmd1,cmd2&lite=1&dev=1`
 //   empty  every list comes back empty (empty states)
 //   fail   these commands reject (error states)
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
@@ -44,7 +44,9 @@ export function installMock() {
   const mode = params.get("mode");
   if (mode) localStorage.setItem("tekboard.colorMode", mode);
   const seeded = fixtures.ui_prefs_get;
-  const prefs: Record<string, unknown> = { ...((typeof seeded === "function" ? seeded({}, params) : seeded) as object), ...(mode ? { colorMode: mode } : {}) };
+  // ?lite=1 starts in light mode, ?dev=1 with the developer mode on.
+  const prefs: Record<string, unknown> = { ...((typeof seeded === "function" ? seeded({}, params) : seeded) as object), ...(mode ? { colorMode: mode } : {}), ...(params.has("lite") ? { lite: params.get("lite") !== "0" } : {}), ...(params.has("dev") ? { devMode: true } : {}) };
+  if (params.has("lite")) localStorage.setItem("tekboard.lite", params.get("lite") !== "0" ? "on" : "off");
 
   // ?open=artix|inbox|palette|shortcuts|capture opens an overlay once the app has started.
   const open = params.get("open");
@@ -69,6 +71,12 @@ export function installMock() {
       await new Promise((r) => setTimeout(r, 40));
       if (cmd === "ui_prefs_get") return prefs;
       if (cmd === "ui_prefs_set") return Object.assign(prefs, (args as { prefs?: object })?.prefs ?? {}), null;
+      // The webview's zoom, imitated with CSS zoom in a plain browser.
+      if (cmd === "app_set_zoom") {
+        const zoom = Number((args as { zoom?: number })?.zoom ?? 1);
+        document.documentElement.style.zoom = String(zoom);
+        return zoom;
+      }
       if (fail.has(cmd)) throw { code: "mock_failure", message: `Échec simulé de ${cmd}` };
       const kind = kinds.get(cmd);
       if (empty && kind === "array") return [];

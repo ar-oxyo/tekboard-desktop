@@ -78,10 +78,7 @@ export function UpdatesCard({ settings }: { settings: Settings }) {
         <CardTitle right={i && <Badge>{KIND[i.install]}</Badge>}>{t("Mises à jour")}</CardTitle>
         <div className="flex flex-col gap-4 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs text-muted">{t("Version installée")}</p>
-              <p className="display text-xl font-medium tabular-nums">{i ? i.version : "…"}</p>
-            </div>
+            <p className="text-sm text-muted">{t("Seulement les versions officielles, signées.")}</p>
             <Button variant="primary" icon={<RefreshCw className={check.isPending ? "size-3.5 anim-spin" : "size-3.5"} />} busy={check.isPending} disabled={install.isPending} onClick={() => check.mutate()}>
               {t("Rechercher des mises à jour")}
             </Button>

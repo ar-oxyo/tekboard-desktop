@@ -142,23 +142,31 @@ export function DoctorCard({ compact = false }: { compact?: boolean }) {
       >
         <p className="px-5 pb-4 text-sm text-muted">{confirm?.detail}</p>
       </Modal>
-      <Modal
-        open={exported !== null}
-        onClose={() => setExported(null)}
-        width="w-[760px]"
-        title={t("Rapport de diagnostic anonymisé")}
-        description={t("Chemins personnels, comptes, e-mails, clés et jetons sont masqués. Relis-le avant de le partager.")}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => void api.openHelpUrl("https://github.com/ar-oxyo/tekboard-desktop/issues/new")}>{t("Ouvrir une issue GitHub")}</Button>
-            <Button variant="primary" icon={<ClipboardCopy className="size-3.5" />} onClick={() => void navigator.clipboard.writeText(exported ?? "").then(() => toast({ kind: "ok", title: t("Rapport copié") }), () => toast({ kind: "error", title: t("Copie impossible : sélectionne le texte et copie-le à la main.") }))}>
-              {t("Copier")}
-            </Button>
-          </>
-        }
-      >
-        <pre className="selectable mx-5 mb-4 max-h-[55vh] overflow-auto rounded-lg bg-well p-3 font-mono text-xs whitespace-pre-wrap">{exported}</pre>
-      </Modal>
+      <ReportModal text={exported} onClose={() => setExported(null)} />
     </Card>
+  );
+}
+
+/** The anonymised diagnostic report, to copy into an issue (Doctor, Settings → Developer). */
+export function ReportModal({ text, onClose }: { text: string | null; onClose: () => void }) {
+  const toast = useUi((s) => s.toast);
+  return (
+    <Modal
+      open={text !== null}
+      onClose={onClose}
+      width="w-[760px]"
+      title={t("Rapport de diagnostic anonymisé")}
+      description={t("Chemins personnels, comptes, e-mails, clés et jetons sont masqués. Relis-le avant de le partager.")}
+      footer={
+        <>
+          <Button variant="ghost" onClick={() => void api.openHelpUrl("https://github.com/ar-oxyo/tekboard-desktop/issues/new")}>{t("Ouvrir une issue GitHub")}</Button>
+          <Button variant="primary" icon={<ClipboardCopy className="size-3.5" />} onClick={() => void navigator.clipboard.writeText(text ?? "").then(() => toast({ kind: "ok", title: t("Rapport copié") }), () => toast({ kind: "error", title: t("Copie impossible : sélectionne le texte et copie-le à la main.") }))}>
+            {t("Copier")}
+          </Button>
+        </>
+      }
+    >
+      <pre className="selectable mx-5 mb-4 max-h-[55vh] overflow-auto rounded-lg bg-well p-3 font-mono text-xs whitespace-pre-wrap">{text}</pre>
+    </Modal>
   );
 }

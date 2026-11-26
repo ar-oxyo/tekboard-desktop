@@ -1088,6 +1088,16 @@ code,
 .anim-spin {
   animation: spin 0.7s linear infinite;
 }
+/* A tap that counts (the version in Settings → About): the text gives a little. */
+@keyframes tap-pop {
+  50% {
+    scale: 0.95;
+  }
+}
+.tap-pop {
+  display: inline-block;
+  animation: tap-pop 160ms var(--ease);
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,

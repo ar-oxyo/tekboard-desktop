@@ -9,7 +9,7 @@ import { COLOR_MODES, crossFade, designHasLight, type ColorMode } from "../../li
 import { api, asAppError, type Settings } from "../../lib/api";
 import { tildify } from "../../lib/format";
 import { ACCENT_PRESETS, parseHex, toHex } from "../../lib/color";
-import { AUTO_AMBIANCE, keys, useAccent, useColorMode, useEnv, useMotionPref, type AutoAmbiance, useHome, usePref, useRepos, useSettings, useTemplates } from "../../lib/hooks";
+import { AUTO_AMBIANCE, keys, useAccent, useColorMode, useDevMode, useEnv, useMotionPref, type AutoAmbiance, useHome, usePref, useRepos, useSettings, useTemplates } from "../../lib/hooks";
 import { cloneTargets } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { AiSettingsCard } from "./AiSettings";
@@ -17,10 +17,12 @@ import { ClaudeCard } from "./ClaudeCard";
 import { DataCard } from "./DataCard";
 import { DoctorCard } from "./DoctorCard";
 import { CaptureCard } from "./CaptureCard";
-import { UpdatesCard } from "./UpdatesCard";
+import { AboutPanel } from "./AboutPanel";
+import { DeveloperPanel } from "./DeveloperPanel";
+import { DisplaySettings } from "./DisplaySettings";
+import { resolveTab, visibleTabs, type SettingsTab } from "./tabs";
 import { applyLang, t } from "../../lib/i18n";
 
-const TABS: Array<[string, string]> = [["general", t("Général")], ["doctor", "Doctor"], ["ai", t("Artix (IA)")], ["tools", t("Outils et Claude Code")], ["my", "MY Epitech"], ["design", t("Apparence")], ["updates", t("Mises à jour")], ["data", t("Données")]];
 
 export function SettingsPage() {
   const qc = useQueryClient();
@@ -31,6 +33,7 @@ export function SettingsPage() {
   const repos = useRepos((settings.data?.roots.length ?? 0) > 0, { all: true });
   const [draft, setDraft] = useState<Settings | null>(null);
   const [savedTab, setTab] = usePref<string>("settings.tab", "general");
+  const [dev] = useDevMode();
   // `--run claude-check` opens the Tools tab. (Hooks stay above the early return below.)
   const [forceTools] = useState(() => useUi.getState().claudeAutoCheck);
   // A toast's "Voir la mise à jour" opens one tab, once.
@@ -82,7 +85,7 @@ export function SettingsPage() {
   }
 
   // The tab asked at opening wins until another tab is picked.
-  const tab = forceTools ? "tools" : forced && forced === pending && TABS.some(([id]) => id === forced) ? forced : TABS.some(([id]) => id === savedTab) ? savedTab : "general";
+  const tab: SettingsTab = (forceTools ? "tools" : null) ?? (forced && forced === pending ? resolveTab(forced, dev) : null) ?? resolveTab(savedTab, dev) ?? "general";
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings.data);
   const set = (patch: Partial<Settings>) => setDraft({ ...draft, ...patch });
 
@@ -104,13 +107,15 @@ export function SettingsPage() {
         actions={
           <>
             {dirty && (
-              <Button variant="ghost" onClick={() => setDraft(settings.data!)}>
-                {t("Annuler les changements")}
-              </Button>
+              <span className="anim-fade flex items-center gap-2">
+                <Button variant="ghost" onClick={() => setDraft(settings.data!)}>
+                  {t("Annuler les changements")}
+                </Button>
+                <Button variant="primary" icon={<Check className="size-3.5" />} busy={save.isPending} onClick={() => save.mutate(draft)}>
+                  {t("Enregistrer")}
+                </Button>
+              </span>
             )}
-            <Button variant="primary" icon={<Check className="size-3.5" />} disabled={!dirty} busy={save.isPending} onClick={() => save.mutate(draft)}>
-              {t("Enregistrer")}
-            </Button>
           </>
         }
       />
@@ -121,16 +126,27 @@ export function SettingsPage() {
       )}
 
       <div className="mb-6 flex items-center gap-5 border-b border-ink/6" role="tablist" aria-label={t("Sections des réglages")}>
-        {TABS.map(([id, label]) => (
+        {visibleTabs(dev).map(({ id, label }) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => (setTab(id), setPending(null))} className={`-mb-px h-9 border-b-2 px-1 text-sm transition-colors duration-150 ${tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg"}`}>
             {label}
           </button>
         ))}
       </div>
-      {tab === "ai" && <AiSettingsCard />}
-      {tab === "doctor" && (
-        <div className="max-w-4xl">
-          <DoctorCard />
+      {tab === "ai" && (
+        <div className="flex max-w-5xl flex-col gap-4">
+          <AiSettingsCard />
+          <Card>
+            <CardTitle
+              right={
+                <Button size="sm" onClick={() => useUi.getState().setPage("prompts")}>
+                  {t("Ouvrir le gestionnaire de prompts")}
+                </Button>
+              }
+            >
+              Prompts
+            </CardTitle>
+            <p className="px-4 py-3 text-xs text-muted">{t("Lis et personnalise ce que TekBoard demande à Claude Code : Artix, la moulinette, la génération de tests, le README, l'analyse. Tes versions sont gardées entre les mises à jour.")}</p>
+          </Card>
         </div>
       )}
       {tab === "general" && (
@@ -253,26 +269,14 @@ export function SettingsPage() {
       )}
       {tab === "tools" && (
         <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
-          <div className="flex flex-col gap-4">
-            <ClaudeCard configured={settings.data.claudePath} saving={save.isPending} onPick={(claudePath) => save.mutate({ ...settings.data!, claudePath })} />
-          <Card>
-            <CardTitle
-              right={
-                <Button size="sm" onClick={() => useUi.getState().setPage("prompts")}>
-                  {t("Ouvrir le gestionnaire de prompts")}
-                </Button>
-              }
-            >
-              Prompts
-            </CardTitle>
-            <p className="px-4 py-3 text-xs text-muted">{t("Lis et personnalise ce que TekBoard demande à Claude Code : Artix, la moulinette, la génération de tests, le README, l'analyse. Tes versions sont gardées entre les mises à jour.")}</p>
-          </Card>
-          <SpotifyCard />
+          <div className="xl:col-span-2">
+            <DoctorCard />
           </div>
-          <EnvironmentCard />
+          <ClaudeCard configured={settings.data.claudePath} saving={save.isPending} onPick={(claudePath) => save.mutate({ ...settings.data!, claudePath })} />
+          <EnvironmentCard part="tools" />
         </div>
       )}
-      {tab === "my" && (
+      {tab === "accounts" && (
         <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
           <Card>
             <CardTitle
@@ -308,10 +312,15 @@ export function SettingsPage() {
               </label>
             </div>
           </Card>
+          <div className="flex flex-col gap-4">
+            <EnvironmentCard part="github" />
+            <SpotifyCard />
+          </div>
         </div>
       )}
-      {tab === "updates" && <UpdatesCard settings={settings.data} />}
       {tab === "data" && <DataCard />}
+      {tab === "about" && <AboutPanel settings={settings.data} />}
+      {tab === "developer" && <DeveloperPanel />}
       {tab === "design" && (
         <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
           <Card>
@@ -326,6 +335,10 @@ export function SettingsPage() {
               }}
             />
             <AccentPicker />
+          </Card>
+          <Card>
+            <CardTitle>{t("Lecture")}</CardTitle>
+            <DisplaySettings />
           </Card>
           <Card>
             <CardTitle>{t("Effets et confort")}</CardTitle>
@@ -470,7 +483,8 @@ export function ThemePicker({ current, onPick: pick }: { current: string; onPick
   );
 }
 
-function EnvironmentCard() {
+/** The tools TekBoard calls (Settings → Tools), or the GitHub account it uses (Settings → Accounts). */
+function EnvironmentCard({ part }: { part: "tools" | "github" }) {
   const env = useEnv();
   const qc = useQueryClient();
   const ssh = useMutation({ mutationFn: api.testGithubSsh });
@@ -481,11 +495,11 @@ function EnvironmentCard() {
       <CardTitle
         right={
           <Button size="sm" variant="ghost" busy={env.isFetching} onClick={() => void qc.invalidateQueries({ queryKey: keys.env })}>
-            Revérifier
+            {t("Revérifier")}
           </Button>
         }
       >
-        Environnement
+        {part === "tools" ? t("Programmes") : "GitHub"}
       </CardTitle>
       {env.isLoading || !env.data ? (
         <p className="flex items-center gap-2 px-4 py-5 text-sm text-muted">
@@ -493,6 +507,7 @@ function EnvironmentCard() {
         </p>
       ) : (
         <>
+          {part === "tools" && (
           <ul className="py-1">
             {env.data.tools.map((t) => (
               <li key={t.name} className="flex h-9 items-center gap-3 px-4" title={t.path ?? undefined}>
@@ -503,7 +518,9 @@ function EnvironmentCard() {
               </li>
             ))}
           </ul>
-          <div className="space-y-2.5 border-t border-ink/6 px-4 py-3 text-sm">
+          )}
+          <div className={cn("space-y-2.5 px-4 py-3 text-sm", part === "tools" && "border-t border-ink/6")}>
+            {part === "tools" && (
             <Row label={t("Identité git")}>
               {env.data.identity.name && env.data.identity.email ? (
                 <span className="selectable text-muted">
@@ -515,9 +532,11 @@ function EnvironmentCard() {
                 </span>
               )}
             </Row>
+            )}
+            {part === "github" && (
             <Row label="GitHub CLI">
               {gh?.state === "ready" ? (
-                <span className="text-muted">Connected{gh.login ? ` as ${gh.login}` : ""}</span>
+                <span className="text-muted">{gh.login ? t("Connecté en tant que {who}", { who: gh.login }) : t("Connecté")}</span>
               ) : gh?.state === "missing" ? (
                 <span className="text-muted">
                   Non installé — <Code>sudo apt install gh</Code>
@@ -530,9 +549,13 @@ function EnvironmentCard() {
                 <span className="selectable text-warn">{gh?.state === "error" ? gh.message : ""}</span>
               )}
             </Row>
-            <Row label="SSH agent">
-              <span className="text-muted">{env.data.sshAgent ? "Available" : t("Injoignable : les clés protégées par une phrase secrète échoueront")}</span>
+            )}
+            {part === "tools" && (
+            <Row label={t("Agent SSH")}>
+              <span className="text-muted">{env.data.sshAgent ? t("Disponible") : t("Injoignable : les clés protégées par une phrase secrète échoueront")}</span>
             </Row>
+            )}
+            {part === "github" && (
             <Row label={t("GitHub par SSH")}>
               <span className="flex min-w-0 items-center gap-2">
                 <Button size="sm" busy={ssh.isPending} onClick={() => ssh.mutate()}>
@@ -541,6 +564,7 @@ function EnvironmentCard() {
                 {ssh.data && <span className={`selectable min-w-0 truncate text-xs ${ssh.data.ok ? "text-ok" : "text-danger"}`}>{ssh.data.message}</span>}
               </span>
             </Row>
+            )}
           </div>
         </>
       )}

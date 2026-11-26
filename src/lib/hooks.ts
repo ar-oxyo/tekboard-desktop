@@ -229,6 +229,59 @@ export function useMotionPref(): [boolean, (on: boolean) => void] {
   const [on, set] = usePref<boolean>("motion", true);
   useEffect(() => {
     document.documentElement.dataset.motion = on ? "on" : "off";
+    mirror("tekboard.motion", on ? "on" : "off");
   }, [on]);
   return [on, set];
+}
+
+/** Kept in localStorage for `public/boot.js`, which applies it before the first paint. */
+function mirror(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* not remembered: the default applies at the next start */
+  }
+}
+
+/** Interface sizes (Settings → Appearance), as zoom factors of the whole window. */
+export const UI_SCALES = [0.8, 0.9, 1, 1.1, 1.25, 1.5] as const;
+
+/**
+ * The size suggested for this screen: the window's own scale factor already follows the desktop,
+ * so only a very wide logical screen (a large monitor at 100 %) gets a bigger default.
+ */
+export function suggestedScale(screenWidth = window.screen.width): number {
+  return screenWidth >= 3000 ? 1.5 : screenWidth >= 2300 ? 1.25 : screenWidth >= 1900 ? 1.1 : 1;
+}
+
+/**
+ * Interface size: the webview's native zoom (text, hit areas and menu positions scale
+ * together), applied at once by the backend and again at start before the window shows.
+ */
+export function useUiScale(): [number, (scale: number) => void] {
+  const [scale, setPref] = usePref<number>("uiScale", 1);
+  const set = (next: number) => {
+    void api.appSetZoom(next).then((applied) => setPref(applied), () => undefined);
+  };
+  return [UI_SCALES.includes(scale as (typeof UI_SCALES)[number]) ? scale : 1, set];
+}
+
+/**
+ * Light mode (Settings → Appearance): a calmer presentation of every screen, nothing removed.
+ * Components read it with `useLite()` (components/lite.tsx); `html[data-lite]` lets the few
+ * style-only rules follow, and is set before the first paint from its mirror.
+ */
+export function useLitePref(): [boolean, (on: boolean) => void] {
+  const [on, set] = usePref<boolean>("lite", false);
+  useEffect(() => {
+    if (on) document.documentElement.dataset.lite = "on";
+    else delete document.documentElement.dataset.lite;
+    mirror("tekboard.lite", on ? "on" : "off");
+  }, [on]);
+  return [on, set];
+}
+
+/** Developer mode: diagnostics and experiments, off by default (Settings → About, 7 taps). */
+export function useDevMode(): [boolean, (on: boolean) => void] {
+  return usePref<boolean>("devMode", false);
 }

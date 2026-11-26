@@ -10,6 +10,7 @@ import { formatBytes, timeAgo } from "../../lib/format";
 import { useUi } from "../../lib/store";
 import { MyProgress, MyProjects } from "./MyOverview";
 import { useMySync } from "./useMySync";
+import { useMyDetails } from "../settings/DeveloperPanel";
 import { locale, plural, t } from "../../lib/i18n";
 
 const CONSENT_KEY = "tekboard.my.consent";
@@ -34,6 +35,8 @@ export function MyEpitechPage() {
   const showHow = how ?? !consent;
   const [tab, setTab] = useState<"projects" | "progress">("projects");
   const [details, setDetails] = useState(false);
+  // Raw answers and sync history are diagnostics: shown in developer mode only (Settings → Developer).
+  const technical = useMyDetails();
   const forget = useMutation({
     mutationFn: (eraseCache: boolean) => api.myForget(eraseCache),
     onSuccess: () => {
@@ -91,15 +94,15 @@ export function MyEpitechPage() {
               </div>
               {mySync.phase === "sign-in" && <Notice tone="info">{t("Connecte-toi dans la fenêtre MY Epitech : la synchronisation démarrera toute seule.")}</Notice>}
               {last && last.failed > 0 && !mySync.busy && (
-                <Notice tone="warn" action={<Button size="sm" variant="ghost" onClick={() => setDetails(true)}>{t("Détail")}</Button>}>
+                <Notice tone="warn" action={technical ? <Button size="sm" variant="ghost" onClick={() => setDetails(true)}>{t("Détail")}</Button> : <Button size="sm" variant="ghost" onClick={() => void mySync.sync()}>{t("Réessayer")}</Button>}>
                   {plural(last.failed, "{n} donnée n'a pas pu être lue à la dernière synchro ; le reste est à jour.", "{n} données n'ont pas pu être lues à la dernière synchro ; le reste est à jour.")}
                 </Notice>
               )}
-              {s?.connected && <p className="selectable text-xs text-muted">{s.account ? t("Connecté en tant que {who}.", { who: s.account }) + " " : ""}{s.expiresAt ? t("Session valable jusqu'à {h}.", { h: new Date(s.expiresAt * 1000).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }) }) : ""}</p>}
+              {s?.connected && <p className="selectable text-xs text-muted">{s.account ? t("Connecté en tant que {who}.", { who: s.account }) + " " : ""}{technical && s.expiresAt ? t("Session valable jusqu'à {h}.", { h: new Date(s.expiresAt * 1000).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }) }) : ""}</p>}
               {s && (
                 <p className="text-xs text-muted">
                   {s.syncMinutes > 0 ? t("Synchronisation automatique toutes les {d} tant que la session est valide", { d: s.syncMinutes >= 60 ? `${s.syncMinutes / 60} h` : `${s.syncMinutes} min` }) : t("Synchronisation automatique désactivée")}.{" "}
-                  <button type="button" className="text-accent-strong hover:underline" onClick={() => useUi.getState().setPage("settings")}>
+                  <button type="button" className="text-accent-strong hover:underline" onClick={() => useUi.setState({ page: "settings", settingsTab: "accounts" })}>
                     {t("Modifier dans Réglages")}
                   </button>
                 </p>
@@ -138,7 +141,8 @@ export function MyEpitechPage() {
             </div>
           </Card>
 
-          {/* Technical details: what each route answered, and past syncs. Folded. */}
+          {/* Technical details: what each route answered, and past syncs. Folded; developer mode only. */}
+          {technical && (
           <Card>
             <button type="button" aria-expanded={details} onClick={() => setDetails(!details)} className="flex h-11 w-full items-center gap-2 px-4 text-left text-sm font-medium">
               <span className="mr-auto">{t("Détails techniques")}</span>
@@ -175,6 +179,7 @@ export function MyEpitechPage() {
               </div>
             )}
           </Card>
+          )}
         </div>
       </div>
     </>

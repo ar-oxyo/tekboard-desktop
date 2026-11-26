@@ -326,6 +326,13 @@ export const fixtures: Record<string, Fixture> = {
   get_settings: (_a: Record<string, unknown>, p: URLSearchParams) => ({ ...settings, onboarded: !p.has("onboarding"), theme: p.get("theme") ?? settings.theme }),
   save_settings: (a: Record<string, unknown>) => a.settings ?? settings,
   env_status: env,
+  update_info: { version: "1.2.0", install: "deb", canInstall: true, needsPassword: true, releasesUrl: "https://github.com/ar-oxyo/tekboard-desktop/releases" },
+  data_locations: [
+    { kind: "data", path: "~/.local/share/fr.tekboard.app", bytes: 48_300_000 },
+    { kind: "session", path: "~/.local/share/fr.tekboard.app/my-session", bytes: 2_100_000 },
+    { kind: "cache", path: "~/.cache/fr.tekboard.app", bytes: 131_000_000 },
+  ],
+  ai_provider_status: { provider: "claude", configured: true, model: "claude-sonnet-5-5", caps: { text: true, chat: true, readFiles: true, agents: true }, detail: null },
   scan_repos: repos,
   // ?night=1: working hours 09:00 → 02:00 the next day.
   ui_prefs_get: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("night") ? { "plan.prefs": { dayStart: 540, dayEnd: 1560, workDays: [1, 2, 3, 4, 5], maxMinutesPerDay: 300, sessionMinutes: 75, breakMinutes: 15, mode: "custom", protected: [[750, 810]] } } : {}),

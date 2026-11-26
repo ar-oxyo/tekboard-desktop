@@ -7,11 +7,11 @@ import { cn, Kbd, Spinner } from "../components/ui";
 import { useMySync } from "../features/myepitech/useMySync";
 import { timeAgo } from "../lib/format";
 import { Artix } from "../features/artix/Artix";
-import { useEnv, useNow, usePref, useRepos } from "../lib/hooks";
+import { useDevMode, useEnv, useNow, usePref, useRepos } from "../lib/hooks";
 import { displayName } from "../lib/repos";
 import { useUi, type Page } from "../lib/store";
 import { PAGE_ICON } from "./pageIcons";
-import { entryOf, pageLabel, SECTIONS, sectionOf } from "./sections";
+import { entryOf, pageLabel, SECTIONS, sectionOf, visiblePages } from "./sections";
 import { t } from "../lib/i18n";
 
 export function Logo({ className }: { className?: string }) {
@@ -227,11 +227,12 @@ function Health({ rail }: { rail: boolean }) {
 export function SectionTabs() {
   const page = useUi((s) => s.page);
   const setPage = useUi((s) => s.setPage);
+  const [dev] = useDevMode();
   const s = sectionOf(page);
   if (!s.tabs) return null;
   return (
     <div className="flex items-center gap-0.5" role="tablist" aria-label={s.label}>
-      {s.pages.map((p) => (
+      {visiblePages(s, dev).map((p) => (
         <button
           key={p.page}
           type="button"

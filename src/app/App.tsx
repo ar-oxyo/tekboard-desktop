@@ -1,6 +1,6 @@
 import { useStaleMyPrompt } from "../features/myepitech/freshness";
 import { listen } from "@tauri-apps/api/event";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { PageBarSlot, PageHeader, Spinner } from "../components/ui";
 import { Toaster } from "../components/Toaster";
@@ -13,7 +13,7 @@ import { ProjectsPage } from "../features/projects/ProjectsPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
 import { SubjectsPage } from "../features/subjects/SubjectsPage";
 import { TemplatesPage } from "../features/templates/TemplatesPage";
-import { useAccent, useAutoAmbiance, useColorMode, useMotionPref, useSettings } from "../lib/hooks";
+import { keys, useAccent, useAutoAmbiance, useColorMode, useDevMode, useLitePref, useMotionPref, useSettings } from "../lib/hooks";
 import { THEME_KEY } from "../lib/appearance";
 import { api, asAppError } from "../lib/api";
 
@@ -47,7 +47,7 @@ import { PromptsPage } from "../features/prompts/PromptsPage";
 import { TestingPage } from "../features/testing/TestingPage";
 import { PackageDialog } from "../features/tools/PackageDialog";
 import { ReadmeDialog } from "../features/tools/ReadmeDialog";
-import { remember, entryOf, SECTIONS, sectionOf } from "./sections";
+import { remember, entryOf, isDevPage, SECTIONS, sectionOf } from "./sections";
 import { goBack, goForward } from "./history";
 import { ShortcutsDialog } from "./ShortcutsDialog";
 import { SectionTabs, Sidebar } from "./Sidebar";
@@ -139,6 +139,13 @@ export function App() {
   useColorMode(theme, themeOverride ? undefined : auto?.mode);
   useMotionPref();
   useAccent();
+  useLitePref();
+  // Developer screens (Cozy Fox) close when the developer mode is off, once the choice is read.
+  const [dev] = useDevMode();
+  const prefsReady = useQuery({ queryKey: keys.prefs, queryFn: api.uiPrefsGet, staleTime: Infinity }).isSuccess;
+  useEffect(() => {
+    if (prefsReady && !dev && isDevPage(page)) setPage("settings");
+  }, [prefsReady, dev, page, setPage]);
   useStaleMyPrompt();
   // The window and tray icon follow the design shown (not available in the browser preview).
   useEffect(() => {

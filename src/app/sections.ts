@@ -7,7 +7,8 @@ import { t } from "../lib/i18n";
 export interface Section {
   id: "today" | "projects" | "planning" | "school" | "stats" | "lab" | "connect" | "resources" | "settings";
   label: string;
-  pages: Array<{ page: Page; label: string }>;
+  /** `dev`: shown only in developer mode (Settings → About). */
+  pages: Array<{ page: Page; label: string; dev?: boolean }>;
   /** Its screens are tabs in the page bar instead of sidebar entries. */
   tabs?: boolean;
 }
@@ -21,8 +22,14 @@ export const SECTIONS: Section[] = [
   { id: "lab", label: t("Labo"), pages: [{ page: "playground", label: "Playground" }, { page: "arena", label: "Arena" }, { page: "boards", label: t("Tableaux") }], tabs: true },
   { id: "connect", label: "Connect", pages: [{ page: "connect", label: t("Personnes") }, { page: "live", label: "TekLive" }, { page: "space", label: "TekSpace" }], tabs: true },
   { id: "resources", label: t("Modèles"), pages: [{ page: "templates", label: t("Modèles") }] },
-  { id: "settings", label: t("Réglages"), pages: [{ page: "settings", label: t("Réglages") }, { page: "prompts", label: "Prompts" }, { page: "cozy", label: "Cozy Fox" }], tabs: true },
+  { id: "settings", label: t("Réglages"), pages: [{ page: "settings", label: t("Réglages") }, { page: "prompts", label: "Prompts" }, { page: "cozy", label: "Cozy Fox", dev: true }], tabs: true },
 ];
+
+/** The screens of a section that are shown: developer screens only in developer mode. */
+export const visiblePages = (s: Section, dev: boolean) => s.pages.filter((p) => dev || !p.dev);
+
+/** A screen that only exists in developer mode. */
+export const isDevPage = (page: Page) => SECTIONS.some((s) => s.pages.some((p) => p.page === page && p.dev));
 
 export const sectionOf = (page: Page): Section => SECTIONS.find((s) => s.pages.some((p) => p.page === page)) ?? SECTIONS[0];
 

@@ -5,6 +5,12 @@ let done = false;
 export function hideSplash(): void {
   if (done || typeof document === "undefined") return;
   done = true;
+  // Time from navigation to a usable app, shown in Settings → Developer.
+  try {
+    performance.mark("tekboard-ready");
+  } catch {
+    /* no timing API */
+  }
   const el = document.getElementById("splash");
   if (!el) return;
   el.classList.add("gone");

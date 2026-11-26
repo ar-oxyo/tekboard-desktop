@@ -4,13 +4,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
 import { CalendarCheck, Code2, GitBranch, SquareTerminal, Inbox, Lightbulb, PenLine, Sparkles, FileText, FlaskConical, FolderGit2, LayoutTemplate, LibraryBig, NotebookPen, PackageOpen, Plus, RefreshCw, ScrollText, Timer, FileCode2 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { SECTIONS } from "../../app/sections";
+import { isDevPage, SECTIONS } from "../../app/sections";
 import { PAGE_ICON } from "../../app/pageIcons";
 import { startFocus } from "../planning/Focus";
 import { suggestPlan } from "../artix/suggest";
 import { Badge } from "../../components/ui";
 import { api } from "../../lib/api";
-import { keys, useProjectActions, useRepos, useSettings, useSubjects, useTemplates } from "../../lib/hooks";
+import { keys, useDevMode, useProjectActions, useRepos, useSettings, useSubjects, useTemplates } from "../../lib/hooks";
 import { displayName } from "../../lib/repos";
 import { useUi, type Page } from "../../lib/store";
 import { usePlayground } from "../playground/store";
@@ -46,6 +46,7 @@ export function CommandPalette() {
   const toast = useUi((s) => s.toast);
   const act = useProjectActions();
   const [search, setSearch] = useState("");
+  const [dev] = useDevMode();
   const ask = (text: string) => run(() => useUi.getState().openAssistant({ text }));
   // Captures (and tasks) found by the search index, from two characters on.
   const [query, setQuery] = useState("");
@@ -192,7 +193,7 @@ export function CommandPalette() {
               </Command.Group>
 
               <Command.Group heading={t("Aller à")} className={groupClass}>
-                {GO.map(([page, label, icon, hint]) => (
+                {GO.filter(([page]) => dev || !isDevPage(page)).map(([page, label, icon, hint]) => (
                   <Item key={page} icon={icon} onSelect={go(page)} hint={hint}>
                     {label}
                   </Item>
