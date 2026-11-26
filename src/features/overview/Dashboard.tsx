@@ -7,7 +7,7 @@ import { Button, cn, DoneCheck, IconButton, Meter, Notice, Spinner } from "../..
 import { api, type BoardItem, type RepoInfo } from "../../lib/api";
 import { useBoard, useNow, usePref, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
 import { addDays, fmtDur, hhmm, MIN, nextUp, startOfDay, toRegister, workload, type CalItem } from "../../lib/plan";
-import { attention, daysLeft, displayName, due } from "../../lib/repos";
+import { attention, daysLeft, displayName, due, dueOfItem } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { locale, plural, t } from "../../lib/i18n";
 import { suggestPlan } from "../artix/suggest";
@@ -217,7 +217,7 @@ export function StatTiles({ hidden = [], only }: { hidden?: string[]; only?: Tod
   const today = workload(data.items, data.prefs, startOfDay(now), 1)[0];
   const sessions = data.items.filter((i) => sameDay(i, startOfDay(now)) && (i.kind === "session" || i.kind === "task")).length;
 
-  const coming = (board.data ?? []).map((i) => ({ i, d: due(i.day, i.at) })).filter((x) => x.d.state === "today" || x.d.state === "upcoming");
+  const coming = (board.data ?? []).map((i) => ({ i, d: dueOfItem(i) })).filter((x) => x.d.state === "today" || x.d.state === "upcoming");
   const nextDue = coming[0];
   const days = nextDue?.i.day ? daysLeft(nextDue.i.day) : null;
 

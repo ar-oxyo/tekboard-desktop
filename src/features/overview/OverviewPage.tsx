@@ -11,7 +11,7 @@ import { WidgetGrid } from "./WidgetGrid";
 import { CreditsWidget, InboxWidget, SkillWidget } from "./NewWidgets";
 import type { WidgetId } from "./layout";
 import { Menu, MenuItem } from "../../components/Menu";
-import { attention, currentFocus, displayName, due } from "../../lib/repos";
+import { attention, currentFocus, displayName, due, dueOfItem } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { BranchLabel, DueBadge, ProgressPicker, RepoMenu, StatusChips } from "../projects/RepoBits";
 import { Onboarding } from "../settings/Onboarding";
@@ -266,7 +266,7 @@ function DeadlinesBlock() {
   const [showAll, setShowAll] = useState(false);
   const items = board.data ?? [];
   // The state is recomputed here so that it changes when the hour passes, without waiting for a rescan.
-  const withDue = items.map((i) => ({ i, d: due(i.day, i.at, now) }));
+  const withDue = items.map((i) => ({ i, d: dueOfItem(i, now) }));
   const overdue = withDue.filter((x) => x.d.state === "overdue");
   const coming = withDue.filter((x) => x.d.state === "today" || x.d.state === "upcoming");
   const unknown = withDue.filter((x) => x.d.state === "unknown");

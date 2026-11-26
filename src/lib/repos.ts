@@ -136,7 +136,15 @@ export function dueTime(day: string | null, at: string | null): number | null {
   return Number.isNaN(end) ? null : end;
 }
 
-export type DueState = "upcoming" | "today" | "overdue" | "unknown";
+/**
+ * `closed`: the final date has passed. School work closes at once (the hand-in no longer
+ * takes anything, so it is not "late" for planning); a personal date runs late for
+ * `LATE_DAYS`, then closes too. Closed never means handed in or passed.
+ */
+export type DueState = "upcoming" | "today" | "overdue" | "closed" | "unknown";
+
+/** Same as `deadlines::LATE_DAYS` in Rust. */
+export const LATE_DAYS = 14;
 
 export interface Due {
   state: DueState;
@@ -150,10 +158,26 @@ export interface Due {
 
 const hhmm = (t: number) => new Date(t).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit", hour12: false });
 
-/** State and wording of a hand-in date right now. With an exact hour, "late" starts when it passes, not at midnight. */
-export function due(day: string | null, at: string | null, now: Date = new Date()): Due {
+const shortDay = (ms: number) => new Date(ms).toLocaleDateString(locale(), { day: "numeric", month: "short" });
+
+/** "clos il y a 3 h", "clos le 12 nov." (school), "dépassé le 12 nov." (a personal date). */
+function closedDue(endMs: number, school: boolean, now: Date, time: string | null): Due {
+  const hours = Math.floor((now.getTime() - endMs) / 3_600_000);
+  const label = school ? (hours < 24 ? t("clos il y a {n} h", { n: Math.max(1, hours) }) : t("clos le {d}", { d: shortDay(endMs) })) : t("dépassé le {d}", { d: shortDay(endMs) });
+  return { state: "closed", label, tone: "neutral", time };
+}
+
+/**
+ * State and wording of a hand-in date right now. With an exact hour, "late" starts when it
+ * passes, not at midnight. `closes`: school work, closed as soon as the date has passed.
+ */
+export function due(day: string | null, at: string | null, now: Date = new Date(), closes = false): Due {
   const exact = at ? Date.parse(at) : Number.NaN;
   const days = day ? daysLeft(day, now) : null;
+  const end = dueTime(day, at);
+  if (end !== null && now.getTime() > end && (closes || now.getTime() - end > LATE_DAYS * 86_400_000)) {
+    return closedDue(end, closes, now, Number.isNaN(exact) ? null : hhmm(exact));
+  }
   if (!Number.isNaN(exact)) {
     const time = hhmm(exact);
     const late = now.getTime() - exact;
@@ -171,7 +195,82 @@ export function due(day: string | null, at: string | null, now: Date = new Date(
   return { state: days === 0 ? "today" : "upcoming", label: deadlineLabel(days), tone: days <= 2 ? "warn" : "neutral", time: null };
 }
 
-export const dueOf = (repo: RepoInfo, now: Date = new Date()): Due => due(repo.meta.deadline, repo.meta.deadlineAt, now);
+/** School work: its date closes it (same rule as `projects::enrich` in Rust). */
+export const closesAtDeadline = (repo: RepoInfo) => repo.kind === "epitech" || repo.my !== null || repo.meta.deadlineSource === "my";
+
+export const dueOf = (repo: RepoInfo, now: Date = new Date()): Due => due(repo.meta.deadline, repo.meta.deadlineAt, now, closesAtDeadline(repo));
+
+/** A line of the dashboard's deadlines: school work when MY Epitech or a module says so. */
+export const dueOfItem = (i: { day: string | null; at: string | null; source: string | null; module: string | null; myId: number | null }, now: Date = new Date()): Due => due(i.day, i.at, now, i.source === "my" || i.module !== null || i.myId !== null);
+
+// ── Where a project stands
+
+/**
+ * - `upcoming`: MY Epitech says it starts later.
+ * - `due_soon`: hand-in today or within `SOON_DAYS` (or a personal date just missed).
+ * - `active`: being worked on, or a date further away.
+ * - `todo`: nothing started, no date.
+ * - `awaiting`: closed recently, no result known yet. `evaluated`: closed, test results known.
+ * - `closed`: closed a while ago. `done`: marked finished. `archived`: out of the daily lists.
+ */
+export type Phase = "upcoming" | "due_soon" | "active" | "todo" | "awaiting" | "evaluated" | "closed" | "done" | "archived";
+
+export const SOON_DAYS = 3;
+/** How long a closed project stays among the recent ones ("awaiting results"). */
+export const RECENT_CLOSED_DAYS = 30;
+
+export function phaseOf(repo: RepoInfo, now: Date = new Date()): Phase {
+  if (repo.meta.visibility === "archived") return "archived";
+  if (isDone(repo) && !repo.progressInferred) return "done";
+  const d = dueOf(repo, now);
+  if (d.state === "closed" || (isDone(repo) && repo.progressInferred)) {
+    if (repo.my?.testsTotal) return "evaluated";
+    const end = dueTime(repo.meta.deadline, repo.meta.deadlineAt) ?? (repo.my?.end ? Date.parse(repo.my.end) : null);
+    return end !== null && now.getTime() - end <= RECENT_CLOSED_DAYS * 86_400_000 ? "awaiting" : "closed";
+  }
+  const start = repo.my?.start ? Date.parse(repo.my.start) : Number.NaN;
+  if (!Number.isNaN(start) && start > now.getTime()) return "upcoming";
+  if (d.state === "overdue" || d.state === "today") return "due_soon";
+  if (d.state === "upcoming") {
+    const days = repo.meta.deadline ? daysLeft(repo.meta.deadline, now) : null;
+    return days !== null && days <= SOON_DAYS ? "due_soon" : "active";
+  }
+  return repo.progress === "in_progress" ? "active" : "todo";
+}
+
+export const PHASE_LABEL: Record<Phase, string> = {
+  upcoming: t("À venir"),
+  due_soon: t("À rendre bientôt"),
+  active: t("En cours"),
+  todo: t("À faire"),
+  awaiting: t("En attente de résultats"),
+  evaluated: t("Évalué"),
+  closed: t("Clos"),
+  done: t("Terminé"),
+  archived: t("Archivé"),
+};
+
+export interface RepoGroup {
+  id: "soon" | "active" | "upcoming" | "todo" | "recent" | "past";
+  label: string;
+  repos: RepoInfo[];
+  /** Folded until opened: old work stays reachable without taking the screen. */
+  folded: boolean;
+}
+
+const GROUP_OF: Record<Phase, RepoGroup["id"]> = { due_soon: "soon", active: "active", upcoming: "upcoming", todo: "todo", awaiting: "recent", evaluated: "recent", closed: "past", done: "past", archived: "past" };
+const GROUP_LABEL: Record<RepoGroup["id"], string> = { soon: t("À rendre bientôt"), active: t("En cours"), upcoming: t("À venir"), todo: t("À faire"), recent: t("Clos récemment"), past: t("Anciens projets") };
+
+/** Groups of an already sorted list, in the order of what needs you first. Empty groups are left out. */
+export function groupRepos(sorted: RepoInfo[], now: Date = new Date()): RepoGroup[] {
+  const order: RepoGroup["id"][] = ["soon", "active", "upcoming", "todo", "recent", "past"];
+  const by = new Map<RepoGroup["id"], RepoInfo[]>();
+  for (const r of sorted) {
+    const g = GROUP_OF[phaseOf(r, now)];
+    by.set(g, [...(by.get(g) ?? []), r]);
+  }
+  return order.filter((id) => by.has(id)).map((id) => ({ id, label: GROUP_LABEL[id], repos: by.get(id)!, folded: id === "past" }));
+}
 
 /** Local `HH:MM` of a saved instant, for the time field of the project sheet. */
 export function localTime(at: string | null): string {
@@ -188,7 +287,7 @@ export interface Deadline {
 export function deadlines(repos: RepoInfo[], now: Date = new Date()): Deadline[] {
   const out: Array<Deadline & { t: number }> = [];
   for (const repo of repos) {
-    if (isDone(repo) || !repo.meta.deadline) continue;
+    if (isDone(repo) || !repo.meta.deadline || dueOf(repo, now).state === "closed") continue;
     const days = daysLeft(repo.meta.deadline, now);
     const t = dueTime(repo.meta.deadline, repo.meta.deadlineAt);
     if (days !== null && t !== null) out.push({ repo, days, t });
@@ -230,13 +329,16 @@ function byDeadline(a: RepoInfo, b: RepoInfo): number {
 /**
  * Default order. What needs you first:
  * 0. active with a hand-in that is late or today; 1. active with a hand-in to come (nearest first);
- * 2. in progress without a date; 3. to do without a date; 4. finished (most recent first).
+ * 2. in progress without a date; 3. to do without a date; 4. closed (most recent first);
+ * 5. finished (most recent first).
  */
 function smartRank(repo: RepoInfo, now: Date): number {
-  if (isDone(repo)) return 4;
+  if (isDone(repo)) return 5;
   const state = dueOf(repo, now).state;
   if (state === "overdue" || state === "today") return 0;
   if (state === "upcoming") return 1;
+  // Closed work after everything still open, most recently closed first.
+  if (state === "closed") return 4;
   return repo.progress === "in_progress" ? 2 : 3;
 }
 
@@ -249,7 +351,7 @@ export function sortRepos(repos: RepoInfo[], key: SortKey, now: Date = new Date(
     const rb = smartRank(b, now);
     if (ra !== rb) return ra - rb;
     if (ra <= 1) return byDeadline(a, b);
-    if (ra === 4) return (dueTime(b.meta.deadline, b.meta.deadlineAt) ?? lastActivity(b)) - (dueTime(a.meta.deadline, a.meta.deadlineAt) ?? lastActivity(a)) || byName(a, b);
+    if (ra >= 4) return (dueTime(b.meta.deadline, b.meta.deadlineAt) ?? lastActivity(b)) - (dueTime(a.meta.deadline, a.meta.deadlineAt) ?? lastActivity(a)) || byName(a, b);
     return byActivity(a, b);
   };
   const cmp: Record<SortKey, (a: RepoInfo, b: RepoInfo) => number> = {

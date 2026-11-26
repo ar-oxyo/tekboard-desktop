@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MyLink, RepoInfo, RepoMeta, RepoStatus } from "./api";
-import { attention, cloneTargets, currentFocus, daysLeft, deadlineLabel, deadlines, displayName, due, dueTime, filterRepos, modulesOf, preferredCloneDir, sortRepos } from "./repos";
+import { attention, cloneTargets, currentFocus, daysLeft, deadlineLabel, deadlines, displayName, due, dueOf, dueTime, filterRepos, groupRepos, modulesOf, phaseOf, preferredCloneDir, sortRepos } from "./repos";
 import { looksLikeEpitech, repoNameFromUrl, tildify, timeAgo } from "./format";
 
 const clean: RepoStatus = { branch: "main", upstream: "origin/main", ahead: 0, behind: 0, staged: 0, unstaged: 0, untracked: 0, conflicted: 0, unborn: false };
@@ -253,5 +253,41 @@ describe("format", () => {
     expect(looksLikeEpitech("G-CPE-110-LYN-1-1-settingup-27")).toBe(true);
     expect(looksLikeEpitech("B-PSU-200-PAR-2-1-my-top-3")).toBe(true);
     expect(looksLikeEpitech("tekcraft")).toBe(false);
+  });
+});
+
+describe("closing hand-ins", () => {
+  const now = new Date(2026, 10, 26, 12, 0);
+  it("closes school work at its final date instead of counting days of lateness", () => {
+    const r = repo({ epitech: school, meta: { deadline: "2026-10-02" } });
+    const d = dueOf(r, now);
+    expect(d.state).toBe("closed");
+    expect(d.label).not.toMatch(/retard/);
+    expect(d.tone).toBe("neutral");
+  });
+
+  it("keeps a personal date late for two weeks, then past", () => {
+    expect(due("2026-11-20", null, now).state).toBe("overdue");
+    expect(due("2026-11-01", null, now).state).toBe("closed");
+    expect(due("2026-11-01", null, now).label).toMatch(/dépassé/);
+  });
+
+  it("tells closed from finished, recent from old, and results from none", () => {
+    const recent = repo({ epitech: school, meta: { deadline: "2026-11-20", status: "in_progress" } });
+    const old = repo({ epitech: school, meta: { deadline: "2026-06-20", status: "in_progress" } });
+    const marked = repo({ epitech: school, meta: { deadline: "2026-11-20", status: "done" } });
+    expect([phaseOf(recent, now), phaseOf(old, now), phaseOf(marked, now)]).toEqual(["awaiting", "closed", "done"]);
+    const graded = repo({ epitech: school, meta: { deadline: "2026-11-20" }, my: { testsTotal: 12, testsPassed: 10 } as never });
+    expect(phaseOf(graded, now)).toBe("evaluated");
+  });
+
+  it("puts what is due soon first and folds old work away", () => {
+    const soon = repo({ path: "/a", epitech: school, meta: { deadline: "2026-11-27", status: "in_progress" } });
+    const later = repo({ path: "/b", epitech: school, meta: { deadline: "2026-12-20", status: "in_progress" } });
+    const old = repo({ path: "/c", epitech: school, meta: { deadline: "2026-03-01", status: "in_progress" } });
+    const groups = groupRepos(sortRepos([old, later, soon], "smart", now), now);
+    expect(groups.map((g) => g.id)).toEqual(["soon", "active", "past"]);
+    expect(groups.find((g) => g.id === "past")!.folded).toBe(true);
+    expect(deadlines([old, later, soon], now).map((d) => d.repo.path)).toEqual(["/a", "/b"]);
   });
 });

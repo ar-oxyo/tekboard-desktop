@@ -73,6 +73,34 @@ pub fn state(day: Option<&str>, at: Option<&str>) -> &'static str {
     state_in(day, at, &Local::now())
 }
 
+/// Days a missed date of a personal project stays "late" before it reads as past: a date you
+/// set yourself is a reminder, not a count that grows forever.
+pub const LATE_DAYS: i64 = 14;
+
+/// The hand-in state of a project. School work (`closes`) is `closed` as soon as its final
+/// date has passed: the hand-in no longer takes anything, so it is not "late" for planning.
+/// An extension shows up as a later date from MY Epitech, which reopens it. A personal date
+/// stays `overdue` for `LATE_DAYS`, then becomes `closed` as well. Closed says nothing about
+/// whether the work was handed in or passed.
+pub fn project_state_in<Tz: TimeZone>(day: Option<&str>, at: Option<&str>, closes: bool, now: &DateTime<Tz>) -> &'static str {
+    let state = state_in(day, at, now);
+    if state != "overdue" {
+        return state;
+    }
+    if closes {
+        return "closed";
+    }
+    let late_days = match at.and_then(|a| DateTime::parse_from_rfc3339(a).ok()) {
+        Some(a) => (now.timestamp() - a.timestamp()) / 86_400,
+        None => day.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()).map(|d| (now.date_naive() - d).num_days()).unwrap_or(0),
+    };
+    if late_days > LATE_DAYS {
+        "closed"
+    } else {
+        "overdue"
+    }
+}
+
 /// Seconds since the epoch of the moment the hand-in closes: the instant, or the end of the day.
 pub fn sort_key(day: Option<&str>, at: Option<&str>) -> Option<i64> {
     if let Some(at) = at.and_then(|a| DateTime::parse_from_rfc3339(a).ok()) {
@@ -128,6 +156,24 @@ mod tests {
         assert_eq!(state_in(day, hand_in, &at("2026-11-20T19:41:59+01:00")), "today");
         assert_eq!(state_in(day, hand_in, &at("2026-11-20T19:42:01+01:00")), "overdue", "past the hour on the same day");
         assert_eq!(state_in(day, hand_in, &at("2026-11-21T00:00:01+01:00")), "overdue");
+    }
+
+    #[test]
+    fn school_work_closes_at_its_final_date_instead_of_running_late() {
+        let hand_in = Some("2026-11-20T19:42:00+01:00");
+        let day = Some("2026-11-20");
+        assert_eq!(project_state_in(day, hand_in, true, &at("2026-11-20T19:41:00+01:00")), "today");
+        assert_eq!(project_state_in(day, hand_in, true, &at("2026-11-20T19:43:00+01:00")), "closed");
+        assert_eq!(project_state_in(day, hand_in, true, &at("2027-01-20T10:00:00+01:00")), "closed", "never weeks of lateness");
+    }
+
+    #[test]
+    fn a_personal_date_is_late_for_two_weeks_then_past() {
+        let day = Some("2026-11-20");
+        assert_eq!(project_state_in(day, None, false, &at("2026-11-21T10:00:00+01:00")), "overdue");
+        assert_eq!(project_state_in(day, None, false, &at("2026-12-04T10:00:00+01:00")), "overdue");
+        assert_eq!(project_state_in(day, None, false, &at("2026-12-06T10:00:00+01:00")), "closed");
+        assert_eq!(project_state_in(None, None, false, &at("2026-12-06T10:00:00+01:00")), "unknown");
     }
 
     #[test]

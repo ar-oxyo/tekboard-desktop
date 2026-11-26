@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownUp, Eye, EyeOff, FolderGit2, GraduationCap, Play, Plus, RefreshCw, Search } from "lucide-react";
+import { ArrowDownUp, ChevronRight, Eye, EyeOff, FolderGit2, GraduationCap, Play, Plus, RefreshCw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Menu, MenuChoice, MenuLabel } from "../../components/Menu";
 import { Select } from "../../components/Select";
@@ -7,7 +7,7 @@ import { Button, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinn
 import { api, asAppError, type RepoInfo } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { keys, useNow, usePref, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
-import { attention, displayName, filterRepos, lastActivity, moduleOf, modulesOf, SORTS, sortRepos, type RepoFilter, type SortKey } from "../../lib/repos";
+import { attention, displayName, filterRepos, groupRepos, lastActivity, moduleOf, modulesOf, SORTS, sortRepos, type RepoFilter, type RepoGroup, type SortKey } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { BranchLabel, DueBadge, FavoriteButton, ProgressPicker, RepoMenu, StatusChips } from "./RepoBits";
 import { plural, t } from "../../lib/i18n";
@@ -56,6 +56,9 @@ export function ProjectsPage() {
   const counts = useMemo(() => Object.fromEntries(FILTERS.map((f) => [f.id, filterRepos(all, "", f.id, options).length])), [all, epitechOnly, activeModule]);
   const school = all.filter((r) => r.kind === "epitech").length;
   const sortLabel = SORTS.find((s) => s.id === sort)?.label ?? "Smart";
+  // The smart order reads as groups: what is due soon, in progress, to come, closed recently, old.
+  const showStatus = filter !== "todo" && filter !== "in_progress" && filter !== "done";
+  const grouped = sort === "smart" && !query && filter !== "archived" && filter !== "done";
 
   return (
     <>
@@ -164,9 +167,13 @@ export function ProjectsPage() {
                   <span className="hidden w-24 shrink-0 text-right @3xl:block">{t("Activité")}</span>
                   <span className="w-14 shrink-0" />
                 </li>
-                {shown.map((repo) => (
-                  <RepoRow key={repo.path} repo={repo} now={now} showStatus={filter !== "todo" && filter !== "in_progress" && filter !== "done"} />
-                ))}
+                {grouped ? (
+                  groupRepos(shown, now).map((g) => (
+                    <RepoGroupRows key={g.id} group={g} now={now} showStatus={showStatus} />
+                  ))
+                ) : (
+                  shown.map((repo) => <RepoRow key={repo.path} repo={repo} now={now} showStatus={showStatus} />)
+                )}
               </ul>
             )}
           </div>
@@ -187,6 +194,27 @@ export function ProjectsPage() {
           )}
         </>
       )}
+    </>
+  );
+}
+
+/** One group of the smart order, with its heading; old work stays folded until opened. */
+function RepoGroupRows({ group, now, showStatus }: { group: RepoGroup; now: Date; showStatus: boolean }) {
+  const [open, setOpen] = useState(!group.folded);
+  return (
+    <>
+      <li className="flex h-8 items-end gap-2 border-b border-line px-1 pb-1">
+        {group.folded ? (
+          <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="flex items-center gap-1 text-xs text-faint hover:text-muted">
+            <ChevronRight className={cn("size-3.5 transition-transform duration-(--dur-fast)", open && "rotate-90")} />
+            {group.label}
+          </button>
+        ) : (
+          <span className="text-xs text-faint">{group.label}</span>
+        )}
+        <span className="font-mono text-2xs text-faint">{group.repos.length}</span>
+      </li>
+      {open && group.repos.map((repo) => <RepoRow key={repo.path} repo={repo} now={now} showStatus={showStatus} />)}
     </>
   );
 }

@@ -193,7 +193,9 @@ pub fn enrich(repos: &mut [RepoInfo], overview: &Overview, orgs: &[String], epit
         r.kind_reason = reason;
         r.progress = status;
         r.progress_inferred = inferred;
-        r.deadline_state = deadlines::state_in(r.meta.deadline.as_deref(), r.meta.deadline_at.as_deref(), &local).to_string();
+        // School work closes at its final date; a personal date only runs late for a while.
+        let closes = kind == "epitech" || my.is_some() || r.meta.deadline_source.as_deref() == Some("my");
+        r.deadline_state = deadlines::project_state_in(r.meta.deadline.as_deref(), r.meta.deadline_at.as_deref(), closes, &local).to_string();
         r.my = my;
     }
 }
@@ -210,7 +212,7 @@ pub struct BoardItem {
     pub at: Option<String>,
     /// `manual`, `my`, or none for a date saved before 0.3.
     pub source: Option<String>,
-    /// `upcoming`, `today`, `overdue`, `unknown`.
+    /// `upcoming`, `today`, `overdue` (a personal date, for two weeks), `unknown`. Closed work is left out.
     pub state: String,
     pub status: String,
     /// False for a MY Epitech project with no local repository.
@@ -233,8 +235,8 @@ pub fn board(repos: &[RepoInfo], overview: &Overview, now: DateTime<Utc>) -> Vec
     let local = now.with_timezone(&chrono::Local);
     let mut items: Vec<BoardItem> = Vec::new();
     for r in repos {
-        // Finished or archived work has no hand-in left to watch.
-        if r.progress == "done" || r.meta.visibility.is_some() {
+        // Finished, archived or closed work has no hand-in left to watch.
+        if r.progress == "done" || r.meta.visibility.is_some() || r.deadline_state == "closed" {
             continue;
         }
         let has_date = r.meta.deadline.is_some();
@@ -262,6 +264,10 @@ pub fn board(repos: &[RepoInfo], overview: &Overview, now: DateTime<Utc>) -> Vec
         if p.repo_path.is_some() || !(p.ongoing || p.upcoming) {
             continue;
         }
+        let state = deadlines::project_state_in(p.deadline.as_deref(), p.deadline_at.as_deref(), true, &local);
+        if state == "closed" {
+            continue;
+        }
         items.push(BoardItem {
             title: p.name.clone(),
             module: Some(p.unit_code.clone()).filter(|u| !u.is_empty()),
@@ -270,7 +276,7 @@ pub fn board(repos: &[RepoInfo], overview: &Overview, now: DateTime<Utc>) -> Vec
             day: p.deadline.clone(),
             at: p.deadline_at.clone(),
             source: Some("my".into()),
-            state: deadlines::state_in(p.deadline.as_deref(), p.deadline_at.as_deref(), &local).to_string(),
+            state: state.to_string(),
             status: if p.ongoing { "in_progress" } else { "todo" }.into(),
             cloned: false,
             repo_expected: p.repo_enabled != Some(false),
@@ -406,6 +412,22 @@ mod tests {
         assert!(b.iter().all(|i| i.title != "my_ls"), "handed in: inferred done, not listed as overdue");
         assert!(b[4].starts.is_some(), "not started yet");
         assert_eq!(b[5].day, None, "no date is made up for a project without one");
+    }
+
+    #[test]
+    fn school_work_past_its_final_date_is_closed_not_late_and_leaves_the_board() {
+        let conn = db::open_in_memory().unwrap();
+        school(&conn);
+        let hunter = "/r/Tek/G-MUL-100-LYN-1-1-myhunter-13";
+        // A school date typed by hand, weeks ago, on work still marked in progress.
+        db::set_deadline(&conn, hunter, Some("2026-10-01"), None, Some("manual")).unwrap();
+        db::set_status(&conn, hunter, "in_progress").unwrap();
+        let mut rs = repos();
+        let o = load(&conn, &mut rs);
+        let r = rs.iter().find(|r| r.path == hunter).unwrap();
+        assert_eq!(r.deadline_state, "closed");
+        assert_eq!(r.progress, "in_progress", "closed does not mean handed in");
+        assert!(board(&rs, &o, now()).iter().all(|i| i.repo_path.as_deref() != Some(hunter)));
     }
 
     #[test]

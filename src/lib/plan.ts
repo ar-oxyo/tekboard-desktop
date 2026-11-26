@@ -1,7 +1,7 @@
 // Planning logic, computed locally: what is on the calendar, where the free time is, how to
 // spread the remaining work before each hand-in. No call to Claude and no network here.
 import type { AgendaItem, BoardItem, ScheduleAction, PlanCategory, PlanEvent, PlanState, PlanTask, Progress, RepoInfo } from "./api";
-import { displayName, dueTime, moduleOf } from "./repos";
+import { displayName, dueOf, dueTime, moduleOf } from "./repos";
 import { locale, t } from "./i18n";
 
 export const MIN = 60_000;
@@ -132,7 +132,8 @@ export function planProjects(board: BoardItem[], repos: RepoInfo[], state: PlanS
     const key = b.repoPath ?? (b.myId !== null ? `my:${b.myId}` : null);
     if (key) push(key, b.title, b.module, b.repoPath, b.day, b.at, b.status);
   }
-  for (const r of repos) if (r.progress !== "done") push(r.path, displayName(r), moduleOf(r), r.path, r.meta.deadline, r.meta.deadlineAt, r.progress);
+  // Closed school work (its final date has passed) is no longer something to plan.
+  for (const r of repos) if (r.progress !== "done" && dueOf(r).state !== "closed") push(r.path, displayName(r), moduleOf(r), r.path, r.meta.deadline, r.meta.deadlineAt, r.progress);
   return out.sort((a, b) => (a.dueMs ?? Infinity) - (b.dueMs ?? Infinity) || b.priority - a.priority || a.title.localeCompare(b.title));
 }
 

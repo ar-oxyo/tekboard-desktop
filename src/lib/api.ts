@@ -123,7 +123,7 @@ export interface Commit {
 }
 
 export type Progress = "todo" | "in_progress" | "done";
-export type DeadlineState = "upcoming" | "today" | "overdue" | "unknown";
+export type DeadlineState = "upcoming" | "today" | "overdue" | "closed" | "unknown";
 export type RepoKind = "epitech" | "personal";
 export interface RepoMeta {
   favorite: boolean;

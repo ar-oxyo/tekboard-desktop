@@ -5,7 +5,7 @@ import { Menu, MenuChoice, MenuItem, MenuLabel, MenuSeparator, SubMenu } from ".
 import { cn, Dot, IconButton } from "../../components/ui";
 import type { Progress, RepoInfo } from "../../lib/api";
 import { useProjectActions } from "../../lib/hooks";
-import { attention, dueOf } from "../../lib/repos";
+import { attention, dueOf, PHASE_LABEL, phaseOf } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { t } from "../../lib/i18n";
 
@@ -64,8 +64,10 @@ export function DueBadge({ repo, now }: { repo: RepoInfo; now?: Date }) {
   const d = dueOf(repo, now);
   if (d.state === "unknown") return null;
   const origin = repo.meta.deadlineSource === "my" ? t("depuis MY Epitech") : repo.meta.deadlineSource === "manual" ? t("saisi par toi") : t("enregistré plus tôt");
+  // A closed hand-in says where the project stands (awaiting results, evaluated), never "late".
+  const phase = d.state === "closed" ? PHASE_LABEL[phaseOf(repo, now)] : null;
   return (
-    <Countdown tone={d.tone} title={`Hand-in ${repo.meta.deadline}${d.time ? ` at ${d.time}` : ""} (${origin})`}>
+    <Countdown tone={d.tone} title={`${t("Rendu le {d}", { d: repo.meta.deadline })}${d.time ? ` ${d.time}` : ""} (${origin})${phase ? ` · ${phase}` : ""}`}>
       {d.label}
     </Countdown>
   );
@@ -81,7 +83,7 @@ export const PROGRESS: Array<{ id: Progress; label: string; icon: ReactNode; ton
 export function ProgressPicker({ repo, compact }: { repo: RepoInfo; compact?: boolean }) {
   const act = useProjectActions();
   const cur = PROGRESS.find((p) => p.id === repo.progress) ?? PROGRESS[0];
-  const title = repo.progressInferred ? `${cur.label} — not set by you: follows the hand-in date and recent activity. Click to choose.` : `${cur.label} — click to change`;
+  const title = repo.progressInferred ? t("{s} — déduit de la date de rendu et de l'activité récente. Clique pour choisir.", { s: cur.label }) : t("{s} — clique pour changer", { s: cur.label });
   return (
     <Menu
       align="start"
