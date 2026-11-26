@@ -2,6 +2,22 @@
 
 Chaque version publiée a sa section ici ; la release GitHub reprend ce texte.
 
+## 1.1.0
+
+**École**
+- **Skill Tree en galaxie** : chaque bloc de compétences est une constellation, chaque unité une étoile (taille selon ses crédits), ses acquis d'apprentissage et projets des satellites. On navigue par niveaux (galaxie → constellation → étoile) au clic, à la liste latérale, au fil d'Ariane ou au clavier (Échap pour revenir, ← → pour passer à la voisine). La molette fait défiler la page ; Ctrl + molette zoome.
+- **Crédits justes** : MY Epitech n'attribue les crédits qu'en fin de semestre. Les unités entièrement validées sans note apparaissent maintenant en « Validés, note à venir » au lieu de compter pour 0, et les totaux de MY (obtenus, assurés, seuil) sont affichés tels quels, les mêmes dans Crédits et Skill Tree.
+- Rapprochement barème ↔ MY Epitech beaucoup plus fiable (codes d'unité exacts, titres entiers, Piscine, HUB) ; tes scénarios existants en profitent sans rien refaire.
+- **Plusieurs pistes de spécialisation**, choisies séparément pour le 1er et le 2e semestre. Ton ancien choix est repris pour les deux.
+- Chaque unité d'enseignement est encadrée d'un fin filet pour mieux lire les groupes.
+- Onglets d'École dans l'ordre Logtime, Crédits, Skill Tree, Sujets, MY Epitech.
+
+**Labo**
+- **Playground** : l'éditeur garde ses couleurs et sa mise en forme dans l'application installée ; barre d'outils sur deux lignes nettes ; la page défile au lieu d'écraser l'éditeur sur une fenêtre étroite.
+
+**Fenêtre**
+- Fermer la fenêtre masque TekBoard s'il reste en arrière-plan (icône de notification ou raccourci), et le quitte sinon.
+
 ## 1.0.0
 
 **Nouveau design Riso**
