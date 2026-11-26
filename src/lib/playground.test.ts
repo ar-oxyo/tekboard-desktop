@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DraftFile, JobView } from "./api";
-import { artixRequest, DEFAULT_SETTINGS, fileNameError, identifiersOf, nextFileName, resultOf, runHeadline, sortFiles, starterFor } from "./playground";
+import { artixRequest, lineDiff, DEFAULT_SETTINGS, fileNameError, identifiersOf, nextFileName, resultOf, runHeadline, sortFiles, starterFor } from "./playground";
 
 const f = (name: string, content = "", library: string | null = null): DraftFile => ({ name, content, library });
 
@@ -49,5 +49,14 @@ describe("playground helpers", () => {
     expect(text).not.toContain("xxxxxxxxxx");
     expect(text).toContain("42");
     expect(text.length).toBeLessThan(20000);
+  });
+});
+
+describe("line diff", () => {
+  it("keeps common lines and marks what changed", () => {
+    const d = lineDiff("a\nb\nc", "a\nx\nc");
+    expect(d.map((l) => `${l.kind}:${l.text}`)).toEqual(["same:a", "del:b", "add:x", "same:c"]);
+    expect(lineDiff("same", "same").every((l) => l.kind === "same")).toBe(true);
+    expect(lineDiff("", "new").some((l) => l.kind === "add" && l.text === "new")).toBe(true);
   });
 });

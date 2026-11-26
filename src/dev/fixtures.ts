@@ -3,6 +3,7 @@
 import type { BoardItem, EnvStatus, PlanState, RepoInfo, Settings } from "../lib/api";
 import { skillTree } from "./skilltreeFixture";
 import { mouliReport, mouliSuite } from "./mouliFixture";
+import { compareJob, drafts } from "./playgroundFixture";
 
 type Fixture = unknown | ((args: Record<string, unknown>, params: URLSearchParams) => unknown);
 
@@ -253,6 +254,12 @@ export const fixtures: Record<string, Fixture> = {
   my_overview: { syncedAt: now - 40 * 60, account: "camille.martin@epitech.eu", projects: [], creditsAcquired: 12, creditsTotal: 60, blocks: [], exams: [] },
   my_logtime: logtime,
   my_skill_tree: skillTree,
+  // ?drafts=1: two Playground drafts; comparing them gives a finished job.
+  playground_list: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("drafts") ? drafts : []),
+  playground_tools: { compilers: [{ name: "gcc", path: "/usr/bin/gcc", version: "14.2" }, { name: "clang", path: "/usr/bin/clang", version: "19.1" }], valgrind: "3.24", sandbox: "bwrap 0.11", cgroupLimits: true },
+  playground_save: (a: Record<string, unknown>) => ({ ...drafts[0], id: a.id, title: a.title, files: a.files, settings: a.settings }),
+  playground_compare: 77,
+  job_get: (a: Record<string, unknown>) => (a.id === 77 ? compareJob : null),
   // ?mouli=1: a plan and a report of the TekBoard moulinette.
   mouli_state: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("mouli") ? { suite: mouliSuite, report: mouliReport } : { suite: null, report: null }),
   testing_info: { detection: { suites: [], frameworks: ["Criterion"], testFiles: 2, notes: [] }, config: { testCmd: null, runCmd: null, image: null }, defaultBuild: "make", claude: { path: null, target: null, version: null, state: "not_found", source: null, detail: null }, banana: { repoChecker: null, version: null, epiclang: null, plugin: false }, docker: false, valgrind: true, terminal: true, defaultImage: "epitechcontent/epitest-docker", subject: "secured.pdf", hasRemote: true },

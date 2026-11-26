@@ -2,6 +2,7 @@ pub mod ai;
 pub mod arena;
 pub mod analytics;
 pub mod credits;
+pub mod bench;
 pub mod boards;
 pub mod brain;
 pub mod cdiag;
@@ -278,6 +279,7 @@ pub fn run() {
             commands_lab::playground_set_open,
             commands_lab::playground_delete,
             commands_lab::playground_run,
+            commands_lab::playground_compare,
             commands_lab::playground_import_library,
             commands_lab::playground_export_preview,
             commands_lab::playground_export,

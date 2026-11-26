@@ -16,9 +16,12 @@ Notes de travail :
 - Persona d'Artix : style court, langue, 24 h, disponibilité ≠ obligation.
 - Planning : champ 24 h (`components/TimeField.tsx`), journée après minuit (Rust + TS), bandes hors horaires en creux.
 
+- TekLive : adresse ws:// copiée et affichée, port 8765 avec repli, choix du réseau, relais refermé si le démarrage échoue.
+- Lot 2 · Crédits : onglet École → Crédits, barème PGE1 2026 (structure de l'xlsx), scénarios (table credit_scenarios).
+- Lot 2 · Moulinette TekBoard : `src-tauri/src/mouli/` (plan IA sur sujet + signatures, Criterion contrôlé par tree-sitter, exécution isolée), vue principale de Tests (table mouli_suites). Test de bout en bout réel avec Criterion (/usr/local).
+
 ## Reste
-- Lot 1 : TekLive (adresse ws:// sur l'interface LAN, copie auto, port 8765 avec repli, correctif « occupé » après un échec).
-- Lot 2 : crédits (barème PGE1 2026 depuis l'xlsx, structure seulement), moulinette, Criterion, Playground.
+- Lot 2 : Playground (mesures précises, compilation incrémentale, mode comparaison A/B).
 - Lot 3 : widgets (corriger au passage le bouton imbriqué dans un bouton de « Premiers pas », Dashboard.tsx), accent, icône, Whiteboard.
 - Lot 4 : TekSpace, Spotify (MPRIS + OAuth), avatars, modération.
 - Lot 5 : Stats, synchro MY, fraîcheur, mini-audit (noté : champ date natif en MM/JJ/AAAA dans WebKit), fusion locale et version 1.0.0.

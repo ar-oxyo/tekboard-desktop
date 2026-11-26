@@ -2,7 +2,8 @@
 // compiler diagnostics, stdout, stderr, memory reports, and the raw log while it runs.
 import { useState } from "react";
 import { AlertTriangle, CircleX, Info, MemoryStick } from "lucide-react";
-import type { CDiagnostic, JobView } from "../../lib/api";
+import type { CDiagnostic, JobView, PlaygroundBench } from "../../lib/api";
+import { formatBytes } from "../../lib/format";
 import { CodeView } from "../../components/DiffView";
 import { Badge, cn, Dot, EmptyState, Spinner } from "../../components/ui";
 import { counts, memLabel, resultOf, runHeadline } from "../../lib/playground";
@@ -11,6 +12,41 @@ import { t } from "../../lib/i18n";
 const STEP_TONE: Record<string, "ok" | "warn" | "danger" | "accent" | "neutral"> = { success: "ok", warning: "warn", failed: "danger", running: "accent", cancelled: "neutral", skipped: "neutral", pending: "neutral" };
 
 type Tab = "diagnostics" | "stdout" | "stderr" | "memory" | "log";
+
+/** Build and run figures, each where it was measured: make, compilation (full or
+ * incremental), link, run time over several runs, exit code, peak memory. */
+function Measures({ job }: { job: JobView }) {
+  const r = resultOf(job);
+  const b = r.compile?.build ?? null;
+  const bench = (job.summary.bench as PlaygroundBench | undefined) ?? null;
+  const items: Array<[string, string, string?]> = [];
+  if (b?.mode === "make") items.push([t("make"), fmtMs(b.makeMs)]);
+  else if (b) items.push([b.mode === "incremental" ? t("Compilation incrémentale") : t("Compilation complète"), fmtMs(b.compileMs), b.mode === "incremental" ? t("{c} fichier(s) recompilé(s), {k} réutilisé(s)", { c: b.compiled, k: b.cached }) : t("{c} fichier(s)", { c: b.compiled })], [t("Édition des liens"), fmtMs(b.linkMs)]);
+  else if (r.compile) items.push([t("Compilation"), fmtMs(r.compile.durationMs)]);
+  if (bench) items.push([t("Exécution (médiane)"), fmtMs(bench.wall.median), t("min {m} · écart {s} · {n} exécutions", { m: fmtMs(bench.wall.min), s: `±${(bench.spread * 100).toFixed(1)} %`, n: bench.runs })]);
+  else if (r.run) items.push([t("Exécution"), fmtMs(r.run.durationMs), t("une seule mesure, démarrage du bac à sable compris")]);
+  if (r.run) items.push([t("Code de retour"), r.run.signalName ?? String(r.run.exitCode ?? "—")]);
+  if (bench) items.push([t("Mémoire max"), formatBytes(bench.maxRssKb * 1024)]);
+  if (items.length === 0) return null;
+  return (
+    <dl className="flex flex-wrap gap-x-5 gap-y-1 border-b border-ink/6 px-3 py-2 text-xs">
+      {items.map(([label, value, hint]) => (
+        <div key={label} className="flex items-baseline gap-1.5" title={hint}>
+          <dt className="text-faint">{label}</dt>
+          <dd className="font-mono text-fg tabular-nums">{value}</dd>
+        </div>
+      ))}
+      {bench && bench.spread > 0.05 && <p className="w-full text-2xs text-warn">{t("Mesures bruitées (écart au-dessus de 5 %) : ferme ce qui tourne en fond avant de comparer.")}</p>}
+    </dl>
+  );
+}
+
+function fmtMs(ms: number): string {
+  if (ms < 1) return `${(ms * 1000).toFixed(0)} µs`;
+  if (ms < 100) return `${ms.toFixed(2)} ms`;
+  if (ms < 10_000) return `${Math.round(ms)} ms`;
+  return `${(ms / 1000).toFixed(1)} s`;
+}
 
 export function Output({ job, onJump }: { job: JobView | null | undefined; onJump: (file: string, line: number, col: number | null) => void }) {
   const r = resultOf(job);
@@ -51,8 +87,8 @@ export function Output({ job, onJump }: { job: JobView | null | undefined; onJum
         ) : (
           <Badge>{job.status}</Badge>
         )}
-        {r.compile && <span className="ml-auto text-xs text-faint tabular">{t("compilé en {ms} ms", { ms: r.compile.durationMs })}</span>}
       </div>
+      <Measures job={job} />
       <div className="flex flex-wrap gap-3 px-3 pt-2 pb-1">
         {job.steps.map((st) => (
           <Dot key={st.id} tone={STEP_TONE[st.status] ?? "neutral"} title={st.detail ?? undefined}>

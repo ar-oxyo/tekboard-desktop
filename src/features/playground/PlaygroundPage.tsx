@@ -3,7 +3,7 @@
 // the sandbox and the right side shows what came out. Artix explains on request only.
 import { lazy, Suspense, useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Share2, FilePlus2, FileCode2, FolderPlus, History, LibraryBig, Lock, LockOpen, Pencil, Play, Plus, Settings2, Sparkles, Square, Trash2, X } from "lucide-react";
+import { Copy, GitCompare, Share2, FilePlus2, FileCode2, FolderPlus, History, LibraryBig, Lock, LockOpen, Pencil, Play, Plus, Settings2, Sparkles, Square, Trash2, X } from "lucide-react";
 import { api, asAppError, type Draft, type DraftFile, type DraftSettings } from "../../lib/api";
 import { useJob } from "../../lib/jobs";
 import { usePref } from "../../lib/hooks";
@@ -15,6 +15,7 @@ import { Select } from "../../components/Select";
 import { Badge, Button, cn, EmptyState, ErrorNote, IconButton, Input, Kbd, Spinner } from "../../components/ui";
 import { artixRequest, DEFAULT_SETTINGS, diagnosticsFor, fileNameError, identifiersOf, nextFileName, resultOf, sortFiles, starterFor, type ArtixAsk } from "../../lib/playground";
 import { flush, usePlayground } from "./store";
+import { CompareDialog } from "./Compare";
 import { Output } from "./Output";
 import { ExportDialog, HistoryDialog, LibraryImportDialog } from "./Dialogs";
 import { t } from "../../lib/i18n";
@@ -141,7 +142,7 @@ function DraftView({ draft, tools, onDefaults, onDuplicate }: { draft: Draft; to
   const [jump, setJump] = useState<{ line: number; col: number | null; nonce: number } | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [options, setOptions] = useState(false);
-  const [dialog, setDialog] = useState<"library" | "export" | null>(null);
+  const [dialog, setDialog] = useState<"library" | "export" | "compare" | null>(null);
   const [starting, setStarting] = useState(false);
   const s = draft.settings;
 
@@ -292,6 +293,9 @@ function DraftView({ draft, tools, onDefaults, onDuplicate }: { draft: Draft; to
               <MenuItem icon={<FolderPlus className="size-3.5" />} onSelect={() => setDialog("export")}>
                 {t("Exporter en projet…")}
               </MenuItem>
+              <MenuItem icon={<GitCompare className="size-3.5" />} onSelect={() => setDialog("compare")}>
+                {t("Comparer à une autre version…")}
+              </MenuItem>
               <MenuSeparator />
               <MenuItem icon={<Copy className="size-3.5" />} onSelect={onDuplicate}>
                 {t("Dupliquer le brouillon")}
@@ -390,6 +394,7 @@ function DraftView({ draft, tools, onDefaults, onDuplicate }: { draft: Draft; to
         <Output job={job.data} onJump={onJump} />
       </section>
       <LibraryImportDialog open={dialog === "library"} onClose={() => setDialog(null)} onImport={importFiles} />
+      {dialog === "compare" && <CompareDialog draft={draft} onClose={() => setDialog(null)} flush={flush} />}
       {dialog === "export" && (
         <ExportDialog
           open

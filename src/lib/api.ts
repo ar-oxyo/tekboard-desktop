@@ -668,6 +668,8 @@ export interface PlaygroundCompile {
   output: string;
   diagnostics: CDiagnostic[];
   durationMs: number;
+  /** Compilation, link and make times, objects reused (since 1.0). */
+  build?: { mode: "full" | "incremental" | "make"; compileMs: number; linkMs: number; makeMs: number; compiled: number; cached: number } | null;
 }
 export interface PlaygroundRun {
   command: string;
@@ -682,6 +684,22 @@ export interface PlaygroundRun {
   durationMs: number;
   memory: MemIssue[];
   valgrind: { errors: number | null; definitelyLost: number | null; indirectlyLost: number | null; stillReachable: number | null } | null;
+}
+
+/** Timed runs of a program (Playground): median, minimum and spread of several runs. */
+export interface PlaygroundBench {
+  runs: number;
+  wall: ArenaStats;
+  cpu: ArenaStats;
+  maxRssKb: number;
+  /** Relative spread (robust deviation / median). */
+  spread: number;
+}
+export interface BenchVerdict {
+  faster: "a" | "b" | "none";
+  ratio: number;
+  significant: boolean;
+  why: string;
 }
 
 // ───────────────────────── Algorithm Arena ─────────────────────────
@@ -1868,6 +1886,7 @@ export const api = {
   playgroundSetOpen: (id: number, open: boolean) => invoke<void>("playground_set_open", { id, open }),
   playgroundDelete: (id: number) => invoke<void>("playground_delete", { id }),
   playgroundRun: (id: number, title: string, files: DraftFile[], settings: DraftSettings) => invoke<number>("playground_run", { id, title, files, settings }),
+  playgroundCompare: (a: number, b: number) => invoke<number>("playground_compare", { a, b }),
   playgroundImportLibrary: (libraryId: number, files: string[]) => invoke<DraftFile[]>("playground_import_library", { libraryId, files }),
   playgroundExportPreview: (id: number, name: string) => invoke<DraftFile[]>("playground_export_preview", { id, name }),
   playgroundExport: (id: number, parent: string, name: string, gitInit: boolean) => invoke<string>("playground_export", { id, parent, name, gitInit }),
