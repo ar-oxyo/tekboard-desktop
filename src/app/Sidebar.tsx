@@ -120,7 +120,7 @@ export function Sidebar() {
 
         {/* The other sections, one entry each: their screens are tabs in the page bar. */}
         <div className={cn("flex flex-col gap-px", rail ? "mt-2 border-t border-line pt-2" : "mt-3")}>
-          {item("myepitech")}
+          {item("logtime")}
           {item("analytics")}
           {item("playground")}
           {item("connect")}

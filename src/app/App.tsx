@@ -102,7 +102,7 @@ export function navigateTo(page: string, project: string | null, tab: string | n
     if (tab === "libraries") return ui.openLibrary(project);
     return ui.openSheet(project);
   }
-  const map: Record<string, Page> = { today: "overview", projects: "projects", planning: "agenda", school: "myepitech", stats: "analytics", lab: "playground", connect: "connect", resources: "templates", settings: "settings" };
+  const map: Record<string, Page> = { today: "overview", projects: "projects", planning: "agenda", school: "logtime", stats: "analytics", lab: "playground", connect: "connect", resources: "templates", settings: "settings" };
   ui.setPage(map[page] ?? "overview");
 }
 
