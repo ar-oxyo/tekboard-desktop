@@ -177,14 +177,47 @@ function BoardList() {
   );
 }
 
+/**
+ * A board's thumbnail on the anthracite card. Thumbnails saved before 1.0 have a white
+ * background baked in: they get Excalidraw's own dark-mode filter on display (the saved
+ * image is not changed), so strokes stay readable and no white block remains.
+ */
+function Thumb({ src }: { src: string }) {
+  const [light, setLight] = useState(false);
+  return (
+    <img
+      src={src}
+      alt=""
+      className={cn("max-h-full max-w-full object-contain p-2", light && "board-thumb-invert")}
+      onLoad={(e) => {
+        try {
+          const img = e.currentTarget;
+          const c = document.createElement("canvas");
+          c.width = 8;
+          c.height = 8;
+          const g = c.getContext("2d");
+          if (!g) return;
+          g.drawImage(img, 0, 0, 8, 8);
+          const d = g.getImageData(0, 0, 8, 8).data;
+          // Corners opaque and near white: a baked white background.
+          const corner = [0, 7, 56, 63].map((i) => d.slice(i * 4, i * 4 + 4));
+          setLight(corner.every(([r, gr, b, a]) => a > 200 && r + gr + b > 3 * 235));
+        } catch {
+          setLight(false);
+        }
+      }}
+    />
+  );
+}
+
 export function BoardGrid({ boards, onOpen, menu, projectName, compact }: { boards: BoardMeta[]; onOpen: (id: string) => void; menu?: (b: BoardMeta) => React.ReactNode; projectName?: (p: string | null) => string | null | undefined; compact?: boolean }) {
   return (
     <ul className={cn("grid gap-3", compact ? "grid-cols-[repeat(auto-fill,minmax(180px,1fr))]" : "grid-cols-[repeat(auto-fill,minmax(230px,1fr))]")}>
       {boards.map((b) => (
         <li key={b.id} className="card group relative overflow-hidden">
           <button type="button" className="block w-full text-left" onClick={() => onOpen(b.id)}>
-            <div className={cn("flex items-center justify-center bg-ink/3", compact ? "h-24" : "h-36")}>
-              {b.thumb ? <img src={b.thumb} alt="" className="max-h-full max-w-full object-contain p-2" /> : <PenTool className="size-6 text-faint" />}
+            <div className={cn("board-thumb flex items-center justify-center", compact ? "h-24" : "h-36")}>
+              {b.thumb ? <Thumb src={b.thumb} /> : <PenTool className="size-6 text-faint" />}
             </div>
             <div className="space-y-0.5 px-3 py-2">
               <div className="flex items-center gap-1.5">

@@ -1110,6 +1110,16 @@ code,
 .cal-off {
   background: var(--color-well);
 }
+/* Whiteboard cards: the drawings are previewed as the editor shows them (dark canvas), on
+   anthracite in both modes. Old thumbnails with a white background get Excalidraw's own
+   dark-mode filter. */
+.board-thumb {
+  /* Excalidraw's dark canvas: an inverted white background lands exactly on it. */
+  background: #121212;
+}
+.board-thumb-invert {
+  filter: invert(93%) hue-rotate(180deg);
+}
 /* Credits: what a scenario adds on modules not started yet, hatched blue (an estimate). */
 .credit-planned {
   background: repeating-linear-gradient(-45deg, var(--color-accent) 0 2px, color-mix(in srgb, var(--color-accent) 30%, transparent) 2px 5px);

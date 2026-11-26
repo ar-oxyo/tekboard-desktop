@@ -4,6 +4,7 @@ import type { BoardItem, EnvStatus, PlanState, RepoInfo, Settings } from "../lib
 import { skillTree } from "./skilltreeFixture";
 import { mouliReport, mouliSuite } from "./mouliFixture";
 import { compareJob, drafts } from "./playgroundFixture";
+import { boards } from "./boardsFixture";
 
 type Fixture = unknown | ((args: Record<string, unknown>, params: URLSearchParams) => unknown);
 
@@ -254,6 +255,7 @@ export const fixtures: Record<string, Fixture> = {
   my_overview: { syncedAt: now - 40 * 60, account: "camille.martin@epitech.eu", projects: [], creditsAcquired: 12, creditsTotal: 60, blocks: [], exams: [] },
   my_logtime: logtime,
   my_skill_tree: skillTree,
+  board_list: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("boards") ? boards : []),
   // ?drafts=1: two Playground drafts; comparing them gives a finished job.
   playground_list: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("drafts") ? drafts : []),
   playground_tools: { compilers: [{ name: "gcc", path: "/usr/bin/gcc", version: "14.2" }, { name: "clang", path: "/usr/bin/clang", version: "19.1" }], valgrind: "3.24", sandbox: "bwrap 0.11", cgroupLimits: true },

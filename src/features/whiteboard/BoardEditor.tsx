@@ -101,7 +101,10 @@ export default function BoardEditor({ source, onClose, connect }: { source: Boar
       const live = elements.filter((e) => !e.isDeleted);
       if (live.length) {
         try {
-          thumb = await blobToDataURL(await exportToBlob({ elements: live, appState: { ...api_.getAppState(), exportBackground: true, viewBackgroundColor: "#ffffff" }, files: api_.getFiles(), maxWidthOrHeight: 320, mimeType: "image/png" }));
+          // The thumbnail is drawn as the editor shows it (dark mode), on a transparent
+          // background: the boards list puts it on its own anthracite card. The board itself
+          // and its drawing background are not changed.
+          thumb = await blobToDataURL(await exportToBlob({ elements: live, appState: { ...api_.getAppState(), exportBackground: false, exportWithDarkMode: true }, files: api_.getFiles(), maxWidthOrHeight: 320, mimeType: "image/png" }));
         } catch {
           thumb = null;
         }
