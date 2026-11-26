@@ -555,7 +555,7 @@ function TablePanel({ space, meFp, def, state, dndInFocus, setDndInFocus }: { sp
               </ul>
               <div className="flex gap-2">
                 <Input placeholder={t("Une note, un lien, une astuce…")} className="h-8 text-xs" value={pinText} maxLength={2000} onChange={(e) => setPinText(e.target.value)} />
-                <Button size="sm" disabled={!pinText.trim()} onClick={() => moderated(pinText, () => { send({ t: "space.pin", space: space.id, table: def.id, title: pinText.trim().split("\n")[0].slice(0, 80), text: pinText.includes("\n") ? pinText : "" }); setPinText(""); })}>{t("Épingler")}</Button>
+                <Button size="sm" disabled={!pinText.trim()} disabledReason={t("Écris d'abord la note")} onClick={() => moderated(pinText, () => { send({ t: "space.pin", space: space.id, table: def.id, title: pinText.trim().split("\n")[0].slice(0, 80), text: pinText.includes("\n") ? pinText : "" }); setPinText(""); })}>{t("Épingler")}</Button>
               </div>
             </section>
           </div>

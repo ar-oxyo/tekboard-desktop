@@ -79,7 +79,15 @@ function ProjectRow({ p }: { p: MyProject }) {
       {open && (
         <div className="flex flex-col gap-2 px-4 pb-3 pl-[42px] text-xs">
           {p.unitName && <p className="text-muted">{p.unitName}{p.groupMax !== null && ` · ${p.groupMax === 1 ? "solo" : `groups of up to ${p.groupMax}`}`}{p.url && <span className="selectable ml-2 font-mono text-2xs text-faint">{p.url}</span>}</p>}
-          {p.repoPath && <p className="text-muted">{tr("Rendu dans TekBoard :")} <span className={p.repoDeadline === p.deadline ? "text-ok" : "text-warn"}>{p.repoDeadline ?? "none"}</span>{p.repoDeadlineSource === "manual" ? " (typed by you" : p.repoDeadlineSource === "my" ? " (from MY Epitech" : " ("}{p.repoDeadline !== p.deadline && p.deadline ? `${p.repoDeadlineSource ? ", " : ""}MY Epitech says ${p.deadline})` : ")"}</p>}
+          {p.repoPath && (
+            <p className="text-muted">
+              {tr("Rendu dans TekBoard :")} <span className={p.repoDeadline === p.deadline ? "text-ok" : "text-warn"}>{p.repoDeadline ?? tr("aucun")}</span>
+              {(() => {
+                const parts = [p.repoDeadlineSource === "manual" ? tr("saisi par toi") : p.repoDeadlineSource === "my" ? tr("depuis MY Epitech") : null, p.repoDeadline !== p.deadline && p.deadline ? tr("MY Epitech dit {d}", { d: p.deadline }) : null].filter(Boolean);
+                return parts.length ? ` (${parts.join(", ")})` : "";
+              })()}
+            </p>
+          )}
           {p.group.length > 1 && <p className="selectable text-muted">Group{p.groupName ? ` “${p.groupName}”` : ""}: {p.group.join(", ")}</p>}
           {t && (
             <div className="rounded-lg border border-line bg-bg px-3 py-2">

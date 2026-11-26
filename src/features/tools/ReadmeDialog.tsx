@@ -68,7 +68,7 @@ export function ReadmeDialog({ repo }: { repo: string }) {
           <>
             <span className="mr-auto text-xs text-muted">{exists ? t("README.md existe : compare avant de le remplacer. Le fichier actuel est sauvegardé d'abord.") : t("Ce projet n'a pas encore de README.md.")}</span>
             <Button variant="ghost" onClick={close}>{t("Annuler")}</Button>
-            <Button variant="primary" busy={write.isPending} disabled={text === null || text.trim() === "" || running} onClick={() => write.mutate()}>{exists ? "Replace README.md" : "Write README.md"}</Button>
+            <Button variant="primary" busy={write.isPending} disabled={text === null || text.trim() === "" || running} disabledReason={running ? null : t("Le README est vide")} onClick={() => write.mutate()}>{exists ? t("Remplacer README.md") : t("Écrire README.md")}</Button>
           </>
         }
       >

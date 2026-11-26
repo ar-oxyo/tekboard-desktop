@@ -10,7 +10,7 @@ import { timeAgo } from "../../lib/format";
 import { keys, useRepos, useSettings } from "../../lib/hooks";
 import { attention, displayName, matchesQuery } from "../../lib/repos";
 import { useUi } from "../../lib/store";
-import { t } from "../../lib/i18n";
+import { plural, t } from "../../lib/i18n";
 
 export function GitPage() {
   const settings = useSettings();
@@ -224,7 +224,7 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
               }}
             >
               <Input autoFocus className="h-7 w-44 font-mono text-xs" placeholder="feature/name" value={newBranch} onChange={(e) => setNewBranch(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setNewBranch(null)} />
-              <Button size="sm" type="submit" busy={createBranch.isPending} disabled={!newBranch.trim()}>
+              <Button size="sm" type="submit" busy={createBranch.isPending} disabled={!newBranch.trim()} disabledReason={t("Écris le nom de la branche")}>
                 Créer
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setNewBranch(null)}>
@@ -299,8 +299,8 @@ function RepoGit({ repo }: { repo: RepoInfo }) {
             }}
           >
             <Input placeholder={t("Message de commit")} value={message} onChange={(e) => setMessage(e.target.value)} aria-label={t("Message de commit")} />
-            <Button type="submit" variant="primary" icon={<GitCommitHorizontal className="size-3.5" />} busy={commit.isPending} disabled={staged.length === 0 || !message.trim()}>
-              Commit {staged.length > 0 ? `${staged.length} file${staged.length === 1 ? "" : "s"}` : ""}
+            <Button type="submit" variant="primary" icon={<GitCommitHorizontal className="size-3.5" />} busy={commit.isPending} disabled={staged.length === 0 || !message.trim()} disabledReason={staged.length === 0 ? t("Coche d'abord les fichiers à inclure") : t("Écris un message de commit")}>
+              {staged.length > 0 ? plural(staged.length, "Commit ({n} fichier)", "Commit ({n} fichiers)") : "Commit"}
             </Button>
             <p className="text-xs text-faint">{t("Les commits restent sur cette machine tant que tu n'envoies pas.")}</p>
           </form>

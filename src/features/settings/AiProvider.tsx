@@ -175,7 +175,7 @@ function OpenRouterPanel() {
         ) : (
           <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (typed.trim()) setKey.mutate(typed.trim()); }}>
             <Input type="password" className="font-mono text-xs" placeholder="sk-or-v1-…" value={typed} onChange={(e) => setTyped(e.target.value)} aria-label={t("Clé API OpenRouter")} />
-            <Button type="submit" variant="primary" busy={setKey.isPending} disabled={!typed.trim()}>{t("Enregistrer la clé")}</Button>
+            <Button type="submit" variant="primary" busy={setKey.isPending} disabled={!typed.trim()} disabledReason={t("Colle d'abord la clé")}>{t("Enregistrer la clé")}</Button>
             {replacing && <Button variant="ghost" onClick={() => setReplacing(false)}>{t("Annuler")}</Button>}
           </form>
         )}

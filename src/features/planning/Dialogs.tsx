@@ -8,6 +8,7 @@ import { Button, cn, Dot, DoneCheck, Field, IconButton, Input, SectionLabel } fr
 import type { PlanEvent, PlanEventKind, PlanTask } from "../../lib/api";
 import { useNow } from "../../lib/hooks";
 import { TimeField } from "../../components/TimeField";
+import { DateField } from "../../components/DateField";
 import { addDays, dayKey, dayStartOf, durInput, endFromClock, fmtDur, freeSlots, hhmm, hhmmOf, MIN, minutesOf, missed, parseDur, PRIORITY, startOfWeek, type PlanPrefs, type RhythmMode, RHYTHMS, withMode, type PlanProject } from "../../lib/plan";
 import { useUi } from "../../lib/store";
 import { usePlanActions, usePlanData, usePlanPrefs } from "./usePlan";
@@ -132,7 +133,7 @@ function EventForm({ draft }: { draft: Partial<PlanEvent> }) {
         {task && <p className="-mt-1 text-xs text-faint">{tr("Contient la tâche « {t} ».", { t: task.title })}</p>}
         <div className="grid grid-cols-[minmax(0,1fr)_110px_110px] gap-2">
           <Field label={tr("Jour")}>
-            <Input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
+            <DateField aria-label={tr("Jour")} value={day} onChange={setDay} />
           </Field>
           <Field label={tr("De")}>
             <TimeField className="w-full" aria-label={tr("Début")} value={minutesOf(from)} onChange={(m) => m !== null && setFrom(hhmmOf(m))} />
@@ -281,7 +282,7 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
             <Input placeholder="none" value={estimate} onChange={(e) => setEstimate(e.target.value)} />
           </Field>
           <Field label="Échéance">
-            <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+            <DateField optional aria-label="Échéance" value={due} onChange={setDue} />
           </Field>
         </div>
         <Field label={tr("Notes")}>

@@ -257,7 +257,7 @@ function ScanPanel({ repos, onClose, onImported }: { repos: RepoInfo[]; onClose:
             <Button size="sm" variant="ghost" onClick={onClose}>
               {t("Annuler")}
             </Button>
-            <Button size="sm" variant="primary" disabled={picked.size === 0} busy={run.isPending} onClick={() => run.mutate()}>
+            <Button size="sm" variant="primary" disabled={picked.size === 0} disabledReason={t("Choisis au moins un sujet")} busy={run.isPending} onClick={() => run.mutate()}>
               Import {picked.size || ""}
             </Button>
           </span>

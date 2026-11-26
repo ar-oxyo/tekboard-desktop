@@ -531,7 +531,7 @@ function ProjectExportDialog({ id, onClose, beforeExport }: { id: string; onClos
   const toast = useUi((s) => s.toast);
   const [repo, setRepo] = useState<string | null>(null);
   return (
-    <Modal open onClose={onClose} title={t("Exporter dans un projet")} description={t("Copie le tableau dans docs/boards/ du projet (fichier .tekboard-board, réimportable). Le tableau reste aussi dans TekBoard.")} width="w-[480px]" footer={<Button variant="primary" disabled={!repo} onClick={async () => { await beforeExport(); try { const p = await api.boardExportToProject(id, repo!); toast({ kind: "ok", title: t("Exporté dans le projet"), detail: p }); onClose(); } catch (e) { toast({ kind: "error", title: t("Export impossible"), detail: asAppError(e).message }); } }}>{t("Exporter")}</Button>}>
+    <Modal open onClose={onClose} title={t("Exporter dans un projet")} description={t("Copie le tableau dans docs/boards/ du projet (fichier .tekboard-board, réimportable). Le tableau reste aussi dans TekBoard.")} width="w-[480px]" footer={<Button variant="primary" disabled={!repo} disabledReason={t("Choisis un projet")} onClick={async () => { await beforeExport(); try { const p = await api.boardExportToProject(id, repo!); toast({ kind: "ok", title: t("Exporté dans le projet"), detail: p }); onClose(); } catch (e) { toast({ kind: "error", title: t("Export impossible"), detail: asAppError(e).message }); } }}>{t("Exporter")}</Button>}>
       <ProjectPicker value={repo} onChange={setRepo} />
     </Modal>
   );

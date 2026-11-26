@@ -56,7 +56,7 @@ export function PackageDialog({ repo }: { repo: string }) {
           <>
             <span className="mr-auto text-xs text-muted">{p ? `${p.included} files · ${formatBytes(p.includedSize)} before compression` : ""}</span>
             <Button variant="ghost" onClick={close}>{t("Annuler")}</Button>
-            <Button variant="primary" busy={create.isPending} disabled={!p || p.included === 0} onClick={() => create.mutate()}>{t("Créer le ZIP")}</Button>
+            <Button variant="primary" busy={create.isPending} disabled={!p || p.included === 0} disabledReason={t("Aucun fichier à inclure")} onClick={() => create.mutate()}>{t("Créer le ZIP")}</Button>
           </>
         )
       }

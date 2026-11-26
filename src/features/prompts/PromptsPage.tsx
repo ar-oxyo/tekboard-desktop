@@ -247,7 +247,7 @@ function PromptEditor({ def }: { def: PromptDef }) {
               <Button variant="primary" icon={<Save className="size-3.5" />} disabled={name === "" || problem !== null || check.isFetching} busy={save.isPending} onClick={() => save.mutate({ name, activate: true })} title="Garde ce texte comme ta version et l'utilise désormais">
                 Enregistrer comme version et l'utiliser
               </Button>
-              <Button disabled={name === "" || problem !== null || check.isFetching} busy={save.isPending} onClick={() => save.mutate({ name, activate: false })}>
+              <Button disabled={name === "" || problem !== null || check.isFetching} disabledReason={name === "" ? t("Donne un nom à ce prompt") : problem} busy={save.isPending} onClick={() => save.mutate({ name, activate: false })}>
                 Enregistrer seulement
               </Button>
               {!dirty && <span className="text-xs text-faint">{t("Le texte par défaut n'est jamais modifié : modifie le texte, nomme-le, et il devient une version à toi.")}</span>}
