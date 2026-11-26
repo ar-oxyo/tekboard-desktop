@@ -8,32 +8,45 @@
 
 > **Projet personnel, non officiel.** TekBoard est une application que je développe seul, dans mon coin : Thibault Eininger, étudiant à Epitech. Elle n'est ni produite, ni validée, ni soutenue par Epitech, et n'a aucun lien avec l'école. « Epitech », « MY Epitech » et les noms des modules appartiennent à leurs propriétaires ; TekBoard ne fait que lire, avec ton accord, les données de ton propre compte.
 
-![Projets](docs/screenshots/projects.png)
+![Aujourd'hui](docs/screenshots/today.png)
 
 ## Ce que fait Tekboard
 
+- **Aujourd'hui** : ta journée sur une seule page : la session en cours, ton logtime, tes crédits, le prochain rendu, le planning du jour et tes projets actifs.
 - **Projets** : tous tes dépôts Epitech au même endroit, même rangés dans des sous-dossiers (`Epitech/Maths/101pong`…), avec leur état git, leur date de rendu et ce qu'il reste à faire. Les copies en double sont repérées, jamais supprimées.
 - **Planning** : un calendrier qui place tes sessions de travail avec des pauses, des catégories à toi, et les rendus de l'école.
-- **École** : synchronisation MY Epitech en un bouton (projets, dates, sujets, résultats), **logtime** de la semaine, et le **Skill Tree** : ta progression en arbre de compétences, d'après les données officielles de MY Epitech.
+- **École** : synchronisation MY Epitech en un bouton (projets, dates, sujets, résultats), **logtime** de la semaine et **Skill Tree** (ta progression en arbre de compétences).
 - **Tests** : tests unitaires, coding style (Banana), clone propre du dépôt, et une moulinette simulée dans un bac à sable.
-- **Brain Dump** : une idée, un bug, une commande ou un lien noté en deux secondes (Ctrl+I, un raccourci global ou `tekboard capture`), sans rien choisir. Tout arrive dans une petite **Inbox** où tu ranges plus tard : tâche, note, snippet, projet, TekShare, Playground. Recherche par mots, `#tag`, `projet:`, `type:` ou date.
-- **Artix** : un assistant qui comprend « j'ai un rendez-vous jeudi à 14 h » et l'ajoute, décompose un sujet en tâches, organise ta semaine. Il fonctionne avec **Claude Code, OpenRouter (modèles gratuits) ou une IA locale** — ou pas d'IA du tout.
+- **Brain Dump** : une idée, un bug, une commande ou un lien noté en deux secondes (Ctrl+I, un raccourci global ou `tekboard capture`). Tout arrive dans l'**Inbox**, où tu ranges plus tard : tâche, note, snippet, projet, TekShare, Playground.
+- **Artix** : un assistant qui comprend « j'ai un rendez-vous jeudi à 14 h » et l'ajoute, décompose un sujet en tâches, organise ta semaine. Il fonctionne avec **Claude Code, OpenRouter (modèles gratuits) ou une IA locale**, ou sans IA du tout.
 - **Labo** :
-  - le **Playground** pour écrire et lancer du C tout de suite (sanitizers, Valgrind, bac à sable) ;
-  - l'**Arena** pour mesurer et comparer des algorithmes ou deux branches : temps, mémoire, instructions, complexité estimée ;
-  - des **tableaux blancs** pour schématiser listes chaînées, arbres, mémoire ou architecture, seul ou à plusieurs.
-- **Connect** (facultatif, désactivé par défaut) : retrouver les TekBoard de ses camarades sur le même réseau local, puis :
-  - partager des ressources avec **TekShare** ;
-  - coder ensemble dans VS Code avec **TekLive** ;
-  - se retrouver dans **TekSpace**, un petit campus en pixel art.
+  - **Playground** : écrire et lancer du C tout de suite (sanitizers, Valgrind, bac à sable) ;
+  - **Arena** : mesurer et comparer des algorithmes ou deux branches (temps, mémoire, instructions, complexité estimée) ;
+  - **Tableaux blancs** : schématiser listes chaînées, arbres, mémoire ou architecture, seul ou à plusieurs.
+- **Connect** (facultatif, désactivé par défaut) : retrouver les TekBoard de tes camarades sur le même réseau local, puis partager avec **TekShare**, coder ensemble dans VS Code avec **TekLive**, ou se retrouver dans **TekSpace**, un petit campus en pixel art.
 - **Doctor** : un diagnostic de ton environnement, avec la solution à chaque problème.
 
 Tout reste sur ton ordinateur : pas de compte TekBoard, pas de serveur, pas de télémétrie. Connect relie directement deux ordinateurs du même réseau, sans passer par Internet.
 
+### Nouveau : la refonte Riso
+
+- **Nouveau design, Riso** : deux encres sur papier, en clair, en sombre ou selon ton système. Moins de cadres, plus de place pour ton contenu.
+- **Quatre ambiances** : Sauge, Ardoise, Prune et Sumi, chacune en clair et en sombre, avec des textes toujours lisibles (contraste 4,5:1 minimum). L'option **Ambiance selon l'heure** passe d'une ambiance de jour à une ambiance du soir. Les anciens designs restent disponibles dans « Obsolètes ».
+- **Aujourd'hui à ta façon** : **Personnaliser** choisit les blocs affichés, leur ordre et les indicateurs. Un guide **Premiers pas** t'accompagne au début, et se masque.
+- **Navigation plus simple** : une entrée par section dans la barre latérale, les onglets dans la barre de page, une barre repliable (Ctrl+B), écran précédent et suivant (Alt+← / Alt+→), tous les raccourcis avec Ctrl+/.
+- **Palette plus utile (Ctrl+K)** : tes projets récents d'abord ; tape le nom d'un projet pour ses actions (fiche, IDE, terminal, Git, tests…).
+- **Annuler partout** : changement de statut, archivage, suppression, tâche cochée… un clic sur **Annuler** dans la notification.
+- **Synchro visible** : la barre latérale indique quand MY Epitech a été synchronisé ; un clic relance.
+- **Animations discrètes**, à couper dans **Réglages → Apparence → Effets et confort** (coupées aussi si ton système demande moins d'animations).
+- **Interface complète en français et en anglais.**
+
+![Les ambiances : Riso, Sauge, Ardoise, Prune et Sumi, en clair et en sombre](docs/screenshots/ambiances.png)
+
 | | |
 | --- | --- |
-| ![Logtime de la semaine](docs/screenshots/logtime.png) | ![Premier lancement](docs/screenshots/onboarding.png) |
-| ![Mises à jour](docs/screenshots/updates.png) | ![Données et sauvegarde](docs/screenshots/data.png) |
+| ![Projets](docs/screenshots/projects.png) | ![Planning, en sombre](docs/screenshots/planning.png) |
+| ![Inbox du Brain Dump](docs/screenshots/inbox.png) | ![Artix, l'assistant](docs/screenshots/artix.png) |
+| ![Logtime de la semaine](docs/screenshots/logtime.png) | ![Réglages d'apparence](docs/screenshots/appearance.png) |
 
 ## Installation rapide
 
@@ -149,7 +162,7 @@ Artix, l'assistant de TekBoard, peut utiliser l'une de ces trois IA. Le choix se
 
 Depuis le menu des applications, ou avec la commande `tekboard`. Au premier lancement, un court assistant te guide (chaque étape facultative se passe) :
 
-1. **Langue et apparence** (français ou anglais, cinq designs).
+1. **Langue et apparence** : français ou anglais, Riso ou l'une des quatre ambiances, en clair ou en sombre.
 2. **Ton environnement** : TekBoard vérifie les outils et explique ce qui manque.
 3. **MY Epitech** : tu te connectes sur le vrai site, dans une fenêtre à part. TekBoard ne voit jamais ton mot de passe.
 4. **Tes dossiers de projets** : TekBoard trouve les dépôts git qu'ils contiennent, sous-dossiers compris. Il ne déplace ni ne modifie rien.
@@ -246,6 +259,7 @@ epiclang et banana-check-repo manquent. Sur Ubuntu : `sudo add-apt-repository pp
 git clone https://github.com/ar-oxyo/tekboard-desktop.git && cd tekboard-desktop
 ./install.sh --dev   # Rust, Node.js et bibliothèques de Tauri, puis compilation et installation du .deb
 npm run app:dev      # application avec rechargement à chaud
+npx vite --port 1420 # interface seule dans le navigateur, avec des données de démonstration
 npm test             # tests du frontend
 npm run test:rust    # tests du backend
 scripts/tests/install_test.sh   # tests du script d'installation (systèmes simulés)
@@ -257,7 +271,7 @@ L'architecture est décrite dans [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## English
 
-TekBoard is an independent personal project by Thibault Eininger, an Epitech student — not an official Epitech product and not affiliated with or endorsed by Epitech. It is a local-first desktop dashboard for Epitech students on Linux: repositories, hand-ins, planning, weekly logtime, MY Epitech sync and Artix, an AI assistant that acts through controlled tools. Install it with one command — `curl -fsSL https://raw.githubusercontent.com/ar-oxyo/tekboard-desktop/main/install.sh | bash` — or download the `.deb` (Ubuntu/Debian) or the AppImage from the [latest release](https://github.com/ar-oxyo/tekboard-desktop/releases/latest). Artix works with Claude Code, OpenRouter (free models, never a paid one without your consent) or a local model through Ollama, or without AI at all. The interface can be switched to English during the first-run setup or in Settings.
+TekBoard is an independent personal project by Thibault Eininger, an Epitech student — not an official Epitech product and not affiliated with or endorsed by Epitech. It is a local-first desktop dashboard for Epitech students on Linux: repositories, hand-ins, planning, weekly logtime, MY Epitech sync and Artix, an AI assistant that acts through controlled tools. Install it with one command — `curl -fsSL https://raw.githubusercontent.com/ar-oxyo/tekboard-desktop/main/install.sh | bash` — or download the `.deb` (Ubuntu/Debian) or the AppImage from the [latest release](https://github.com/ar-oxyo/tekboard-desktop/releases/latest). Artix works with Claude Code, OpenRouter (free models, never a paid one without your consent) or a local model through Ollama, or without AI at all. The interface uses the Riso design and four extra ambiances (Sauge, Ardoise, Prune, Sumi), each in light and dark, and can be switched to English during the first-run setup or in Settings.
 
 ## Licence
 
