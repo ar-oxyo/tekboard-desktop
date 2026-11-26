@@ -173,10 +173,17 @@ pub fn live_install(state: State<'_, AppState>, what: String) -> Result<String> 
 }
 
 #[tauri::command]
-pub async fn live_start(state: State<'_, AppState>, project: String, contacts_only: bool, show_project: bool) -> Result<teklive::Session> {
+pub async fn live_start(state: State<'_, AppState>, project: String, contacts_only: bool, show_project: bool, interface: Option<String>) -> Result<teklive::Session> {
     let dir = crate::commands::project_dir(&state, &project)?;
     let nick = connect::service().map(|s| s.config().profile.nick).unwrap_or_else(|| std::env::var("USER").unwrap_or_default());
-    teklive::start(&dir, &nick, contacts_only, show_project).await
+    teklive::start(&dir, &nick, contacts_only, show_project, interface.as_deref()).await
+}
+
+/// Network interfaces others could reach this computer on (real ones first), to choose
+/// where TekLive listens when there are several.
+#[tauri::command(async)]
+pub fn live_interfaces() -> Vec<netdiag::Iface> {
+    netdiag::interfaces().into_iter().filter(|i| i.kind != "virtual").collect()
 }
 
 #[tauri::command(async)]

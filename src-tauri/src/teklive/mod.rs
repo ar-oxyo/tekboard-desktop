@@ -266,6 +266,10 @@ pub struct Session {
     pub show_project: bool,
     /// Fingerprints of the TekBoard contacts invited.
     pub invited: Vec<String>,
+    /// Network interface the server listens on (`wlp2s0`).
+    pub interface: String,
+    /// Something to know about this session (the usual port was taken…).
+    pub note: Option<String>,
 }
 
 struct Live {
@@ -334,8 +338,20 @@ fn contact_addresses() -> HashSet<IpAddr> {
     crate::connect::service().map(|s| s.view().peers.into_iter().filter(|p| p.trusted && p.online).filter_map(|p| p.addr.and_then(|a| a.parse::<std::net::SocketAddr>().ok()).map(|a| a.ip())).collect()).unwrap_or_default()
 }
 
+/// Port tried first, so the address stays the same from one session to the next.
+pub const PREFERRED_PORT: u16 = 8765;
+
+/// The address others can reach: the interface chosen, else Connect's, else the default
+/// route's, never a virtual interface (Docker, VPN) when a real one exists, never localhost.
+fn pick_ip(interface: Option<&str>) -> Option<IpAddr> {
+    if let Some(i) = interface.filter(|i| !i.trim().is_empty()) {
+        return crate::connect::netdiag::pick(i).map(IpAddr::V4);
+    }
+    crate::connect::service().and_then(|c| c.view().ip).and_then(|ip| ip.parse::<IpAddr>().ok()).or_else(|| crate::connect::netdiag::pick("").map(IpAddr::V4))
+}
+
 /// Starts a session for `project`: relay, VS Code, bridge request.
-pub async fn start(project: &Path, nick: &str, contacts_only: bool, show_project: bool) -> Result<Session> {
+pub async fn start(project: &Path, nick: &str, contacts_only: bool, show_project: bool, interface: Option<&str>) -> Result<Session> {
     if current().is_some_and(|s| s.state != "stopped") {
         return Err(AppError::new("busy", "Une session TekLive est déjà en cours : arrête-la d'abord."));
     }
@@ -343,7 +359,7 @@ pub async fn start(project: &Path, nick: &str, contacts_only: bool, show_project
     if let Some(m) = s.missing.first() {
         return Err(AppError::new("setup", m.clone()));
     }
-    let ip = crate::connect::service().and_then(|c| c.view().ip).and_then(|ip| ip.parse::<IpAddr>().ok()).or_else(|| crate::connect::netdiag::default_ip().map(IpAddr::V4)).ok_or_else(|| AppError::new("no_network", "Aucune adresse réseau : connecte-toi à un réseau"))?;
+    let ip = pick_ip(interface).ok_or_else(|| AppError::new("no_network", "Aucune adresse réseau : connecte-toi à un réseau Wi-Fi ou filaire."))?;
     let on_change: Arc<dyn Fn(&relay::RelayState) + Send + Sync> = Arc::new(|st: &relay::RelayState| {
         let mut cur = lock(&CURRENT);
         if let Some(l) = cur.as_mut() {
@@ -363,19 +379,48 @@ pub async fn start(project: &Path, nick: &str, contacts_only: bool, show_project
         emit();
     });
     let allowed = contacts_only.then(contact_addresses);
-    let relay = relay::Relay::start(ip, allowed, on_change).await?;
-    let server = format!("ws://{}", match relay.addr.ip() {
-        IpAddr::V6(v6) => format!("[{v6}]:{}", relay.addr.port()),
-        IpAddr::V4(v4) => format!("{v4}:{}", relay.addr.port()),
-    });
+    // The usual port when it is free; otherwise one the system picks, and the screen says so.
+    let mut note = None;
+    let relay = match relay::Relay::start(ip, PREFERRED_PORT, allowed.clone(), on_change.clone()).await {
+        Ok(r) => r,
+        Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => {
+            let r = relay::Relay::start(ip, 0, allowed, on_change).await.map_err(|e| AppError::new("relay_failed", format!("Le serveur TekLive ne démarre pas sur {ip} : {e}")))?;
+            note = Some(format!("Le port {PREFERRED_PORT} est déjà utilisé sur cette machine : TekLive écoute sur le port {}.", r.addr.port()));
+            r
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::AddrNotAvailable => return Err(AppError::new("relay_failed", format!("L'adresse {ip} n'est plus disponible : le réseau a changé, choisis une autre interface."))),
+        Err(e) => return Err(AppError::new("relay_failed", format!("Le serveur TekLive ne démarre pas sur {ip} : {e}"))),
+    };
+    let server = server_url(&relay.addr);
     let name = project.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    let session = Session { project: project.to_string_lossy().into_owned(), name, state: "waiting".into(), server: server.clone(), link: None, room: None, peers: vec![], guests: vec![], refused: 0, started_at: chrono::Utc::now().timestamp(), contacts_only, show_project, invited: vec![] };
+    let iface = crate::connect::netdiag::interfaces().into_iter().find(|i| i.ip == ip.to_string()).map(|i| i.name).unwrap_or_default();
+    let session = Session { project: project.to_string_lossy().into_owned(), name, state: "waiting".into(), server: server.clone(), link: None, room: None, peers: vec![], guests: vec![], refused: 0, started_at: chrono::Utc::now().timestamp(), contacts_only, show_project, invited: vec![], interface: iface, note };
     *lock(&CURRENT) = Some(Live { session: session.clone(), relay });
-    write_request(project, json!({"action": "host", "server": server, "userName": nick}))?;
-    let bin = code_bin().ok_or_else(|| AppError::new("no_vscode", "VS Code est introuvable"))?;
-    crate::workspace::spawn_detached(&[bin.to_string_lossy().into_owned(), project.to_string_lossy().into_owned()], project)?;
+    // Anything failing from here closes the relay again: a half-started session used to stay
+    // "busy" and refuse every new start until stopped by hand.
+    let launched = (|| -> Result<()> {
+        write_request(project, json!({"action": "host", "server": server, "userName": nick}))?;
+        let bin = code_bin().ok_or_else(|| AppError::new("no_vscode", "VS Code est introuvable"))?;
+        crate::workspace::spawn_detached(&[bin.to_string_lossy().into_owned(), project.to_string_lossy().into_owned()], project)?;
+        Ok(())
+    })();
+    if let Err(e) = launched {
+        if let Some(l) = lock(&CURRENT).take() {
+            l.relay.stop();
+        }
+        emit();
+        return Err(e);
+    }
     emit();
     Ok(session)
+}
+
+/// `ws://192.168.1.42:8765` (IPv6 between brackets).
+pub fn server_url(addr: &std::net::SocketAddr) -> String {
+    format!("ws://{}", match addr.ip() {
+        IpAddr::V6(v6) => format!("[{v6}]:{}", addr.port()),
+        IpAddr::V4(v4) => format!("{v4}:{}", addr.port()),
+    })
 }
 
 pub fn stop() -> Result<()> {
@@ -476,6 +521,16 @@ pub fn decline(id: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_server_address_is_what_vs_code_expects() {
+        assert_eq!(server_url(&"192.168.1.42:8765".parse().unwrap()), "ws://192.168.1.42:8765");
+        assert_eq!(server_url(&"[fe80::1]:9000".parse().unwrap()), "ws://[fe80::1]:9000");
+        // Never localhost when a network exists.
+        if let Some(ip) = pick_ip(None) {
+            assert!(!ip.is_loopback());
+        }
+    }
 
     #[test]
     fn links_are_built_and_checked_like_the_extension() {

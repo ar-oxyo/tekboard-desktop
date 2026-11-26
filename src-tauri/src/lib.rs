@@ -298,6 +298,7 @@ pub fn run() {
             commands_connect::live_setup,
             commands_connect::live_install,
             commands_connect::live_start,
+            commands_connect::live_interfaces,
             commands_connect::live_stop,
             commands_connect::live_state,
             commands_connect::live_invite,

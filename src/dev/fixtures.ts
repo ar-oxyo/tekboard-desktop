@@ -294,6 +294,10 @@ export const fixtures: Record<string, Fixture> = {
     { id: 2, ts: now - 5 * H, kind: "test", repoPath: repos[1].path, detail: "12/20" },
   ],
   focus_get: null,
-  live_state: null,
+  // ?live=1: a TekLive session running (the usual port was taken).
+  live_state: (_a: Record<string, unknown>, p: URLSearchParams) =>
+    p.has("live") ? { project: repos[0]?.path ?? "/p", name: "secured", state: "live", server: "ws://192.168.1.42:41873", link: "p2p-live-share://ws.k3f9.192.168.1.42:41873/", room: "k3f9", peers: ["host", "g1"], guests: ["192.168.1.57"], refused: 0, startedAt: now - 754, contactsOnly: true, showProject: true, invited: [], interface: "wlp2s0", note: "Le port 8765 est déjà utilisé sur cette machine : TekLive écoute sur le port 41873." } : null,
+  live_setup: { code: "/usr/bin/code", codeVersion: "1.106.2", extension: "0.1.4", bridge: "1.0.0", missing: [] },
+  live_interfaces: [{ name: "wlp2s0", ip: "192.168.1.42", kind: "wifi", default: true }, { name: "enp3s0", ip: "10.0.0.12", kind: "ethernet", default: false }],
   my_status: { windowOpen: false, connected: true, expiresAt: now + 5 * D, account: "camille.martin@epitech.eu", sessionStored: true, windowHidden: true, syncMinutes: 30, lastSync: now - 40 * 60, routes: 9 },
 };

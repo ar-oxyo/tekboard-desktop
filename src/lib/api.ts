@@ -1017,6 +1017,10 @@ export interface LiveSession {
   contactsOnly: boolean;
   showProject: boolean;
   invited: string[];
+  /** Network interface the server listens on. */
+  interface: string;
+  /** Something to know (the usual port was taken…). */
+  note: string | null;
 }
 export interface LiveInvitation {
   id: string;
@@ -1829,7 +1833,8 @@ export const api = {
   shareImport: (id: string, target: ImportTarget) => invoke<Imported>("share_import", { id, target }),
   liveSetup: () => invoke<LiveSetup>("live_setup"),
   liveInstall: (what: "extension" | "bridge") => invoke<string>("live_install", { what }),
-  liveStart: (project: string, contactsOnly: boolean, showProject: boolean) => invoke<LiveSession>("live_start", { project, contactsOnly, showProject }),
+  liveStart: (project: string, contactsOnly: boolean, showProject: boolean, iface: string | null = null) => invoke<LiveSession>("live_start", { project, contactsOnly, showProject, interface: iface }),
+  liveInterfaces: () => invoke<Array<{ name: string; ip: string; kind: string; default: boolean }>>("live_interfaces"),
   liveStop: () => invoke<void>("live_stop"),
   liveState: () => invoke<LiveSession | null>("live_state"),
   liveInvite: (fp: string) => invoke<void>("live_invite", { fp }),
