@@ -1,5 +1,5 @@
 // One icon per screen, shared by the sidebar and the command palette.
-import { CalendarDays, ChartNoAxesColumn, Clock3, FileText, FlaskConical, FlaskRound, FolderGit2, Gamepad2, Gauge, GitBranch, GraduationCap, LayoutTemplate, LibraryBig, MonitorPlay, Network, PawPrint, PenLine, PenTool, Settings, Sun, Users } from "lucide-react";
+import { Calculator, CalendarDays, ChartNoAxesColumn, Clock3, FileText, FlaskConical, FlaskRound, FolderGit2, Gamepad2, Gauge, GitBranch, GraduationCap, LayoutTemplate, LibraryBig, MonitorPlay, Network, PawPrint, PenLine, PenTool, Settings, Sun, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Page } from "../lib/store";
 
@@ -15,6 +15,7 @@ export const PAGE_ICON: Record<Page, ReactNode> = {
   templates: <LayoutTemplate className={ic} />,
   myepitech: <GraduationCap className={ic} />,
   skilltree: <Network className={ic} />,
+  credits: <Calculator className={ic} />,
   logtime: <Clock3 className={ic} />,
   cozy: <PawPrint className={ic} />,
   settings: <Settings className={ic} />,

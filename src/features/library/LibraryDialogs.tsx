@@ -11,7 +11,7 @@ import { api, asAppError, type Catalog, type ImportCandidate, type LibFileState,
 import { formatBytes, tildify } from "../../lib/format";
 import { useHome } from "../../lib/hooks";
 import { useUi } from "../../lib/store";
-import { t } from "../../lib/i18n";
+import { plural, t } from "../../lib/i18n";
 
 // ───────────────────────────── add a library ─────────────────────────────
 
@@ -47,7 +47,7 @@ export function AddLibraryDialog({ onClose, onAdded }: { onClose: () => void; on
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>{t("Annuler")}</Button>
-          <Button variant="primary" busy={add.isPending} disabled={!path.trim() || !name.trim()} onClick={() => add.mutate()}>{t("Ajouter")}</Button>
+          <Button variant="primary" busy={add.isPending} disabled={!path.trim() || !name.trim()} disabledReason={t("Indique un dossier et un nom")} onClick={() => add.mutate()}>{t("Ajouter")}</Button>
         </>
       }
     >
@@ -143,7 +143,7 @@ export function ImportDialog({ libraries, libraryId, paths, onClose, onImported 
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>{t("Annuler")}</Button>
-          <Button variant="primary" busy={run.isPending} disabled={chosen.length === 0} onClick={() => run.mutate()}>Importer {chosen.length || ""} file{chosen.length === 1 ? "" : "s"}</Button>
+          <Button variant="primary" busy={run.isPending} disabled={chosen.length === 0} disabledReason={t("Coche au moins un fichier")} onClick={() => run.mutate()}>{chosen.length ? plural(chosen.length, "Importer {n} fichier", "Importer {n} fichiers") : t("Importer")}</Button>
         </>
       }
     >

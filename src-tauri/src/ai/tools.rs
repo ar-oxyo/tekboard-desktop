@@ -96,6 +96,7 @@ pub const SPECS: &[Spec] = &[
     Spec { name: "list_runs", label: "Historique des vérifications", risk: Risk::Read, description: "Dernières exécutions (tests, Banana, TestRepo, moulinette, analyses) avec leur statut et leur résumé.", schema: || obj(json!({"project": s("Clé du projet"), "kind": s("Type d'exécution"), "limit": n("1 à 20")}), &[]) },
     Spec { name: "get_report", label: "Lecture d'un rapport", risk: Risk::Read, description: "Le rapport complet d'une exécution (id donné par list_runs), avec la fin de son journal.", schema: || obj(json!({"id": n("Id de l'exécution")}), &["id"]) },
     Spec { name: "list_libraries", label: "Liste des bibliothèques", risk: Risk::Read, description: "Les bibliothèques enregistrées dans TekBoard et leur dossier.", schema: none },
+    Spec { name: "my_academic", label: "Lecture du parcours", risk: Risk::Read, description: "Le parcours d'après la dernière synchro MY Epitech : crédits (acquis, en danger, perdus), unités avec note et acquis, examens, notes récentes, et l'âge des données. Chiffres officiels tels que relus : ne les complète jamais, et signale des données anciennes.", schema: none },
     Spec { name: "my_epitech_status", label: "État de MY Epitech", risk: Risk::Read, description: "Si MY Epitech est connecté, la dernière synchronisation, et ce qui manque pour récupérer les sujets.", schema: none },
 ];
 
@@ -234,7 +235,7 @@ fn calendar_items(w: &World, from: i64, to: i64) -> Vec<Value> {
 }
 
 fn rhythm_json(r: &Rhythm) -> Value {
-    json!({"mode": schedule::mode_label(&r.mode), "horaires": format!("{:02}:{:02}–{:02}:{:02}", r.day_start / 60, r.day_start % 60, r.day_end / 60, r.day_end % 60), "joursTravailles": r.work_days, "plafondParJour": schedule::dur(r.max_minutes_per_day), "session": schedule::dur(r.session_minutes), "pause": schedule::dur(r.break_minutes), "pauseLongue": format!("{} après {} blocs", schedule::dur(r.long_break_minutes), r.blocks_before_long_break), "tempsLibreGarde": schedule::dur(r.flex_minutes), "pausesProtegees": r.protected.iter().map(|[a, b]| format!("{:02}:{:02}–{:02}:{:02}", a / 60, a % 60, b / 60, b % 60)).collect::<Vec<_>>(), "margeAvantRendu": format!("{} jour(s)", r.buffer_days)})
+    json!({"mode": schedule::mode_label(&r.mode), "horaires": r.hours_label(), "horairesNote": if r.night() > 0 { "La journée de travail finit le lendemain matin : c'est une disponibilité, pas une obligation. Garde des pauses et du repos." } else { "" }, "joursTravailles": r.work_days, "plafondParJour": schedule::dur(r.max_minutes_per_day), "session": schedule::dur(r.session_minutes), "pause": schedule::dur(r.break_minutes), "pauseLongue": format!("{} après {} blocs", schedule::dur(r.long_break_minutes), r.blocks_before_long_break), "tempsLibreGarde": schedule::dur(r.flex_minutes), "pausesProtegees": r.protected.iter().map(|[a, b]| format!("{:02}:{:02}–{:02}:{:02}", a / 60, a % 60, b / 60, b % 60)).collect::<Vec<_>>(), "margeAvantRendu": format!("{} jour(s)", r.buffer_days)})
 }
 
 fn planned_minutes(w: &World, key: &str, from: i64) -> i64 {
@@ -620,6 +621,21 @@ fn run(state: &AppState, caller: &Caller, name: &str, a: &Value) -> Result<Out> 
             let connected = state.my.lock().unwrap_or_else(|e| e.into_inner()).token.is_some();
             let last: Option<(i64, i64, i64)> = state.conn().query_row("SELECT at, ok, failed FROM my_sync_log ORDER BY at DESC LIMIT 1", [], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?))).ok();
             read(json!({"connecte": connected, "derniereSynchro": last.map(|(at, ok, failed)| json!({"date": schedule::local_iso(at), "routesLues": ok, "echecs": failed})), "conseil": if connected { "La synchronisation récupère aussi les sujets PDF des projets en cours." } else { "Pour récupérer sujets et rendus : École → MY Epitech → Se connecter (une fenêtre du vrai site s'ouvre)." }}))
+        }
+        "my_academic" => {
+            let (_, overview) = crate::commands::load_repos(state)?;
+            let a = crate::mydata::academic(&state.conn(), &overview);
+            let age_h = a.synced_at.map(|at| (chrono::Utc::now().timestamp() - at) / 3600);
+            read(json!({
+                "relu": a.synced_at.map(schedule::local_iso),
+                "ageHeures": age_h,
+                "attention": age_h.filter(|h| *h >= 24).map(|h| format!("Données relues il y a {} j : dis-le, et propose sync_my_epitech avant de conclure.", h / 24)),
+                "credits": {"acquis": a.credits_acquired, "avecAnterieurs": a.credits_total, "enDanger": a.credits_at_risk, "perdus": a.credits_lost},
+                "unites": a.units.iter().map(|u| json!({"titre": u.title, "credits": u.credits, "note": u.grade, "acquis": format!("{}/{}", u.validated, u.total)})).collect::<Vec<_>>(),
+                "examens": a.exams,
+                "notesRecentes": a.marks.iter().take(10).map(|m| json!({"titre": m.title, "note": m.mark, "date": m.date})).collect::<Vec<_>>(),
+                "nonDisponible": a.notes,
+            }))
         }
         other => Err(AppError::new("tool_unknown", format!("Outil inconnu : {other}"))),
     }

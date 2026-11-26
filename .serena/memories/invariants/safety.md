@@ -10,3 +10,6 @@ Les violer = régression grave, même si les tests passent.
 - MY Epitech : GET uniquement, espacés (500 ms) ; ne pas synchroniser les routes qui exposent toute la promo.
 - Données : jamais d'invention (dates de rendu tapées ou rapportées, jamais déduites ; absence dite, pas comptée zéro) ; pas de faux boutons. Dossiers de données/cache en 0700.
 - Connect/TekShare : désactivé par défaut, TLS mutuel à empreinte épinglée, rien n'est exécuté à la réception, quarantaine + contrôles d'archive.
+- Moulinette TekBoard : résultats, jamais de solution (prompts et UI) ; tests Criterion refusés s'ils appellent la libc ou calculent l'attendu avec la fonction testée ; rien n'est écrit dans le projet sans aperçu, jamais d'écrasement.
+- Modération (pseudos, discussion, sujets, objectifs, épingles, musique) : vérifiée côté client ET sur l'hôte TekSpace / la Connect Rust ; aucune donnée envoyée à un service tiers ; mots entiers seulement (pas de sous-chaîne).
+- Musique : lecture seule (MPRIS, ou Spotify avec les scopes de lecture), jeton de rafraîchissement dans `secrets.json`, Client ID fourni par l'utilisateur, relevé seulement pendant un partage ; jamais présentée comme une écoute synchronisée. Pochettes : `i.scdn.co` ou fichier image local du dossier personnel, passées en `data:`.

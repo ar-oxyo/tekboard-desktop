@@ -1,3 +1,4 @@
+import { useStaleMyPrompt } from "../features/myepitech/freshness";
 import { listen } from "@tauri-apps/api/event";
 import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -12,7 +13,7 @@ import { ProjectsPage } from "../features/projects/ProjectsPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
 import { SubjectsPage } from "../features/subjects/SubjectsPage";
 import { TemplatesPage } from "../features/templates/TemplatesPage";
-import { useAutoAmbiance, useColorMode, useMotionPref, useSettings } from "../lib/hooks";
+import { useAccent, useAutoAmbiance, useColorMode, useMotionPref, useSettings } from "../lib/hooks";
 import { THEME_KEY } from "../lib/appearance";
 import { api, asAppError } from "../lib/api";
 
@@ -28,6 +29,7 @@ import { listenSessions } from "../lib/sessionBus";
 import "../features/whiteboard/bus";
 import { doctorProblems } from "../features/settings/DoctorCard";
 import { SkillTreePage } from "../features/skilltree/SkillTreePage";
+import { CreditsPage } from "../features/myepitech/CreditsPage";
 import { PAGES, useUi, type Page } from "../lib/store";
 import { AnalyticsPage } from "../features/analytics/AnalyticsPage";
 import { CozyPage } from "../features/cozy/CozyPage";
@@ -136,6 +138,12 @@ export function App() {
   }, [theme, themeOverride]);
   useColorMode(theme, themeOverride ? undefined : auto?.mode);
   useMotionPref();
+  useAccent();
+  useStaleMyPrompt();
+  // The window and tray icon follow the design shown (not available in the browser preview).
+  useEffect(() => {
+    if ("__TAURI_INTERNALS__" in window) void api.appSetIcon(theme).catch(() => undefined);
+  }, [theme]);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-transparency: reduce)").matches;
@@ -419,6 +427,7 @@ export function App() {
           {page === "analytics" && <AnalyticsPage />}
           {page === "myepitech" && <MyEpitechPage />}
           {page === "skilltree" && <SkillTreePage />}
+          {page === "credits" && <CreditsPage />}
           {page === "logtime" && <LogtimePage />}
           {page === "cozy" && <CozyPage />}
           {page === "templates" && <TemplatesPage />}

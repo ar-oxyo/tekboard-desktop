@@ -241,10 +241,44 @@ pub fn ai_proposal_decide(state: State<'_, AppState>, id: i64, accept: bool, kee
 /// Runs one of Artix's tools from the window (suggestion buttons, palette): same rules,
 /// same journal as when Artix calls it.
 #[tauri::command(async)]
-pub fn ai_tool(state: State<'_, AppState>, name: String, args: Value, thread: Option<i64>) -> Result<Value> {
-    // With a conversation, what the tool proposes shows up in it (a breakdown followed by its planning).
+pub fn ai_tool(state: State<'_, AppState>, name: String, args: Value, thread: Option<i64>, thread_title: Option<String>) -> Result<Value> {
     let caller = tools::Caller { allowed: tools::chat_tools(), thread_id: thread, ..Default::default() };
-    tools::call(&state, &caller, &name, &args)
+    let mut out = tools::call(&state, &caller, &name, &args)?;
+    if let Some(pid) = out["proposalId"].as_i64() {
+        let tid = attach_proposal(&state.conn(), pid, thread, thread_title.as_deref(), &out)?;
+        if let Some(tid) = tid {
+            out["threadId"] = json!(tid);
+        }
+        crate::notify::changed(&["ai"]);
+    }
+    Ok(out)
+}
+
+/// A proposal made from the window goes into a conversation as a message of its own: the
+/// one given, or the one named `title` (one per planned week), so it shows where it belongs,
+/// Artix sees it at the next turn, and the pending one it replaces is closed instead of
+/// piling up.
+fn attach_proposal(conn: &rusqlite::Connection, pid: i64, thread: Option<i64>, title: Option<&str>, out: &Value) -> Result<Option<i64>> {
+    let tid = match (thread, title.map(str::trim).filter(|t| !t.is_empty())) {
+        (Some(t), _) => t,
+        (None, Some(title)) => chat::thread_named(conn, title)?,
+        (None, None) => return Ok(None),
+    };
+    let kind: String = conn.query_row("SELECT kind FROM ai_proposals WHERE id = ?1", [pid], |r| r.get(0))?;
+    let now = now();
+    conn.execute(
+        "UPDATE ai_proposals SET status = 'rejected', outcome = ?3, decided_at = ?4 WHERE thread_id = ?1 AND kind = ?2 AND status = 'pending' AND id <> ?5",
+        rusqlite::params![tid, kind, json!({"accepted": false, "superseded": true}).to_string(), now, pid],
+    )?;
+    conn.execute("UPDATE ai_proposals SET thread_id = ?1 WHERE id = ?2", rusqlite::params![tid, pid])?;
+    let n = out["changements"].as_u64().unwrap_or(0);
+    let unplaced = out["nonPlace"].as_array().map_or(0, Vec::len);
+    let mut text = format!("Voici une proposition : {n} changement{}. Décoche ce que tu ne veux pas, puis applique.", if n > 1 { "s" } else { "" });
+    if unplaced > 0 {
+        text.push_str(&format!(" {unplaced} tâche{} sans créneau.", if unplaced > 1 { "s restent" } else { " reste" }));
+    }
+    chat::note(conn, tid, &text, &json!({"proposals": [pid], "origin": "tekboard"}))?;
+    Ok(Some(tid))
 }
 
 // ───────────────────────────── subjects ─────────────────────────────
@@ -381,4 +415,34 @@ pub fn start_background(app: tauri::AppHandle) {
             std::thread::sleep(std::time::Duration::from_secs(30));
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn proposal(conn: &rusqlite::Connection) -> i64 {
+        conn.execute("INSERT INTO ai_proposals (thread_id, kind, title, rationale, payload, created_at) VALUES (NULL, 'schedule', 'Semaine', '', '{}', 1)", []).unwrap();
+        conn.last_insert_rowid()
+    }
+
+    #[test]
+    fn a_week_plan_lands_in_one_conversation_and_replaces_the_pending_one() {
+        let conn = crate::db::open_in_memory().unwrap();
+        let out = json!({"changements": 3, "nonPlace": [{"title": "x"}]});
+        let a = proposal(&conn);
+        let t1 = attach_proposal(&conn, a, None, Some("Semaine du 23/11"), &out).unwrap().unwrap();
+        let b = proposal(&conn);
+        let t2 = attach_proposal(&conn, b, None, Some("Semaine du 23/11"), &out).unwrap().unwrap();
+        assert_eq!(t1, t2, "same week, same conversation");
+        let status = |id: i64| conn.query_row("SELECT status FROM ai_proposals WHERE id = ?1", [id], |r| r.get::<_, String>(0)).unwrap();
+        assert_eq!((status(a).as_str(), status(b).as_str()), ("rejected", "pending"));
+        let msgs = chat::messages(&conn, t1).unwrap();
+        assert_eq!(msgs.len(), 2);
+        assert_eq!(msgs[1].meta["proposals"], json!([b]));
+        assert!(msgs[1].text.contains("3 changements") && msgs[1].text.contains("1 tâche reste sans créneau"), "{}", msgs[1].text);
+        // Without a conversation or a title, nothing is attached.
+        let c = proposal(&conn);
+        assert!(attach_proposal(&conn, c, None, Some("  "), &out).unwrap().is_none());
+    }
 }

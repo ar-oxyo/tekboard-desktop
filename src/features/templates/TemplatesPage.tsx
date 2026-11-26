@@ -267,7 +267,7 @@ function ImportDialog({ source, onClose, onImported }: { source: string; onClose
           <Button variant="ghost" onClick={onClose}>
             {t("Annuler")}
           </Button>
-          <Button variant="primary" busy={run.isPending} disabled={!name.trim()} onClick={() => run.mutate()}>
+          <Button variant="primary" busy={run.isPending} disabled={!name.trim()} disabledReason={t("Donne un nom au projet")} onClick={() => run.mutate()}>
             Importer
           </Button>
         </>

@@ -1,14 +1,14 @@
 // Arena results: curves (time, CPU, memory, instructions), estimated complexity with its
 // confidence, the results table, hottest functions, heap, the data used, the hypotheses
 // (read from the code — never presented as measurements) and the limits of the run.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangle, FileSearch, Flame, Lightbulb, Sparkles } from "lucide-react";
-import type { ArenaResults, JobView } from "../../lib/api";
+import type { ArenaHypothesis, ArenaResults, JobView } from "../../lib/api";
 import { LineChart } from "../../components/charts/LineChart";
 import { Badge, Button, cn, Dot, Spinner } from "../../components/ui";
 import { CodeView } from "../../components/DiffView";
 import { bytes, compact, duration } from "../../lib/charts";
-import { chartSeries, fitLabel, ratioAt, seriesLabel, type Metric } from "../../lib/arena";
+import { chartSeries, fitLabel, ratioAt, seriesLabel, splitHypotheses, type Metric } from "../../lib/arena";
 import { Markdown } from "../artix/Markdown";
 import { t } from "../../lib/i18n";
 
@@ -45,7 +45,6 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
   const fmt = (v: number) => (metric === "rss" ? bytes(v * 1024) : metric === "ir" ? compact(v) : duration(v));
   const running = job?.status === "running";
   const ratio = r.variants.length === 2 ? ratioAt(r.series.find((s) => s.variant === 0), r.series.find((s) => s.variant === 1)) : null;
-  const heur = r.hypotheses.filter((h) => (h.provenance ?? "heuristique") === "heuristique");
   return (
     <div className="space-y-4">
       {job && (
@@ -57,6 +56,7 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
         </div>
       )}
       {showLog && job && <CodeView text={job.log || "…"} className="max-h-56 rounded-md" />}
+      {running && r.current && <Profiling r={r} />}
 
       {series.length > 0 ? (
         <section className="card p-3">
@@ -72,7 +72,6 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
             </label>
           </div>
           <LineChart series={series} xLabel={t("taille n")} yLabel={metrics.find((m) => m[0] === metric)?.[1] ?? ""} formatY={fmt} logX={logScale} logY={logScale} />
-          {metric === "wall" && <p className="mt-1 text-2xs text-faint">{t("Médiane des exécutions ; la bande montre le minimum et le maximum.")}</p>}
         </section>
       ) : running ? (
         <p className="flex items-center gap-2 text-sm text-muted">
@@ -82,7 +81,7 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
 
       {r.series.some((s) => s.fitTime || s.fitIr) && (
         <section className="card p-3">
-          <h3 className="mb-2 text-xs text-faint">{t("Complexité estimée (expérimentale)")}</h3>
+          <h3 className="mb-2 text-xs text-faint" title={t("Ajustement par moindres carrés sur les tailles mesurées. « ? » : le modèle suivant est trop proche pour conclure. Survole un badge pour le détail.")}>{t("Complexité estimée (expérimentale)")}</h3>
           <ul className="space-y-1.5">
             {r.series.map((s) => {
               const ft = fitLabel(s.fitTime);
@@ -114,7 +113,6 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
                 : t("À n = {n}, {b} est {x}× plus rapide que {a}.", { n: compact(ratio.n), a: r.variants[0], b: r.variants[1], x: (1 / ratio.ratio).toFixed(2) })}
             </p>
           )}
-          <p className="mt-1 text-2xs text-faint">{t("Ajustement par moindres carrés sur les tailles mesurées. « ? » : le modèle suivant est trop proche pour conclure. Survole un badge pour le détail.")}</p>
         </section>
       )}
 
@@ -202,26 +200,7 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
         </section>
       )}
 
-      {(heur.length > 0 || r.hypotheses.length > heur.length) && (
-        <section className="card p-3">
-          <h3 className="mb-1 flex items-center gap-1.5 text-xs text-faint">
-            <Lightbulb className="size-3.5" /> {t("Hypothèses (lues dans le code, pas mesurées)")}
-          </h3>
-          <p className="mb-2 text-2xs text-faint">{t("Des pistes à confirmer avec les mesures ci-dessus : une boucle imbriquée n'est lente que si elle parcourt beaucoup de données.")}</p>
-          <ul className="space-y-1">
-            {r.hypotheses.slice(0, 30).map((h, i) => (
-              <li key={i} className="flex items-start gap-2 text-xs">
-                <Badge tone={h.weight === "high" ? "warn" : "neutral"}>{h.provenance === "artix" ? "Artix" : t("lecture du code")}</Badge>
-                <span className="min-w-0 flex-1 text-fg">{h.message}</span>
-                <span className="shrink-0 font-mono text-2xs text-faint">
-                  {h.function}() · {h.file}
-                  {h.line ? `:${h.line}` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {r.hypotheses.length > 0 && <Hypotheses r={r} />}
 
       {r.inputs.length > 0 && (
         <details className="card p-3">
@@ -241,19 +220,19 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
         </details>
       )}
 
-      {(r.notes.length > 0 || r.machine?.cpu) && (
+      {r.notes.length > 0 && (
         <section className="space-y-1 text-xs text-muted">
           {r.notes.map((n, i) => (
             <p key={i} className="flex gap-1.5">
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" /> {n}
             </p>
           ))}
-          {r.machine?.cpu && (
-            <p className="text-faint">
-              {t("Mesuré sur {cpu} ({c} cœurs, charge {l}). Les temps varient d'une machine et d'un moment à l'autre ; les instructions comptées, non.", { cpu: r.machine.cpu, c: r.machine.cores, l: r.machine.load ?? "?" })}
-            </p>
-          )}
         </section>
+      )}
+      {r.machine?.cpu && (
+        <p className="text-2xs text-faint" title={t("Les temps varient d'une machine et d'un moment à l'autre ; les instructions comptées, non.")}>
+          {t("Mesuré sur {cpu} ({c} cœurs, charge {l})", { cpu: r.machine.cpu, c: r.machine.cores, l: r.machine.load ?? "?" })}
+        </p>
       )}
 
       {!running && r.series.length > 0 && (
@@ -264,9 +243,78 @@ export function Results({ r, job, report, reportBusy, onReport, reportDisabled }
               {report ? t("Réécrire le rapport") : t("Écrire le rapport")}
             </Button>
           </div>
-          {report ? <Markdown text={report} className="mt-2 text-sm" /> : <p className="mt-1 text-xs text-muted">{t("Artix explique ce qui ralentit le programme à partir des seules mesures ci-dessus, avec les preuves, les limites et les compromis. Il ne modifie pas le code.")}</p>}
+          {report ? <Markdown text={report} className="mt-2 text-sm" /> : <p className="mt-1 text-xs text-muted">{t("Ce qui ralentit le programme, d'après ces mesures seulement. Le code n'est pas modifié.")}</p>}
         </section>
       )}
     </div>
+  );
+}
+
+/** The Valgrind run in progress: which tool, which size, for how long and up to when. */
+function Profiling({ r }: { r: ArenaResults }) {
+  const c = r.current!;
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const s = r.series.find((x) => x.variant === c.variant && x.scenario === c.scenario);
+  const elapsed = Math.max(0, now - c.startedAt);
+  return (
+    <p className="flex flex-wrap items-center gap-2 text-sm text-muted" title={t("Valgrind ralentit le programme de 20 à 100 fois. Au-delà de la limite, la taille est abandonnée et l'analyse continue.")}>
+      <Spinner />
+      <span className="text-fg">{c.tool}</span>
+      {s && <span>{seriesLabel(r, s)}</span>}
+      <span>· n = {compact(c.n)}</span>
+      <span className="tabular-nums">· {t("{e} s sur {l} s au plus", { e: elapsed, l: c.limitS })}</span>
+    </p>
+  );
+}
+
+function HypothesisRow({ h }: { h: ArenaHypothesis }) {
+  return (
+    <li className="flex items-start gap-2 text-xs">
+      {h.provenance === "artix" ? <Badge>Artix</Badge> : <Dot tone={h.weight === "high" ? "warn" : "neutral"} />}
+      <span className="min-w-0 flex-1 text-fg">{h.message}</span>
+      {(h.count ?? 1) > 1 && <span className="shrink-0 text-2xs text-faint" title={t("Même constat à plusieurs endroits")}>×{h.count}</span>}
+      {(h.seenIn?.length ?? 0) > 1 && <span className="shrink-0 text-2xs text-faint">{h.seenIn!.join(" · ")}</span>}
+      <span className="shrink-0 font-mono text-2xs text-faint">
+        {h.function}(){h.scope !== "library" && <> · {h.file}{h.line ? `:${h.line}` : ""}</>}
+      </span>
+    </li>
+  );
+}
+
+/** Hypotheses read from the code: the project's own first; libraries apart, folded, merged. */
+function Hypotheses({ r }: { r: ArenaResults }) {
+  const { project, library } = splitHypotheses(r.hypotheses);
+  const [all, setAll] = useState(false);
+  const shown = all ? project : project.slice(0, 8);
+  return (
+    <section className="card p-3">
+      <h3 className="mb-2 flex items-center gap-1.5 text-xs text-faint" title={t("Des pistes à confirmer avec les mesures : une boucle imbriquée n'est lente que si elle parcourt beaucoup de données.")}>
+        <Lightbulb className="size-3.5" /> {t("Hypothèses")} <span className="text-2xs">· {t("lues dans le code, pas mesurées")}</span>
+      </h3>
+      {project.length > 0 ? (
+        <ul className="space-y-1">
+          {shown.map((h, i) => <HypothesisRow key={i} h={h} />)}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted">{t("Rien de suspect dans le code du projet.")}</p>
+      )}
+      {project.length > shown.length && (
+        <button type="button" className="mt-1 text-xs text-accent hover:underline" onClick={() => setAll(true)}>
+          {t("Voir les {n} autres", { n: project.length - shown.length })}
+        </button>
+      )}
+      {library.length > 0 && (
+        <details className="mt-2 border-t border-ink/6 pt-2">
+          <summary className="cursor-pointer text-xs text-muted">{t("Bibliothèques et dépendances ({n})", { n: library.length })}</summary>
+          <ul className="mt-1.5 space-y-1">
+            {library.map((h, i) => <HypothesisRow key={i} h={h} />)}
+          </ul>
+        </details>
+      )}
+    </section>
   );
 }

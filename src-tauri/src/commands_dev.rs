@@ -352,6 +352,59 @@ pub fn testrepo_env_open(state: State<'_, AppState>, name: String, terminal: boo
     }
 }
 
+// ───────────────────────────── TekBoard moulinette ─────────────────────────────
+
+/// The plan and the last report of the TekBoard moulinette for a project.
+#[tauri::command(async)]
+pub fn mouli_state(state: State<'_, AppState>, repo: String) -> Result<serde_json::Value> {
+    let dir = repo_dir(&state, &repo)?;
+    let (suite, report) = crate::mouli::load(&state.conn(), &dir.to_string_lossy())?;
+    Ok(serde_json::json!({"suite": suite, "report": report}))
+}
+
+/// Reads the subject and the signatures, and asks Artix for a test plan (one AI call).
+#[tauri::command(async)]
+pub fn mouli_analyze(state: State<'_, AppState>, repo: String) -> Result<u64> {
+    let dir = repo_dir(&state, &repo)?;
+    crate::ai::provider::require(crate::ai::provider::Feature::Text)?;
+    let key = dir.to_string_lossy().into_owned();
+    if let Some(id) = state.jobs.active("mouli_plan", Some(&key)) {
+        return Ok(id);
+    }
+    let subject = crate::ai::agents::subject_text(&state, &dir);
+    let db = state.db.clone();
+    let title = title_for(&dir, "Moulinette TekBoard · plan");
+    Ok(state.jobs.start(state.db.clone(), "mouli_plan", Some(key), title, crate::mouli::ANALYZE_STEPS, move |job| crate::mouli::analyze_in_job(job, &db, &dir, subject)))
+}
+
+/// Runs the plan (all of it, or the ids in `only`) in the sandbox, without AI.
+#[tauri::command(async)]
+pub fn mouli_run(state: State<'_, AppState>, repo: String, only: Option<Vec<String>>) -> Result<u64> {
+    let dir = repo_dir(&state, &repo)?;
+    let key = dir.to_string_lossy().into_owned();
+    if let Some(id) = state.jobs.active("mouli_run", Some(&key)) {
+        return Ok(id);
+    }
+    let (db, cache) = (state.db.clone(), state.cache_dir.clone());
+    let title = title_for(&dir, "Moulinette TekBoard");
+    Ok(state.jobs.start(state.db.clone(), "mouli_run", Some(key), title, crate::mouli::RUN_STEPS, move |job| crate::mouli::run_in_job(job, &db, &dir, &cache, only)))
+}
+
+#[tauri::command(async)]
+pub fn mouli_toggle(state: State<'_, AppState>, repo: String, ids: Vec<String>, enabled: bool) -> Result<crate::mouli::Suite> {
+    let dir = repo_dir(&state, &repo)?;
+    crate::mouli::set_enabled(&state.conn(), &dir.to_string_lossy(), &ids, enabled, crate::commands::now())
+}
+
+/// Writes generated Criterion files into the project's `tests/` (never over an existing file).
+#[tauri::command(async)]
+pub fn mouli_export(state: State<'_, AppState>, repo: String, names: Vec<String>) -> Result<serde_json::Value> {
+    let dir = repo_dir(&state, &repo)?;
+    let (suite, _) = crate::mouli::load(&state.conn(), &dir.to_string_lossy())?;
+    let suite = suite.ok_or_else(|| AppError::new("no_suite", "Aucun plan de tests pour ce projet."))?;
+    crate::mouli::export(&dir, &suite.files, &names)
+}
+
 // ───────────────────────────── pre-check and Claude Code ─────────────────────────────
 
 #[tauri::command(async)]

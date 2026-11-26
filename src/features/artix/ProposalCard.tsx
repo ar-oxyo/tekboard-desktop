@@ -1,6 +1,7 @@
-// A plan waiting for the user's decision: each change can be unticked, the work it adds is
-// shown per day against the rhythm's ceiling, and nothing happens before "Appliquer".
-import { AlertTriangle, Check, X } from "lucide-react";
+// A plan waiting for the user's decision, compact: one line per day with the work it adds
+// against the rhythm's ceiling, the changes of a day folded under it, each one can be
+// unticked, and nothing happens before "Appliquer".
+import { AlertTriangle, Check, ChevronRight, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button, cn } from "../../components/ui";
 import type { ScheduleAction } from "../../lib/api";
@@ -25,6 +26,9 @@ interface Props {
   alternate?: { label: string; onAccept: (keep: number[]) => void };
 }
 
+const startOf = (a: ScheduleAction): number | null => ("start" in a && typeof a.start === "string" ? fromLocalIso(a.start) : null);
+const minutesOf = (a: ScheduleAction): number => (a.type === "create_session" ? (fromLocalIso(a.end) - fromLocalIso(a.start)) / MIN : 0);
+
 export function ProposalCard({ title, rationale, warnings, actions, origin, status, outcome, busy, onDecide, acceptLabel, alternate }: Props) {
   const data = usePlanData();
   const [off, setOff] = useState<Set<number>>(new Set());
@@ -36,74 +40,100 @@ export function ProposalCard({ title, rationale, warnings, actions, origin, stat
           const [s, e] = [fromLocalIso(a.start), fromLocalIso(a.end)];
           const self = a.type === "move_event" ? `p${a.id}` : null;
           const hit = data.items.find((it) => it.id !== self && !it.allDay && it.kind !== "campus" && it.kind !== "reminder" && it.kind !== "deadline" && it.kind !== "start" && it.start < e && it.end > s);
-          if (Number.isNaN(s) || Number.isNaN(e) || e <= s) clash = "heure invalide";
-          else if (hit) clash = `chevauche « ${hit.title} »`;
-          else if (s < Date.now() - 5 * MIN) clash = "dans le passé";
+          if (Number.isNaN(s) || Number.isNaN(e) || e <= s) clash = t("heure invalide");
+          else if (hit) clash = t("chevauche « {t} »", { t: hit.title });
+          else if (s < Date.now() - 5 * MIN) clash = t("dans le passé");
         }
-        return { a, i, d: describeAction(a, data.projects, data.state.events), clash };
+        const start = startOf(a);
+        return { a, i, d: describeAction(a, data.projects, data.state.events), clash, day: start !== null && !Number.isNaN(start) ? dayKey(start) : null, minutes: minutesOf(a) };
       }),
     [actions, data.items, data.projects, data.state.events],
   );
+  // One group per day (in order), then the changes without a date.
+  const groups = useMemo(() => {
+    const m = new Map<string, typeof rows>();
+    for (const r of rows) m.set(r.day ?? "", [...(m.get(r.day ?? "") ?? []), r]);
+    return [...m.entries()].sort(([a], [b]) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b)));
+  }, [rows]);
+  const [open, setOpen] = useState<Set<string>>(() => new Set(rows.length <= 4 ? groups.map(([k]) => k) : []));
   const chosen = rows.filter((r) => !off.has(r.i));
-  // Work added per day, against the ceiling.
-  const perDay = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const r of chosen) if (r.a.type === "create_session") m.set(dayKey(fromLocalIso(r.a.start)), (m.get(dayKey(fromLocalIso(r.a.start))) ?? 0) + (fromLocalIso(r.a.end) - fromLocalIso(r.a.start)) / MIN);
-    return [...m.entries()].sort();
-  }, [chosen]);
+  const totalMin = chosen.reduce((s, r) => s + r.minutes, 0);
+  const sessions = chosen.filter((r) => r.a.type === "create_session").length;
   const ceiling = data.prefs.maxMinutesPerDay;
   const decided = status !== "pending";
+  const toggle = (ids: number[], on: boolean) => setOff((s) => { const n = new Set(s); for (const i of ids) (on ? n.delete(i) : n.add(i)); return n; });
+  const clashes = rows.filter((r) => r.clash).length;
   return (
-    <section className={cn("mt-2 overflow-hidden rounded-xl border", decided ? "border-ink/7 opacity-80" : "border-accent/35 bg-accent-soft/30")}>
-      <header className="flex items-start gap-2 px-3 pt-2.5 pb-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">{title}</p>
-          {rationale && <p className="mt-0.5 text-xs text-muted">{rationale}</p>}
+    <section className={cn("mt-2 overflow-hidden rounded-xl border", decided ? "border-ink/7 opacity-80" : "border-accent/35 bg-accent-soft/25")}>
+      <header className="px-3 pt-2.5 pb-2">
+        <div className="flex items-start gap-2">
+          <p className="min-w-0 flex-1 text-sm font-medium">{title}</p>
+          <span className="shrink-0 pt-0.5 text-2xs text-faint" title={rationale ?? undefined}>{origin === "auto" ? t("calculé par TekBoard") : t("vérifié par le moteur")}</span>
         </div>
-        <span className="shrink-0 pt-0.5 text-2xs text-faint">{origin === "auto" ? t("calculé par TekBoard") : t("vérifié par le moteur")}</span>
-      </header>
-      {warnings?.map((w) => (
-        <p key={w} className="flex items-start gap-1.5 px-3 pb-1.5 text-xs text-warn">
-          <AlertTriangle className="mt-0.5 size-3 shrink-0" /> {w}
+        <p className="mt-0.5 text-xs text-muted tabular-nums">
+          {[sessions > 0 ? t("{n} séance(s)", { n: sessions }) : null, totalMin > 0 ? fmtDur(totalMin) : null, groups.filter(([k]) => k).length > 1 ? t("{n} jours", { n: groups.filter(([k]) => k).length }) : null, rows.length - sessions > 0 ? t("{n} autre(s) changement(s)", { n: rows.length - sessions }) : null].filter(Boolean).join(" · ")}
+          {clashes > 0 && <span className="text-warn"> · {t("{n} à vérifier", { n: clashes })}</span>}
         </p>
-      ))}
-      <ul className="max-h-72 overflow-y-auto border-t border-ink/6 py-1">
-        {rows.map(({ a, i, d, clash }) => (
-          <li key={i}>
-            <label className={cn("row-hover flex items-start gap-2 px-3 py-1.5 text-sm", !decided && "cursor-pointer")}>
-              {!decided && <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={!off.has(i)} onChange={() => setOff((s) => (s.has(i) ? new Set([...s].filter((x) => x !== i)) : new Set([...s, i])))} />}
-              <span className="w-16 shrink-0 text-xs text-faint">{d.verb}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate">{d.text}</span>
-                {d.when && <span className="block truncate font-mono text-2xs text-muted">{d.when}</span>}
-                {clash && (
-                  <span className="flex items-center gap-1 text-2xs text-warn">
-                    <AlertTriangle className="size-3" /> {clash}
-                  </span>
-                )}
-              </span>
-              {a.type === "create_session" && <span className="shrink-0 font-mono text-2xs text-faint">{fmtDur((fromLocalIso(a.end) - fromLocalIso(a.start)) / MIN)}</span>}
-            </label>
-          </li>
-        ))}
-      </ul>
-      {perDay.length > 0 && (
-        <div className="flex flex-col gap-1 border-t border-ink/6 px-3 py-2">
-          {perDay.map(([day, added]) => {
-            const pct = Math.min(100, (added / ceiling) * 100);
-            return (
-              <div key={day} className="flex items-center gap-2 text-2xs text-muted">
-                <span className="w-20 shrink-0">{new Date(fromLocalIso(`${day}T12:00`)).toLocaleDateString(locale(), { weekday: "short", day: "numeric" })}</span>
-                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink/6">
-                  <span className={cn("block h-full rounded-full", pct > 95 ? "bg-warn" : "bg-accent")} style={{ width: `${pct}%` }} />
-                </span>
-                <span className="w-20 shrink-0 text-right font-mono">+{fmtDur(added)}</span>
-              </div>
-            );
-          })}
-          <p className="text-3xs text-faint">{t("Barre : travail ajouté face au plafond de {d} par jour.", { d: fmtDur(ceiling) })}</p>
-        </div>
+      </header>
+      {(warnings?.length ?? 0) > 0 && (
+        <details className="border-t border-ink/6 px-3 py-1.5 text-xs text-warn">
+          <summary className="flex cursor-pointer items-center gap-1.5"><AlertTriangle className="size-3 shrink-0" /> {t("{n} sans créneau", { n: warnings!.length })}</summary>
+          <ul className="mt-1 space-y-0.5 pl-4.5">{warnings!.map((w) => <li key={w}>{w}</li>)}</ul>
+        </details>
       )}
+      <ul className="max-h-80 overflow-y-auto border-t border-ink/6">
+        {groups.map(([day, list]) => {
+          const added = list.filter((r) => !off.has(r.i)).reduce((s, r) => s + r.minutes, 0);
+          const pct = Math.min(100, (added / Math.max(1, ceiling)) * 100);
+          const all = list.every((r) => !off.has(r.i));
+          const some = list.some((r) => !off.has(r.i));
+          const isOpen = open.has(day);
+          return (
+            <li key={day || "other"} className="border-b border-ink/5 last:border-0">
+              <div className="flex items-center gap-2 px-3 py-1.5 text-xs">
+                {!decided && <input type="checkbox" className="accent-(--color-accent)" aria-label={t("Garder ce jour")} checked={all} ref={(el) => { if (el) el.indeterminate = some && !all; }} onChange={() => toggle(list.map((r) => r.i), !all)} />}
+                <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setOpen((s) => { const n = new Set(s); if (n.has(day)) n.delete(day); else n.add(day); return n; })} aria-expanded={isOpen}>
+                  <ChevronRight className={cn("size-3 shrink-0 text-faint transition-transform", isOpen && "rotate-90")} />
+                  <span className="w-28 shrink-0 truncate text-fg">{day ? new Date(fromLocalIso(`${day}T12:00`)).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" }) : t("Autres changements")}</span>
+                  {day && added > 0 ? (
+                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink/6" title={t("Travail ajouté face au plafond de {d} par jour", { d: fmtDur(ceiling) })}>
+                      <span className={cn("block h-full rounded-full", pct > 95 ? "bg-warn" : "bg-accent")} style={{ width: `${pct}%` }} />
+                    </span>
+                  ) : (
+                    <span className="flex-1" />
+                  )}
+                  <span className="w-16 shrink-0 text-right font-mono text-2xs text-muted">{added > 0 ? `+${fmtDur(added)}` : t("{n} chgt", { n: list.length })}</span>
+                  {list.some((r) => r.clash) && <AlertTriangle className="size-3 shrink-0 text-warn" />}
+                </button>
+              </div>
+              {isOpen && (
+                <ul className="pb-1">
+                  {list.map(({ a, i, d, clash }) => (
+                    <li key={i}>
+                      <label className={cn("row-hover flex items-start gap-2 py-1 pr-3 pl-9 text-sm", !decided && "cursor-pointer", off.has(i) && "opacity-50")}>
+                        {!decided && <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={!off.has(i)} onChange={() => toggle([i], off.has(i))} />}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate">{d.text}</span>
+                          <span className="block truncate text-2xs text-muted">
+                            {d.verb}
+                            {d.when && <span className="font-mono"> · {d.when}</span>}
+                          </span>
+                          {clash && (
+                            <span className="flex items-center gap-1 text-2xs text-warn">
+                              <AlertTriangle className="size-3" /> {clash}
+                            </span>
+                          )}
+                        </span>
+                        {a.type === "create_session" && <span className="shrink-0 font-mono text-2xs text-faint">{fmtDur(minutesOf(a))}</span>}
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
       <footer className="flex items-center gap-2 border-t border-ink/6 px-3 py-2">
         {decided ? (
           <span className={cn("flex items-center gap-1.5 text-xs", status === "accepted" ? "text-ok" : "text-muted")}>
@@ -117,11 +147,11 @@ export function ProposalCard({ title, rationale, warnings, actions, origin, stat
             <Button size="sm" variant="ghost" disabled={busy} onClick={() => onDecide?.(false, [])}>
               {t("Refuser")}
             </Button>
-            <Button size="sm" variant={alternate ? "secondary" : "primary"} icon={<Check className="size-3.5" />} busy={busy} disabled={chosen.length === 0} title={chosen.length === 0 ? t("Coche au moins un changement") : undefined} onClick={() => onDecide?.(true, chosen.map((r) => r.i))}>
+            <Button size="sm" variant={alternate ? "secondary" : "primary"} icon={<Check className="size-3.5" />} busy={busy} disabled={chosen.length === 0} disabledReason={t("Coche au moins un changement")} onClick={() => onDecide?.(true, chosen.map((r) => r.i))}>
               {acceptLabel ?? t("Appliquer")}
             </Button>
             {alternate && (
-              <Button size="sm" variant="primary" busy={busy} disabled={chosen.length === 0} onClick={() => alternate.onAccept(chosen.map((r) => r.i))}>
+              <Button size="sm" variant="primary" busy={busy} disabled={chosen.length === 0} disabledReason={t("Coche au moins un changement")} onClick={() => alternate.onAccept(chosen.map((r) => r.i))}>
                 {alternate.label}
               </Button>
             )}

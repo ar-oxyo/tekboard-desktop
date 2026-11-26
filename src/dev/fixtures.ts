@@ -1,6 +1,10 @@
 // Development only: demonstration data for the browser mock (see mockIPC.ts). Plausible
 // values for a second-year student mid-semester; nothing here ever reaches a real build.
 import type { BoardItem, EnvStatus, PlanState, RepoInfo, Settings } from "../lib/api";
+import { skillTree } from "./skilltreeFixture";
+import { mouliReport, mouliSuite } from "./mouliFixture";
+import { compareJob, drafts } from "./playgroundFixture";
+import { boards } from "./boardsFixture";
 
 type Fixture = unknown | ((args: Record<string, unknown>, params: URLSearchParams) => unknown);
 
@@ -207,6 +211,30 @@ const analytics = {
   soloRepos: 3,
   sharedRepos: 2,
 };
+const unitTitles = ["B-CPE-110 Programmation élémentaire en C", "B-PSU-100 Programmation système Unix", "B-MUL-100 Programmation graphique", "B-CPE-200 Algorithmique", "B-PSU-200 Mini-shell", "B-MAT-100 Mathématiques", "B-ENG-100 Anglais", "B-PRO-100 Professional Development", "B-INN-100 Innovation", "B-DOP-200 DevOps", "B-SEC-200 Sécurité", "B-WEB-200 Web", "B-AIA-200 Intelligence artificielle", "B-HUB-100 Hub"];
+const academic = {
+  syncedAt: now - 3 * 3600,
+  creditsAcquired: 38,
+  creditsTotal: 41,
+  semester: 2,
+  units: unitTitles.map((title, i) => ({ title, grade: i < 6 ? ["A", "B", "C", "B", "Acquis", "A"][i] : i < 10 ? "in progress" : null, credits: [8, 6, 5, 6, 4, 3, 2, 2, 3, 4, 3, 4, 4, 3][i], validated: [5, 4, 3, 4, 3, 2, 1, 1, 0, 2, 1, 0, 0, 1][i], total: [5, 5, 4, 5, 3, 3, 2, 2, 2, 4, 3, 3, 3, 2][i], countsInGpa: true, alert: null, outcomes: [{ title: "Écrire un Makefile propre", validated: true, mandatory: true, points: 4, total: 4 }, { title: "Gérer la mémoire sans fuite", validated: i % 2 === 0, mandatory: false, points: i % 2 === 0 ? 3 : 1, total: 3 }] })),
+  competencies: ["Développement", "Système", "Algorithmique", "Communication"].map((name, i) => ({ name, available: [24, 12, 10, 8][i], secure: [14, 6, 4, 4][i], reachable: [6, 3, 4, 2][i], alert: null })),
+  exams: [{ label: "Examen C · semaine 6", best: 12, required: 10, max: 20 }, { label: "Examen Shell", best: 7, required: 10, max: 20 }],
+  marks: ["Bootstrap my_ls", "my_ls", "Bootstrap secured", "mysudo", "cuddle", "mytop", "Organized", "Lem-in"].map((title, i) => ({ date: day(-i * 6), title, mark: [17, 14, 20, 12, 15, 9, 13, 16][i], evaluator: null, comment: null })),
+  logtime: Array.from({ length: 30 }, (_, i) => ({ date: day(i - 29), mine: [0, 6, 7, 5, 8, 2, 0][i % 7] * 3600, promo: 5 * 3600 })),
+  tests: [{ project: "secured", module: "B-CPE-200", date: new Date((now - 7200) * 1000).toISOString(), passed: 42, total: 50, runs: 3, styleMajor: 0, styleMinor: 2 }, { project: "mysudo", module: "B-PSU-200", date: null, passed: 18, total: 24, runs: 1, styleMajor: 1, styleMinor: 4 }],
+  graph: [],
+  globalAlert: "green",
+  creditsAlert: null,
+  creditsLost: [],
+  creditsAtRisk: [["B-SEC-200 Sécurité", 3]],
+  level: 4,
+  xp: 1240,
+  xpToNext: 260,
+  projectsTotal: 22,
+  projectsDone: 17,
+  notes: [],
+};
 const connect = {
   enabled: true,
   running: true,
@@ -227,11 +255,49 @@ const connect = {
   space: true,
 };
 
+const local = (offset: number, hour: number, min = 0) => {
+  const d = at(offset, hour, min);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+const session = (offset: number, h: number, len: number, title: string) => ({ type: "create_session" as const, project: repos[0]?.path ?? null, title, start: local(offset, h), end: local(offset, h + Math.floor(len / 60), len % 60) });
+const weekProposal = {
+  id: 1,
+  threadId: null,
+  kind: "schedule",
+  title: "Planning · semaine",
+  rationale: "Priorité aux rendus les plus proches.",
+  payload: {
+    actions: [session(1, 9, 120, "Secured : table de hachage"), session(1, 14, 90, "Secured : tests"), session(2, 10, 150, "my_sudo : parsing"), session(3, 9, 120, "Secured : collisions"), session(3, 16, 60, "Maths : 104neutrinos"), session(4, 13, 180, "my_sudo : droits"), { type: "create_task" as const, project: null, title: "Relire le sujet de my_sudo" }],
+    warnings: ["Sans créneau : Wolf3D (4 h)"],
+  },
+  status: "pending",
+  outcome: null,
+  at: now - 60,
+};
+
 export const fixtures: Record<string, Fixture> = {
   my_overview: { syncedAt: now - 40 * 60, account: "camille.martin@epitech.eu", projects: [], creditsAcquired: 12, creditsTotal: 60, blocks: [], exams: [] },
   my_logtime: logtime,
+  my_skill_tree: skillTree,
+  board_list: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("boards") ? boards : []),
+  // ?drafts=1: two Playground drafts; comparing them gives a finished job.
+  playground_list: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("drafts") ? drafts : []),
+  playground_tools: { compilers: [{ name: "gcc", path: "/usr/bin/gcc", version: "14.2" }, { name: "clang", path: "/usr/bin/clang", version: "19.1" }], valgrind: "3.24", sandbox: "bwrap 0.11", cgroupLimits: true },
+  playground_save: (a: Record<string, unknown>) => ({ ...drafts[0], id: a.id, title: a.title, files: a.files, settings: a.settings }),
+  playground_compare: 77,
+  job_get: (a: Record<string, unknown>) => (a.id === 77 ? compareJob : null),
+  // ?mouli=1: a plan and a report of the TekBoard moulinette.
+  mouli_state: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("mouli") ? { suite: mouliSuite, report: mouliReport } : { suite: null, report: null }),
+  testing_info: { detection: { suites: [], frameworks: ["Criterion"], testFiles: 2, notes: [] }, config: { testCmd: null, runCmd: null, image: null }, defaultBuild: "make", claude: { path: null, target: null, version: null, state: "not_found", source: null, detail: null }, banana: { repoChecker: null, version: null, epiclang: null, plugin: false }, docker: false, valgrind: true, terminal: true, defaultImage: "epitechcontent/epitest-docker", subject: "secured.pdf", hasRemote: true },
+  credit_scenario_save: (a: Record<string, unknown>) => ({ id: typeof a.id === "number" ? a.id : 1, name: a.name, data: a.data, updatedAt: now }),
+  // ?proposal=1 shows a week plan waiting in Artix's panel (with ?open=artix).
+  ai_proposals: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("proposal") ? [weekProposal] : []),
   analytics,
   connect_state: connect,
+  my_academic: academic,
+  connect_configure: (a: Record<string, unknown>) => Object.assign(connect, { profile: (a.config as { profile: unknown }).profile }),
+  music_now: { title: "Midnight City", artist: "M83", art: null, playing: true, source: "mpris", player: "spotify" },
+  spotify_status: { clientId: null, connected: false, redirectUri: "http://127.0.0.1:43821/callback" },
   git_detail: (a: Record<string, unknown>) => {
     const r = repos.find((x) => x.path === a.path) ?? repos[0];
     const c = (hash: string, subject: string, h: number) => ({ hash, subject, author: "Camille Martin", date: new Date((now - h * H) * 1000).toISOString() });
@@ -260,7 +326,8 @@ export const fixtures: Record<string, Fixture> = {
   save_settings: (a: Record<string, unknown>) => a.settings ?? settings,
   env_status: env,
   scan_repos: repos,
-  ui_prefs_get: {},
+  // ?night=1: working hours 09:00 → 02:00 the next day.
+  ui_prefs_get: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("night") ? { "plan.prefs": { dayStart: 540, dayEnd: 1560, workDays: [1, 2, 3, 4, 5], maxMinutesPerDay: 300, sessionMinutes: 75, breakMinutes: 15, mode: "custom", protected: [[750, 810]] } } : {}),
   brain_count: captures.length,
   brain_list: captures,
   plan_state: plan,
@@ -269,6 +336,10 @@ export const fixtures: Record<string, Fixture> = {
     { id: 2, ts: now - 5 * H, kind: "test", repoPath: repos[1].path, detail: "12/20" },
   ],
   focus_get: null,
-  live_state: null,
+  // ?live=1: a TekLive session running (the usual port was taken).
+  live_state: (_a: Record<string, unknown>, p: URLSearchParams) =>
+    p.has("live") ? { project: repos[0]?.path ?? "/p", name: "secured", state: "live", server: "ws://192.168.1.42:41873", link: "p2p-live-share://ws.k3f9.192.168.1.42:41873/", room: "k3f9", peers: ["host", "g1"], guests: ["192.168.1.57"], refused: 0, startedAt: now - 754, contactsOnly: true, showProject: true, invited: [], interface: "wlp2s0", note: "Le port 8765 est déjà utilisé sur cette machine : TekLive écoute sur le port 41873." } : null,
+  live_setup: { code: "/usr/bin/code", codeVersion: "1.106.2", extension: "0.1.4", bridge: "1.0.0", missing: [] },
+  live_interfaces: [{ name: "wlp2s0", ip: "192.168.1.42", kind: "wifi", default: true }, { name: "enp3s0", ip: "10.0.0.12", kind: "ethernet", default: false }],
   my_status: { windowOpen: false, connected: true, expiresAt: now + 5 * D, account: "camille.martin@epitech.eu", sessionStored: true, windowHidden: true, syncMinutes: 30, lastSync: now - 40 * 60, routes: 9 },
 };

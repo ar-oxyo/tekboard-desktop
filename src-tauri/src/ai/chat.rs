@@ -141,6 +141,25 @@ pub fn delete_thread(conn: &Connection, id: i64) -> Result<()> {
     Ok(())
 }
 
+/// The conversation named `title` used in the last seven days, or a new one. Requests that
+/// belong together (the plan of one week) land in the same conversation instead of a new
+/// one each time.
+pub fn thread_named(conn: &Connection, title: &str) -> Result<i64> {
+    let title = crate::ai::stream::clip(title.trim(), 60);
+    let t = now();
+    if let Some(id) = conn.query_row("SELECT id FROM ai_threads WHERE title = ?1 AND updated_at >= ?2 ORDER BY id DESC LIMIT 1", params![title, t - 7 * 86_400], |r| r.get::<_, i64>(0)).optional()? {
+        return Ok(id);
+    }
+    conn.execute("INSERT INTO ai_threads (title, created_at, updated_at) VALUES (?1, ?2, ?2)", params![title, t])?;
+    Ok(conn.last_insert_rowid())
+}
+
+/// A message written by TekBoard itself in Artix's name (a plan computed without AI), so it
+/// shows in the conversation and Artix reads it at the next turn.
+pub fn note(conn: &Connection, thread: i64, text: &str, meta: &Value) -> Result<i64> {
+    add_message(conn, thread, "assistant", text, meta)
+}
+
 fn add_message(conn: &Connection, thread: i64, role: &str, text: &str, meta: &Value) -> Result<i64> {
     let t = now();
     conn.execute("INSERT INTO ai_messages (thread_id, role, text, meta, created_at) VALUES (?1, ?2, ?3, ?4, ?5)", params![thread, role, text, meta.to_string(), t])?;
@@ -161,8 +180,10 @@ fn decisions_since(conn: &Connection, thread: i64, since: i64) -> Result<Vec<Str
     let mut st = conn.prepare("SELECT id, title, status, outcome FROM ai_proposals WHERE thread_id = ?1 AND decided_at >= ?2 ORDER BY id")?;
     for r in st.query_map(params![thread, since], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?, r.get::<_, Option<String>>(3)?)))? {
         let (id, title, status, outcome) = r?;
-        let detail = outcome.and_then(|o| serde_json::from_str::<Value>(&o).ok()).map(|o| if o["accepted"] == true { format!(" ({} sur {} changements appliqués)", o["kept"], o["of"]) } else { String::new() }).unwrap_or_default();
-        out.push(format!("Proposition #{id} « {title} » : {}{detail}.", if status == "accepted" { "acceptée" } else { "refusée" }));
+        let o = outcome.and_then(|o| serde_json::from_str::<Value>(&o).ok()).unwrap_or(Value::Null);
+        let detail = if o["accepted"] == true { format!(" ({} sur {} changements appliqués)", o["kept"], o["of"]) } else { String::new() };
+        let verdict = if status == "accepted" { "acceptée" } else if o["superseded"] == true { "remplacée par une proposition plus récente" } else { "refusée" };
+        out.push(format!("Proposition #{id} « {title} » : {verdict}{detail}."));
     }
     let mut st = conn.prepare("SELECT summary FROM ai_actions WHERE thread_id = ?1 AND status = 'undone' AND created_at >= ?2")?;
     for r in st.query_map(params![thread, since - 3600], |r| r.get::<_, String>(0))? {
@@ -176,6 +197,23 @@ fn decisions_since(conn: &Connection, thread: i64, since: i64) -> Result<Vec<Str
 }
 
 /// The context card given at the start of a turn.
+/// How old the MY Epitech data is, for Artix: past a day it must say so before relying on it.
+pub fn my_freshness_line(synced_at: Option<i64>, now: i64) -> String {
+    match synced_at {
+        None => "Données MY Epitech : jamais synchronisées (crédits, notes et rendus inconnus).".into(),
+        Some(at) => {
+            let h = (now - at).max(0) / 3600;
+            if h >= 24 {
+                format!("Données MY Epitech : relues il y a {} j, anciennes. Le signaler avant de s'appuyer sur crédits, notes ou rendus ; proposer sync_my_epitech.", h / 24)
+            } else if h >= 1 {
+                format!("Données MY Epitech : relues il y a {h} h.")
+            } else {
+                "Données MY Epitech : relues il y a moins d'une heure.".into()
+            }
+        }
+    }
+}
+
 pub fn context_card(state: &AppState, screen: &Screen, thread: Option<i64>, since: i64) -> Result<String> {
     let mut lines: Vec<String> = Vec::new();
     let t = now();
@@ -215,13 +253,17 @@ pub fn context_card(state: &AppState, screen: &Screen, thread: Option<i64>, sinc
         let plan = crate::planner::state(&conn, t)?;
         let rhythm = crate::schedule::Rhythm::load(&conn);
         let busy = crate::schedule::busy_from(&plan.events, &agenda.items);
+        // At 01:00 with hours until 02:00, "today" is still the working day that began yesterday.
+        let day = crate::schedule::work_day_of(t, &rhythm);
         let load = crate::schedule::day_load(&busy, &rhythm, day);
+        lines.push(format!("Horaires de travail : {} (24 h){}", rhythm.hours_label(), if rhythm.night() > 0 { " ; disponibilité, pas obligation : garder pauses et repos" } else { "" }));
         let next: Vec<String> = busy.iter().filter(|b| b.end > t && b.start < crate::schedule::next_day(day) && b.kind != "protected").take(4).map(|b| format!("{} {}", &crate::schedule::local_iso(b.start)[11..], b.title)).collect();
         lines.push(format!("Aujourd'hui : {} de travail prévu{} (plafond {}, rythme {}){}", crate::schedule::dur(load.work_min), if load.school_min > 0 { format!(" + {} d'école", crate::schedule::dur(load.school_min)) } else { String::new() }, crate::schedule::dur(load.max_min), crate::schedule::mode_label(&rhythm.mode), if next.is_empty() { String::new() } else { format!(" ; à venir : {}", next.join(", ")) }));
         let soon: Vec<String> = board.iter().filter(|b| b.state != "unknown" && b.status != "done").take(3).map(|b| format!("{} ({}{})", b.title, b.at.clone().or(b.day.clone()).unwrap_or_default().chars().take(16).collect::<String>(), if b.state == "overdue" { ", en retard" } else { "" })).collect();
         if !soon.is_empty() {
             lines.push(format!("Rendus proches : {}", soon.join(" ; ")));
         }
+        lines.push(my_freshness_line(overview.synced_at, t));
     }
     let conn = state.conn();
     if let Some(f) = crate::focus::current(&conn)? {
@@ -344,6 +386,15 @@ fn job_events(job: &crate::jobs::Job) -> Vec<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn artix_is_told_how_old_my_data_is() {
+        assert!(my_freshness_line(None, 1000).contains("jamais"));
+        assert!(my_freshness_line(Some(1000), 1000 + 600).contains("moins d'une heure"));
+        assert!(my_freshness_line(Some(0), 5 * 3600).contains("5 h"));
+        let old = my_freshness_line(Some(0), 3 * 86400);
+        assert!(old.contains("3 j") && old.contains("sync_my_epitech"), "{old}");
+    }
 
     #[test]
     fn decisions_reach_the_next_turn() {

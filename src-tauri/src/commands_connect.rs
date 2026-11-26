@@ -18,6 +18,10 @@ pub fn connect_state() -> Result<StateView> {
 /// Turns Connect on or off, changes the profile (pseudonym, avatar, status) or the interface.
 #[tauri::command]
 pub async fn connect_configure(config: Config) -> Result<StateView> {
+    // Checked here too: what others see must pass moderation, whatever the window allowed.
+    if let Some(cat) = crate::moderation::refused(&config.profile.nick) {
+        return Err(AppError::new("refused_text", format!("Ce pseudonyme est refusé ({cat}). Les gros mots ordinaires passent, les propos haineux non.")));
+    }
     let s = svc()?;
     s.set_config(config).await?;
     Ok(s.view())
@@ -173,10 +177,17 @@ pub fn live_install(state: State<'_, AppState>, what: String) -> Result<String> 
 }
 
 #[tauri::command]
-pub async fn live_start(state: State<'_, AppState>, project: String, contacts_only: bool, show_project: bool) -> Result<teklive::Session> {
+pub async fn live_start(state: State<'_, AppState>, project: String, contacts_only: bool, show_project: bool, interface: Option<String>) -> Result<teklive::Session> {
     let dir = crate::commands::project_dir(&state, &project)?;
     let nick = connect::service().map(|s| s.config().profile.nick).unwrap_or_else(|| std::env::var("USER").unwrap_or_default());
-    teklive::start(&dir, &nick, contacts_only, show_project).await
+    teklive::start(&dir, &nick, contacts_only, show_project, interface.as_deref()).await
+}
+
+/// Network interfaces others could reach this computer on (real ones first), to choose
+/// where TekLive listens when there are several.
+#[tauri::command(async)]
+pub fn live_interfaces() -> Vec<netdiag::Iface> {
+    netdiag::interfaces().into_iter().filter(|i| i.kind != "virtual").collect()
 }
 
 #[tauri::command(async)]
@@ -244,6 +255,40 @@ pub fn valid_jam(url: &str) -> bool {
         return id_ok(id) && query.chars().all(|c| c.is_ascii_alphanumeric() || "=&_-".contains(c));
     }
     url.strip_prefix("https://spotify.link/").is_some_and(id_ok)
+}
+
+/// What is playing now, from the desktop player (`mpris`) or the Spotify account (`spotify`).
+/// Read on request only (the table's share polls it while visible), never in the background.
+#[tauri::command(async)]
+pub fn music_now(source: String) -> Result<Option<crate::music::NowPlaying>> {
+    match source.as_str() {
+        "mpris" => crate::music::mpris_now(),
+        "spotify" => crate::music::spotify_now(),
+        _ => Err(AppError::new("invalid_source", "Source inconnue")),
+    }
+}
+
+#[tauri::command(async)]
+pub fn spotify_status() -> crate::music::SpotifyStatus {
+    crate::music::status()
+}
+
+/// Opens Spotify's consent page in the browser and waits (3 min at most) for its answer on
+/// the local redirect address; `spotify-linked` tells the window how it ended.
+#[tauri::command(async)]
+pub fn spotify_login(client_id: String) -> Result<String> {
+    let (url, wait) = crate::music::login(client_id.trim())?;
+    crate::workspace::spawn_detached(&["xdg-open".to_string(), url.clone()], &std::env::temp_dir()).map_err(|e| AppError::new("no_browser", format!("Le navigateur n'a pas pu démarrer : {e}")))?;
+    std::thread::spawn(move || {
+        let outcome = wait.join().unwrap_or_else(|_| Err(AppError::new("failed", "Connexion interrompue")));
+        crate::notify::emit("spotify-linked", serde_json::json!({ "ok": outcome.is_ok(), "error": outcome.err().map(|e| e.to_string()) }));
+    });
+    Ok(url)
+}
+
+#[tauri::command(async)]
+pub fn spotify_logout() -> Result<()> {
+    crate::music::logout()
 }
 
 /// Opens a table's Spotify Jam in the browser (TekBoard never plays or relays any audio from it).

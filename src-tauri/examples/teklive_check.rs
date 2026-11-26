@@ -22,7 +22,7 @@ async fn main() {
         return;
     }
     let ip = tekboard_lib::connect::netdiag::default_ip().map(std::net::IpAddr::V4).expect("no network");
-    let relay = tekboard_lib::teklive::relay::Relay::start(ip, None, Arc::new(|s: &tekboard_lib::teklive::relay::RelayState| println!("relay: room={:?} peers={:?}", s.room, s.peers))).await.unwrap();
+    let relay = tekboard_lib::teklive::relay::Relay::start(ip, 0, None, Arc::new(|s: &tekboard_lib::teklive::relay::RelayState| println!("relay: room={:?} peers={:?}", s.room, s.peers))).await.unwrap();
     let server = format!("ws://{}", relay.addr);
     println!("relay listening on {server}");
     let req = tekboard_lib::teklive::write_request(&folder, serde_json::json!({"action": "host", "server": server, "userName": "TekBoard check"})).unwrap();

@@ -110,14 +110,14 @@ export default function ArenaPage() {
           <h3 className="mb-1 flex items-center gap-1.5 text-xs text-faint">
             <Sparkles className="size-3.5" /> {t("Construire l'environnement avec Artix")}
           </h3>
-          <p className="mb-2 text-xs text-muted">{t("Artix lit le programme et écrit des générateurs de données et des scénarios. Tu les vois apparaître ici, puis tu décides de les utiliser : rien n'est exécuté avant que tu lances le benchmark.")}</p>
+          <p className="mb-2 text-xs text-muted" title={t("Les générateurs sont testés sur de petites tailles avant d'être proposés. Rien n'est exécuté sur ton programme avant que tu lances le benchmark.")}>{t("Artix écrit les générateurs de données et les scénarios ; tu décides de les utiliser.")}</p>
           <div className="flex gap-2">
             <Input className="h-8 text-xs" placeholder={t("Ce que tu veux tester (facultatif) : le tri, la recherche…")} value={focus} onChange={(e) => setFocus(e.target.value)} />
             <Button size="sm" icon={<Sparkles className="size-3.5" />} busy={generating} disabled={!ai.read || config.variants.length === 0} disabledReason={!ai.read ? (ai.why ?? t("L'IA choisie ne lit pas les fichiers")) : t("Choisis d'abord le programme")} onClick={() => void generate()}>
               {t("Préparer")}
             </Button>
           </div>
-          {gen.data && <Generation job={gen.data} onUse={(files, scenarios) => { update(mergeGenerated(config, files, scenarios)); toast({ kind: "ok", title: t("Fichiers et scénarios ajoutés"), detail: t("Relis-les avant de lancer le benchmark.") }); }} />}
+          {gen.data && <Generation job={gen.data} onUse={(files, scenarios, hypotheses) => { update(mergeGenerated(config, files, scenarios, hypotheses)); toast({ kind: "ok", title: t("Fichiers et scénarios ajoutés"), detail: t("Relis-les avant de lancer le benchmark.") }); }} />}
         </section>
       </div>
 
@@ -167,7 +167,7 @@ export default function ArenaPage() {
           </div>
         ) : (
           <EmptyState icon={<GitCompare className="size-6" />} title={t("Mesure, compare, comprends")}>
-            {t("Choisis un projet ou un brouillon, décris les données (un générateur et des tailles croissantes) et lance : TekBoard mesure le temps, le CPU et la mémoire à chaque taille, estime la complexité, compte les instructions par fonction et compare deux versions sans toucher à ton dossier.")}
+            {t("Temps, mémoire et complexité de ton programme, taille après taille. Deux versions côte à côte, sans toucher à ton dossier.")}
           </EmptyState>
         )}
       </div>
@@ -240,6 +240,9 @@ function ScenariosCard({ config, onChange }: { config: BenchConfig; onChange: (p
     <section className="space-y-2 border-t border-line pt-3">
       <div className="flex items-center">
         <h3 className="text-xs text-faint">{t("Scénarios")}</h3>
+        <span className="ml-1.5 cursor-help text-2xs text-faint" title={t("Arguments sans shell : {input} = fichier de données, {n} = taille, {seed} = graine. Un générateur est appelé « gen N SEED SORTIE ».")}>
+          {"{input} {n} {seed}"}
+        </span>
         <IconButton label={t("Ajouter un scénario")} className="ml-auto" disabled={config.scenarios.length >= 6} onClick={() => onChange({ scenarios: [...config.scenarios, newScenario(config.files)] })}>
           <Plus className="size-3.5" />
         </IconButton>
@@ -247,7 +250,6 @@ function ScenariosCard({ config, onChange }: { config: BenchConfig; onChange: (p
       {config.scenarios.map((s, i) => (
         <ScenarioEditor key={i} s={s} gens={gens} onChange={(ns) => setScenario(i, ns)} onRemove={config.scenarios.length > 1 ? () => onChange({ scenarios: config.scenarios.filter((_, j) => j !== i) }) : undefined} />
       ))}
-      <p className="text-2xs text-faint">{t("Arguments sans shell : {input} = fichier de données, {n} = taille, {seed} = graine. Un générateur est appelé « gen N SEED SORTIE ».")}</p>
     </section>
   );
 }
@@ -367,7 +369,7 @@ function OptionsCard({ config, onChange, valgrind }: { config: BenchConfig; onCh
   );
 }
 
-function Generation({ job, onUse }: { job: import("../../lib/api").JobView; onUse: (files: DraftFile[], scenarios: ArenaScenario[]) => void }) {
+function Generation({ job, onUse }: { job: import("../../lib/api").JobView; onUse: (files: DraftFile[], scenarios: ArenaScenario[], hypotheses: NonNullable<BenchConfig["hypotheses"]>) => void }) {
   const s = job.summary as { generatedFiles?: DraftFile[]; generated?: import("../../lib/api").ArenaGenerated };
   const files = s.generated?.files ?? s.generatedFiles ?? [];
   const [open, setOpen] = useState<string | null>(null);
@@ -407,7 +409,7 @@ function Generation({ job, onUse }: { job: import("../../lib/api").JobView; onUs
             </ul>
           )}
           {s.generated.rejected.length > 0 && <p className="text-2xs text-warn">{t("Écarté : {r}", { r: s.generated.rejected.join(" ; ") })}</p>}
-          <Button size="sm" variant="primary" disabled={s.generated.scenarios.length === 0} disabledReason={t("Aucun scénario utilisable")} onClick={() => onUse(s.generated!.files, s.generated!.scenarios)}>
+          <Button size="sm" variant="primary" disabled={s.generated.scenarios.length === 0} disabledReason={t("Aucun scénario utilisable")} onClick={() => onUse(s.generated!.files, s.generated!.scenarios, s.generated!.hypotheses.map((h) => ({ function: h.function, file: h.file, line: h.line ?? null, message: h.message })))}>
             {t("Utiliser ces fichiers et scénarios")}
           </Button>
         </>

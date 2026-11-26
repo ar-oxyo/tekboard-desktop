@@ -126,3 +126,37 @@ export function artixRequest(kind: ArtixAsk, draft: Pick<Draft, "title" | "files
   }
   return parts.join("\n");
 }
+
+/** One line of a line-by-line comparison. */
+export interface DiffLine {
+  kind: "same" | "del" | "add";
+  text: string;
+}
+
+/**
+ * Line diff of two texts (longest common subsequence), for comparing two versions of a
+ * file. Long files fall back to "all removed, all added" rather than a slow table.
+ */
+export function lineDiff(a: string, b: string): DiffLine[] {
+  const x = a.split("\n");
+  const y = b.split("\n");
+  if (x.length * y.length > 4_000_000) return [...x.map((text) => ({ kind: "del" as const, text })), ...y.map((text) => ({ kind: "add" as const, text }))];
+  const n = x.length;
+  const m = y.length;
+  const lcs: Uint32Array[] = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) lcs[i][j] = x[i] === y[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+  const out: DiffLine[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < n && j < m) {
+    if (x[i] === y[j]) {
+      out.push({ kind: "same", text: x[i] });
+      i++;
+      j++;
+    } else if (lcs[i + 1][j] >= lcs[i][j + 1]) out.push({ kind: "del", text: x[i++] });
+    else out.push({ kind: "add", text: y[j++] });
+  }
+  while (i < n) out.push({ kind: "del", text: x[i++] });
+  while (j < m) out.push({ kind: "add", text: y[j++] });
+  return out;
+}

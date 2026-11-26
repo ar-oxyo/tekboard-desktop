@@ -1,11 +1,11 @@
 // Draws the campus and moves your character. Light by design: the static campus is drawn
 // once; a frame is drawn only when something moves (at most 30 per second); the loop stops
 // when nothing does, and whenever the window or the screen is hidden.
-import { free, tableNear, TILE, W, H, type Dir, type Seat, type TableDef } from "./map";
+import { free, TABLES, tableNear, TILE, W, H, type Dir, type Seat, type TableDef } from "./map";
 import { findPath } from "./path";
 import { decodeLook } from "./avatar";
 import { drawAvatar, drawCampus, paletteFromTheme } from "./sprites";
-import type { Player, SpaceState } from "./protocol";
+import { REACTIONS, type Player, type SpaceState } from "./protocol";
 
 const SPEED = 4; // tiles per second
 const FRAME_MS = 33;
@@ -100,6 +100,7 @@ export class SpaceEngine {
 
   destroy() {
     this.stop();
+    window.clearTimeout(this.wakeTimer);
     this.cleanup.forEach((f) => f());
   }
 
@@ -305,9 +306,75 @@ export class SpaceEngine {
       c.fill();
       c.fillStyle = "#ffffff";
       c.fillText(label, sx + 4, sy - 2);
+      // A reaction floats above the name for a few seconds.
+      const r = p.react;
+      if (r && Date.now() - r.at < REACT_MS) {
+        c.font = "18px sans-serif";
+        c.fillText(REACTIONS.find((x) => x.id === r.e)?.emoji ?? "", sx, sy - 20);
+        c.font = "500 11px Inter Variable, sans-serif";
+        this.wakeAt(r.at + REACT_MS);
+      }
     }
+    this.drawTables(c, z);
+  }
+
+  /** Above each table: its shared focus and what is being listened to there, as small labels. */
+  private drawTables(c: CanvasRenderingContext2D, z: number) {
+    const st = this.hooks.state();
+    if (!st) return;
+    c.font = "500 10px Inter Variable, sans-serif";
+    c.textAlign = "left";
+    for (const def of TABLES) {
+      const tb = st.tables[def.id];
+      if (!tb) continue;
+      const parts: Array<{ text: string; color: string; art?: string | null }> = [];
+      if (tb.focus) parts.push({ text: tb.focus.phase === "work" ? `● Focus · ${Math.max(0, Math.ceil((tb.focus.endsAt - Date.now()) / 60_000))} min` : "● Pause", color: tb.focus.phase === "work" ? "#ffb74d" : "#81c784" });
+      const m = tb.music;
+      if (m && Date.now() - m.at < 120_000) parts.push({ text: `♪ ${m.title.length > 22 ? `${m.title.slice(0, 21)}…` : m.title}${m.playing ? "" : " (pause)"}`, color: "#e0e0e0", art: m.art });
+      if (!parts.length) continue;
+      // On the desk itself, centred: the seats around it keep their names visible.
+      let y = ((def.y + def.h / 2) * TILE - this.cam.y) * z + (parts.length * 21) / 2 + 2;
+      const cx = ((def.x + def.w / 2) * TILE - this.cam.x) * z;
+      for (const part of parts.reverse()) {
+        const img = part.art ? this.image(part.art) : null;
+        const pad = img ? 22 : 8;
+        const w = c.measureText(part.text).width + pad + 8;
+        c.fillStyle = "rgba(15,15,20,0.8)";
+        c.beginPath();
+        c.roundRect(cx - w / 2, y - 16, w, 18, 9);
+        c.fill();
+        if (img) c.drawImage(img, cx - w / 2 + 3, y - 14, 14, 14);
+        c.fillStyle = part.color;
+        c.fillText(part.text, cx - w / 2 + pad, y - 3);
+        y -= 21;
+      }
+    }
+    // Focus minutes change: one redraw a minute while a timer runs.
+    if (Object.values(st.tables).some((x) => x.focus)) this.wakeAt(Date.now() + 60_000);
+  }
+
+  private images = new Map<string, HTMLImageElement>();
+  private image(src: string): HTMLImageElement | null {
+    let img = this.images.get(src);
+    if (!img) {
+      if (this.images.size > 20) this.images.clear();
+      img = new Image();
+      img.onload = () => this.wake();
+      img.src = src;
+      this.images.set(src, img);
+    }
+    return img.complete && img.naturalWidth > 0 ? img : null;
+  }
+
+  private wakeTimer = 0;
+  /** One more frame at `at` (a reaction fading, a minute ticking), without a running loop. */
+  private wakeAt(at: number) {
+    window.clearTimeout(this.wakeTimer);
+    this.wakeTimer = window.setTimeout(() => this.wake(), Math.max(50, at - Date.now()));
   }
 }
+
+const REACT_MS = 3500;
 
 const KEYMAP: Record<string, string> = {
   KeyW: "up",

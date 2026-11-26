@@ -25,9 +25,9 @@ export interface ReportData {
   id?: number;
 }
 
-export const STATUS_LABEL: Record<JobStatus, string> = { running: t("En cours"), success: "Réussi", warning: "Avertissement", failed: "Échec", cancelled: t("Annulé"), interrupted: "Interrompu" };
+export const STATUS_LABEL: Record<JobStatus, string> = { running: t("En cours"), success: t("Réussi"), warning: t("Avertissement"), failed: t("Échec"), cancelled: t("Annulé"), interrupted: t("Interrompu") };
 export const STATUS_TONE: Record<JobStatus, "info" | "ok" | "warn" | "danger" | "neutral"> = { running: "info", success: "ok", warning: "warn", failed: "danger", cancelled: "neutral", interrupted: "neutral" };
-export const KIND_LABEL: Record<RunKind, string> = { tests: t("Tests du projet"), testrepo: t("Simulation de rendu"), banana: "Banana", moulinette: t("Vérifications rapides"), moulinette_ai: "Moulinette d'Artix", gen_tests: "Tests générés", readme: "README", build: "Compilation", command: "Commande", analysis: "Analyse du dépôt", assistant: "Artix", ollama_pull: t("Installation d'un modèle local"), playground: "Playground", arena: "Arena", arena_ai: t("Arena · Artix"), arena_report: t("Arena · rapport"), board_ai: t("Tableau · Artix"), brain: t("Inbox · Artix") };
+export const KIND_LABEL: Record<RunKind, string> = { tests: t("Tests du projet"), testrepo: t("Simulation de rendu"), banana: "Banana", moulinette: t("Vérifications rapides"), moulinette_ai: t("Moulinette d'Artix"), gen_tests: t("Tests générés"), readme: "README", build: t("Compilation"), command: t("Commande"), analysis: t("Analyse du dépôt"), assistant: "Artix", ollama_pull: t("Installation d'un modèle local"), playground: "Playground", arena: "Arena", arena_ai: t("Arena · Artix"), arena_report: t("Arena · rapport"), board_ai: t("Tableau · Artix"), brain: t("Inbox · Artix"), mouli_plan: t("Moulinette · plan"), mouli_run: t("Moulinette TekBoard") };
 
 export function duration(ms: number): string {
   if (ms < 1000) return `${ms} ms`;

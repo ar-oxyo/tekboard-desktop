@@ -12,6 +12,8 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+/// Steps of a run: build, run (with its output), timed runs.
+pub const STEPS: &[(&str, &str)] = &[("compile", "Compilation"), ("run", "Exécution"), ("bench", "Mesures")];
 pub const MAX_FILES: usize = 40;
 pub const MAX_FILE_BYTES: usize = 256 * 1024;
 pub const MAX_TOTAL_BYTES: usize = 1024 * 1024;
@@ -212,14 +214,31 @@ pub fn materialize(files: &[DraftFile], dir: &Path) -> Result<()> {
 
 /// The compiler command: every `.c` file, an include path for every folder that holds a header.
 pub fn compile_argv(files: &[DraftFile], s: &DraftSettings, output: &str) -> Result<Vec<String>> {
+    let mut argv = vec![s.compiler.clone()];
+    argv.extend(flags_of(files, s)?);
+    let sources: Vec<String> = files.iter().filter(|f| f.name.ends_with(".c")).map(|f| f.name.clone()).collect();
+    if sources.is_empty() {
+        return Err(AppError::new("invalid_draft", "Aucun fichier .c à compiler"));
+    }
+    argv.extend(sources);
+    argv.extend(["-o".into(), output.into()]);
+    if s.compiler != "epiclang" {
+        argv.push("-lm".into());
+    }
+    Ok(argv)
+}
+
+/// Options given to every compilation and to the link: the user's, sanitizers, debug info,
+/// plain diagnostics, an include path for every folder that holds a header.
+pub fn flags_of(files: &[DraftFile], s: &DraftSettings) -> Result<Vec<String>> {
     if !["gcc", "clang", "epiclang"].contains(&s.compiler.as_str()) {
         return Err(AppError::new("invalid_compiler", "Compilateurs possibles : gcc, clang, epiclang"));
     }
-    let mut argv = vec![s.compiler.clone()];
+    let mut argv: Vec<String> = Vec::new();
     if !s.flags.trim().is_empty() {
         argv.extend(crate::jobs::split_command(&s.flags)?);
     }
-    if argv.iter().skip(1).any(|a| a == "-o" || a.starts_with("-o")) {
+    if argv.iter().any(|a| a == "-o" || a.starts_with("-o") || a == "-c") {
         return Err(AppError::new("invalid_flags", "Le nom du programme est choisi par TekBoard : retire « -o » des options"));
     }
     let mut sanitize = Vec::new();
@@ -248,16 +267,138 @@ pub fn compile_argv(files: &[DraftFile], s: &DraftSettings, output: &str) -> Res
         }
     }
     argv.extend(dirs.iter().map(|d| format!("-I{d}")));
-    let sources: Vec<String> = files.iter().filter(|f| f.name.ends_with(".c")).map(|f| f.name.clone()).collect();
+    Ok(argv)
+}
+
+/// How the program was built.
+#[derive(Debug, Clone, Serialize, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct BuildInfo {
+    /// `full` (every file compiled), `incremental` (some objects reused), `make` (the draft's Makefile).
+    pub mode: String,
+    pub compile_ms: u64,
+    pub link_ms: u64,
+    pub make_ms: u64,
+    pub compiled: usize,
+    pub cached: usize,
+}
+
+/// Key of a compiled object: its source, every header, the compiler and the options.
+pub fn object_key(f: &DraftFile, files: &[DraftFile], compiler: &str, flags: &[String]) -> String {
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    h.update(compiler.as_bytes());
+    h.update(flags.join("\u{1}").as_bytes());
+    h.update(f.name.as_bytes());
+    h.update(f.content.as_bytes());
+    for x in files.iter().filter(|x| x.name.ends_with(".h")) {
+        h.update(x.name.as_bytes());
+        h.update(x.content.as_bytes());
+    }
+    format!("{:x}", h.finalize()).chars().take(32).collect()
+}
+
+/// Keeps the object cache small: the oldest objects go first.
+fn prune(objs: &Path, keep: usize) {
+    let Ok(rd) = std::fs::read_dir(objs) else { return };
+    let mut all: Vec<(std::time::SystemTime, PathBuf)> = rd.flatten().filter_map(|e| Some((e.metadata().ok()?.modified().ok()?, e.path()))).collect();
+    if all.len() <= keep {
+        return;
+    }
+    all.sort();
+    for (_, p) in &all[..all.len() - keep] {
+        let _ = std::fs::remove_file(p);
+    }
+}
+
+/// Builds the draft in `work`: the draft's Makefile when it has one (timed), otherwise one
+/// object per `.c` file, reused from `objs` when nothing it depends on changed, then the link.
+/// Returns the report and the program's path relative to `work` (None when it failed).
+pub fn build(job: &Job, files: &[DraftFile], s: &DraftSettings, work: &Path, objs: Option<&Path>) -> Result<(CompileReport, Option<String>)> {
+    let work_s = work.to_string_lossy().into_owned();
+    let limits = Limits { wall: Duration::from_secs(60), cpu_seconds: 60, file_mb: 256, output_cap: OUTPUT_KEEP, mem_mb: Some(2048), tasks: Some(128), address_space_free: false };
+    let exec = |argv: &[String]| -> Result<crate::jobs::Outcome> {
+        let wrapped = sandbox::wrap_argv(work, argv, &[], &limits)?;
+        job.log(&format!("$ {}", argv.join(" ")));
+        job.run_opts(&RunOpts { argv: &wrapped, cwd: work, timeout: limits.wall, envs: &[], log_output: false, stdin: None, split_streams: true }, &mut |l| job.log(l))
+    };
+    // The draft's own Makefile.
+    if files.iter().any(|f| f.name == "Makefile") {
+        let o = exec(&["make".into()])?;
+        let program = crate::runner::detect(work).map(|(p, _)| p).filter(|p| work.join(p).is_file());
+        let text = format!("{}{}", o.stdout, o.stderr);
+        let diagnostics = cdiag::compiler(&text, &work_s);
+        let ok = o.ok() && program.is_some();
+        let (output, _) = keep(&text);
+        let info = BuildInfo { mode: "make".into(), make_ms: o.duration_ms, ..Default::default() };
+        return Ok((CompileReport { ok, command: "make".into(), output: if ok || !o.ok() { output } else { format!("{output}\nmake a réussi, mais le programme est introuvable : indique NAME dans le Makefile.") }, diagnostics, duration_ms: o.duration_ms, build: Some(info) }, if ok { program } else { None }));
+    }
+    let flags = flags_of(files, s)?;
+    let sources: Vec<&DraftFile> = files.iter().filter(|f| f.name.ends_with(".c")).collect();
     if sources.is_empty() {
         return Err(AppError::new("invalid_draft", "Aucun fichier .c à compiler"));
     }
-    argv.extend(sources);
-    argv.extend(["-o".into(), output.into()]);
-    if s.compiler != "epiclang" {
-        argv.push("-lm".into());
+    std::fs::create_dir_all(work.join(".obj"))?;
+    if let Some(o) = objs {
+        std::fs::create_dir_all(o)?;
     }
-    Ok(argv)
+    let mut info = BuildInfo::default();
+    let (mut errors, mut objects, mut total) = (String::new(), Vec::new(), 0u64);
+    let mut ok = true;
+    for (i, f) in sources.iter().enumerate() {
+        let obj = format!(".obj/{i}.o");
+        let key = object_key(f, files, &s.compiler, &flags);
+        let cached = objs.map(|o| o.join(format!("{key}.o")));
+        if let Some(c) = cached.as_ref().filter(|c| c.is_file()) {
+            std::fs::copy(c, work.join(&obj))?;
+            info.cached += 1;
+        } else {
+            let mut argv = vec![s.compiler.clone()];
+            argv.extend(flags.iter().cloned());
+            argv.extend(["-c".into(), f.name.clone(), "-o".into(), obj.clone()]);
+            let o = exec(&argv)?;
+            total += o.duration_ms;
+            info.compile_ms += o.duration_ms;
+            info.compiled += 1;
+            errors.push_str(&o.stderr);
+            if o.cancelled {
+                return Ok((CompileReport { ok: false, command: argv.join(" "), output: String::new(), diagnostics: vec![], duration_ms: total, build: Some(info) }, None));
+            }
+            if !o.ok() || !work.join(&obj).is_file() {
+                ok = false;
+                continue;
+            }
+            if let Some(c) = &cached {
+                let _ = std::fs::copy(work.join(&obj), c);
+            }
+        }
+        objects.push(obj);
+    }
+    let program = ".tekboard-prog".to_string();
+    let mut link = vec![s.compiler.clone()];
+    link.extend(flags.iter().filter(|f| !f.starts_with("-I")).cloned());
+    link.extend(objects.iter().cloned());
+    link.extend(["-o".into(), program.clone()]);
+    if s.compiler != "epiclang" {
+        link.push("-lm".into());
+    }
+    if ok {
+        let o = exec(&link)?;
+        total += o.duration_ms;
+        info.link_ms = o.duration_ms;
+        errors.push_str(&o.stderr);
+        ok = o.ok() && work.join(&program).is_file();
+    }
+    info.mode = if info.cached > 0 { "incremental".into() } else { "full".into() };
+    if let Some(o) = objs {
+        prune(o, 400);
+    }
+    let diagnostics = cdiag::compiler(&errors, &work_s);
+    let (output, _) = keep(&errors);
+    let mut shown = vec![s.compiler.clone()];
+    shown.extend(flags);
+    shown.extend(sources.iter().map(|f| f.name.clone()));
+    Ok((CompileReport { ok, command: shown.join(" "), output, diagnostics, duration_ms: total, build: Some(info) }, ok.then_some(program)))
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -268,6 +409,8 @@ pub struct CompileReport {
     pub output: String,
     pub diagnostics: Vec<Diagnostic>,
     pub duration_ms: u64,
+    /// Compilation, link and make times, objects reused.
+    pub build: Option<BuildInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -306,8 +449,9 @@ pub fn run_limits(s: &DraftSettings) -> Limits {
     Limits { wall: Duration::from_secs(secs), cpu_seconds: secs + 1, file_mb: 64, output_cap: OUTPUT_KEEP, mem_mb: Some(s.mem_mb.clamp(16, 4096)), tasks: Some(64), address_space_free: s.asan || s.valgrind }
 }
 
-/// Compiles and runs a draft in `root` (a fresh folder). Steps `compile`, `run`.
-pub fn run_in_job(job: &Job, draft_id: i64, files: &[DraftFile], s: &DraftSettings, root: &Path) -> Result<&'static str> {
+/// Compiles and runs a draft in `root` (a fresh folder). Steps `compile`, `run`, `bench`.
+/// `objs` keeps compiled objects between runs (incremental builds).
+pub fn run_in_job(job: &Job, draft_id: i64, files: &[DraftFile], s: &DraftSettings, root: &Path, objs: Option<&Path>) -> Result<&'static str> {
     let work = root.join("src");
     materialize(files, &work)?;
     let work_s = work.to_string_lossy().into_owned();
@@ -315,30 +459,28 @@ pub fn run_in_job(job: &Job, draft_id: i64, files: &[DraftFile], s: &DraftSettin
     job.set("snapshot", serde_json::json!({ "files": files, "settings": s }));
 
     job.start("compile");
-    let program = ".tekboard-prog";
-    let argv = compile_argv(files, s, program)?;
-    let shown = argv.join(" ");
-    let compile_limits = Limits { wall: Duration::from_secs(60), cpu_seconds: 60, file_mb: 256, output_cap: OUTPUT_KEEP, mem_mb: Some(2048), tasks: Some(128), address_space_free: false };
-    let wrapped = sandbox::wrap_argv(&work, &argv, &[], &compile_limits)?;
-    job.log(&format!("$ {shown}"));
-    let o = job.run_opts(&RunOpts { argv: &wrapped, cwd: &work, timeout: compile_limits.wall, envs: &[], log_output: false, stdin: None, split_streams: true }, &mut |l| job.log(l))?;
-    let diagnostics = cdiag::compiler(&o.stderr, &work_s);
-    let ok = o.code == Some(0) && work.join(program).exists();
-    let (output, _) = keep(&o.stderr);
-    let compile = CompileReport { ok, command: shown, output, diagnostics: diagnostics.clone(), duration_ms: o.duration_ms };
+    let (compile, built) = build(job, files, s, &work, objs)?;
     job.set("compile", &compile);
-    if o.cancelled {
+    if job.cancelled() {
         job.end("compile", "cancelled", None);
         return Ok("cancelled");
     }
-    let warnings = diagnostics.iter().filter(|d| d.severity == "warning").count();
-    if !ok {
-        let errors = diagnostics.iter().filter(|d| d.severity == "error").count().max(1);
+    let warnings = compile.diagnostics.iter().filter(|d| d.severity == "warning").count();
+    let Some(program) = built else {
+        let errors = compile.diagnostics.iter().filter(|d| d.severity == "error").count().max(1);
         job.end("compile", "failed", Some(format!("{errors} erreur(s)")));
         job.skip("run", "la compilation a échoué");
+        job.skip("bench", "la compilation a échoué");
         return Ok("failed");
-    }
-    job.end("compile", if warnings > 0 { "warning" } else { "success" }, Some(if warnings > 0 { format!("{warnings} avertissement(s)") } else { "aucun avertissement".into() }));
+    };
+    let b = compile.build.clone().unwrap_or_default();
+    let how = match b.mode.as_str() {
+        "make" => format!("make en {} ms", b.make_ms),
+        "incremental" => format!("incrémentale ({} réutilisé(s), {} compilé(s))", b.cached, b.compiled),
+        _ => "complète".into(),
+    };
+    job.end("compile", if warnings > 0 { "warning" } else { "success" }, Some(format!("{how}{}", if warnings > 0 { format!(" · {warnings} avertissement(s)") } else { String::new() })));
+    let program = program.as_str();
 
     job.start("run");
     let mut inner: Vec<String> = Vec::new();
@@ -398,7 +540,135 @@ pub fn run_in_job(job: &Job, draft_id: i64, files: &[DraftFile], s: &DraftSettin
         }
     };
     job.end("run", status, Some(detail));
+
+    // ── bench: repeated runs through the measuring helper, output discarded.
+    job.start("bench");
+    if o.timed_out || signal.is_some() || s.valgrind || s.asan || s.ubsan {
+        job.skip("bench", if s.valgrind || s.asan || s.ubsan { "les outils mémoire faussent les temps" } else { "l'exécution n'est pas allée au bout" });
+    } else {
+        let helper = crate::bench::helper(job, &work)?;
+        let n = crate::bench::repeat_count(o.duration_ms);
+        let mut samples = Vec::new();
+        // One warm-up run (caches, disk), not counted.
+        for i in 0..=n {
+            match crate::bench::sample(job, &work, &helper, &work.join(program), &args, Some(&stdin_path), &limits)? {
+                Some(x) if i > 0 => samples.push(x),
+                Some(_) => {}
+                None => break,
+            }
+        }
+        match crate::bench::timing(&samples) {
+            Some(t) => {
+                job.end("bench", "success", Some(format!("médiane {:.3} ms sur {} exécutions", t.wall.median, t.runs)));
+                job.set("bench", &t);
+            }
+            None => job.skip("bench", "mesure impossible"),
+        }
+    }
     Ok(if status == "success" && warnings > 0 { "warning" } else { status })
+}
+
+// ───────────────────────────── comparing two versions ─────────────────────────────
+
+pub const COMPARE_STEPS: &[(&str, &str)] = &[("build", "Compilation de A et B"), ("run", "Exécution de A et B"), ("bench", "Mesures alternées"), ("verdict", "Comparaison")];
+
+/// One run of a version, with what it printed.
+#[derive(Debug, Clone, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct VersionRun {
+    pub exit_code: Option<i32>,
+    pub signal_name: Option<String>,
+    pub timed_out: bool,
+    pub stdout: String,
+    pub stderr: String,
+    pub duration_ms: u64,
+}
+
+/// Builds and runs versions A and B under the same conditions (A's settings: compiler,
+/// options, arguments, standard input, limits), checks they print the same thing, then times
+/// them in alternation (A B A B…) so a change of machine load hits both alike.
+pub fn compare_in_job(job: &Job, a: &Draft, b: &Draft, root: &Path, objs: Option<&Path>) -> Result<&'static str> {
+    let s = DraftSettings { asan: false, ubsan: false, valgrind: false, ..a.settings.clone() };
+    job.set("versions", serde_json::json!({"a": {"id": a.id, "title": a.title}, "b": {"id": b.id, "title": b.title}}));
+    job.start("build");
+    let mut built = Vec::new();
+    for (tag, d) in [("a", a), ("b", b)] {
+        let work = root.join(tag);
+        materialize(&d.files, &work)?;
+        let (report, program) = build(job, &d.files, &s, &work, objs)?;
+        job.set(&format!("compile_{tag}"), &report);
+        if job.cancelled() {
+            return Ok("cancelled");
+        }
+        match program {
+            Some(p) => built.push((work, p)),
+            None => {
+                job.end("build", "failed", Some(format!("la version {} ne compile pas", tag.to_uppercase())));
+                return Ok("failed");
+            }
+        }
+    }
+    job.end("build", "success", None);
+
+    job.start("run");
+    let args = if s.args.trim().is_empty() { Vec::new() } else { crate::jobs::split_command(&s.args)? };
+    let stdin_path = root.join("stdin.txt");
+    std::fs::write(&stdin_path, &s.stdin)?;
+    let limits = run_limits(&s);
+    let mut runs = Vec::new();
+    for (work, program) in &built {
+        let mut argv = vec![format!("./{program}")];
+        argv.extend(args.iter().cloned());
+        let wrapped = sandbox::wrap_argv(work, &argv, &[], &limits)?;
+        let o = job.run_opts(&RunOpts { argv: &wrapped, cwd: work, timeout: limits.wall, envs: &[], log_output: false, stdin: Some(&stdin_path), split_streams: true }, &mut |_| {})?;
+        if o.cancelled {
+            return Ok("cancelled");
+        }
+        let signal = sandbox::signal_of(o.code);
+        runs.push(VersionRun { exit_code: o.code, signal_name: signal.map(|x| sandbox::signal_name(x).to_string()), timed_out: o.timed_out, stdout: keep(&o.stdout).0, stderr: keep(&o.stderr).0, duration_ms: o.duration_ms });
+    }
+    let same_output = runs[0].stdout == runs[1].stdout;
+    let same_code = runs[0].exit_code == runs[1].exit_code;
+    job.set("run_a", &runs[0]);
+    job.set("run_b", &runs[1]);
+    job.set("sameOutput", same_output);
+    job.set("sameCode", same_code);
+    let finished = runs.iter().all(|r| !r.timed_out && r.signal_name.is_none());
+    job.end("run", if same_output && same_code { "success" } else { "warning" }, Some(if same_output && same_code { "mêmes sorties".into() } else { "les sorties diffèrent".to_string() }));
+
+    job.start("bench");
+    if !finished {
+        job.skip("bench", "une version ne va pas au bout");
+        job.skip("verdict", "pas de mesures");
+        return Ok("warning");
+    }
+    let helpers: Vec<PathBuf> = built.iter().map(|(w, _)| crate::bench::helper(job, w)).collect::<Result<_>>()?;
+    let n = crate::bench::repeat_count(runs[0].duration_ms.max(runs[1].duration_ms));
+    let mut samples: [Vec<crate::arena::measure::Sample>; 2] = [Vec::new(), Vec::new()];
+    for i in 0..=n {
+        for v in 0..2 {
+            let (work, program) = &built[v];
+            match crate::bench::sample(job, work, &helpers[v], &work.join(program), &args, Some(&stdin_path), &limits)? {
+                Some(x) if i > 0 => samples[v].push(x),
+                Some(_) => {}
+                None if job.cancelled() => return Ok("cancelled"),
+                None => {}
+            }
+        }
+    }
+    let (Some(ta), Some(tb)) = (crate::bench::timing(&samples[0]), crate::bench::timing(&samples[1])) else {
+        job.skip("bench", "mesure impossible");
+        job.skip("verdict", "pas de mesures");
+        return Ok("warning");
+    };
+    job.set("bench_a", &ta);
+    job.set("bench_b", &tb);
+    job.end("bench", "success", Some(format!("{} mesures par version", ta.runs.min(tb.runs))));
+    job.start("verdict");
+    let v = crate::bench::verdict(&ta, &tb);
+    job.set("verdict", &v);
+    job.end("verdict", "success", Some(v.why.clone()));
+    Ok(if same_output && same_code { "success" } else { "warning" })
 }
 
 // ───────────────────────────── libraries and export ─────────────────────────────
@@ -561,7 +831,7 @@ mod tests {
         let db = std::sync::Arc::new(std::sync::Mutex::new(crate::db::open_in_memory().unwrap()));
         let tmp = tempfile::tempdir().unwrap();
         let root = tmp.path().to_path_buf();
-        let id = jobs.start(db, "playground", None, "t".into(), &[("compile", "Compilation"), ("run", "Exécution")], move |job| run_in_job(job, 1, &files, &s, &root));
+        let id = jobs.start(db, "playground", None, "t".into(), STEPS, move |job| run_in_job(job, 1, &files, &s, &root, None));
         loop {
             let v = jobs.get(id).unwrap();
             if v.status != "running" && v.run_id.is_some() {
@@ -570,6 +840,81 @@ mod tests {
             }
             std::thread::sleep(Duration::from_millis(50));
         }
+    }
+
+    fn run_cached(files: Vec<DraftFile>, s: DraftSettings, objs: PathBuf) -> crate::jobs::JobView {
+        let jobs = crate::jobs::Jobs::default();
+        let db = std::sync::Arc::new(std::sync::Mutex::new(crate::db::open_in_memory().unwrap()));
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().to_path_buf();
+        let id = jobs.start(db, "playground", None, "t".into(), STEPS, move |job| run_in_job(job, 1, &files, &s, &root, Some(&objs)));
+        loop {
+            let v = jobs.get(id).unwrap();
+            if v.status != "running" && v.run_id.is_some() {
+                drop(tmp);
+                return v;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
+
+    #[test]
+    fn two_versions_are_compared_under_the_same_conditions() {
+        if !ready() {
+            return;
+        }
+        let conn = crate::db::open_in_memory().unwrap();
+        let prog = |loops: u64, out: &str| vec![DraftFile { name: "main.c".into(), content: format!("#include <stdio.h>\nint main(void)\n{{\n    volatile unsigned long s = 0;\n    for (unsigned long i = 0; i < {loops}UL; i++)\n        s += i;\n    printf(\"{out}\\n\");\n    return 0;\n}}\n"), library: None }];
+        let a = create(&conn, "lent", Some(prog(40_000_000, "ok")), None, 1).unwrap();
+        let b = create(&conn, "rapide", Some(prog(400_000, "ok")), None, 1).unwrap();
+        let c = create(&conn, "autre", Some(prog(400_000, "ko")), None, 1).unwrap();
+        let go = |x: Draft, y: Draft| {
+            let jobs = crate::jobs::Jobs::default();
+            let db = std::sync::Arc::new(std::sync::Mutex::new(crate::db::open_in_memory().unwrap()));
+            let tmp = tempfile::tempdir().unwrap();
+            let root = tmp.path().to_path_buf();
+            let id = jobs.start(db, "playground_compare", None, "t".into(), COMPARE_STEPS, move |job| compare_in_job(job, &x, &y, &root, None));
+            loop {
+                let v = jobs.get(id).unwrap();
+                if v.status != "running" && v.run_id.is_some() {
+                    drop(tmp);
+                    return v;
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+        };
+        let v = go(a.clone(), b);
+        assert_eq!(v.summary["sameOutput"], true, "{}", v.log);
+        assert_eq!(v.summary["verdict"]["faster"], "b", "{} {} {} {}", v.summary["verdict"], v.summary["bench_a"], v.summary["bench_b"], v.summary["run_a"]);
+        assert_eq!(v.summary["verdict"]["significant"], true);
+        let w = go(a, c);
+        assert_eq!(w.summary["sameOutput"], false);
+        assert_eq!(w.status, "warning");
+    }
+
+    #[test]
+    fn a_second_build_reuses_objects_and_runs_are_timed() {
+        if !ready() {
+            return;
+        }
+        let objs = tempfile::tempdir().unwrap();
+        let f = |n: &str, c: &str| DraftFile { name: n.into(), content: c.into(), library: None };
+        let files = vec![f("main.c", "int twice(int x);\nint main(void)\n{\n    return twice(0);\n}\n"), f("twice.c", "int twice(int x)\n{\n    return x * 2;\n}\n")];
+        let first = run_cached(files.clone(), DraftSettings::default(), objs.path().to_path_buf());
+        let b = &first.summary["compile"]["build"];
+        assert_eq!((b["mode"].as_str(), b["compiled"].as_u64()), (Some("full"), Some(2)), "{}", first.log);
+        // Only main.c changes: twice.o comes from the cache.
+        let mut changed = files.clone();
+        changed[0].content.push_str("/* edit */\n");
+        let second = run_cached(changed, DraftSettings::default(), objs.path().to_path_buf());
+        let b = &second.summary["compile"]["build"];
+        assert_eq!((b["mode"].as_str(), b["cached"].as_u64(), b["compiled"].as_u64()), (Some("incremental"), Some(1), Some(1)), "{}", second.log);
+        // A fast program is timed several times through the helper.
+        let bench = &second.summary["bench"];
+        // Repeated (how many depends on the machine load: each run relaunches the sandbox).
+        assert!(bench["runs"].as_u64().unwrap() >= 3, "{bench}");
+        assert!(bench["wall"]["median"].as_f64().unwrap() >= 0.0);
+        assert!(bench["maxRssKb"].as_u64().unwrap() > 0);
     }
 
     #[test]

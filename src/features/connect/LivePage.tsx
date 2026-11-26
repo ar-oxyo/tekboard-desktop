@@ -9,6 +9,7 @@ import { api, asAppError, type LiveSession } from "../../lib/api";
 import { useUi } from "../../lib/store";
 import { recipients } from "../../lib/share";
 import { ProjectPicker } from "../../components/ProjectPicker";
+import { Select } from "../../components/Select";
 import { Badge, Button, Card, CardTitle, Spinner } from "../../components/ui";
 import { useConnect } from "./ConnectPage";
 import { Avatar } from "./Avatar";
@@ -34,6 +35,8 @@ export function LivePage() {
   const [contactsOnly, setContactsOnly] = useState(true);
   const [showProject, setShowProject] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const interfaces = useQuery({ queryKey: ["teklive-interfaces"], queryFn: api.liveInterfaces, staleTime: 30_000 });
+  const [iface, setIface] = useState<string | null>(null);
   useEffect(() => {
     if (preset) setProject(preset);
   }, [preset]);
@@ -58,7 +61,10 @@ export function LivePage() {
     if (!project) return;
     setBusy("start");
     try {
-      qc.setQueryData(LIVE_KEY, await api.liveStart(project, contactsOnly, showProject));
+      const started = await api.liveStart(project, contactsOnly, showProject, iface);
+      qc.setQueryData(LIVE_KEY, started);
+      // The address guests paste in VS Code, on the clipboard right away.
+      void copyAddress(started.server, toast, true);
     } catch (e) {
       err(e);
     } finally {
@@ -104,7 +110,7 @@ export function LivePage() {
             </Button>
           </Card>
         ))}
-        {live ? <SessionCard s={live} /> : <StartCard project={project} setProject={setProject} contactsOnly={contactsOnly} setContactsOnly={setContactsOnly} showProject={showProject} setShowProject={setShowProject} ready={!!s && s.missing.length === 0} busy={busy === "start"} onStart={() => void start()} />}
+        {live ? <SessionCard s={live} /> : <StartCard project={project} setProject={setProject} contactsOnly={contactsOnly} setContactsOnly={setContactsOnly} showProject={showProject} setShowProject={setShowProject} ready={!!s && s.missing.length === 0} busy={busy === "start"} onStart={() => void start()} interfaces={interfaces.data ?? []} iface={iface} setIface={setIface} />}
       </div>
       <div className="space-y-4">
         <Card>
@@ -123,17 +129,17 @@ export function LivePage() {
             )}
           </div>
         </Card>
-        <Card>
-          <CardTitle>
+        <details className="card group">
+          <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm text-muted hover:text-fg">
             <Info className="size-4 text-faint" /> {t("Bon à savoir")}
-          </CardTitle>
-          <ul className="space-y-2 p-4 text-xs text-muted">
+          </summary>
+          <ul className="space-y-2 px-4 pb-4 text-xs text-muted">
             <li>{t("La session passe par un relais lancé par TekBoard sur cet ordinateur, sur le réseau local seulement : rien ne passe par Internet ni par un serveur, et rien ne change dans le pare-feu.")}</li>
             <li>{t("P2P Live Share n'a pas de droits par participant : toute personne qui rejoint peut modifier les fichiers du projet. N'invite que des personnes de confiance ; « contacts TekBoard seulement » refuse les autres adresses.")}</li>
             <li>{t("Rien d'autre n'est partagé par défaut : un terminal ou un serveur ne l'est que si tu le partages toi-même dans VS Code.")}</li>
             <li>{t("Les invités ne voient pas forcément leur nom ici : le relais ne voit que les connexions, pas les noms choisis dans l'extension.")}</li>
           </ul>
-        </Card>
+        </details>
       </div>
     </div>
   );
@@ -150,15 +156,40 @@ function Row({ ok, label, value, action }: { ok: boolean; label: string; value: 
   );
 }
 
-function StartCard(p: { project: string | null; setProject: (v: string | null) => void; contactsOnly: boolean; setContactsOnly: (v: boolean) => void; showProject: boolean; setShowProject: (v: boolean) => void; ready: boolean; busy: boolean; onStart: () => void }) {
+/** Copies the server address; `auto`: copied at start, said discreetly. */
+async function copyAddress(text: string, toast: (t: { kind: "ok" | "error" | "info"; title: string; detail?: string }) => void, auto = false) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast({ kind: "ok", title: auto ? t("Adresse du serveur copiée") : t("Adresse copiée"), detail: auto ? text : undefined });
+  } catch {
+    toast({ kind: "info", title: t("Copie impossible : sélectionne l'adresse à la main"), detail: text });
+  }
+}
+
+type Iface = { name: string; ip: string; kind: string; default: boolean };
+
+function StartCard(p: { project: string | null; setProject: (v: string | null) => void; contactsOnly: boolean; setContactsOnly: (v: boolean) => void; showProject: boolean; setShowProject: (v: boolean) => void; ready: boolean; busy: boolean; onStart: () => void; interfaces: Iface[]; iface: string | null; setIface: (v: string | null) => void }) {
+  const chosen = p.interfaces.find((i) => i.name === p.iface) ?? p.interfaces.find((i) => i.default) ?? p.interfaces[0];
   return (
     <Card>
       <CardTitle>
         <Users className="size-4 text-faint" /> {t("Collaborer sur un projet")}
       </CardTitle>
       <div className="space-y-3 p-4">
-        <p className="text-sm text-muted">{t("TekBoard démarre le relais, ouvre le projet dans VS Code et y prépare P2P Live Share. Dans VS Code, la liste des serveurs s'ouvre avec celui de TekBoard en premier : appuie sur Entrée. Le lien d'invitation apparaît alors ici.")}</p>
+        <p className="text-sm text-muted" title={t("TekBoard démarre le relais, ouvre le projet dans VS Code et y prépare P2P Live Share. Dans VS Code, la liste des serveurs s'ouvre avec celui de TekBoard en premier : appuie sur Entrée. Le lien d'invitation apparaît alors ici.")}>
+          {t("TekBoard lance le serveur, copie son adresse et ouvre le projet dans VS Code.")}
+        </p>
         <ProjectPicker value={p.project} onChange={p.setProject} />
+        {p.interfaces.length > 1 && (
+          <Select
+            size="sm"
+            label={t("Réseau")}
+            value={chosen?.name ?? null}
+            onChange={(v) => p.setIface(v)}
+            options={p.interfaces.map((i) => ({ value: i.name, label: `${i.ip} · ${i.name}`, hint: i.default ? t("par défaut") : i.kind === "wifi" ? "Wi-Fi" : i.kind === "ethernet" ? t("filaire") : undefined }))}
+          />
+        )}
+        {p.interfaces.length === 0 && <p className="text-xs text-warn">{t("Aucun réseau détecté : connecte-toi en Wi-Fi ou en filaire.")}</p>}
         <label className="flex items-center gap-2 text-sm text-muted">
           <input type="checkbox" className="accent-(--color-accent)" checked={p.contactsOnly} onChange={(e) => p.setContactsOnly(e.target.checked)} />
           {t("Contacts TekBoard seulement (les autres adresses sont refusées)")}
@@ -191,19 +222,37 @@ function SessionCard({ s }: { s: LiveSession }) {
         <Users className="size-4 text-faint" /> {s.name}
       </CardTitle>
       <div className="space-y-4 p-4">
+        <div>
+          <p className="mb-1 flex items-center gap-2 text-xs text-faint">
+            <span className="size-1.5 rounded-full bg-ok" aria-hidden /> {t("Serveur actif")}
+            {s.interface && <span className="font-mono">· {s.interface}</span>}
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="selectable min-w-0 flex-1 truncate rounded-md bg-well px-3 py-2 font-mono text-md text-fg" title={t("Adresse WebSocket à donner à P2P Live Share")}>
+              {s.server}
+            </code>
+            <Button size="sm" icon={<Copy className="size-3.5" />} onClick={() => void copyAddress(s.server, toast)}>
+              {t("Copier")}
+            </Button>
+          </div>
+          {s.note && <p className="mt-1 text-xs text-warn">{s.note}</p>}
+        </div>
         {s.state === "waiting" && (
           <p className="text-sm text-muted">
-            {t("Dans VS Code, choisis")} <code className="font-mono text-fg">{s.server}</code> {t("(premier de la liste) et appuie sur Entrée. Si la liste ne s'est pas ouverte, lance « P2P Live Share: Host a Session ».")}
+            {t("Dans VS Code, choisis cette adresse (première de la liste) et appuie sur Entrée. Si la liste ne s'est pas ouverte, lance « P2P Live Share: Host a Session ».")}
           </p>
         )}
         {s.link && (
-          <div className="flex gap-2">
-            <code className="selectable min-w-0 flex-1 truncate rounded bg-raised px-2 py-1.5 font-mono text-2xs text-fg" title={s.link}>
-              {s.link}
-            </code>
-            <Button size="sm" icon={<Copy className="size-3.5" />} onClick={() => void navigator.clipboard.writeText(s.link!).then(() => toast({ kind: "ok", title: t("Lien copié"), detail: t("Dans VS Code : P2P Live Share → Join, puis colle le lien.") }))}>
-              {t("Copier")}
-            </Button>
+          <div>
+            <p className="mb-1 text-xs text-faint">{t("Lien d'invitation")}</p>
+            <div className="flex gap-2">
+              <code className="selectable min-w-0 flex-1 truncate rounded bg-raised px-2 py-1.5 font-mono text-2xs text-fg" title={s.link}>
+                {s.link}
+              </code>
+              <Button size="sm" variant="ghost" icon={<Copy className="size-3.5" />} onClick={() => void navigator.clipboard.writeText(s.link!).then(() => toast({ kind: "ok", title: t("Lien copié"), detail: t("Dans VS Code : P2P Live Share → Join, puis colle le lien.") }))}>
+                {t("Copier")}
+              </Button>
+            </div>
           </div>
         )}
         <div className="grid grid-cols-3 gap-2 text-center">

@@ -1,6 +1,8 @@
 pub mod ai;
 pub mod arena;
 pub mod analytics;
+pub mod credits;
+pub mod bench;
 pub mod boards;
 pub mod brain;
 pub mod cdiag;
@@ -35,6 +37,9 @@ pub mod launcher;
 pub mod logtime;
 pub mod library;
 pub mod moulinette;
+pub mod mouli;
+pub mod moderation;
+pub mod music;
 pub mod mydata;
 pub mod myepitech;
 pub mod myres;
@@ -163,6 +168,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_settings,
             commands_app::startup_notices,
+            commands_app::app_set_icon,
             commands_app::data_locations,
             commands_app::data_open,
             commands_app::data_export,
@@ -276,6 +282,7 @@ pub fn run() {
             commands_lab::playground_set_open,
             commands_lab::playground_delete,
             commands_lab::playground_run,
+            commands_lab::playground_compare,
             commands_lab::playground_import_library,
             commands_lab::playground_export_preview,
             commands_lab::playground_export,
@@ -298,6 +305,7 @@ pub fn run() {
             commands_connect::live_setup,
             commands_connect::live_install,
             commands_connect::live_start,
+            commands_connect::live_interfaces,
             commands_connect::live_stop,
             commands_connect::live_state,
             commands_connect::live_invite,
@@ -307,6 +315,10 @@ pub fn run() {
             commands_connect::session_send,
             commands_connect::session_broadcast,
             commands_connect::space_open_jam,
+            commands_connect::music_now,
+            commands_connect::spotify_status,
+            commands_connect::spotify_login,
+            commands_connect::spotify_logout,
             commands_lab::arena_tools,
             commands_lab::arena_list,
             commands_lab::arena_save,
@@ -400,6 +412,9 @@ pub fn run() {
             commands_app::doctor_fix,
             commands_app::doctor_export,
             commands_my::my_skill_tree,
+            commands_my::credit_scenarios,
+            commands_my::credit_scenario_save,
+            commands_my::credit_scenario_delete,
             commands_ai::memory_list,
             commands_ai::memory_add,
             commands_ai::memory_update,
@@ -436,6 +451,11 @@ pub fn run() {
             commands_dev::testrepo_env_delete,
             commands_dev::testrepo_env_open,
             commands_dev::moulinette_start,
+            commands_dev::mouli_state,
+            commands_dev::mouli_analyze,
+            commands_dev::mouli_run,
+            commands_dev::mouli_toggle,
+            commands_dev::mouli_export,
             commands_dev::claude_brief,
             commands_dev::gen_tests_start,
             commands_dev::gen_tests_apply,

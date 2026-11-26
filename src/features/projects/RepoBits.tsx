@@ -63,7 +63,7 @@ export function DueBadge({ repo, now }: { repo: RepoInfo; now?: Date }) {
   if (repo.progress === "done" || !repo.meta.deadline) return null;
   const d = dueOf(repo, now);
   if (d.state === "unknown") return null;
-  const origin = repo.meta.deadlineSource === "my" ? "from MY Epitech" : repo.meta.deadlineSource === "manual" ? "typed by you" : "saved earlier";
+  const origin = repo.meta.deadlineSource === "my" ? t("depuis MY Epitech") : repo.meta.deadlineSource === "manual" ? t("saisi par toi") : t("enregistré plus tôt");
   return (
     <Countdown tone={d.tone} title={`Hand-in ${repo.meta.deadline}${d.time ? ` at ${d.time}` : ""} (${origin})`}>
       {d.label}

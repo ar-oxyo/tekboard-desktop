@@ -185,7 +185,7 @@ export function CaptureEditor({ project: initialProject, onSaved, onClose, autoF
         <span className="ml-auto hidden items-center gap-1 text-2xs text-faint sm:flex">
           <Kbd>↵</Kbd> {t("enregistrer")} · <Kbd>⇧↵</Kbd> {t("ligne")} · <Kbd>Échap</Kbd> {t("fermer")}
         </span>
-        <Button size="sm" variant="primary" busy={busy} disabled={!text.trim()} onClick={() => void save(false)}>
+        <Button size="sm" variant="primary" busy={busy} disabled={!text.trim()} disabledReason={t("Rien à enregistrer")} onClick={() => void save(false)}>
           {t("Noter")}
         </Button>
       </div>

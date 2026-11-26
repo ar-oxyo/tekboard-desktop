@@ -7,7 +7,9 @@ import { Select } from "../../components/Select";
 import { Button, cn, Dot, DoneCheck, Field, IconButton, Input, SectionLabel } from "../../components/ui";
 import type { PlanEvent, PlanEventKind, PlanTask } from "../../lib/api";
 import { useNow } from "../../lib/hooks";
-import { addDays, dayKey, dayStartOf, durInput, fmtDur, freeSlots, hhmm, hhmmOf, MIN, minutesOf, missed, parseDur, PRIORITY, startOfWeek, type PlanPrefs, type RhythmMode, RHYTHMS, withMode, type PlanProject } from "../../lib/plan";
+import { TimeField } from "../../components/TimeField";
+import { DateField } from "../../components/DateField";
+import { addDays, dayKey, dayStartOf, durInput, endFromClock, fmtDur, freeSlots, hhmm, hhmmOf, MIN, minutesOf, missed, parseDur, PRIORITY, startOfWeek, type PlanPrefs, type RhythmMode, RHYTHMS, withMode, type PlanProject } from "../../lib/plan";
 import { useUi } from "../../lib/store";
 import { usePlanActions, usePlanData, usePlanPrefs } from "./usePlan";
 import { locale, t as tr } from "../../lib/i18n";
@@ -128,16 +130,19 @@ function EventForm({ draft }: { draft: Partial<PlanEvent> }) {
       >
         {kind !== "task" && <Segmented label={tr("Type")} value={kind} onChange={setKind} options={KINDS.map(([k]) => [k, kindName(k)] as [PlanEventKind, string])} />}
         <Input autoFocus aria-label={tr("Titre")} placeholder={work ? (name ?? tr("Sur quoi vas-tu travailler ?")) : kind === "reminder" ? tr("Me rappeler de…") : tr("Titre")} value={title} onChange={(e) => setTitle(e.target.value)} />
-        {task && <p className="-mt-1 text-xs text-faint">Holds the task “{task.title}”.</p>}
+        {task && <p className="-mt-1 text-xs text-faint">{tr("Contient la tâche « {t} ».", { t: task.title })}</p>}
         <div className="grid grid-cols-[minmax(0,1fr)_110px_110px] gap-2">
           <Field label={tr("Jour")}>
-            <Input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
+            <DateField aria-label={tr("Jour")} value={day} onChange={setDay} />
           </Field>
           <Field label={tr("De")}>
-            <Input type="time" step={900} value={from} onChange={(e) => setFrom(e.target.value)} />
+            <TimeField className="w-full" aria-label={tr("Début")} value={minutesOf(from)} onChange={(m) => m !== null && setFrom(hhmmOf(m))} />
           </Field>
           <Field label={tr("À")}>
-            <Input type="time" step={900} value={to} onChange={(e) => setTo(e.target.value)} />
+            {(() => {
+              const [a, b] = [minutesOf(from), minutesOf(to)];
+              return <TimeField className="w-full" aria-label={tr("Fin")} value={b} suffix={a !== null && b !== null && b <= a ? tr("+1 j") : undefined} title={tr("Une fin avant le début finit le lendemain")} onChange={(m) => m !== null && setTo(hhmmOf(m))} />;
+            })()}
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -196,7 +201,7 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
   const value = (): (Partial<PlanTask> & { title: string }) | null => {
     const minutes = estimate.trim() === "" ? null : parseDur(estimate);
     if (estimate.trim() !== "" && minutes === null) {
-      setError("Estimate: write 2h, 1h30 or 45m.");
+      setError(tr("Estimation : écris 2h, 1h30 ou 45m."));
       return null;
     }
     if (!title.trim()) {
@@ -277,7 +282,7 @@ function TaskForm({ draft }: { draft: Partial<PlanTask> }) {
             <Input placeholder="none" value={estimate} onChange={(e) => setEstimate(e.target.value)} />
           </Field>
           <Field label="Échéance">
-            <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+            <DateField optional aria-label="Échéance" value={due} onChange={setDue} />
           </Field>
         </div>
         <Field label={tr("Notes")}>
@@ -360,7 +365,7 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
   const [p, setP] = useState<PlanPrefs>(prefs);
   const [error, setError] = useState<string | null>(null);
   const num = (label: string, value: number, key: "maxMinutesPerDay" | "sessionMinutes" | "breakMinutes" | "longBreakMinutes" | "flexMinutes", hint: string, disabled = false) => (
-    <Field label={label} hint={disabled ? tr("fixé par le rythme choisi") : hint}>
+    <Field label={tr(label)} hint={disabled ? tr("fixé par le rythme choisi") : hint}>
       <Input
         key={`${key}-${value}`}
         disabled={disabled}
@@ -368,17 +373,19 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
         onBlur={(e) => {
           const m = parseDur(e.target.value, "min");
           if (m !== null) setP((x) => ({ ...x, [key]: m }));
-          else setError(`« ${e.target.value} » : écris 45, 45m, 1h30…`);
+          else setError(tr("« {v} » : écris 45, 45m, 1h30…", { v: e.target.value }));
         }}
       />
     </Field>
   );
   const lunch = p.protected[0] ?? null;
   const save = () => {
-    if (p.dayEnd - p.dayStart < 60) return setError("Les horaires de travail couvrent au moins une heure.");
-    if (p.sessionMinutes < 15 || p.sessionMinutes > 180) return setError("Une session dure entre 15 min et 3 h.");
-    if (p.maxMinutesPerDay < 30 || p.maxMinutesPerDay > 720) return setError("Le plafond quotidien est entre 30 min et 12 h.");
-    if (p.workDays.length === 0) return setError("Choisis au moins un jour.");
+    if (p.dayEnd - p.dayStart < 60) return setError(tr("Les horaires de travail couvrent au moins une heure."));
+    if (p.dayEnd > 30 * 60) return setError(tr("La journée de travail finit au plus tard à 06:00 le lendemain."));
+    if (p.dayEnd > p.dayStart + 23 * 60) return setError(tr("Garde au moins une heure entre la fin et la reprise du lendemain."));
+    if (p.sessionMinutes < 15 || p.sessionMinutes > 180) return setError(tr("Une session dure entre 15 min et 3 h."));
+    if (p.maxMinutesPerDay < 30 || p.maxMinutesPerDay > 720) return setError(tr("Le plafond quotidien est entre 30 min et 12 h."));
+    if (p.workDays.length === 0) return setError(tr("Choisis au moins un jour."));
     setPrefs(p);
     onClose();
   };
@@ -412,10 +419,10 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Field label={tr("Travail à partir de")}>
-            <Input type="time" step={900} value={hhmmOf(p.dayStart)} onChange={(e) => setP({ ...p, dayStart: minutesOf(e.target.value) ?? p.dayStart })} />
+            <TimeField className="w-full" aria-label={tr("Début de journée")} value={p.dayStart} onChange={(m) => m !== null && setP({ ...p, dayStart: m, dayEnd: endFromClock(m, p.dayEnd % 1440) })} />
           </Field>
-          <Field label={tr("Jusqu'à")}>
-            <Input type="time" step={900} value={hhmmOf(p.dayEnd)} onChange={(e) => setP({ ...p, dayEnd: minutesOf(e.target.value) ?? p.dayEnd })} />
+          <Field label={tr("Jusqu'à")} hint={p.dayEnd > 1440 ? tr("le lendemain : une disponibilité, pas une obligation") : undefined}>
+            <TimeField className="w-full" aria-label={tr("Fin de journée")} value={p.dayEnd % 1440} suffix={p.dayEnd > 1440 ? tr("+1 j") : undefined} title={tr("Une heure avant le début finit le lendemain (09:00 → 02:00)")} onChange={(m) => m !== null && setP({ ...p, dayEnd: endFromClock(p.dayStart, m) })} />
           </Field>
         </div>
         <Field label={tr("Jours travaillés")}>
@@ -442,18 +449,18 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div className="flex items-center gap-2 text-sm text-muted">
           <input type="checkbox" className="accent-(--color-accent)" checked={lunch !== null} onChange={(e) => setP({ ...p, protected: e.target.checked ? [[750, 810]] : [] })} />
-          Protéger le déjeuner
+          {tr("Protéger le déjeuner")}
           {lunch && (
             <>
-              <Input type="time" step={900} className="h-7 w-24" value={hhmmOf(lunch[0])} onChange={(e) => setP({ ...p, protected: [[minutesOf(e.target.value) ?? lunch[0], lunch[1]]] })} />–
-              <Input type="time" step={900} className="h-7 w-24" value={hhmmOf(lunch[1])} onChange={(e) => setP({ ...p, protected: [[lunch[0], minutesOf(e.target.value) ?? lunch[1]]] })} />
+              <TimeField className="h-7 w-20" aria-label={tr("Début du déjeuner")} value={lunch[0]} onChange={(m) => m !== null && setP({ ...p, protected: [[m, Math.max(m + 15, lunch[1])]] })} />–
+              <TimeField className="h-7 w-20" aria-label={tr("Fin du déjeuner")} value={lunch[1]} onChange={(m) => m !== null && m > lunch[0] && setP({ ...p, protected: [[lunch[0], m]] })} />
             </>
           )}
         </div>
         <label className="flex items-center gap-2 text-sm text-muted">
           <input type="checkbox" className="accent-(--color-accent)" checked={p.morningPlan} onChange={(e) => setP({ ...p, morningPlan: e.target.checked })} /> {tr("Proposer un plan pour la journée sur Aujourd'hui quand rien n'est prévu")}
         </label>
-        <p className="text-xs text-faint">Après {p.blocksBeforeLongBreak} blocs presque d'affilée, une pause longue est imposée. Une pause est gardée avant et après chaque cours ou entrée.</p>
+        <p className="text-xs text-faint">{tr("Après {n} blocs presque d'affilée, une pause longue est imposée. Une pause est gardée avant et après chaque cours ou entrée.", { n: p.blocksBeforeLongBreak })}</p>
         {error && <p className="text-xs text-danger">{error}</p>}
       </div>
     </Modal>

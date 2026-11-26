@@ -125,9 +125,9 @@ fn local_ips() -> HashSet<IpAddr> {
 }
 
 impl Relay {
-    /// Listens on `ip` (port picked by the system).
-    pub async fn start(ip: IpAddr, allowed: Option<HashSet<IpAddr>>, on_change: Arc<dyn Fn(&RelayState) + Send + Sync>) -> std::io::Result<Arc<Relay>> {
-        let listener = tokio::net::TcpListener::bind(SocketAddr::new(ip, 0)).await?;
+    /// Listens on `ip`, port `port` (0: picked by the system).
+    pub async fn start(ip: IpAddr, port: u16, allowed: Option<HashSet<IpAddr>>, on_change: Arc<dyn Fn(&RelayState) + Send + Sync>) -> std::io::Result<Arc<Relay>> {
+        let listener = tokio::net::TcpListener::bind(SocketAddr::new(ip, port)).await?;
         let addr = listener.local_addr()?;
         let (stop, mut stopped) = watch::channel(false);
         let relay = Arc::new(Relay { addr, shared: Arc::new(Mutex::new(Shared { state: RelayState::default(), clients: HashMap::new(), local: local_ips(), allowed })), stop, on_change });
@@ -294,11 +294,22 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_port_in_use_is_reported_as_such() {
+        let taken = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = taken.local_addr().unwrap().port();
+        let err = Relay::start("127.0.0.1".parse().unwrap(), port, None, Arc::new(|_| {})).await.err().unwrap();
+        assert_eq!(err.kind(), std::io::ErrorKind::AddrInUse);
+        let free = Relay::start("127.0.0.1".parse().unwrap(), 0, None, Arc::new(|_| {})).await.unwrap();
+        assert_ne!(free.addr.port(), port);
+        free.stop();
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_room_relays_between_peers_like_the_original_server() {
         use tokio_tungstenite::connect_async;
         let changes = Arc::new(Mutex::new(0u32));
         let c = changes.clone();
-        let relay = Relay::start("127.0.0.1".parse().unwrap(), None, Arc::new(move |_| *lock(&c) += 1)).await.unwrap();
+        let relay = Relay::start("127.0.0.1".parse().unwrap(), 0, None, Arc::new(move |_| *lock(&c) += 1)).await.unwrap();
         let url = |room: &str, peer: &str| format!("ws://{}/{room}/{peer}", relay.addr);
         let (mut host, _) = connect_async(url("proj-abc123", "host")).await.unwrap();
         let first = host.next().await.unwrap().unwrap();

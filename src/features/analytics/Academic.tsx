@@ -3,13 +3,13 @@
 // here is a prediction, and what could not be read is listed.
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useState } from "react";
-import { Badge, Button, Card, CardTitle } from "../../components/ui";
+import { useState, type ReactNode } from "react";
+import { Badge, Button, Card, CardTitle, Input, Section } from "../../components/ui";
 import { api, type Academic } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
 import { useUi } from "../../lib/store";
 import { Columns, Stat } from "./AnalyticsPage";
-import { locale, t } from "../../lib/i18n";
+import { locale, plural, t } from "../../lib/i18n";
 
 const hours = (secs: number) => (secs >= 3600 ? `${(secs / 3600).toFixed(1)} h` : `${Math.round(secs / 60)} min`);
 const shortDay = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(locale(), { day: "numeric", month: "short" });
@@ -18,10 +18,34 @@ const shortDay = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(loc
 function Meter({ value, total }: { value: number; total: number }) {
   const pct = total > 0 ? Math.min(100, (value / total) * 100) : 0;
   return (
-    <span className="block h-1.5 w-full overflow-hidden rounded-full bg-ink/8" role="img" aria-label={`${value} of ${total}`}>
+    <span className="block h-1.5 w-full overflow-hidden rounded-full bg-ink/8" role="img" aria-label={`${value} / ${total}`}>
       <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: "var(--color-accent)" }} />
     </span>
   );
+}
+
+const CAP = 8;
+
+/**
+ * A long list shows its first rows, with "Tout voir" and, past the cap, a filter. Short lists
+ * show everything and no control.
+ */
+export function useCapped<T>(items: T[], text: (x: T) => string) {
+  const [all, setAll] = useState(false);
+  const [q, setQ] = useState("");
+  const long = items.length > CAP;
+  const needle = q.trim().toLowerCase();
+  const filtered = needle ? items.filter((x) => text(x).toLowerCase().includes(needle)) : items;
+  const shown = all || needle ? filtered : filtered.slice(0, CAP);
+  const filter = long ? <Input className="h-7 w-36 text-xs" placeholder={t("Filtrer…")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("Filtrer la liste")} /> : null;
+  const more: ReactNode = long && !needle ? (
+    <button type="button" className="w-full border-t border-ink/6 px-4 py-2 text-left text-xs text-muted hover:text-fg" onClick={() => setAll(!all)}>
+      {all ? t("Réduire") : t("Tout voir ({n})", { n: items.length })}
+    </button>
+  ) : needle && filtered.length === 0 ? (
+    <p className="px-4 py-2 text-xs text-faint">{t("Rien ne correspond.")}</p>
+  ) : null;
+  return { shown, filter, more };
 }
 
 export function AcademicSection() {
@@ -31,54 +55,62 @@ export function AcademicSection() {
   if (!a) return null;
   const empty = a.syncedAt === null;
   return (
-    <>
-      <div id="academic" className="mt-2 flex scroll-mt-4 items-end justify-between gap-3">
-        <div>
-          <h2 className="display text-lg font-medium">Parcours</h2>
-          <p className="text-xs text-muted">{empty ? t("Depuis MY Epitech : rien de synchronisé pour l'instant.") : `${t("D'après MY Epitech, synchronisé {ago}", { ago: timeAgo(a.syncedAt!) })}${a.semester !== null ? ` · ${t("semestre {s}", { s: a.semester })}` : ""}.`}</p>
-        </div>
+    <Section
+      id="parcours"
+      className="scroll-mt-4"
+      title={t("Parcours")}
+      meta={empty ? t("Depuis MY Epitech : rien de synchronisé pour l'instant.") : `${t("D'après MY Epitech, synchronisé {ago}", { ago: timeAgo(a.syncedAt!) })}${a.semester !== null ? ` · ${t("semestre {s}", { s: a.semester })}` : ""}`}
+      action={
         <Button size="sm" variant="ghost" onClick={() => setPage("myepitech")}>
-          {empty ? "Connect MY Epitech" : "MY Epitech"}
+          {empty ? t("Connecter MY Epitech") : "MY Epitech"}
         </Button>
-      </div>
-      {!empty && <Filled a={a} />}
-    </>
+      }
+    >
+      {!empty && (
+        <div className="mt-3 flex flex-col gap-4">
+          <Filled a={a} />
+        </div>
+      )}
+    </Section>
   );
 }
 
 function Filled({ a }: { a: Academic }) {
   const done = a.units.reduce((n, u) => n + u.validated, 0);
   const all = a.units.reduce((n, u) => n + u.total, 0);
-  const logged = a.logtime.reduce((n, d) => n + d.mine, 0);
-  const recent = a.logtime.slice(-30);
+  const [span, setSpan] = useState<14 | 30 | 0>(30);
+  const recent = span ? a.logtime.slice(-span) : a.logtime;
+  const logged = recent.reduce((n, d) => n + d.mine, 0);
+  const units = useCapped(a.units, (u) => u.title);
+  const marks = useCapped(a.marks ?? [], (m) => m.title);
   return (
     <>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label={t("Crédits acquis")} value={a.creditsAcquired !== null ? String(a.creditsAcquired) : "—"} note={a.creditsTotal !== null && a.creditsTotal !== a.creditsAcquired ? `${a.creditsTotal} with prior credits` : undefined} />
-        <Stat label={t("Acquis d'apprentissage")} value={all > 0 ? `${done}/${all}` : "—"} note={all > 0 ? `validated, in ${a.units.length} units` : "not available"} />
-        <Stat label={t("Projets")} value={a.projectsTotal > 0 ? `${a.projectsDone}/${a.projectsTotal}` : "—"} note="handed in / registered" />
-        <Stat label={t("Temps de présence")} value={a.logtime.length > 0 ? hours(logged) : "—"} note={a.logtime.length > 0 ? `over ${a.logtime.length} days` : "not available"} />
+        <Stat label={t("Crédits acquis")} value={a.creditsAcquired !== null ? String(a.creditsAcquired) : "—"} note={a.creditsTotal !== null && a.creditsTotal !== a.creditsAcquired ? t("{n} avec les crédits antérieurs", { n: a.creditsTotal }) : undefined} />
+        <Stat label={t("Acquis d'apprentissage")} value={all > 0 ? `${done}/${all}` : "—"} note={all > 0 ? plural(a.units.length, "validés, sur {n} unité", "validés, sur {n} unités") : t("non disponible")} />
+        <Stat label={t("Projets")} value={a.projectsTotal > 0 ? `${a.projectsDone}/${a.projectsTotal}` : "—"} note={t("rendus / inscrits")} />
+        <Stat label={t("Temps de présence")} value={recent.length > 0 ? hours(logged) : "—"} note={recent.length > 0 ? plural(recent.length, "sur {n} jour", "sur {n} jours") : t("non disponible")} />
       </div>
       {(a.creditsLost.length > 0 || a.creditsAtRisk.length > 0 || a.globalAlert || a.level !== null) && (
         <Card>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 text-sm">
             {a.globalAlert && (
               <span className="flex items-center gap-2">
-                <span className="text-muted">MY Epitech alert level</span>
+                <span className="text-muted">{t("Niveau d'alerte MY Epitech")}</span>
                 <Badge tone={a.globalAlert === "green" ? "ok" : a.globalAlert === "red" ? "danger" : "warn"}>{a.globalAlert}</Badge>
               </span>
             )}
-            {a.creditsAtRisk.length > 0 && <span className="text-warn">At risk: {a.creditsAtRisk.map(([t, c]) => `${t} (${c} cr.)`).join(", ")}</span>}
+            {a.creditsAtRisk.length > 0 && <span className="text-warn">{t("En danger : {list}", { list: a.creditsAtRisk.map(([u, c]) => `${u} (${c} cr.)`).join(", ") })}</span>}
             {a.creditsLost.length > 0 && (
-              <span className="selectable min-w-0 text-muted" title={a.creditsLost.map(([t, c]) => `${t}: ${c} credit${c === 1 ? "" : "s"}`).join("\n")}>
-                Counted as lost by MY Epitech: {a.creditsLost.reduce((n, [, c]) => n + c, 0)} credits in {a.creditsLost.length} unit{a.creditsLost.length === 1 ? "" : "s"}
+              <span className="selectable min-w-0 text-muted" title={a.creditsLost.map(([u, c]) => `${u} : ${c} cr.`).join("\n")}>
+                {t("Comptés perdus par MY Epitech : {c} crédits dans {n} unité(s)", { c: a.creditsLost.reduce((n, [, c]) => n + c, 0), n: a.creditsLost.length })}
               </span>
             )}
             {a.level !== null && (
               <span className="ml-auto text-muted">
-                Level {a.level}
+                {t("Niveau {n}", { n: a.level })}
                 {a.xp !== null && ` · ${a.xp.toLocaleString(locale())} XP`}
-                {a.xpToNext !== null && ` · ${a.xpToNext.toLocaleString(locale())} to the next`}
+                {a.xpToNext !== null && ` · ${t("{n} avant le suivant", { n: a.xpToNext.toLocaleString(locale()) })}`}
               </span>
             )}
           </div>
@@ -86,22 +118,29 @@ function Filled({ a }: { a: Academic }) {
       )}
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Card>
-          <CardTitle>Unités</CardTitle>
-          {a.units.length === 0 ? <p className="px-4 py-4 text-sm text-muted">{t("Aucune unité dans les données synchronisées.")}</p> : <ul className="py-1">{a.units.map((u) => <UnitRow key={u.title} u={u} />)}</ul>}
+          <CardTitle right={units.filter}>{t("Unités")}</CardTitle>
+          {a.units.length === 0 ? (
+            <p className="px-4 py-4 text-sm text-muted">{t("Aucune unité dans les données synchronisées.")}</p>
+          ) : (
+            <>
+              <ul className="py-1">{units.shown.map((u) => <UnitRow key={u.title} u={u} />)}</ul>
+              {units.more}
+            </>
+          )}
         </Card>
         <div className="flex flex-col gap-4">
           {a.tests.length > 0 && (
             <Card>
               <CardTitle>{t("Tests automatiques, dernière exécution")}</CardTitle>
               <ul className="py-1.5">
-                {a.tests.map((t) => (
-                  <li key={t.project} className="px-4 py-1.5" title={`${t.runs} run${t.runs > 1 ? "s" : ""}${t.date ? `, latest ${new Date(t.date).toLocaleString(locale())}` : ""} · coding style: ${t.styleMajor} major, ${t.styleMinor} minor`}>
+                {a.tests.map((x) => (
+                  <li key={x.project} className="px-4 py-1.5" title={`${plural(x.runs, "{n} exécution", "{n} exécutions")}${x.date ? ` · ${new Date(x.date).toLocaleString(locale())}` : ""} · ${t("norme : {M} majeures, {m} mineures", { M: x.styleMajor, m: x.styleMinor })}`}>
                     <div className="mb-1 flex items-baseline gap-2 text-sm">
-                      <span className="min-w-0 flex-1 truncate">{t.project}</span>
-                      <span className="font-mono text-2xs text-faint">{t.module}</span>
-                      <span className="text-xs text-muted">{t.passed}/{t.total}</span>
+                      <span className="min-w-0 flex-1 truncate">{x.project}</span>
+                      <span className="font-mono text-2xs text-faint">{x.module}</span>
+                      <span className="text-xs text-muted">{x.passed}/{x.total}</span>
                     </div>
-                    <Meter value={t.passed} total={t.total} />
+                    <Meter value={x.passed} total={x.total} />
                   </li>
                 ))}
               </ul>
@@ -115,7 +154,7 @@ function Filled({ a }: { a: Academic }) {
                 {a.competencies.map((c) => (
                   <li key={c.name} className="flex min-h-9 items-center gap-2.5 px-4 text-sm">
                     <span className="min-w-0 flex-1 truncate">{c.name}</span>
-                    <span className="shrink-0 text-xs text-muted">{c.secure ?? "—"} secured · {c.reachable ?? "—"} reachable · {c.available ?? "—"} available</span>
+                    <span className="shrink-0 text-xs text-muted">{t("{s} sécurisés · {r} atteignables · {a} disponibles", { s: c.secure ?? "—", r: c.reachable ?? "—", a: c.available ?? "—" })}</span>
                   </li>
                 ))}
               </ul>
@@ -124,13 +163,17 @@ function Filled({ a }: { a: Academic }) {
           )}
           {a.exams.length > 0 && (
             <Card>
-              <CardTitle>Examens</CardTitle>
+              <CardTitle>{t("Examens")}</CardTitle>
               <ul className="py-1">
                 {a.exams.map((e) => (
                   <li key={e.label} className="flex min-h-9 items-center gap-2.5 px-4 text-sm">
                     <span className="min-w-0 flex-1 truncate">{e.label}</span>
-                    <span className="text-xs text-muted">{e.best ?? "—"}{e.required !== null ? ` · required ${e.required}` : ""}{e.max !== null ? ` / ${e.max}` : ""}</span>
-                    {e.best !== null && e.required !== null && <Badge tone={e.best >= e.required ? "ok" : "warn"}>{e.best >= e.required ? "reached" : "below"}</Badge>}
+                    <span className="text-xs text-muted">
+                      {e.best ?? "—"}
+                      {e.max !== null ? ` / ${e.max}` : ""}
+                      {e.required !== null ? ` · ${t("requis {n}", { n: e.required })}` : ""}
+                    </span>
+                    {e.best !== null && e.required !== null && <Badge tone={e.best >= e.required ? "ok" : "warn"}>{e.best >= e.required ? t("atteint") : t("en dessous")}</Badge>}
                   </li>
                 ))}
               </ul>
@@ -138,30 +181,43 @@ function Filled({ a }: { a: Academic }) {
           )}
           {(a.marks?.length ?? 0) > 0 && (
             <Card>
-              <CardTitle>{t("Notes")}</CardTitle>
+              <CardTitle right={marks.filter}>{t("Notes")}</CardTitle>
               <ul className="py-1">
-                {a.marks.slice(0, 12).map((m, i) => (
-                  <li key={`${m.title}-${m.date ?? i}`} title={[m.evaluator && `By ${m.evaluator}`, m.comment].filter(Boolean).join("\n") || undefined} className="flex min-h-9 items-center gap-2.5 px-4 text-sm">
+                {marks.shown.map((m, i) => (
+                  <li key={`${m.title}-${m.date ?? i}`} title={[m.evaluator && t("Par {n}", { n: m.evaluator }), m.comment].filter(Boolean).join("\n") || undefined} className="flex min-h-9 items-center gap-2.5 px-4 text-sm">
                     <span className="min-w-0 flex-1 truncate">{m.title}</span>
                     {m.date && <span className="shrink-0 text-xs text-faint">{new Date(m.date).toLocaleDateString(locale(), { day: "numeric", month: "short" })}</span>}
                     <span className="w-10 shrink-0 text-right font-mono text-xs">{m.mark ?? "—"}</span>
                   </li>
                 ))}
               </ul>
+              {marks.more}
             </Card>
           )}
         </div>
       </div>
-      {recent.length > 0 && (
+      {a.logtime.length > 0 && (
         <Card>
-          <CardTitle>{t("Temps de présence par jour")}</CardTitle>
+          <CardTitle
+            right={
+              <span className="flex gap-1" role="group" aria-label={t("Période")}>
+                {([14, 30, 0] as const).map((s) => (
+                  <Button key={s} size="sm" variant={span === s ? "secondary" : "ghost"} aria-pressed={span === s} onClick={() => setSpan(s)}>
+                    {s ? t("{n} j", { n: s }) : t("Tout")}
+                  </Button>
+                ))}
+              </span>
+            }
+          >
+            {t("Temps de présence par jour")}
+          </CardTitle>
           <div className="px-4 pt-4 pb-3">
-            <Columns everyLabel={Math.max(1, Math.ceil(recent.length / 10))} data={recent.map((d) => ({ key: d.date, label: shortDay(d.date), value: Math.round((d.mine / 3600) * 10) / 10, tip: `${shortDay(d.date)}: ${hours(d.mine)}${d.promo !== null ? ` · promotion average ${hours(d.promo)}` : ""}` }))} />
-            <p className="mt-2 text-xs text-faint">Hours logged on campus tools, last {recent.length} days reported (max is in hours). Hover a day for the promotion average.</p>
+            <Columns everyLabel={Math.max(1, Math.ceil(recent.length / 10))} data={recent.map((d) => ({ key: d.date, label: shortDay(d.date), value: Math.round((d.mine / 3600) * 10) / 10, tip: `${shortDay(d.date)} : ${hours(d.mine)}${d.promo !== null ? ` · ${t("moyenne de la promotion {h}", { h: hours(d.promo) })}` : ""}` }))} />
+            <p className="mt-2 text-xs text-faint">{t("Heures relevées par les outils du campus, en heures. Survole un jour pour la moyenne de la promotion.")}</p>
           </div>
         </Card>
       )}
-      {a.notes.length > 0 && <p className="selectable text-xs text-faint">Not available: {a.notes.join(" ")}</p>}
+      {a.notes.length > 0 && <p className="selectable text-xs text-faint">{t("Non disponible : {list}", { list: a.notes.join(" ") })}</p>}
     </>
   );
 }
@@ -175,12 +231,12 @@ function UnitRow({ u }: { u: Academic["units"][number] }) {
         <span className="min-w-0 flex-1">
           <span className="mb-1 flex items-baseline gap-2 text-sm">
             <span className="min-w-0 flex-1 truncate">{u.title}</span>
-            <span className="shrink-0 text-xs text-muted">{u.validated}/{u.total} outcomes</span>
+            <span className="shrink-0 text-xs text-muted">{t("{v}/{n} acquis", { v: u.validated, n: u.total })}</span>
             {u.credits !== null && <span className="w-14 shrink-0 text-right text-xs text-faint">{u.credits} cr.</span>}
           </span>
           <Meter value={u.validated} total={u.total} />
         </span>
-        {u.grade && <Badge tone={u.grade === "in progress" ? "neutral" : "accent"}>{u.grade}</Badge>}
+        {u.grade && <Badge tone={u.grade === "in progress" ? "neutral" : "accent"}>{u.grade === "in progress" ? t("en cours") : u.grade}</Badge>}
       </button>
       {open && (
         <ul className="pb-2 pl-[42px] text-xs">
@@ -188,7 +244,10 @@ function UnitRow({ u }: { u: Academic["units"][number] }) {
           {u.outcomes.map((o) => (
             <li key={o.title} className="flex items-baseline gap-2 py-0.5 pr-4">
               <span className={o.validated ? "text-ok" : "text-faint"}>{o.validated ? "✓" : "○"}</span>
-              <span className="min-w-0 flex-1 text-muted">{o.title}{o.mandatory && <span className="text-warn"> · mandatory</span>}</span>
+              <span className="min-w-0 flex-1 text-muted">
+                {o.title}
+                {o.mandatory && <span className="text-warn"> · {t("obligatoire")}</span>}
+              </span>
               {o.points !== null && o.total !== null && <span className="shrink-0 text-faint">{o.points}/{o.total} pts</span>}
             </li>
           ))}

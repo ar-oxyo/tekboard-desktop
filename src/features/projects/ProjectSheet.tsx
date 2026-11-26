@@ -4,6 +4,8 @@ import { Check, CircleCheck, CircleX, Code2, Hammer, Rocket } from "lucide-react
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Modal } from "../../components/Modal";
 import { Button, cn, ErrorNote, Field, Input, Spinner, Tag } from "../../components/ui";
+import { DateField } from "../../components/DateField";
+import { formatTime, parseTime, TimeField } from "../../components/TimeField";
 import { api, asAppError, type ProjectSheet as Sheet, type RepoInfo, type SheetInput } from "../../lib/api";
 import { tildify } from "../../lib/format";
 import { keys, useHome, useNow, useProjectActions, useRepos, useSubjects } from "../../lib/hooks";
@@ -147,7 +149,7 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
   const differs = my?.deadline && stored.deadline && stored.deadlineSource === "manual" && (my.deadline !== stored.deadline || localTime(my.deadlineAt) !== localTime(stored.deadlineAt));
   const bin = runInfo.data;
   const binary = draft.runBin ?? bin?.detected ?? null;
-  const source = !draft.deadline ? null : dirty && (draft.deadline !== saved.deadline || draft.deadlineTime !== saved.deadlineTime) ? "will be saved as typed by you" : stored.deadlineSource === "my" ? "from MY Epitech" : stored.deadlineSource === "manual" ? "typed by you" : null;
+  const source = !draft.deadline ? null : dirty && (draft.deadline !== saved.deadline || draft.deadlineTime !== saved.deadlineTime) ? t("sera enregistré comme saisi par toi") : stored.deadlineSource === "my" ? t("depuis MY Epitech") : stored.deadlineSource === "manual" ? t("saisi par toi") : null;
   const buildState = build.data && (
     <span className={cn("flex items-center gap-1.5 text-sm", build.data.code === 0 ? "text-ok" : "text-danger")}>
       {build.data.code === 0 ? <CircleCheck className="size-4" /> : <CircleX className="size-4" />}
@@ -225,8 +227,8 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
               }
             >
               <span className="flex gap-2">
-                <Input type="date" aria-label={t("Jour du rendu")} value={draft.deadline ?? ""} onChange={(e) => setDraft({ ...draft, deadline: e.target.value || null, deadlineTime: e.target.value ? draft.deadlineTime : null })} />
-                <Input type="time" aria-label={t("Heure du rendu (facultatif)")} title={t("Facultatif. Sans heure, le rendu court jusqu'à la fin de la journée.")} className="w-[128px]" disabled={!draft.deadline} value={draft.deadlineTime ?? ""} onChange={(e) => setDraft({ ...draft, deadlineTime: e.target.value || null })} />
+                <DateField optional aria-label={t("Jour du rendu")} value={draft.deadline ?? ""} onChange={(d) => setDraft({ ...draft, deadline: d || null, deadlineTime: d ? draft.deadlineTime : null })} />
+                <TimeField optional aria-label={t("Heure du rendu (facultatif)")} title={t("Facultatif. Sans heure, le rendu court jusqu'à la fin de la journée.")} className="w-[128px]" disabled={!draft.deadline} value={draft.deadlineTime ? parseTime(draft.deadlineTime) : null} onChange={(m) => setDraft({ ...draft, deadlineTime: m === null ? null : formatTime(m) })} />
               </span>
             </Field>
             <Field label={t("Commande de compilation")} hint={t("Lancée directement dans le dossier du projet, sans shell.")}>
@@ -253,7 +255,7 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
           <div>
             <div className="mb-1.5 flex items-center justify-between">
               <span className="text-xs text-muted">{t("Notes")}</span>
-              <span className="text-xs text-faint">{dirty ? "Unsaved — Ctrl+S" : "Saved"}</span>
+              <span className="text-xs text-faint">{dirty ? t("Non enregistré — Ctrl+S") : t("Enregistré")}</span>
             </div>
             <textarea
               spellCheck={false}

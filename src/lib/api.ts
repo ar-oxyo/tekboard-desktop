@@ -668,6 +668,8 @@ export interface PlaygroundCompile {
   output: string;
   diagnostics: CDiagnostic[];
   durationMs: number;
+  /** Compilation, link and make times, objects reused (since 1.0). */
+  build?: { mode: "full" | "incremental" | "make"; compileMs: number; linkMs: number; makeMs: number; compiled: number; cached: number } | null;
 }
 export interface PlaygroundRun {
   command: string;
@@ -682,6 +684,22 @@ export interface PlaygroundRun {
   durationMs: number;
   memory: MemIssue[];
   valgrind: { errors: number | null; definitelyLost: number | null; indirectlyLost: number | null; stillReachable: number | null } | null;
+}
+
+/** Timed runs of a program (Playground): median, minimum and spread of several runs. */
+export interface PlaygroundBench {
+  runs: number;
+  wall: ArenaStats;
+  cpu: ArenaStats;
+  maxRssKb: number;
+  /** Relative spread (robust deviation / median). */
+  spread: number;
+}
+export interface BenchVerdict {
+  faster: "a" | "b" | "none";
+  ratio: number;
+  significant: boolean;
+  why: string;
 }
 
 // ───────────────────────── Algorithm Arena ─────────────────────────
@@ -715,6 +733,8 @@ export interface BenchConfig {
   scenarios: ArenaScenario[];
   files: DraftFile[];
   options: ArenaOptions;
+  /** Artix's reading of the code when it prepared the benchmark (hypotheses). */
+  hypotheses?: Array<{ function: string; file: string; line: number | null; message: string }>;
 }
 export interface ArenaSaved {
   id: number;
@@ -778,6 +798,12 @@ export interface ArenaHypothesis {
   weight?: string;
   message: string;
   provenance?: string;
+  /** "project" (the program's files) or "library" (library folders, imported code, tests). */
+  scope?: "project" | "library";
+  /** Variants where the same finding was read. */
+  seenIn?: string[];
+  /** Places it was merged from. */
+  count?: number;
 }
 export interface ArenaResults {
   config: BenchConfig | null;
@@ -787,6 +813,8 @@ export interface ArenaResults {
   inputs: Array<{ scenario: number; n: number; bytes: number; head: string }>;
   notes: string[];
   machine: { cpu: string | null; cores: number; load: string | null };
+  /** The Valgrind run in progress. */
+  current?: { tool: string; variant: number; scenario: number; n: number; limitS: number; startedAt: number } | null;
 }
 export interface ArenaGenerated {
   files: DraftFile[];
@@ -1007,6 +1035,10 @@ export interface LiveSession {
   contactsOnly: boolean;
   showProject: boolean;
   invited: string[];
+  /** Network interface the server listens on. */
+  interface: string;
+  /** Something to know (the usual port was taken…). */
+  note: string | null;
 }
 export interface LiveInvitation {
   id: string;
@@ -1041,7 +1073,7 @@ export interface BoardData {
   files: Record<string, BoardFile>;
 }
 
-export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull" | "playground" | "arena" | "arena_ai" | "arena_report" | "board_ai" | "brain";
+export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull" | "playground" | "arena" | "arena_ai" | "arena_report" | "board_ai" | "brain" | "mouli_plan" | "mouli_run";
 /** Kind-specific facts; see the Rust module that produces each kind. */
 export type RunSummary = Record<string, unknown> & { steps?: JobStep[] };
 export interface JobView {
@@ -1122,6 +1154,63 @@ export interface TestRepoParams {
   tests: string | null;
   isolation: "none" | "docker";
   image: string | null;
+}
+/** A case of the TekBoard moulinette's plan (src-tauri/src/mouli). */
+export interface MouliCase {
+  id: string;
+  category: string;
+  kind: "io" | "unit";
+  title: string;
+  source: string;
+  args: string[];
+  stdin: string | null;
+  expectStdout: string | null;
+  expectContains: string | null;
+  expectCode: number | null;
+  timeoutMs: number | null;
+  target: string | null;
+  suite: string | null;
+  name: string | null;
+  body: string | null;
+  enabled: boolean;
+}
+export interface MouliFile {
+  name: string;
+  content: string;
+  tests: string[];
+}
+export interface MouliSuite {
+  summary: string;
+  cases: MouliCase[];
+  unspecified: string[];
+  rejected: string[];
+  files: MouliFile[];
+  withSubject: boolean;
+  createdAt: number;
+}
+export type MouliStatus = "passed" | "failed" | "timeout" | "crashed" | "memory" | "skipped" | "build_error" | "mouli_error";
+export interface MouliResult {
+  id: string;
+  title: string;
+  category: string;
+  kind: string;
+  status: MouliStatus;
+  origin: "program" | "mouli";
+  input: string;
+  expected: string | null;
+  got: string | null;
+  stdout: string;
+  stderr: string;
+  code: number | null;
+  signal: string | null;
+  ms: number;
+  detail: string | null;
+}
+export interface MouliReport {
+  results: MouliResult[];
+  score: number | null;
+  build: string | null;
+  finishedAt: number;
 }
 export interface MoulinetteParams {
   build: string;
@@ -1541,6 +1630,22 @@ export interface SkillTree {
   history: Array<{ at: number; label: string; kind: "mark" | "project" }>;
   notes: string[];
 }
+/** A credit simulation kept by the student (`data` is a `ScenarioData`, see lib/credits.ts). */
+/** What is playing on this computer (MPRIS) or on the Spotify account. */
+export interface NowPlaying {
+  title: string;
+  artist: string;
+  art: string | null;
+  playing: boolean;
+  source: "mpris" | "spotify";
+  player: string;
+}
+export interface CreditScenarioRow {
+  id: number;
+  name: string;
+  data: unknown;
+  updatedAt: number;
+}
 export type DoctorStatus = "ok" | "warn" | "error" | "unconfigured";
 export interface DoctorCheck {
   id: string;
@@ -1790,6 +1895,7 @@ export const api = {
   playgroundSetOpen: (id: number, open: boolean) => invoke<void>("playground_set_open", { id, open }),
   playgroundDelete: (id: number) => invoke<void>("playground_delete", { id }),
   playgroundRun: (id: number, title: string, files: DraftFile[], settings: DraftSettings) => invoke<number>("playground_run", { id, title, files, settings }),
+  playgroundCompare: (a: number, b: number) => invoke<number>("playground_compare", { a, b }),
   playgroundImportLibrary: (libraryId: number, files: string[]) => invoke<DraftFile[]>("playground_import_library", { libraryId, files }),
   playgroundExportPreview: (id: number, name: string) => invoke<DraftFile[]>("playground_export_preview", { id, name }),
   playgroundExport: (id: number, parent: string, name: string, gitInit: boolean) => invoke<string>("playground_export", { id, parent, name, gitInit }),
@@ -1819,7 +1925,8 @@ export const api = {
   shareImport: (id: string, target: ImportTarget) => invoke<Imported>("share_import", { id, target }),
   liveSetup: () => invoke<LiveSetup>("live_setup"),
   liveInstall: (what: "extension" | "bridge") => invoke<string>("live_install", { what }),
-  liveStart: (project: string, contactsOnly: boolean, showProject: boolean) => invoke<LiveSession>("live_start", { project, contactsOnly, showProject }),
+  liveStart: (project: string, contactsOnly: boolean, showProject: boolean, iface: string | null = null) => invoke<LiveSession>("live_start", { project, contactsOnly, showProject, interface: iface }),
+  liveInterfaces: () => invoke<Array<{ name: string; ip: string; kind: string; default: boolean }>>("live_interfaces"),
   liveStop: () => invoke<void>("live_stop"),
   liveState: () => invoke<LiveSession | null>("live_state"),
   liveInvite: (fp: string) => invoke<void>("live_invite", { fp }),
@@ -1828,6 +1935,10 @@ export const api = {
   liveDecline: (id: string) => invoke<void>("live_decline", { id }),
   sessionSend: (fp: string, msg: Record<string, unknown>) => tauriInvoke<void>("session_send", { fp, msg }),
   sessionBroadcast: (fps: string[], msg: Record<string, unknown>) => tauriInvoke<number>("session_broadcast", { fps, msg }),
+  musicNow: (source: "mpris" | "spotify") => invoke<NowPlaying | null>("music_now", { source }),
+  spotifyStatus: () => invoke<{ clientId: string | null; connected: boolean; redirectUri: string }>("spotify_status"),
+  spotifyLogin: (clientId: string) => invoke<string>("spotify_login", { clientId }),
+  spotifyLogout: () => invoke<void>("spotify_logout"),
   spaceOpenJam: (url: string) => tauriInvoke<void>("space_open_jam", { url }),
   boardList: (project: string | null, query: string | null) => invoke<BoardMeta[]>("board_list", { project, query }),
   boardCreate: (name: string, project: string | null) => invoke<BoardMeta>("board_create", { name, project }),
@@ -1859,6 +1970,11 @@ export const api = {
   testrepoEnvDelete: (name: string) => invoke<void>("testrepo_env_delete", { name }),
   testrepoEnvOpen: (name: string, terminal: boolean) => invoke<void>("testrepo_env_open", { name, terminal }),
   moulinetteStart: (repo: string, params: MoulinetteParams) => invoke<number>("moulinette_start", { repo, params }),
+  mouliState: (repo: string) => invoke<{ suite: MouliSuite | null; report: MouliReport | null }>("mouli_state", { repo }),
+  mouliAnalyze: (repo: string) => invoke<number>("mouli_analyze", { repo }),
+  mouliRun: (repo: string, only: string[] | null = null) => invoke<number>("mouli_run", { repo, only }),
+  mouliToggle: (repo: string, ids: string[], enabled: boolean) => invoke<MouliSuite>("mouli_toggle", { repo, ids, enabled }),
+  mouliExport: (repo: string, names: string[]) => invoke<{ written: string[]; kept: string[] }>("mouli_export", { repo, names }),
   analysisStart: (repo: string) => invoke<number>("analysis_start", { repo }),
   promptsList: () => invoke<PromptDef[]>("prompts_list"),
   promptSave: (id: string, preset: string, body: string, activate: boolean) => invoke<string[]>("prompt_save", { id, preset, body, activate }),
@@ -1907,6 +2023,10 @@ export const api = {
   aiSettingsGet: () => invoke<AiSettings>("ai_settings_get"),
   aiSettingsSet: (settings: AiSettings) => invoke<AiSettings>("ai_settings_set", { settings }),
   mySkillTree: () => invoke<SkillTree>("my_skill_tree"),
+  appSetIcon: (theme: string) => invoke<void>("app_set_icon", { theme }),
+  creditScenarios: () => invoke<CreditScenarioRow[]>("credit_scenarios"),
+  creditScenarioSave: (id: number | null, name: string, data: unknown) => invoke<CreditScenarioRow>("credit_scenario_save", { id, name, data }),
+  creditScenarioDelete: (id: number) => invoke<void>("credit_scenario_delete", { id }),
   doctorRun: (deep = false) => invoke<DoctorReport>("doctor_run", { deep }),
   doctorFix: (id: string) => invoke<string>("doctor_fix", { id }),
   doctorExport: () => invoke<string>("doctor_export"),
@@ -1922,7 +2042,8 @@ export const api = {
   aiActions: (limit?: number) => invoke<AiAction[]>("ai_actions", { limit: limit ?? null }),
   aiProposals: (status?: string | null) => invoke<AiProposal[]>("ai_proposals", { status: status ?? null }),
   aiProposalDecide: (id: number, accept: boolean, keep: number[] | null) => invoke<unknown>("ai_proposal_decide", { id, accept, keep }),
-  aiTool: (name: string, args: Record<string, unknown>, thread: number | null = null) => invoke<Record<string, unknown>>("ai_tool", { name, args, thread }),
+  /** `threadTitle`: what it proposes goes to the conversation of that name (reused for 7 days). */
+  aiTool: (name: string, args: Record<string, unknown>, thread: number | null = null, threadTitle: string | null = null) => invoke<Record<string, unknown>>("ai_tool", { name, args, thread, threadTitle }),
   memoryList: (scope?: string | null, archived?: boolean) => invoke<Memory[]>("memory_list", { scope: scope ?? null, archived: archived ?? false }),
   memoryAdd: (scope: string, kind: MemoryKind, content: string, pinned: boolean) => invoke<Memory>("memory_add", { scope, kind, content, pinned }),
   memoryUpdate: (id: number, patch: { content?: string; kind?: MemoryKind; pinned?: boolean; archived?: boolean }) => invoke<Memory>("memory_update", { id, patch }),

@@ -6,6 +6,7 @@ import { api, asAppError, type Progress, type RepoInfo, type RepoKind } from "./
 import { useUi } from "./store";
 import { t } from "./i18n";
 import { applyMode, crossFade, MODE_KEY, storedMode, type ColorMode } from "./appearance";
+import { ACCENT_KEY, applyAccent } from "./color";
 
 export const keys = {
   settings: ["settings"] as const,
@@ -200,6 +201,27 @@ export function useAutoAmbiance(): { theme: string; mode: "light" | "dark"; nigh
   if (!a.on) return null;
   const night = a.nightFrom > a.dayFrom ? h >= a.nightFrom || h < a.dayFrom : h >= a.nightFrom && h < a.dayFrom;
   return night ? { theme: a.nightTheme, mode: a.nightMode, night } : { theme: a.dayTheme, mode: a.dayMode, night };
+}
+
+/**
+ * Personal accent colour (Settings → Appearance), or `null` for the design's own. Applied on
+ * top of the design and adjusted for contrast each time the mode or the design changes;
+ * mirrored in localStorage so it is there from the first frame.
+ */
+export function useAccent(): [string | null, (hex: string | null) => void] {
+  const [accent, set] = usePref<string | null>("accent", null);
+  useEffect(() => {
+    if (accent) localStorage.setItem(ACCENT_KEY, accent);
+    else localStorage.removeItem(ACCENT_KEY);
+    const root = document.documentElement;
+    const run = () => applyAccent(accent, root);
+    run();
+    // Mode and design change the page background the accent is checked against.
+    const mo = new MutationObserver(run);
+    mo.observe(root, { attributes: true, attributeFilter: ["data-mode", "data-theme"] });
+    return () => mo.disconnect();
+  }, [accent]);
+  return [accent, set];
 }
 
 /** Interface animations on or off (Settings → Appearance); the system's reduced-motion setting always wins. */

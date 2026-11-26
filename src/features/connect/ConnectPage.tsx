@@ -12,6 +12,7 @@ import { Select } from "../../components/Select";
 import { Badge, Button, Card, CardTitle, cn, Dot, EmptyState, ErrorNote, Field, Input, Spinner } from "../../components/ui";
 import { timeAgo } from "../../lib/format";
 import { Avatar } from "./Avatar";
+import { AvatarPicker } from "../space/avatars";
 import { Transfers } from "./Transfers";
 import { t } from "../../lib/i18n";
 
@@ -241,6 +242,12 @@ function ProfileCard({ state, busy, onSave, onDisable }: { state: ConnectState; 
             <Select<ConnectStatus> size="sm" label={t("Statut")} value={state.profile.status} onChange={(status) => onSave({ ...state.profile, status })} options={CHOOSABLE.map((s) => ({ value: s, label: STATUS[s].label, hint: s === "invisible" ? t("personne ne te voit") : undefined }))} />
           </div>
         </div>
+        <details>
+          <summary className="cursor-pointer text-xs text-muted hover:text-fg">{t("Changer d'avatar")}</summary>
+          <div className="mt-2">
+            <AvatarPicker value={state.profile.avatar} seed={state.fp} onPick={(avatar) => onSave({ ...state.profile, avatar })} />
+          </div>
+        </details>
         <p className="font-mono text-2xs text-faint" title={state.fp}>
           {t("Empreinte de cet appareil")} : {state.short}
         </p>

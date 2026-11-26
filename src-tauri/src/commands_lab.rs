@@ -47,9 +47,33 @@ pub fn playground_run(state: State<'_, AppState>, id: i64, title: String, files:
     }
     let root = state.cache_dir.join("playground").join(format!("{id}-{}", chrono::Utc::now().timestamp_micros()));
     let title = format!("Playground · {}", draft.title);
-    Ok(state.jobs.start(state.db.clone(), "playground", None, title, &[("compile", "Compilation"), ("run", "Exécution")], move |job| {
-        let result = playground::run_in_job(job, draft.id, &draft.files, &draft.settings, &root);
+    let objs = state.cache_dir.join("playground-objs");
+    Ok(state.jobs.start(state.db.clone(), "playground", None, title, playground::STEPS, move |job| {
+        let result = playground::run_in_job(job, draft.id, &draft.files, &draft.settings, &root, Some(&objs));
         // The program and its copy are throwaway: the files live in the draft, the output in the report.
+        let _ = std::fs::remove_dir_all(&root);
+        result
+    }))
+}
+
+/// Compares two drafts (A, B) under the same conditions: same input, options and limits.
+#[tauri::command(async)]
+pub fn playground_compare(state: State<'_, AppState>, a: i64, b: i64) -> Result<u64> {
+    if a == b {
+        return Err(AppError::new("invalid_compare", "Choisis deux versions différentes."));
+    }
+    let (da, db) = {
+        let conn = state.conn();
+        (playground::get(&conn, a)?, playground::get(&conn, b)?)
+    };
+    if let Err(why) = crate::ai::sandbox::check() {
+        return Err(AppError::new("sandbox_missing", format!("Le Playground exécute le code dans un bac à sable, indisponible ici : {why}")));
+    }
+    let root = state.cache_dir.join("playground").join(format!("cmp-{a}-{b}-{}", chrono::Utc::now().timestamp_micros()));
+    let objs = state.cache_dir.join("playground-objs");
+    let title = format!("Playground · {} / {}", da.title, db.title);
+    Ok(state.jobs.start(state.db.clone(), "playground_compare", None, title, playground::COMPARE_STEPS, move |job| {
+        let result = playground::compare_in_job(job, &da, &db, &root, Some(&objs));
         let _ = std::fs::remove_dir_all(&root);
         result
     }))

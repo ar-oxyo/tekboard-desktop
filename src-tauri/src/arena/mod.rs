@@ -101,6 +101,10 @@ pub struct BenchConfig {
     pub files: Vec<DraftFile>,
     #[serde(default)]
     pub options: Options,
+    /// Artix's reading of the code when it prepared the benchmark (hypotheses, not
+    /// measurements), kept with it so the results can show them.
+    #[serde(default)]
+    pub hypotheses: Vec<ai::AiHypothesis>,
 }
 
 pub fn validate(c: &BenchConfig) -> Result<()> {
@@ -245,6 +249,9 @@ pub struct Results {
     /// What could not be measured, and why.
     pub notes: Vec<String>,
     pub machine: Value,
+    /// The profiling run in progress (tool, size, limit, start), so a long Valgrind run is
+    /// visibly alive and its limit known.
+    pub current: Option<Value>,
 }
 
 fn publish(job: &Job, r: &Results, event: Value) {
@@ -342,6 +349,31 @@ fn substitute(args: &str, input: Option<&Path>, n: u64, seed: u64) -> Result<Vec
     Ok(words.into_iter().map(|w| w.replace("{input}", &input.map(|p| p.to_string_lossy().into_owned()).unwrap_or_default()).replace("{n}", &n.to_string()).replace("{seed}", &seed.to_string())).collect())
 }
 
+/// How much slower a program runs under Valgrind, for estimates (Callgrind: 20–100×).
+const VALGRIND_SLOWDOWN: f64 = 60.0;
+
+/// Estimated duration of one Valgrind run for a program measured at `wall_ms`.
+fn profile_estimate(wall_ms: f64) -> Duration {
+    Duration::from_secs_f64((wall_ms / 1000.0) * VALGRIND_SLOWDOWN + 1.5)
+}
+
+/// Time limit of one Valgrind run: three times the estimate, within [10 s, cap].
+fn profile_limit(wall_ms: f64, cap: Duration) -> Duration {
+    (profile_estimate(wall_ms) * 3).clamp(Duration::from_secs(10), cap.max(Duration::from_secs(10)))
+}
+
+/// Time given to the profiling of one series (variant × scenario): the whole step stays
+/// under ten minutes, each series gets at least 30 s.
+fn profile_budget(timeout_s: u64, series: usize) -> Duration {
+    let total = (timeout_s * 10).clamp(120, 600);
+    Duration::from_secs((total / series.max(1) as u64).max(30))
+}
+
+/// Memory ceiling under Valgrind: it adds its own overhead to the program's (measured) peak.
+fn valgrind_mem_mb(rss_kb: u64, mem_mb: u64) -> u64 {
+    (rss_kb / 1024 * 4 + 768).clamp(768, (mem_mb * 4).clamp(1024, 16384))
+}
+
 fn measure_limits(o: &Options) -> Limits {
     Limits { wall: Duration::from_secs(o.timeout_s.clamp(1, 600)), cpu_seconds: o.timeout_s.clamp(1, 600) + 1, file_mb: 2048, output_cap: 64 * 1024, mem_mb: Some(o.mem_mb.clamp(64, 16384)), tasks: Some(128), address_space_free: false }
 }
@@ -381,16 +413,28 @@ pub fn run_in_job(job: &Job, db: &std::sync::Mutex<Connection>, config: &BenchCo
         }
     }
     std::fs::write(tb.join("measure.c"), measure::HELPER)?;
+    let mut read: Vec<(String, heuristics::Hypothesis)> = Vec::new();
     for (i, d) in dirs.iter().enumerate() {
+        // Functions imported from TekBoard's libraries into a draft are library code too.
+        let imported: Vec<String> = match &config.variants[i].source {
+            Source::Draft { id } => crate::playground::get(&db.lock().unwrap_or_else(|e| e.into_inner()), *id).map(|d| d.files.into_iter().filter(|f| f.library.is_some()).map(|f| f.name).collect()).unwrap_or_default(),
+            Source::Project { .. } => Vec::new(),
+        };
+        let label = if config.variants.len() > 1 { config.variants[i].label.clone() } else { String::new() };
         for (rel, text) in c_files(d) {
             for mut h in heuristics::analyze(&text, &rel) {
-                if config.variants.len() > 1 {
-                    h.file = format!("{} · {}", config.variants[i].label, h.file);
+                if imported.contains(&rel) {
+                    h.scope = "library".into();
                 }
-                r.hypotheses.push(h);
+                read.push((label.clone(), h));
             }
         }
     }
+    for a in &config.hypotheses {
+        let scope = if heuristics::is_library(&a.file) { "library" } else { "project" };
+        read.push((String::new(), heuristics::Hypothesis { file: a.file.clone(), function: a.function.clone(), line: a.line.unwrap_or(0) as usize, kind: "artix".into(), weight: "medium".into(), message: a.message.clone(), provenance: "artix".into(), scope: scope.into(), seen_in: Vec::new(), count: 1 }));
+    }
+    r.hypotheses = heuristics::dedupe(read);
     publish(job, &r, json!({"kind": "arena", "type": "phase", "phase": "prepare"}));
     job.end("prepare", "success", Some(format!("{} variante(s), {} hypothèse(s) de lecture", dirs.len(), r.hypotheses.len())));
 
@@ -580,33 +624,61 @@ pub fn run_in_job(job: &Job, db: &std::sync::Mutex<Connection>, config: &BenchCo
         job.skip("profile", "désactivé dans les options");
     } else {
         let annotate = crate::toolenv::which("callgrind_annotate").is_some();
-        let plimits = Limits { wall: Duration::from_secs((o.timeout_s * 30).clamp(30, 300)), cpu_seconds: (o.timeout_s * 30).clamp(30, 300) + 1, file_mb: 2048, output_cap: 64 * 1024, mem_mb: None, tasks: Some(128), address_space_free: true };
+        // Valgrind slows a program down 20 to 100 times. Profiling every size with a long
+        // limit each made this step last hours and look frozen: each series now gets a share
+        // of one budget, sizes go up only while the estimate fits, and the screen shows what
+        // runs and for how long.
+        let budget = profile_budget(o.timeout_s, programs.len() * config.scenarios.len());
+        let cap = Duration::from_secs((o.timeout_s * 30).clamp(30, 300));
+        let annotate_limits = Limits { wall: Duration::from_secs(90), cpu_seconds: 120, file_mb: 256, output_cap: 64 * 1024, mem_mb: Some(1024), tasks: Some(16), address_space_free: false };
         for (vi, prog) in programs.iter().enumerate() {
             for (si, s) in config.scenarios.iter().enumerate() {
                 let k = series_of(&mut r, vi, si);
-                let ok_sizes: Vec<(usize, u64)> = r.series[k].points.iter().enumerate().filter(|(_, p)| p.failed.is_none()).map(|(i, p)| (i, p.n)).collect();
+                let ok_sizes: Vec<(usize, u64, f64, u64)> = r.series[k].points.iter().enumerate().filter(|(_, p)| p.failed.is_none()).filter_map(|(i, p)| p.wall.as_ref().map(|w| (i, p.n, w.median, p.max_rss_kb.unwrap_or(0)))).collect();
                 let mut largest: Option<(usize, u64)> = None;
-                let run_tool = |tool_args: Vec<String>, ni: usize, n: u64| -> Result<crate::jobs::Outcome> {
+                let series_start = std::time::Instant::now();
+                let left = |budget: Duration| budget.saturating_sub(series_start.elapsed());
+                // Program output is not needed here (only Valgrind's, on stderr): it goes to
+                // /dev/null instead of a file read back while the program runs.
+                let run_tool = |r: &mut Results, tool: &str, tool_args: Vec<String>, ni: usize, n: u64, wall_ms: f64, rss_kb: u64| -> Result<crate::jobs::Outcome> {
                     let input = inputs[si][ni].as_deref();
-                    let mut argv = vec!["env".to_string(), "-C".into(), dirs[vi].to_string_lossy().into_owned(), "valgrind".into()];
+                    let limit = profile_limit(wall_ms, cap);
+                    let mut argv = vec!["sh".to_string(), "-c".into(), "exec \"$@\" >/dev/null".into(), "sh".into(), "env".into(), "-C".into(), dirs[vi].to_string_lossy().into_owned(), "valgrind".into()];
                     argv.extend(tool_args);
                     argv.push(prog.to_string_lossy().into_owned());
                     argv.extend(substitute(&s.args, input, n, s.seed)?);
-                    exec(job, root, &argv, if s.stdin { input } else { None }, &plimits, false)
+                    let limits = Limits { wall: limit, cpu_seconds: limit.as_secs() + 1, file_mb: 2048, output_cap: 64 * 1024, mem_mb: Some(valgrind_mem_mb(rss_kb, o.mem_mb)), tasks: Some(128), address_space_free: true };
+                    r.current = Some(json!({"tool": tool, "variant": vi, "scenario": si, "n": n, "limitS": limit.as_secs(), "startedAt": crate::commands::now()}));
+                    publish(job, r, json!({"kind": "arena", "type": "profiling", "tool": tool, "variant": vi, "scenario": si, "n": n}));
+                    job.log(&format!("{tool} · {} · {} · n={n} (limite {} s)", config.variants[vi].label, s.name, limit.as_secs()));
+                    let out = exec(job, root, &argv, if s.stdin { input } else { None }, &limits, false);
+                    r.current = None;
+                    out
                 };
                 if o.callgrind {
-                    for &(ni, n) in &ok_sizes {
+                    for &(ni, n, wall_ms, rss_kb) in &ok_sizes {
+                        if profile_estimate(wall_ms) > left(budget) {
+                            r.notes.push(format!("Callgrind s'est arrêté avant n={n} pour {} ({}) : la taille suivante dépasserait le temps prévu pour le profilage. Le détail par fonction vient de la plus grande taille profilée.", config.variants[vi].label, s.name));
+                            break;
+                        }
                         let out_file = tb.join(format!("cg-{vi}-{si}-{n}.out"));
-                        let out = run_tool(vec!["--tool=callgrind".into(), format!("--callgrind-out-file={}", out_file.display())], ni, n)?;
+                        let out = run_tool(&mut r, "Callgrind", vec!["--tool=callgrind".into(), format!("--callgrind-out-file={}", out_file.display())], ni, n, wall_ms, rss_kb)?;
                         if out.cancelled {
+                            publish(job, &r, json!({"kind": "arena", "type": "cancelled"}));
                             return Ok("cancelled");
                         }
                         if out.timed_out || !out_file.is_file() {
-                            r.notes.push(format!("Callgrind arrêté à n={n} pour {} ({}) : les tailles suivantes n'ont pas d'instructions comptées.", config.variants[vi].label, s.name));
+                            r.notes.push(format!("Callgrind arrêté à n={n} pour {} ({}) : {}.", config.variants[vi].label, s.name, if out.timed_out { "limite de temps atteinte" } else { "pas de profil écrit (mémoire ?)" }));
                             break;
                         }
+                        // callgrind_annotate is a Perl script, slow on big profiles: it runs in
+                        // the sandbox like the rest, with a limit, and stops on cancel.
                         let text = if annotate {
-                            crate::toolenv::command("callgrind_annotate").args(["--inclusive=no", "--auto=no", &out_file.to_string_lossy()]).stdin(std::process::Stdio::null()).output().map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default()
+                            let a = exec(job, root, &["callgrind_annotate".into(), "--inclusive=no".into(), "--auto=no".into(), out_file.to_string_lossy().into_owned()], None, &annotate_limits, false)?;
+                            if a.cancelled {
+                                return Ok("cancelled");
+                            }
+                            a.stdout
                         } else {
                             String::new()
                         };
@@ -618,21 +690,26 @@ pub fn run_in_job(job: &Job, db: &std::sync::Mutex<Connection>, config: &BenchCo
                         largest = Some((ni, n));
                         publish(job, &r, json!({"kind": "arena", "type": "profile", "tool": "callgrind", "variant": vi, "scenario": si, "n": n}));
                     }
-                } else {
-                    largest = ok_sizes.last().copied();
                 }
-                let Some((ni, n)) = largest.or(ok_sizes.last().copied()) else { continue };
+                // Heap tools: at the largest size profiled, or the largest whose estimate fits.
+                let at = largest
+                    .and_then(|(ni, _)| ok_sizes.iter().find(|x| x.0 == ni).copied())
+                    .or_else(|| ok_sizes.iter().rev().find(|x| profile_estimate(x.2) * 2 <= left(budget)).copied())
+                    .or_else(|| ok_sizes.first().copied());
+                let Some((ni, n, wall_ms, rss_kb)) = at else { continue };
                 if o.massif {
                     let out_file = tb.join(format!("ms-{vi}-{si}.out"));
-                    let out = run_tool(vec!["--tool=massif".into(), format!("--massif-out-file={}", out_file.display())], ni, n)?;
+                    let out = run_tool(&mut r, "Massif", vec!["--tool=massif".into(), format!("--massif-out-file={}", out_file.display())], ni, n, wall_ms, rss_kb)?;
                     if out.cancelled {
+                        publish(job, &r, json!({"kind": "arena", "type": "cancelled"}));
                         return Ok("cancelled");
                     }
                     r.series[k].heap_peak = std::fs::read_to_string(&out_file).ok().and_then(|t| measure::parse_massif_peak(&t));
                 }
                 if o.heap {
-                    let out = run_tool(vec!["--leak-check=no".into()], ni, n)?;
+                    let out = run_tool(&mut r, "Memcheck", vec!["--leak-check=no".into()], ni, n, wall_ms, rss_kb)?;
                     if out.cancelled {
+                        publish(job, &r, json!({"kind": "arena", "type": "cancelled"}));
                         return Ok("cancelled");
                     }
                     r.series[k].heap = measure::parse_heap_usage(&out.stderr);
@@ -680,7 +757,22 @@ mod tests {
             scenarios: vec![Scenario { name: "aléatoire".into(), generator: Some("gen.py".into()), sizes: vec![200, 400, 800, 1600], seed: 7, args: "{input}".into(), stdin: false }],
             files: vec![DraftFile { name: "gen.py".into(), content: "import random, sys\nn, seed, out = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3]\nrandom.seed(seed)\nopen(out, 'w').write(f'{n}\\n' + ' '.join(str(random.randint(0, 10**6)) for _ in range(n)))\n".into(), library: None }],
             options: Options { repeats: 3, callgrind: true, massif: true, heap: true, ..Default::default() },
+            hypotheses: Vec::new(),
         }
+    }
+
+    #[test]
+    fn profiling_stays_within_a_budget() {
+        // A 2 s program would take about two minutes under Callgrind: well beyond a 30 s share.
+        assert!(profile_estimate(2000.0) > profile_budget(30, 8));
+        assert!(profile_estimate(5.0) < Duration::from_secs(3));
+        let cap = Duration::from_secs(300);
+        assert_eq!(profile_limit(1.0, cap), Duration::from_secs(10));
+        assert_eq!(profile_limit(60_000.0, cap), cap);
+        assert!(profile_budget(30, 1) <= Duration::from_secs(600));
+        assert!(profile_budget(600, 50) >= Duration::from_secs(30));
+        assert_eq!(valgrind_mem_mb(0, 1024), 768);
+        assert_eq!(valgrind_mem_mb(1024 * 1024, 1024), 4096);
     }
 
     const BUBBLE: &str = "#include <stdio.h>\n#include <stdlib.h>\nstatic void bubble(int *t, int n) { for (int i = 0; i < n; i++) for (int j = 0; j + 1 < n - i; j++) if (t[j] > t[j + 1]) { int x = t[j]; t[j] = t[j + 1]; t[j + 1] = x; } }\nint main(int ac, char **av) { FILE *f = ac > 1 ? fopen(av[1], \"r\") : NULL; int n; if (!f || fscanf(f, \"%d\", &n) != 1) return 84; int *t = malloc(sizeof(int) * n); for (int i = 0; i < n; i++) if (fscanf(f, \"%d\", &t[i]) != 1) return 84; bubble(t, n); printf(\"%d\\n\", t[0]); free(t); fclose(f); return 0; }\n";

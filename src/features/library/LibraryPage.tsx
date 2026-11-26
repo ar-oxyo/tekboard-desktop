@@ -521,7 +521,7 @@ function PresetSaver({ disabled, count, busy, onSave }: { disabled: boolean; cou
   return (
     <form className="mt-1 flex gap-1.5" onSubmit={(e) => { e.preventDefault(); if (name.trim()) { onSave(name.trim()); setName(""); } }}>
       <Input className="h-7 text-xs" placeholder={disabled ? t("Coche d'abord des fonctions") : t("Nom pour ces {n}", { n: count })} value={name} disabled={disabled} onChange={(e) => setName(e.target.value)} />
-      <Button size="sm" type="submit" busy={busy} disabled={disabled || !name.trim()}>{t("Enregistrer")}</Button>
+      <Button size="sm" type="submit" busy={busy} disabled={disabled || !name.trim()} disabledReason={!name.trim() ? t("Donne un nom") : null}>{t("Enregistrer")}</Button>
     </form>
   );
 }

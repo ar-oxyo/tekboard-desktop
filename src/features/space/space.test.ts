@@ -131,3 +131,62 @@ describe("host", () => {
     expect(Object.keys(h.state.players)).toEqual(["H"]);
   });
 });
+
+describe("table life (1.0)", () => {
+  function seated() {
+    const ctx = host();
+    const { h } = ctx;
+    for (const fp of ["A", "B"]) h.handle(fp, { t: "space.join", space: "sp1", v: 1, nick: fp, avatar: "", status: "" });
+    const [s0, s1] = TABLES.find((t) => t.id === "focus-a")!.seats;
+    Object.assign(h.state.players.A, { x: s0.x, y: s0.y });
+    Object.assign(h.state.players.B, { x: s1.x, y: s1.y });
+    h.handle("A", { t: "space.sit", space: "sp1", seat: s0.id });
+    h.handle("B", { t: "space.sit", space: "sp1", seat: s1.id });
+    return ctx;
+  }
+
+  it("moderates every public text on the host, and tells only the author", () => {
+    const { h, sent } = seated();
+    expect(h.handle("A", { t: "space.say", space: "sp1", table: "focus-a", text: "sale n3gre" })).toBe(false);
+    expect(h.state.tables["focus-a"].chat ?? []).toHaveLength(0);
+    const told = sent.filter(([, m]) => m.t === "space.refused");
+    expect(told.map(([fp]) => fp)).toEqual(["A"]);
+    expect(h.handle("A", { t: "space.goal", space: "sp1", table: "focus-a", text: "je vais te tuer", done: false })).toBe(false);
+    // Swearing is fine.
+    expect(h.handle("A", { t: "space.say", space: "sp1", table: "focus-a", text: "putain ce segfault" })).toBe(true);
+    // A refused nickname still joins, under a neutral one.
+    h.handle("C", { t: "space.join", space: "sp1", v: 1, nick: "tarlouze", avatar: "", status: "" });
+    expect(h.state.players.C.nick).toBe("Invité");
+  });
+
+  it("keeps a short chat, rate-limits messages and reactions", () => {
+    const { h, now } = seated();
+    for (let i = 0; i < 60; i++) {
+      now.t += 1000;
+      h.handle("A", { t: "space.say", space: "sp1", table: "focus-a", text: `m${i}` });
+    }
+    const chat = h.state.tables["focus-a"].chat!;
+    expect(chat).toHaveLength(50);
+    expect(chat.at(-1)?.text).toBe("m59");
+    expect(h.handle("A", { t: "space.say", space: "sp1", table: "focus-a", text: "trop vite" })).toBe(false);
+    expect(h.handle("B", { t: "space.react", space: "sp1", react: "wave" })).toBe(true);
+    expect(h.handle("B", { t: "space.react", space: "sp1", react: "clap" })).toBe(false);
+    now.t += 2500;
+    expect(h.handle("B", { t: "space.react", space: "sp1", react: "clap" })).toBe(true);
+    expect(readClient({ t: "space.react", space: "sp1", react: "skull" })).toBeNull();
+  });
+
+  it("shares one listening per table, never anyone else's", () => {
+    const { h, now } = seated();
+    const music = { title: "Song", artist: "Band", art: null, playing: true, source: "mpris" as const, at: now.t };
+    expect(h.handle("A", { t: "space.music", space: "sp1", table: "focus-a", music })).toBe(true);
+    expect(h.state.tables["focus-a"].music?.byNick).toBe("A");
+    // B cannot replace a fresh one, nor stop it (A owns the table and shares it).
+    expect(h.handle("B", { t: "space.music", space: "sp1", table: "focus-a", music: { ...music, title: "Other" } })).toBe(false);
+    expect(h.handle("B", { t: "space.music", space: "sp1", table: "focus-a", music: null })).toBe(false);
+    expect(h.handle("A", { t: "space.music", space: "sp1", table: "focus-a", music: null })).toBe(true);
+    // Covers must be small images; anything else is dropped.
+    const read = readClient({ t: "space.music", space: "sp1", table: "focus-a", music: { ...music, art: "javascript:alert(1)" } });
+    expect(read && read.t === "space.music" ? read.music?.art : "x").toBeNull();
+  });
+});

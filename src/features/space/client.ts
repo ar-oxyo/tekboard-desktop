@@ -7,6 +7,10 @@ import { MOVE_EVERY, readClient, SPACE_VERSION, type ClientMsg, type HostMsg, ty
 import type { Dir } from "./map";
 import { useSpaceLobby } from "./lobby";
 import { t } from "../../lib/i18n";
+import { useUi } from "../../lib/store";
+
+/** A text refused by the host (moderation), told to its author only. */
+const refused = (reason: string) => useUi.getState().toast({ kind: "error", title: t("Message refusé"), detail: reason });
 
 type Mode = "idle" | "hosting" | "joining" | "joined";
 
@@ -88,6 +92,7 @@ export function startHosting(me: Me, name: string) {
 /** The host's own view follows its state directly. */
 function applyHost(msg: HostMsg) {
   if (msg.t === "space.ticks" || msg.t === "space.state" || msg.t === "space.welcome") bump({ space: host?.state ?? null });
+  if (msg.t === "space.refused") refused(msg.reason);
 }
 
 export function join(me: Me, space: string, hostFp: string) {
@@ -175,6 +180,9 @@ export function incoming(from: string, raw: Record<string, unknown>) {
       break;
     case "space.bye":
       leave(t("Tu as quitté l'espace : {r}", { r: String(msg.reason ?? "") }));
+      break;
+    case "space.refused":
+      refused(String(msg.reason ?? "").slice(0, 300));
       break;
   }
 }

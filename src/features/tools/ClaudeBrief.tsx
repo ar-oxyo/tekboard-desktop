@@ -20,7 +20,7 @@ export function ClaudeBriefDialog({ repo, task, disclosure = false, confirmLabel
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>{t("Annuler")}</Button>
-          <Button variant="primary" disabled={!p?.available} onClick={onConfirm}>{confirmLabel}</Button>
+          <Button variant="primary" disabled={!p?.available} disabledReason={t("Claude Code n'est pas disponible")} onClick={onConfirm}>{confirmLabel}</Button>
         </>
       }
     >

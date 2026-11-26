@@ -43,11 +43,14 @@ export function installMock() {
   const kinds = returnKinds();
   const mode = params.get("mode");
   if (mode) localStorage.setItem("tekboard.colorMode", mode);
-  const prefs: Record<string, unknown> = mode ? { colorMode: mode } : {};
+  const seeded = fixtures.ui_prefs_get;
+  const prefs: Record<string, unknown> = { ...((typeof seeded === "function" ? seeded({}, params) : seeded) as object), ...(mode ? { colorMode: mode } : {}) };
 
   // ?open=artix|inbox|palette|shortcuts|capture opens an overlay once the app has started.
   const open = params.get("open");
   const stab = params.get("stab");
+  // ?space=demo: seated at a lively TekSpace table (panel, chat, music, focus).
+  if (params.get("space") === "demo") window.setTimeout(() => void import("./spaceFixture").then((m) => m.seedSpace()), 400);
   if (stab) window.setTimeout(() => useUi.setState({ settingsTab: stab as never }), 500);
   if (open)
     window.setTimeout(() => {

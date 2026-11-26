@@ -1,0 +1,11 @@
+{
+  "_": "Shared by src/lib/moderation.ts (TekSpace, forms) and src-tauri/src/moderation.rs (Connect profiles). Terms are written in lower case without accents; a run of three or more identical letters counts as one. Ordinary swear words are not listed on purpose: only slurs, threats and targeted harassment. Matching is on whole words, never inside a word.",
+  "categories": {
+    "racisme": ["negre", "negresse", "negro", "nigger", "nigga", "bougnoule", "bougnoul", "bicot", "youpin", "youpine", "chinetoque", "niakoue", "bamboula", "chink", "kike", "spic", "wetback", "gook", "raghead", "towelhead", "sale arabe", "sales arabes", "sale noir", "sales noirs", "sale juif", "sales juifs", "sale musulman", "sale chinois", "sale rebeu", "sale renoi", "sale macaque", "retourne dans ton pays", "go back to your country"],
+    "homophobie": ["pede", "pedes", "pd", "tapette", "tafiole", "tarlouze", "tantouze", "gouine", "gouines", "faggot", "faggots", "dyke", "tranny", "travelo", "sale gay", "sale lesbienne", "sale trans", "sale travelo"],
+    "discrimination": ["sale handicape", "sale trisomique", "sale autiste", "sale mongol", "sale femme", "les femmes a la cuisine", "sale gitan", "sale romanos"],
+    "menace": ["je vais te tuer", "je vais te buter", "je vais te crever", "je vais te defoncer", "je vais t egorger", "je vais te retrouver", "je sais ou tu habites", "on va te tuer", "on va te buter", "je vais vous tuer", "va te pendre", "pends toi", "suicide toi", "tue toi", "kys", "kill yourself", "i will kill you", "ill kill you", "i know where you live"],
+    "harcelement": ["sale pute", "grosse pute", "sale salope", "grosse salope", "va te faire violer", "je vais te violer", "tu merites de mourir", "personne t aime", "tu devrais mourir"]
+  },
+  "allow": ["negroni"]
+}

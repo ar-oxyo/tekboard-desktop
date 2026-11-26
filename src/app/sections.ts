@@ -16,7 +16,7 @@ export const SECTIONS: Section[] = [
   { id: "today", label: t("Aujourd'hui"), pages: [{ page: "overview", label: t("Aujourd'hui") }] },
   { id: "projects", label: t("Projets"), pages: [{ page: "projects", label: t("Liste") }, { page: "git", label: "Git" }, { page: "testing", label: "Tests" }, { page: "library", label: t("Bibliothèques") }], tabs: true },
   { id: "planning", label: t("Planning"), pages: [{ page: "agenda", label: t("Planning") }] },
-  { id: "school", label: t("École"), pages: [{ page: "myepitech", label: "MY Epitech" }, { page: "skilltree", label: "Skill Tree" }, { page: "logtime", label: "Logtime" }, { page: "subjects", label: t("Sujets") }], tabs: true },
+  { id: "school", label: t("École"), pages: [{ page: "myepitech", label: "MY Epitech" }, { page: "skilltree", label: "Skill Tree" }, { page: "credits", label: t("Crédits") }, { page: "logtime", label: "Logtime" }, { page: "subjects", label: t("Sujets") }], tabs: true },
   { id: "stats", label: "Stats", pages: [{ page: "analytics", label: "Stats" }] },
   { id: "lab", label: t("Labo"), pages: [{ page: "playground", label: "Playground" }, { page: "arena", label: "Arena" }, { page: "boards", label: t("Tableaux") }], tabs: true },
   { id: "connect", label: "Connect", pages: [{ page: "connect", label: t("Personnes") }, { page: "live", label: "TekLive" }, { page: "space", label: "TekSpace" }], tabs: true },

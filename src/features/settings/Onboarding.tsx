@@ -106,7 +106,7 @@ export function Onboarding({ embedded, onSaved, extra: below }: { embedded?: boo
           <Button variant="ghost" icon={<FolderPlus className="size-3.5" />} onClick={() => void browse()}>
             {t("Choisir un autre dossier…")}
           </Button>
-          <Button variant="primary" disabled={chosen.length === 0} busy={saving} onClick={() => void save()}>
+          <Button variant="primary" disabled={chosen.length === 0} disabledReason={t("Choisis au moins un dossier")} busy={saving} onClick={() => void save()}>
             {chosen.length === 1 ? t("Utiliser ce dossier") : t("Utiliser ces {n} dossiers", { n: chosen.length || "" })}
           </Button>
         </div>

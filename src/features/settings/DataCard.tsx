@@ -222,7 +222,7 @@ export function DataCard() {
               <Button variant="ghost" disabled={resetAll.isPending} onClick={() => setConfirm(null)}>
                 {t("Annuler")}
               </Button>
-              <Button variant="danger" busy={resetAll.isPending} disabled={!["RÉINITIALISER", "REINITIALISER", "RESET"].includes(word.trim().toUpperCase())} onClick={() => resetAll.mutate()}>
+              <Button variant="danger" busy={resetAll.isPending} disabled={!["RÉINITIALISER", "REINITIALISER", "RESET"].includes(word.trim().toUpperCase())} disabledReason={t("Tape RÉINITIALISER pour confirmer")} onClick={() => resetAll.mutate()}>
                 {t("Tout effacer et redémarrer")}
               </Button>
             </>

@@ -1,3 +1,4 @@
+import { useMyFreshness } from "../features/myepitech/freshness";
 import { Inbox, PanelLeftClose, PanelLeftOpen, RefreshCw, Search } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -14,22 +15,23 @@ import { entryOf, pageLabel, SECTIONS, sectionOf } from "./sections";
 import { t } from "../lib/i18n";
 
 export function Logo({ className }: { className?: string }) {
-  // Same drawing as public/tekboard.svg: a T inside a progress ring.
+  // Same drawing as public/tekboard.svg: a T inside a progress ring. The ink is the design's
+  // accent (or the personal one), like the window and tray icons (src-tauri/icons/themes).
   return (
     <svg viewBox="0 0 512 512" className={className} aria-hidden>
       <defs>
         <linearGradient id="tb-logo-bg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#25222f" />
-          <stop offset="1" stopColor="#121117" />
+          <stop offset="0" stopColor="#22201d" />
+          <stop offset="1" stopColor="#121110" />
         </linearGradient>
         <linearGradient id="tb-logo-ink" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#c3b9ff" />
-          <stop offset="1" stopColor="#7c68f2" />
+          <stop offset="0" style={{ stopColor: "color-mix(in srgb, var(--color-accent) 50%, #ffffff)" }} />
+          <stop offset="1" style={{ stopColor: "color-mix(in srgb, var(--color-accent) 85%, #ffffff)" }} />
         </linearGradient>
       </defs>
       <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#tb-logo-bg)" />
       <rect x="21" y="21" width="470" height="470" rx="107" fill="none" stroke="#fff" strokeOpacity=".09" strokeWidth="10" />
-      <circle cx="256" cy="256" r="150" fill="none" stroke="#9486ff" strokeOpacity=".16" strokeWidth="34" />
+      <circle cx="256" cy="256" r="150" fill="none" style={{ stroke: "var(--color-accent)" }} strokeOpacity=".16" strokeWidth="34" />
       <circle cx="256" cy="256" r="150" fill="none" stroke="url(#tb-logo-ink)" strokeWidth="34" strokeLinecap="round" strokeDasharray="700 243" transform="rotate(-90 256 256)" />
       <path d="M194 202H318M256 202V318" fill="none" stroke="url(#tb-logo-ink)" strokeWidth="50" strokeLinecap="round" />
     </svg>
@@ -251,6 +253,8 @@ function SyncLine({ rail }: { rail: boolean }) {
   const my = useMySync();
   useNow(30_000);
   const last = status.data?.lastSync ?? null;
+  // The data itself may be older than the last sync (a part failed): the oldest answer decides.
+  const { at, stale } = useMyFreshness();
   if (last === null && !my.busy) return null;
   const label = my.busy ? my.label : t("MY Epitech · {ago}", { ago: timeAgo(last!) });
   return (
@@ -258,8 +262,8 @@ function SyncLine({ rail }: { rail: boolean }) {
       type="button"
       onClick={() => void my.sync()}
       disabled={my.busy}
-      title={my.busy ? my.label : t("Synchronisé {ago}. Cliquer pour synchroniser maintenant.", { ago: timeAgo(last!) })}
-      className={cn("mt-1 flex h-7 items-center gap-2.5 rounded-(--btn-radius) text-xs text-faint transition-colors duration-(--dur-fast) hover:bg-ink/5 hover:text-muted disabled:cursor-default", rail ? "justify-center" : "px-2.5")}
+      title={my.busy ? my.label : stale && at !== null ? t("Données relues {ago} : plus d'un jour. Cliquer pour synchroniser maintenant.", { ago: timeAgo(at) }) : t("Synchronisé {ago}. Cliquer pour synchroniser maintenant.", { ago: timeAgo(last!) })}
+      className={cn("mt-1 flex h-7 items-center gap-2.5 rounded-(--btn-radius) text-xs transition-colors duration-(--dur-fast) hover:bg-ink/5 hover:text-muted disabled:cursor-default", stale && !my.busy ? "text-warn" : "text-faint", rail ? "justify-center" : "px-2.5")}
     >
       <span className="flex w-4 shrink-0 justify-center">{my.busy ? <Spinner className="size-3" /> : <RefreshCw className="size-3" />}</span>
       {!rail && <span className="truncate">{label}</span>}

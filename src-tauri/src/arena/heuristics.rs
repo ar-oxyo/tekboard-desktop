@@ -19,6 +19,50 @@ pub struct Hypothesis {
     pub weight: String,
     pub message: String,
     pub provenance: String,
+    /// `project` (the program's own files) or `library` (a library folder, vendored or
+    /// imported code, tests): shown apart so library findings do not drown the project's.
+    #[serde(default)]
+    pub scope: String,
+    /// Variants where the same finding was read (when it is the same in both).
+    #[serde(default)]
+    pub seen_in: Vec<String>,
+    /// How many places it was merged from (a library function copied in several folders).
+    #[serde(default)]
+    pub count: usize,
+}
+
+/// Library code, by folder name: what the student did not write for this project, or
+/// should not optimise here.
+pub fn is_library(rel: &str) -> bool {
+    let rel = rel.trim_start_matches("./");
+    rel.split('/').rev().skip(1).any(|d| {
+        let d = d.to_ascii_lowercase();
+        matches!(d.as_str(), "lib" | "libs" | "libmy" | "vendor" | "vendors" | "third_party" | "thirdparty" | "external" | "deps" | "tests" | "test" | "unit_tests" | "criterion") || d.starts_with("lib") && d.len() <= 8
+    })
+}
+
+/// Merges findings across files and variants. A project finding is the same when its kind,
+/// function, file and line match (both variants read the same code); a library finding is
+/// the same for one kind and one function wherever the file was copied.
+pub fn dedupe(all: Vec<(String, Hypothesis)>) -> Vec<Hypothesis> {
+    let mut out: Vec<Hypothesis> = Vec::new();
+    for (variant, h) in all {
+        let lib = h.scope == "library";
+        let same = |x: &Hypothesis| x.scope == h.scope && x.kind == h.kind && x.function == h.function && x.provenance == h.provenance && (lib || (x.file == h.file && x.line == h.line));
+        match out.iter_mut().find(|x| same(x)) {
+            Some(x) => {
+                x.count += 1;
+                if !variant.is_empty() && !x.seen_in.contains(&variant) {
+                    x.seen_in.push(variant);
+                }
+            }
+            None => out.push(Hypothesis { count: 1, seen_in: if variant.is_empty() { Vec::new() } else { vec![variant] }, ..h }),
+        }
+    }
+    // Project first, then by weight.
+    let rank = |h: &Hypothesis| (h.scope == "library", match h.weight.as_str() { "high" => 0, "medium" => 1, _ => 2 });
+    out.sort_by_key(rank);
+    out
 }
 
 const ALLOC: &[&str] = &["malloc", "calloc", "realloc", "strdup", "strndup", "my_strdup", "asprintf"];
@@ -65,7 +109,7 @@ struct Walk<'a> {
 impl Walk<'_> {
     fn push(&mut self, line: usize, kind: &str, weight: &str, message: String) {
         if self.seen.insert((kind.to_string(), line)) {
-            self.out.push(Hypothesis { file: self.file.to_string(), function: self.func.to_string(), line, kind: kind.into(), weight: weight.into(), message, provenance: "heuristique".into() });
+            self.out.push(Hypothesis { file: self.file.to_string(), function: self.func.to_string(), line, kind: kind.into(), weight: weight.into(), message, provenance: "heuristique".into(), scope: if is_library(self.file) { "library" } else { "project" }.into(), seen_in: Vec::new(), count: 1 });
         }
     }
 
@@ -211,6 +255,29 @@ int sum(int const *t, int n)
         assert!(h.iter().all(|x| x.provenance == "heuristique" && x.file == "algo.c" && x.line > 0));
         let strlen = h.iter().find(|x| x.kind == "strlen-in-condition").unwrap();
         assert_eq!(strlen.line, 16);
+    }
+
+    #[test]
+    fn library_findings_are_set_apart_and_merged() {
+        assert!(is_library("lib/my/my_strlen.c") && is_library("./libs/x.c") && is_library("tests/test_sort.c") && is_library("src/libmy/a.c"));
+        assert!(!is_library("src/sort.c") && !is_library("main.c") && !is_library("library.c") && !is_library("src/liberty_and_more/a.c"));
+        let lib = analyze(SRC, "lib/my/algo.c");
+        assert!(lib.iter().all(|h| h.scope == "library"));
+        let copy = analyze(SRC, "lib/other/algo.c");
+        let own = analyze(SRC, "algo.c");
+        let mut all: Vec<(String, Hypothesis)> = Vec::new();
+        for v in ["A", "B"] {
+            all.extend(lib.iter().cloned().map(|h| (v.to_string(), h)));
+            all.extend(copy.iter().cloned().map(|h| (v.to_string(), h)));
+            all.extend(own.iter().cloned().map(|h| (v.to_string(), h)));
+        }
+        let merged = dedupe(all);
+        // One entry per finding in the project, one per (kind, function) in the libraries.
+        assert_eq!(merged.iter().filter(|h| h.scope == "project").count(), own.len());
+        assert_eq!(merged.iter().filter(|h| h.scope == "library").count(), lib.len());
+        let l = merged.iter().find(|h| h.scope == "library").unwrap();
+        assert_eq!((l.count, l.seen_in.clone()), (4, vec!["A".to_string(), "B".to_string()]));
+        assert_eq!(merged.first().unwrap().scope, "project");
     }
 
     #[test]
