@@ -27,6 +27,36 @@ pub fn show_main(app: &AppHandle) {
     }
 }
 
+/// Gives the hidden main window the saved design's ground, the interface size and the design's
+/// icon before it is shown: a light design never opens on a black frame. "System" follows the
+/// desktop's light/dark preference as GTK reports it.
+pub fn prepare_main(app: &AppHandle, look: &crate::look::Look) {
+    use crate::look::Mode;
+    if let Some(w) = app.get_webview_window(MAIN) {
+        let dark = match look.mode {
+            Mode::Dark => true,
+            Mode::Light => false,
+            Mode::System => !matches!(w.theme(), Ok(tauri::Theme::Light)),
+        };
+        let (r, g, b) = crate::look::ground(&look.theme, dark);
+        let _ = w.set_background_color(Some(tauri::window::Color(r, g, b, 255)));
+        if (look.zoom - 1.0).abs() > 0.001 {
+            let _ = w.set_zoom(look.zoom);
+        }
+    }
+    if crate::settings::THEMES.contains(&look.theme.as_str()) {
+        let _ = apply_theme_icon(app, &look.theme);
+    }
+}
+
+/// Applies an interface size to every open window (the capture window follows the main one).
+pub fn apply_zoom(app: &AppHandle, zoom: f64) -> tauri::Result<()> {
+    for w in app.webview_windows().values() {
+        w.set_zoom(zoom)?;
+    }
+    Ok(())
+}
+
 /// Decides what the first window is: the capture window alone, or the main window.
 pub fn first_window(app: &AppHandle) {
     let argv: Vec<String> = std::env::args().collect();

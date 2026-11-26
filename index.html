@@ -3,17 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="dark light" />
     <link rel="icon" type="image/svg+xml" href="/tekboard.svg" />
     <title>TekBoard</title>
-    <!-- Launch screen: drawn before any script loads, removed as soon as the app is ready
-         (src/lib/splash.ts). No minimum duration. -->
+    <!-- The saved design and mode, before anything paints (no flash of the wrong ground). -->
+    <script src="/boot.js"></script>
+    <!-- Launch screen: drawn before the app's scripts load, removed as soon as the app is ready
+         (src/lib/splash.ts). No minimum duration. The logo takes the colours of the design's
+         icon (src-tauri/icons/themes/*.svg); the ground is the design's own. -->
     <style>
-      #splash { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: #141415; transition: opacity 160ms ease-out; }
+      #splash { --g: #181715; --b1: #22201d; --b2: #121110; --i1: #9fd2f5; --i2: #4aa3e3; position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: var(--g); transition: opacity 160ms ease-out; }
+      html[data-mode="light"] #splash { --g: #f3efe6; }
+      html[data-theme="sauge"] #splash { --g: #141815; --b1: #1c211d; --b2: #0f1310; --i1: #a9e3c1; --i2: #5fbf8a; }
+      html[data-theme="sauge"][data-mode="light"] #splash { --g: #eef1e8; }
+      html[data-theme="ardoise"] #splash { --g: #13171c; --b1: #1b2126; --b2: #0e1215; --i1: #8fe3ef; --i2: #22b8cf; }
+      html[data-theme="ardoise"][data-mode="light"] #splash { --g: #eef2f6; }
+      html[data-theme="prune"] #splash { --g: #1a1418; --b1: #241b21; --b2: #130e11; --i1: #f0bcd8; --i2: #d77fb0; }
+      html[data-theme="prune"][data-mode="light"] #splash { --g: #f6eef0; }
+      html[data-theme="sumi"] #splash { --g: #111111; --b1: #1f1d1b; --b2: #0f0e0d; --i1: #f5a597; --i2: #e8553f; }
+      html[data-theme="sumi"][data-mode="light"] #splash { --g: #f7f5ef; }
+      html:is([data-theme="flat"], [data-theme="neon"], [data-theme="cozy"], [data-theme="terminal"]) #splash { --b1: #25222f; --b2: #121117; --i1: #c3b9ff; --i2: #7c68f2; }
+      html[data-theme="flat"] #splash { --g: #0c0d11; }
+      html[data-theme="neon"] #splash { --g: #07050f; }
+      html[data-theme="cozy"] #splash { --g: #14141f; }
+      html[data-theme="terminal"] #splash { --g: #040704; }
       #splash.gone { opacity: 0; pointer-events: none; }
-      html[data-mode="light"] #splash { background: #f3efe6; }
-      html[data-mode="dark"]:not([data-theme="aurora"]) #splash { background: #141415; }
-      html[data-theme="aurora"][data-mode="dark"] #splash { background: #181715; }
+      #splash .b1 { stop-color: var(--b1); }
+      #splash .b2 { stop-color: var(--b2); }
+      #splash .i1 { stop-color: var(--i1); }
+      #splash .i2 { stop-color: var(--i2); }
+      #splash .faint { stroke: var(--i2); }
       #splash svg { width: 72px; height: 72px; animation: tb-in 300ms cubic-bezier(.2,.8,.2,1) both; }
       /* The ring fills up, then the T appears. */
       #splash .ring { stroke-dasharray: 0 943; animation: tb-ring 520ms cubic-bezier(.3,.7,.2,1) 80ms forwards; }
@@ -22,18 +41,19 @@
       @keyframes tb-ring { to { stroke-dasharray: 700 243; } }
       @keyframes tb-t { to { opacity: 1; } }
       @media (prefers-reduced-motion: reduce) { #splash svg, #splash .ring, #splash .t { animation: none; stroke-dasharray: 700 243; opacity: 1; } }
+      html[data-motion="off"] #splash svg, html[data-motion="off"] #splash .ring, html[data-motion="off"] #splash .t { animation: none; stroke-dasharray: 700 243; opacity: 1; }
     </style>
   </head>
   <body>
     <div id="splash" aria-hidden="true">
       <svg viewBox="0 0 512 512">
         <defs>
-          <linearGradient id="sp-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#25222f" /><stop offset="1" stop-color="#121117" /></linearGradient>
-          <linearGradient id="sp-ink" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c3b9ff" /><stop offset="1" stop-color="#7c68f2" /></linearGradient>
+          <linearGradient id="sp-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="b1" /><stop offset="1" class="b2" /></linearGradient>
+          <linearGradient id="sp-ink" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="i1" /><stop offset="1" class="i2" /></linearGradient>
         </defs>
         <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#sp-bg)" />
         <rect x="21" y="21" width="470" height="470" rx="107" fill="none" stroke="#fff" stroke-opacity=".09" stroke-width="10" />
-        <circle cx="256" cy="256" r="150" fill="none" stroke="#9486ff" stroke-opacity=".16" stroke-width="34" />
+        <circle class="faint" cx="256" cy="256" r="150" fill="none" stroke-opacity=".16" stroke-width="34" />
         <circle class="ring" cx="256" cy="256" r="150" fill="none" stroke="url(#sp-ink)" stroke-width="34" stroke-linecap="round" transform="rotate(-90 256 256)" />
         <path class="t" d="M194 202H318M256 202V318" fill="none" stroke="url(#sp-ink)" stroke-width="50" stroke-linecap="round" />
       </svg>

@@ -35,6 +35,16 @@ pub fn app_set_icon(app: tauri::AppHandle, theme: String) -> Result<()> {
     crate::desktop::apply_theme_icon(&app, &theme).map_err(|e| crate::error::AppError::new("icon_failed", e.to_string()))
 }
 
+/// Interface size (Settings → Appearance): one of `look::ZOOMS`, applied at once to every
+/// window. The choice itself is saved with the interface preferences (`uiScale`) and applied
+/// again at start, before the window is shown.
+#[tauri::command]
+pub fn app_set_zoom(app: tauri::AppHandle, zoom: f64) -> Result<f64> {
+    let zoom = crate::look::clean_zoom(zoom).ok_or_else(|| AppError::new("invalid_zoom", "Taille d'interface inconnue"))?;
+    crate::desktop::apply_zoom(&app, zoom).map_err(|e| AppError::new("zoom_failed", e.to_string()))?;
+    Ok(zoom)
+}
+
 #[tauri::command(async)]
 pub fn data_locations(state: State<'_, AppState>) -> Vec<Location> {
     datamgmt::locations(&state.data_dir, &state.cache_dir)

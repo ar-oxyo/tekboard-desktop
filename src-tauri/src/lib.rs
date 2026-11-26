@@ -35,6 +35,7 @@ pub mod github;
 pub mod jobs;
 pub mod launcher;
 pub mod logtime;
+pub mod look;
 pub mod library;
 pub mod moulinette;
 pub mod mouli;
@@ -125,6 +126,9 @@ fn start(app: &mut tauri::App) -> std::result::Result<(), String> {
         if let Ok(s) = settings::load(&state.conn()) {
             desktop::apply(app.handle(), &s);
         }
+        // The window opens with the design's ground and the chosen interface size.
+        let look = look::load(&state.conn());
+        desktop::prepare_main(app.handle(), &look);
     }
     desktop::first_window(app.handle());
     let handle = app.handle().clone();
@@ -170,6 +174,7 @@ pub fn run() {
             commands::get_settings,
             commands_app::startup_notices,
             commands_app::app_set_icon,
+            commands_app::app_set_zoom,
             commands_app::data_locations,
             commands_app::data_open,
             commands_app::data_export,
