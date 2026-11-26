@@ -43,7 +43,7 @@ const links: SkillTree["links"] = [];
 for (const b of blocks) {
   for (const [code, label, credits, status, skills] of b.units) {
     const done = skills.filter((s) => s[1] === "acquired").length;
-    nodes.push(base(`u:${code}`, "unit", label, status, { branch: b.id, unitCode: code, credits, validated: done, total: skills.length, grade: status === "acquired" ? "A" : status === "failed" ? "E" : null }));
+    nodes.push(base(`u:${code}`, "unit", label, status, { branch: b.id, unitCode: code, credits, validated: done, total: skills.length, grade: status === "failed" ? "E" : "in progress" }));
     skills.forEach(([s, st, pct], i) => {
       nodes.push(base(`s:${code}:${i}`, "skill", s, st, { branch: b.id, parent: `u:${code}`, levelPercent: pct ?? (st === "acquired" ? 100 : null) }));
       links.push({ source: `s:${code}:${i}`, target: `u:${code}`, kind: "skill_unit" });
@@ -68,7 +68,7 @@ for (const [label, status, skills] of projects) {
 
 export const skillTree: SkillTree = {
   syncedAt: now - 40 * 60,
-  credits: { acquired: 12, prior: 0, thisSemester: 12, threshold: 60, secure: 12, reachable: 41, lost: 0, atRisk: 2 },
+  credits: { acquired: 0, prior: 0, thisSemester: 0, threshold: 20, secure: 27, reachable: 27, lost: 2, atRisk: 0 },
   semester: 1,
   semesters: [{ num: 1, schoolYear: 2026, current: true, future: false }],
   branches: blocks.map((b) => ({ id: b.id, name: b.name, color: b.color, threshold: b.threshold, secure: b.secure, reachable: b.threshold, available: b.threshold, alert: null, units: b.units.map((u) => `u:${u[0]}`) })),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SkillNode, SkillTree } from "./api";
-import { fit, GRID, layout, NO_FILTER, neighbours, visible, wheelAction, zoomAt } from "./skilltree";
+import { between, fitBox, galaxy, NO_FILTER, neighbours, SPACE, starView, systemBox, visible, wheelAction, zoomAt } from "./skilltree";
 
 const node = (id: string, kind: SkillNode["kind"], extra: Partial<SkillNode> = {}): SkillNode => ({ id, kind, label: id, status: "available", statusFrom: "validations", branch: null, parent: null, semester: 1, schoolYear: 2026, upcoming: false, credits: null, grade: null, validated: null, total: null, levelPercent: null, mandatory: null, unitCode: null, domain: null, domainEstimated: false, ...extra });
 
@@ -45,54 +45,59 @@ describe("Skill Tree", () => {
     expect(acquired.has("u:1") && acquired.has("s:1") && !acquired.has("s:2")).toBe(true);
   });
 
-  it("gives each block a lane, units as columns and skills under their unit", () => {
-    const l = layout(tree, visible(tree, NO_FILTER));
-    expect(l.lanes.map((x) => x.id)).toEqual(["c:1", "c:2", "projects"]);
-    const [tech] = l.lanes;
-    for (const id of ["u:1", "u:3", "s:1", "s:2"]) {
-      const p = l.nodes.get(id)!;
-      expect(p.y).toBeGreaterThan(tech.y);
-      expect(p.y).toBeLessThan(tech.y + tech.h);
-    }
-    // Skills hang under their unit, in its column.
-    expect(l.nodes.get("s:1")!.y).toBeGreaterThan(l.nodes.get("u:1")!.y);
-    expect(l.nodes.get("s:2")!.y).toBeGreaterThan(l.nodes.get("s:1")!.y);
-    expect(l.nodes.get("s:1")!.x - l.nodes.get("u:1")!.x).toBeLessThan(GRID.col);
-    expect(l.edges.map((e) => `${e.from}>${e.to}`)).toEqual(["u:1>s:1", "u:1>s:2"]);
+  it("draws each block as a constellation of its units, around the core", () => {
+    const g = galaxy(tree, visible(tree, NO_FILTER));
+    expect(g.systems.map((x) => x.id)).toEqual(["c:1", "c:2"]);
+    expect(g.systems[0].units.sort()).toEqual(["u:1", "u:3"]);
+    // Every star sits inside its constellation's disc, and the figure joins them all.
+    for (const sys of g.systems) for (const u of sys.units) expect(Math.hypot(g.stars.get(u)!.x - sys.x, g.stars.get(u)!.y - sys.y)).toBeLessThan(sys.r);
+    expect(g.systems[0].figure).toHaveLength(1);
+    // Skills and projects are not stars.
+    expect(g.stars.has("s:1") || g.stars.has("p:1")).toBe(false);
+    // The core stays clear.
+    for (const sys of g.systems) expect(Math.hypot(sys.x, sys.y) - sys.r).toBeGreaterThanOrEqual(SPACE.core - 1);
   });
 
-  it("never overlaps two marks nor two lanes", () => {
-    const many: SkillTree = {
-      ...tree,
-      branches: [{ ...tree.branches[0], units: Array.from({ length: 9 }, (_, i) => `u:${i}`) }],
-      nodes: [
-        ...Array.from({ length: 9 }, (_, i) => node(`u:${i}`, "unit")),
-        ...Array.from({ length: 40 }, (_, i) => node(`s:${i}`, "skill", { parent: `u:${i % 9}` })),
-        ...Array.from({ length: 14 }, (_, i) => node(`p:${i}`, "project")),
-      ],
-      links: Array.from({ length: 14 }, (_, i) => ({ source: `p:${i}`, target: `s:${i}`, kind: "project_skill" as const })),
-    };
-    const l = layout(many, visible(many, NO_FILTER));
-    const pts = [...l.nodes.values()];
-    for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) expect(Math.abs(pts[i].x - pts[j].x) >= 20 || Math.abs(pts[i].y - pts[j].y) >= 20).toBe(true);
-    for (let i = 1; i < l.lanes.length; i++) expect(l.lanes[i].y).toBeGreaterThanOrEqual(l.lanes[i - 1].y + l.lanes[i - 1].h);
-    // Nine units wrap after six columns.
-    expect(l.lanes[0].w).toBeLessThanOrEqual(GRID.pad * 2 + GRID.wrap * (GRID.col + GRID.gap));
-    expect(l.height).toBeGreaterThan(0);
+  it("never overlaps two constellations nor two stars", () => {
+    const branches = Array.from({ length: 6 }, (_, b) => ({ ...tree.branches[0], id: `c:${b}`, units: Array.from({ length: 3 + b * 2 }, (_, i) => `u:${b}:${i}`) }));
+    const many: SkillTree = { ...tree, branches, nodes: branches.flatMap((b) => b.units.map((u) => node(u, "unit", { credits: 5 }))), links: [] };
+    const g = galaxy(many, visible(many, NO_FILTER));
+    expect(g.stars.size).toBe(branches.reduce((a, b) => a + b.units.length, 0));
+    for (let i = 0; i < g.systems.length; i++)
+      for (let j = i + 1; j < g.systems.length; j++) {
+        const [p, q] = [g.systems[i], g.systems[j]];
+        expect(Math.hypot(p.x - q.x, p.y - q.y)).toBeGreaterThanOrEqual(p.r + q.r);
+      }
+    const pts = [...g.stars.values()];
+    for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) expect(Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y)).toBeGreaterThan(80);
+    // The bounds hold every disc, and the same tree gives the same sky.
+    for (const sys of g.systems) expect(sys.x - sys.r).toBeGreaterThanOrEqual(g.bounds.x);
+    expect(galaxy(many, visible(many, NO_FILTER)).dust).toEqual(g.dust);
   });
 
-  it("fits the tree in the viewport and zooms around the pointer", () => {
-    const v = fit(1000, 500, 500, 400);
-    expect(1000 * v.k).toBeLessThanOrEqual(500);
+  it("frames the galaxy, a constellation or a star, and glides between views", () => {
+    const g = galaxy(tree, visible(tree, NO_FILTER));
+    const all = fitBox(g.bounds, 800, 600);
+    expect(g.bounds.w * all.k).toBeLessThanOrEqual(800);
+    // A framed box is centred.
+    const box = systemBox(g.systems[0]);
+    const v = fitBox(box, 800, 600);
+    expect((box.x + box.w / 2) * v.k + v.x).toBeCloseTo(400);
+    expect((box.y + box.h / 2) * v.k + v.y).toBeCloseTo(300);
+    // Close to a star: it is centred and its nearest neighbour is pushed away.
+    const s = starView(g, "u:1", 400, 300);
+    const p = g.stars.get("u:1")!;
+    expect(p.x * s.k + s.x).toBeCloseTo(400);
+    expect(between(all, s, 0, 800, 600).k).toBeCloseTo(all.k);
+    expect(between(all, s, 1, 800, 600).x).toBeCloseTo(s.x);
     const z = zoomAt({ x: 10, y: 20, k: 1 }, 2, 110, 120);
     // The point under the cursor stays under the cursor.
     expect((110 - z.x) / z.k).toBeCloseTo((110 - 10) / 1);
     expect((120 - z.y) / z.k).toBeCloseTo((120 - 20) / 1);
-    expect(zoomAt({ x: 0, y: 0, k: 3 }, 4, 0, 0).k).toBe(3);
   });
 
-  it("tells a wheel zoom from a trackpad pan", () => {
-    expect(wheelAction({ deltaX: 0, deltaY: 100, deltaMode: 0, ctrlKey: false, shiftKey: false }).kind).toBe("zoom");
+  it("leaves the plain wheel to the page; pinch zooms, a sideways swipe pans", () => {
+    expect(wheelAction({ deltaX: 0, deltaY: 100, deltaMode: 0, ctrlKey: false, shiftKey: false }).kind).toBe("none");
     expect(wheelAction({ deltaX: 4, deltaY: 2, deltaMode: 0, ctrlKey: false, shiftKey: false }).kind).toBe("pan");
     const pinch = wheelAction({ deltaX: 0, deltaY: -10, deltaMode: 0, ctrlKey: true, shiftKey: false });
     expect(pinch.kind === "zoom" && pinch.factor > 1).toBe(true);
