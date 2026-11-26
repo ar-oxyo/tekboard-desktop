@@ -1,13 +1,14 @@
 // Planning: the student's week on a timeline, with MY Epitech sessions and hand-ins drawn
 // read-only underneath, an inbox of tasks to drag in, and the projects' remaining work.
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarCheck, ChevronLeft, ChevronRight, Inbox, Lightbulb, ListFilter, Plus, RefreshCw, Settings2, Sparkles, Wand2 } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import { Menu, MenuChoice, MenuItem, MenuLabel, MenuSeparator } from "../../components/Menu";
 import { Button, cn, Dot, DoneCheck, ErrorNote, IconButton, Spinner, Tag } from "../../components/ui";
 import type { PlanTask } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
-import { useNow, usePref } from "../../lib/hooks";
+import { keys, useNow, usePref } from "../../lib/hooks";
+import { api } from "../../lib/api";
 import { addDays, DEFAULT_FILTERS, fmtDur, MIN, startOfDay, startOfWeek, unplanned, visible, type CalItem, type Filters, type Load, type PlanProject } from "../../lib/plan";
 import { invalidate } from "../../lib/sync";
 import { suggestPlan } from "../artix/suggest";
@@ -115,6 +116,14 @@ export function PlanningPage() {
     window.addEventListener("pointerup", up);
   };
 
+  // Which MY Epitech agendas are shown (and used by Artix): saved, then the agenda is read again.
+  const aer = useQuery({ queryKey: ["my-status", "aer"], queryFn: api.myAerStatus, staleTime: 60_000 });
+  const [sources, setSources] = usePref<{ student: boolean; aer: boolean }>("plan.sources", { student: true, aer: true });
+  const toggleSource = (k: "student" | "aer") => {
+    const next = { ...sources, [k]: !sources[k] };
+    setSources(next);
+    void api.uiPrefsSet({ ...(qc.getQueryData<Record<string, unknown>>(keys.prefs) ?? {}), "plan.sources": next }).then(() => qc.invalidateQueries({ queryKey: ["repos", "agenda"] }));
+  };
   const autoPlan = (scope: "week" | "day") => void suggestPlan(scope);
   const reorg = () => void suggestPlan("reorganize");
 
@@ -149,12 +158,25 @@ export function PlanningPage() {
               </IconButton>
             }
           >
-            <MenuLabel>Afficher</MenuLabel>
+            <MenuLabel>{t("Afficher")}</MenuLabel>
             {FILTER_LABEL.map(([k, text]) => (
               <MenuChoice key={k} checked={f[k]} onSelect={() => setFilters({ ...f, [k]: !f[k] })}>
                 {text}
               </MenuChoice>
             ))}
+            {/* Only for those who added an AER account: one agenda per account, both by default. */}
+            {aer.data?.sessionStored && (
+              <>
+                <MenuSeparator />
+                <MenuLabel>{t("Agendas")}</MenuLabel>
+                <MenuChoice checked={sources.student} onSelect={() => toggleSource("student")}>
+                  {t("Séances Student")}
+                </MenuChoice>
+                <MenuChoice checked={sources.aer} onSelect={() => toggleSource("aer")}>
+                  {t("Séances AER")}
+                </MenuChoice>
+              </>
+            )}
           </Menu>
           <IconButton label={t("Réglages du planning : rythme, catégories")} onClick={() => setDialog("settings")}>
             <Settings2 className="size-4" />

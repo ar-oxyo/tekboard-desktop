@@ -67,6 +67,9 @@ pub struct AgendaItem {
     /// Planning key of the project the item belongs to (repository path, or `my:<id>` when it
     /// is not cloned): what "leave this project out of the calendar" applies to.
     pub project_key: Option<String>,
+    /// Whose agenda it comes from: `student`, `aer` (the AER account, see `myaer`) or `both`
+    /// (the same session in both agendas, shown once).
+    pub account: &'static str,
 }
 
 /// `not_registered` → `not registered`.
@@ -98,7 +101,48 @@ fn sort_key(i: &AgendaItem) -> (String, u8, i64, String) {
     (i.day.clone(), rank, at, i.title.to_lowercase())
 }
 
+/// The agendas the planning shows (`myaer::sources`): the student's, the AER account's
+/// sessions beside it when connected, or one of them only. The same session in both is
+/// shown once; two sessions at the same hour stay two.
 pub fn agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Agenda {
+    let sources = crate::myaer::sources(conn);
+    let mut a = student_agenda(conn, overview, board);
+    if !sources.student {
+        // Hand-ins, project openings and holidays stay: they are work, not the timetable.
+        a.items.retain(|i| !matches!(i.kind, "activity" | "event"));
+    }
+    if sources.aer {
+        if let Some(v) = crate::myaer::events(conn) {
+            merge_aer(&mut a.items, &v);
+        }
+    }
+    a.items.sort_by_key(sort_key);
+    a
+}
+
+/// Adds the sessions of the AER account. A session already in the student's agenda (same
+/// MY Epitech id, or same title at the same start and end) is marked `both` instead.
+pub fn merge_aer(items: &mut Vec<AgendaItem>, events: &Value) {
+    for e in events.as_array().into_iter().flatten() {
+        let id = e["id"].as_i64();
+        let slot = s(&e["mySlotStartDate"]);
+        let Some(start) = slot.clone().or_else(|| s(&e["startDate"])) else { continue };
+        let Some(day) = local_day(&start) else { continue };
+        let end = if slot.is_some() { s(&e["mySlotEndDate"]).or_else(|| s(&e["endDate"])) } else { s(&e["endDate"]) };
+        let title = s(&e["fullTitle"]).or_else(|| s(&e["title"])).or_else(|| s(&e["activityName"])).unwrap_or_else(|| "Session".into());
+        let instant = |x: &Option<String>| x.as_deref().and_then(|t| DateTime::parse_from_rfc3339(t).ok()).map(|d| d.timestamp());
+        let same = items.iter_mut().find(|i| matches!(i.kind, "activity" | "event") && ((id.is_some() && i.event_id == id) || (i.title == title && instant(&i.start) == instant(&Some(start.clone())) && instant(&i.end) == instant(&end))));
+        if let Some(existing) = same {
+            existing.account = "both";
+            existing.mine = true;
+            continue;
+        }
+        let detail = [Some("AER".to_string()), s(&e["unitName"])].into_iter().flatten().collect::<Vec<_>>().join(" · ");
+        items.push(AgendaItem { kind: "activity", title, day, start: Some(start), end, module: s(&e["unitCode"]), detail: Some(detail), mine: true, mandatory: false, exam: e["isExam"].as_bool().unwrap_or(false), repo_path: None, until: None, status: Some("registered".into()), event_id: id, project_key: None, account: "aer" });
+    }
+}
+
+fn student_agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Agenda {
     let mut a = Agenda { synced_at: overview.synced_at, ..Default::default() };
     let mut modules: Vec<String> = overview.projects.iter().map(|p| p.unit_code.clone()).filter(|u| !u.is_empty()).collect();
     modules.sort();
@@ -113,12 +157,12 @@ pub fn agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Ag
             Some("manual") => "hand-in, typed by you",
             _ => "hand-in",
         };
-        a.items.push(AgendaItem { kind: "deadline", title: b.title.clone(), day: day.clone(), start: b.at.clone(), end: None, module: b.module.clone(), detail: Some(if b.cloned { origin.to_string() } else { format!("{origin} · not cloned") }), mine: true, mandatory: true, exam: false, repo_path: b.repo_path.clone(), until: None, status: None, event_id: None, project_key: b.repo_path.clone().or_else(|| b.my_id.map(|i| format!("my:{i}"))) });
+        a.items.push(AgendaItem { kind: "deadline", title: b.title.clone(), day: day.clone(), start: b.at.clone(), end: None, module: b.module.clone(), detail: Some(if b.cloned { origin.to_string() } else { format!("{origin} · not cloned") }), mine: true, mandatory: true, exam: false, repo_path: b.repo_path.clone(), until: None, status: None, event_id: None, project_key: b.repo_path.clone().or_else(|| b.my_id.map(|i| format!("my:{i}"))), account: "student" });
     }
     // Projects that open later.
     for p in overview.projects.iter().filter(|p| p.upcoming) {
         if let Some(due) = p.start.as_deref().and_then(deadlines::from_instant) {
-            a.items.push(AgendaItem { kind: "start", title: format!("{} opens", p.name), day: due.day, start: due.at, end: None, module: Some(p.unit_code.clone()).filter(|u| !u.is_empty()), detail: p.unit_name.clone(), mine: true, mandatory: false, exam: false, repo_path: p.repo_path.clone(), until: None, status: None, event_id: None, project_key: Some(p.repo_path.clone().unwrap_or_else(|| format!("my:{}", p.id))) });
+            a.items.push(AgendaItem { kind: "start", title: format!("{} opens", p.name), day: due.day, start: due.at, end: None, module: Some(p.unit_code.clone()).filter(|u| !u.is_empty()), detail: p.unit_name.clone(), mine: true, mandatory: false, exam: false, repo_path: p.repo_path.clone(), until: None, status: None, event_id: None, project_key: Some(p.repo_path.clone().unwrap_or_else(|| format!("my:{}", p.id))), account: "student" });
         }
     }
     // Your attendance per session, from the activities of your projects: `registered`,
@@ -167,6 +211,7 @@ pub fn agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Ag
                 status,
                 event_id: id,
                 project_key: project.map(|p| p.repo_path.clone().unwrap_or_else(|| format!("my:{}", p.id))),
+                account: "student",
             });
         }
     }
@@ -179,7 +224,7 @@ pub fn agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Ag
             continue;
         }
         let status = s(&x["status"]);
-        a.items.push(AgendaItem { kind: "activity", title, day, start: Some(start), end: s(&x["endDate"]), module: Some(p.unit_code.clone()).filter(|u| !u.is_empty()), detail: status.as_deref().map(status_text).map(str::to_string), mine: true, mandatory: x["mandatory"].as_bool().unwrap_or(false), exam: false, repo_path: p.repo_path.clone(), until: None, status, event_id: x["eventId"].as_i64(), project_key: Some(p.repo_path.clone().unwrap_or_else(|| format!("my:{}", p.id))) });
+        a.items.push(AgendaItem { kind: "activity", title, day, start: Some(start), end: s(&x["endDate"]), module: Some(p.unit_code.clone()).filter(|u| !u.is_empty()), detail: status.as_deref().map(status_text).map(str::to_string), mine: true, mandatory: x["mandatory"].as_bool().unwrap_or(false), exam: false, repo_path: p.repo_path.clone(), until: None, status, event_id: x["eventId"].as_i64(), project_key: Some(p.repo_path.clone().unwrap_or_else(|| format!("my:{}", p.id))), account: "student" });
     }
     // Sessions listed for the campus in the synced window.
     match cached(conn, EVENTS) {
@@ -211,6 +256,7 @@ pub fn agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Ag
                     status: None,
                     event_id: e["id"].as_i64(),
                     project_key: None,
+                    account: "student",
                 });
             }
         }
@@ -224,7 +270,7 @@ pub fn agenda(conn: &Connection, overview: &Overview, board: &[BoardItem]) -> Ag
                 if NaiveDate::parse_from_str(&from, "%Y-%m-%d").is_err() {
                     continue;
                 }
-                a.items.push(AgendaItem { kind: "holiday", title: s(&x["name"]).unwrap_or_else(|| "Public holiday".into()), day: from.clone(), start: None, end: None, module: None, detail: None, mine: true, mandatory: false, exam: false, repo_path: None, until: Some(to).filter(|t| *t != from), status: None, event_id: None, project_key: None });
+                a.items.push(AgendaItem { kind: "holiday", title: s(&x["name"]).unwrap_or_else(|| "Public holiday".into()), day: from.clone(), start: None, end: None, module: None, detail: None, mine: true, mandatory: false, exam: false, repo_path: None, until: Some(to).filter(|t| *t != from), status: None, event_id: None, project_key: None, account: "student" });
             }
         }
     }
@@ -430,6 +476,26 @@ mod tests {
     use crate::db;
     use crate::myview;
     use chrono::Utc;
+
+    fn session(id: i64, title: &str, start: &str, end: &str) -> AgendaItem {
+        AgendaItem { kind: "activity", title: title.into(), day: "2026-11-20".into(), start: Some(start.into()), end: Some(end.into()), module: None, detail: None, mine: true, mandatory: false, exam: false, repo_path: None, until: None, status: None, event_id: Some(id), project_key: None, account: "student" }
+    }
+
+    #[test]
+    fn the_aer_agenda_joins_the_student_one_without_real_duplicates() {
+        let mut items = vec![session(7, "Review", "2026-11-20T10:00:00Z", "2026-11-20T11:00:00Z"), session(5, "Bootstrap", "2026-11-20T14:00:00Z", "2026-11-20T16:00:00Z")];
+        let aer = serde_json::json!([
+            // The same session (same id): one line, from both agendas.
+            {"id": 7, "title": "Review", "startDate": "2026-11-20T10:00:00Z", "endDate": "2026-11-20T11:00:00Z"},
+            // Same title, same instants written with another offset: a real duplicate.
+            {"id": 50, "title": "Bootstrap", "startDate": "2026-11-20T15:00:00+01:00", "endDate": "2026-11-20T17:00:00+01:00"},
+            // Another session at the same hour: kept, marked AER.
+            {"id": 9, "title": "Kick-off AER", "startDate": "2026-11-20T10:00:00Z", "endDate": "2026-11-20T11:00:00Z", "unitName": "Pédagogie"}
+        ]);
+        merge_aer(&mut items, &aer);
+        assert_eq!(items.iter().map(|i| (i.event_id, i.account)).collect::<Vec<_>>(), vec![(Some(7), "both"), (Some(5), "both"), (Some(9), "aer")]);
+        assert_eq!(items[2].detail.as_deref(), Some("AER · Pédagogie"));
+    }
 
     fn put(conn: &Connection, route: &str, status: i64, body: &str) {
         conn.execute("INSERT INTO my_cache (route, fetched_at, status, body) VALUES (?1, 500, ?2, ?3)", rusqlite::params![route, status, body]).unwrap();

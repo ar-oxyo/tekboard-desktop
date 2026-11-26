@@ -398,6 +398,20 @@ const MIGRATIONS: &[&str] = &[
         report TEXT,
         updated_at INTEGER NOT NULL
      );",
+    // v1.2: a second MY Epitech account (AER), kept apart from the student one: its own
+    // answers and its own sync history. No token is stored.
+    "CREATE TABLE my_cache_aer (
+        route TEXT PRIMARY KEY,
+        fetched_at INTEGER NOT NULL,
+        status INTEGER NOT NULL,
+        body TEXT NOT NULL
+     );
+     CREATE TABLE my_aer_log (
+        at INTEGER NOT NULL,
+        ok INTEGER NOT NULL,
+        failed INTEGER NOT NULL,
+        detail TEXT NOT NULL
+     );",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

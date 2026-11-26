@@ -327,6 +327,30 @@ pub fn fetch_all(token: &str) -> FetchOutcome {
     FetchOutcome { fetched: out, skipped_details }
 }
 
+/// Reads a short list of routes (another account's sync), half a second apart, a paginated
+/// list to its end. Stops at once when the session is refused.
+pub fn fetch_routes(token: &str, routes: &[&str]) -> Vec<Fetched> {
+    let agent = agent();
+    let today = chrono::Local::now().date_naive();
+    let pause = || std::thread::sleep(Duration::from_millis(500));
+    let mut out = Vec::new();
+    for (i, route) in routes.iter().enumerate() {
+        if i > 0 {
+            pause();
+        }
+        let url = expand(route, today);
+        let (status, mut body) = get(&agent, token, &url);
+        if status == 200 && route.contains("page=1&") {
+            body = read_all_pages(&agent, token, &url, body, &pause);
+        }
+        out.push(Fetched { route: route.to_string(), status, body });
+        if status == 401 {
+            break;
+        }
+    }
+    out
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncReport {

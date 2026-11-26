@@ -659,3 +659,180 @@ pub fn credit_scenario_save(state: State<'_, AppState>, id: Option<i64>, name: S
 pub fn credit_scenario_delete(state: State<'_, AppState>, id: i64) -> Result<()> {
     crate::credits::delete(&state.conn(), id)
 }
+
+// ───────────────────────────── AER account ─────────────────────────────
+// A second MY Epitech account beside the student one (see `myaer`): its own window, browser
+// folder, token in memory, cache and history. Same flow as the student Sync, kept apart.
+
+fn aer_dir(state: &AppState) -> PathBuf {
+    state.data_dir.join(crate::myaer::SESSION_DIR)
+}
+
+fn aer_token(state: &AppState) -> Option<String> {
+    let token = state.my_aer.lock().unwrap_or_else(|e| e.into_inner()).token.clone()?;
+    let expired = myepitech::token_info(&token).and_then(|i| i.expires_at).is_some_and(|e| e <= now());
+    (!expired).then_some(token)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AerStatus {
+    pub connected: bool,
+    pub account: Option<String>,
+    pub expires_at: Option<i64>,
+    pub last_sync: Option<i64>,
+    /// A browser session of the AER account is kept on disk: the account was added.
+    pub session_stored: bool,
+    pub window_open: bool,
+}
+
+#[tauri::command(async)]
+pub fn my_aer_status(app: AppHandle, state: State<'_, AppState>) -> AerStatus {
+    let token = state.my_aer.lock().unwrap_or_else(|e| e.into_inner()).token.clone();
+    let info = token.as_deref().and_then(myepitech::token_info);
+    let expires_at = info.as_ref().and_then(|i| i.expires_at);
+    AerStatus {
+        connected: token.is_some() && expires_at.is_none_or(|e| e > now()),
+        account: info.and_then(|i| i.account),
+        expires_at,
+        last_sync: crate::myaer::last_sync(&state.conn()),
+        session_stored: aer_dir(&state).is_dir(),
+        window_open: app.get_webview_window(crate::myaer::WINDOW).is_some(),
+    }
+}
+
+/// The AER sign-in window: the real site, in a browser folder of its own (so its Microsoft
+/// session never mixes with the student's).
+fn open_aer_window(app: &AppHandle, state: &AppState, visible: bool) -> Result<()> {
+    if let Some(w) = app.get_webview_window(crate::myaer::WINDOW) {
+        if visible {
+            let _ = w.show();
+            let _ = w.set_focus();
+        }
+        return Ok(());
+    }
+    let dir = aer_dir(state);
+    std::fs::create_dir_all(&dir)?;
+    let url = myepitech::ORIGIN.parse().map_err(|_| AppError::new("invalid_url", "Adresse MY Epitech invalide"))?;
+    WebviewWindowBuilder::new(app, crate::myaer::WINDOW, WebviewUrl::External(url))
+        .title("MY Epitech (AER) — sign in")
+        .inner_size(1100.0, 780.0)
+        .visible(visible)
+        .data_directory(dir)
+        .initialization_script(myepitech::INIT_SCRIPT)
+        .on_document_title_changed(|window, title| {
+            let Some(token) = myepitech::token_from_title(&title) else { return };
+            let state = window.state::<AppState>();
+            let mut session = state.my_aer.lock().unwrap_or_else(|e| e.into_inner());
+            session.token = token;
+            session.received_at = now();
+        })
+        .build()
+        .map_err(|e| AppError::new("window_failed", format!("La fenêtre de connexion n'a pas pu s'ouvrir : {e}")))?;
+    Ok(())
+}
+
+fn open_aer_on_main(app: &AppHandle, visible: bool) -> Result<()> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let handle = app.clone();
+    app.run_on_main_thread(move || {
+        let state = handle.state::<AppState>();
+        let _ = tx.send(open_aer_window(&handle, &state, visible));
+    })
+    .map_err(|e| AppError::new("window_failed", e.to_string()))?;
+    rx.recv_timeout(std::time::Duration::from_secs(10)).map_err(|_| AppError::new("window_failed", "La fenêtre MY Epitech (AER) ne s'est pas ouverte"))?
+}
+
+fn wait_for_aer_token(app: &AppHandle, state: &AppState, ms: u64) -> std::result::Result<String, bool> {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(ms);
+    loop {
+        if let Some(t) = aer_token(state) {
+            return Ok(t);
+        }
+        if app.get_webview_window(crate::myaer::WINDOW).is_none() {
+            return Err(true);
+        }
+        if std::time::Instant::now() >= deadline {
+            return Err(false);
+        }
+        std::thread::sleep(std::time::Duration::from_millis(300));
+    }
+}
+
+static AER_FLOW: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Adds or syncs the AER account: the token in memory, else its kept session (out of sight),
+/// else its window for the user to sign in. Only the account and its sessions are read.
+#[tauri::command]
+pub async fn my_aer_sync(app: AppHandle) -> Result<SyncReport> {
+    use std::sync::atomic::Ordering;
+    if AER_FLOW.swap(true, Ordering::SeqCst) {
+        return Err(AppError::new("busy", "Une synchronisation du compte AER est déjà en cours"));
+    }
+    let handle = app.clone();
+    let outcome = tauri::async_runtime::spawn_blocking(move || aer_flow(&handle)).await.map_err(|e| AppError::new("sync_failed", e.to_string()));
+    AER_FLOW.store(false, Ordering::SeqCst);
+    outcome?
+}
+
+fn aer_flow(app: &AppHandle) -> Result<SyncReport> {
+    let state = app.state::<AppState>();
+    let found = app.get_webview_window(crate::myaer::WINDOW).is_some();
+    let close_if_ours = || {
+        if !found {
+            if let Some(w) = app.get_webview_window(crate::myaer::WINDOW) {
+                let _ = w.close();
+            }
+        }
+    };
+    let token = match aer_token(&state) {
+        Some(t) => t,
+        None => {
+            let silent = aer_dir(&state).is_dir();
+            open_aer_on_main(app, !silent)?;
+            let mut got = if silent { wait_for_aer_token(app, &state, SILENT_WAIT_MS) } else { Err(false) };
+            if got == Err(false) {
+                if let Some(w) = app.get_webview_window(crate::myaer::WINDOW) {
+                    let _ = w.show();
+                    let _ = w.unminimize();
+                    let _ = w.set_focus();
+                }
+                got = wait_for_aer_token(app, &state, SIGN_IN_WAIT_MS);
+            }
+            match got {
+                Ok(t) => t,
+                Err(true) => return Err(AppError::new("my_cancelled", "Fenêtre MY Epitech (AER) fermée avant la connexion : rien n'a été synchronisé.")),
+                Err(false) => {
+                    close_if_ours();
+                    return Err(AppError::new("my_timeout", "Pas de connexion au compte AER au bout de 5 minutes : rien n'a été synchronisé."));
+                }
+            }
+        }
+    };
+    let fetched = myepitech::fetch_routes(&token, &crate::myaer::routes());
+    let report = crate::myaer::store(&state.conn(), &fetched, now())?;
+    close_if_ours();
+    if report.unauthorized {
+        state.my_aer.lock().unwrap_or_else(|e| e.into_inner()).token = None;
+        return Err(AppError::new("my_unauthorized", "MY Epitech refuse la session AER : relance la synchronisation pour te reconnecter."));
+    }
+    crate::notify::changed(&["my"]);
+    Ok(report)
+}
+
+/// Removes the AER account from this computer: its token, window, browser folder, answers
+/// and history. The student account is not touched.
+#[tauri::command]
+pub fn my_aer_forget(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
+    state.my_aer.lock().unwrap_or_else(|e| e.into_inner()).token = None;
+    if let Some(w) = app.get_webview_window(crate::myaer::WINDOW) {
+        let _ = w.close();
+    }
+    let dir = aer_dir(&state);
+    if dir.is_dir() {
+        std::fs::remove_dir_all(&dir)?;
+    }
+    crate::myaer::clear(&state.conn())?;
+    crate::notify::changed(&["my"]);
+    Ok(())
+}

@@ -61,11 +61,11 @@ describe("calendar", () => {
     const items = calItems(
       { tasks: [], events: [event(1, at(16, 14), at(16, 15))], projects: [], log: [] },
       [
-        { kind: "deadline", title: "MyRPG", day: "2026-11-20", start: new Date(at(20, 19, 42)).toISOString(), end: null, module: "G-MUL-200", detail: null, mine: true, mandatory: true, exam: false, repoPath: "/p/rpg", until: null, status: null, eventId: null, projectKey: null },
-        { kind: "event", title: "Kick-off", day: "2026-11-16", start: new Date(at(16, 10)).toISOString(), end: new Date(at(16, 12)).toISOString(), module: "G-MUL-200", detail: null, mine: true, mandatory: false, exam: false, repoPath: null, until: null, status: "registered", eventId: 1, projectKey: null },
-        { kind: "event", title: "Other promo", day: "2026-11-16", start: new Date(at(16, 10)).toISOString(), end: new Date(at(16, 12)).toISOString(), module: "X", detail: null, mine: false, mandatory: false, exam: false, repoPath: null, until: null, status: null, eventId: null, projectKey: null },
-        { kind: "activity", title: "Defense", day: "2026-11-18", start: new Date(at(18, 9)).toISOString(), end: new Date(at(18, 12)).toISOString(), module: "G-MUL-200", detail: "not registered", mine: true, mandatory: true, exam: false, repoPath: null, until: null, status: "not_registered", eventId: 2, projectKey: null },
-        { kind: "holiday", title: "Break", day: "2026-11-21", start: null, end: null, module: null, detail: null, mine: true, mandatory: false, exam: false, repoPath: null, until: "2026-11-22", status: null, eventId: null, projectKey: null },
+        { kind: "deadline", title: "MyRPG", day: "2026-11-20", start: new Date(at(20, 19, 42)).toISOString(), end: null, module: "G-MUL-200", detail: null, mine: true, mandatory: true, exam: false, repoPath: "/p/rpg", until: null, status: null, eventId: null, projectKey: null, account: "student" },
+        { kind: "event", title: "Kick-off", day: "2026-11-16", start: new Date(at(16, 10)).toISOString(), end: new Date(at(16, 12)).toISOString(), module: "G-MUL-200", detail: null, mine: true, mandatory: false, exam: false, repoPath: null, until: null, status: "registered", eventId: 1, projectKey: null, account: "student" },
+        { kind: "event", title: "Other promo", day: "2026-11-16", start: new Date(at(16, 10)).toISOString(), end: new Date(at(16, 12)).toISOString(), module: "X", detail: null, mine: false, mandatory: false, exam: false, repoPath: null, until: null, status: null, eventId: null, projectKey: null, account: "student" },
+        { kind: "activity", title: "Defense", day: "2026-11-18", start: new Date(at(18, 9)).toISOString(), end: new Date(at(18, 12)).toISOString(), module: "G-MUL-200", detail: "not registered", mine: true, mandatory: true, exam: false, repoPath: null, until: null, status: "not_registered", eventId: 2, projectKey: null, account: "student" },
+        { kind: "holiday", title: "Break", day: "2026-11-21", start: null, end: null, module: null, detail: null, mine: true, mandatory: false, exam: false, repoPath: null, until: "2026-11-22", status: null, eventId: null, projectKey: null, account: "student" },
       ],
       [project()],
     );

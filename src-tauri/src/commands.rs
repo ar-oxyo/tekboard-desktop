@@ -29,6 +29,8 @@ pub struct AppState {
     pub jobs: crate::jobs::Jobs,
     /// MY Epitech access token, in memory only.
     pub my: Mutex<crate::myepitech::Session>,
+    /// The token of the AER account (`myaer`), in memory only, apart from the student one.
+    pub my_aer: Mutex<crate::myepitech::Session>,
     pub my_syncing: Mutex<bool>,
 }
 
@@ -37,7 +39,7 @@ impl AppState {
     pub fn for_tests(db: std::sync::Arc<Mutex<Connection>>, data_dir: PathBuf, cache_dir: PathBuf) -> Self {
         let _ = std::fs::create_dir_all(&data_dir);
         let _ = std::fs::create_dir_all(&cache_dir);
-        AppState { db, data_dir, cache_dir, jobs: crate::jobs::Jobs::default(), my: Mutex::new(crate::myepitech::Session::default()), my_syncing: Mutex::new(false) }
+        AppState { db, data_dir, cache_dir, jobs: crate::jobs::Jobs::default(), my: Mutex::new(crate::myepitech::Session::default()), my_aer: Mutex::new(crate::myepitech::Session::default()), my_syncing: Mutex::new(false) }
     }
 
     pub fn conn(&self) -> MutexGuard<'_, Connection> {

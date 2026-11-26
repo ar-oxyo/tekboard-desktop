@@ -32,7 +32,7 @@ export function dropTarget(x: number, y: number): DropTarget | null {
   return { day, time: atMinutes(day, minutes) };
 }
 
-export const itemTitle = (i: CalItem) => [`${KIND_LABEL[i.kind]} · ${i.title}`, i.allDay ? null : `${hhmm(i.start)} – ${hhmm(i.end)} (${fmtDur((i.end - i.start) / MIN)})`, i.module, i.detail, i.unregistered ? t("Tu n'es pas inscrit à cette séance") : null, i.source === "my" ? "From MY Epitech — read-only" : null].filter(Boolean).join("\n");
+export const itemTitle = (i: CalItem) => [`${KIND_LABEL[i.kind]} · ${i.title}`, i.allDay ? null : `${hhmm(i.start)} – ${hhmm(i.end)} (${fmtDur((i.end - i.start) / MIN)})`, i.module, i.detail, i.unregistered ? t("Tu n'es pas inscrit à cette séance") : null, i.agenda?.account === "aer" ? t("Agenda AER") : i.agenda?.account === "both" ? t("Dans tes agendas Student et AER") : null, i.source === "my" ? t("Depuis MY Epitech, en lecture seule") : null].filter(Boolean).join("\n");
 
 interface Props {
   days: number[];
@@ -272,6 +272,7 @@ function Block({ item, day, col, cols, past, onGrab, onOpen }: { item: CalItem; 
     >
       <p className={cn("flex items-center gap-1 truncate font-medium", height < 30 ? "text-2xs leading-[14px]" : "text-xs")}>
         {!mine && <Lock className="size-2.5 shrink-0 opacity-60" />}
+        {item.agenda?.account === "aer" && <span className="shrink-0 rounded-[3px] bg-ink/10 px-1 font-mono text-3xs leading-[13px]" aria-label={t("Agenda AER")}>AER</span>}
         <span className="truncate">{item.title}</span>
       </p>
       {height >= 34 && (

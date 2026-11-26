@@ -18,6 +18,7 @@ import { DataCard } from "./DataCard";
 import { DoctorCard } from "./DoctorCard";
 import { CaptureCard } from "./CaptureCard";
 import { AboutPanel } from "./AboutPanel";
+import { AerAccount } from "./AerAccount";
 import { DeveloperPanel } from "./DeveloperPanel";
 import { DisplaySettings } from "./DisplaySettings";
 import { resolveTab, visibleTabs, type SettingsTab } from "./tabs";
@@ -286,7 +287,7 @@ export function SettingsPage() {
                 </Button>
               }
             >
-              MY Epitech synchronisation
+              MY Epitech
             </CardTitle>
             <div className="flex flex-col gap-3 px-4 py-4">
               <Field label={t("Synchronisation automatique")} hint={t("Seulement quand TekBoard est ouvert et connecté à MY Epitech. Lectures seules sur ton propre compte, espacées d'une demi-seconde. Un échec est signalé, jamais réessayé en boucle.")}>
@@ -311,6 +312,7 @@ export function SettingsPage() {
                 </span>
               </label>
             </div>
+            <AerAccount />
           </Card>
           <div className="flex flex-col gap-4">
             <EnvironmentCard part="github" />

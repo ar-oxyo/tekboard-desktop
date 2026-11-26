@@ -58,10 +58,12 @@ pub fn dir_size(path: &Path) -> u64 {
 
 pub fn locations(data_dir: &Path, cache_dir: &Path) -> Vec<Location> {
     let session = data_dir.join(SESSION_DIR);
-    let data = dir_size(data_dir).saturating_sub(dir_size(&session));
+    // The AER account's browser session (see `myaer`) counts as session too; never exported either.
+    let sessions = dir_size(&session) + dir_size(&data_dir.join(crate::myaer::SESSION_DIR));
+    let data = dir_size(data_dir).saturating_sub(sessions);
     vec![
         Location { kind: "data", path: data_dir.to_string_lossy().into_owned(), bytes: data },
-        Location { kind: "session", path: session.to_string_lossy().into_owned(), bytes: dir_size(&session) },
+        Location { kind: "session", path: session.to_string_lossy().into_owned(), bytes: sessions },
         Location { kind: "cache", path: cache_dir.to_string_lossy().into_owned(), bytes: dir_size(cache_dir) },
     ]
 }

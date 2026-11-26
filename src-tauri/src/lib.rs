@@ -42,6 +42,7 @@ pub mod moulinette;
 pub mod mouli;
 pub mod moderation;
 pub mod music;
+pub mod myaer;
 pub mod mydata;
 pub mod myepitech;
 pub mod myres;
@@ -114,7 +115,7 @@ fn start(app: &mut tauri::App) -> std::result::Result<(), String> {
     if let Err(e) = connect::init(data_dir.clone(), cache_dir.clone(), db.clone()) {
         eprintln!("TekBoard: Connect unavailable: {e}");
     }
-    app.manage(AppState { db, data_dir, cache_dir, jobs: jobs::Jobs::default(), my: Mutex::new(myepitech::Session::default()), my_syncing: Mutex::new(false) });
+    app.manage(AppState { db, data_dir, cache_dir, jobs: jobs::Jobs::default(), my: Mutex::new(myepitech::Session::default()), my_aer: Mutex::new(myepitech::Session::default()), my_syncing: Mutex::new(false) });
     commands_my::start_background(app.handle().clone());
     commands_ai::start_background(app.handle().clone());
     // Artix's tools, reachable by the Claude Code runs TekBoard starts (see ai::ipc).
@@ -359,6 +360,9 @@ pub fn run() {
             commands_my::my_sync_auto,
             commands_my::my_data,
             commands_my::my_forget,
+            commands_my::my_aer_status,
+            commands_my::my_aer_sync,
+            commands_my::my_aer_forget,
             commands_my::my_overview,
             commands_my::my_apply_deadlines,
             commands_my::my_agenda,

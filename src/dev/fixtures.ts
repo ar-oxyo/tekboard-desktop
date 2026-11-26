@@ -163,8 +163,8 @@ const board: BoardItem[] = repos
 
 const agenda = {
   items: [
-    { kind: "activity", title: "Follow-up CPE", day: day(1), start: iso(1, 14), end: iso(1, 15), module: "G-CPE-110", detail: "Salle 2", mine: true, mandatory: true, exam: false, repoPath: null, until: null, status: "registered", eventId: 501, projectKey: null },
-    { kind: "activity", title: "Keynote PSU", day: day(0), start: iso(0, 10), end: iso(0, 11), module: "G-PSU-100", detail: "Amphi", mine: true, mandatory: true, exam: false, repoPath: null, until: null, status: "registered", eventId: 502, projectKey: null },
+    { kind: "activity", title: "Follow-up CPE", day: day(1), start: iso(1, 14), end: iso(1, 15), module: "G-CPE-110", detail: "Salle 2", mine: true, mandatory: true, exam: false, repoPath: null, until: null, status: "registered", eventId: 501, projectKey: null, account: "student" },
+    { kind: "activity", title: "Keynote PSU", day: day(0), start: iso(0, 10), end: iso(0, 11), module: "G-PSU-100", detail: "Amphi", mine: true, mandatory: true, exam: false, repoPath: null, until: null, status: "registered", eventId: 502, projectKey: null, account: "both" },
   ],
   syncedAt: now - 40 * 60,
   modules: ["G-CPE-110", "G-PSU-100", "G-SYN-100", "G-AIA-200", "G-MUL-100"],
@@ -321,7 +321,12 @@ export const fixtures: Record<string, Fixture> = {
   },
   project_run_info: { configured: null, detected: "secured", detectedFrom: "Makefile", effective: "secured", exists: true, args: null, terminal: false },
   deadline_board: board,
-  my_agenda: agenda,
+  // ?aer=1: an AER account is connected and its sessions sit beside the student's.
+  my_agenda: (_a: Record<string, unknown>, p: URLSearchParams) =>
+    p.has("aer")
+      ? { ...agenda, items: [...agenda.items, { kind: "activity", title: "Suivi de piscine (AER)", day: day(2), start: iso(2, 10), end: iso(2, 12), module: "B-PDG-100", detail: "AER · Piscine", mine: true, mandatory: false, exam: false, repoPath: null, until: null, status: "registered", eventId: 9001, projectKey: null, account: "aer" }] }
+      : agenda,
+  my_aer_status: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("aer") ? { connected: true, account: "camille.martin.aer@epitech.eu", expiresAt: now + 3 * 3600, lastSync: now - 25 * 60, sessionStored: true, windowOpen: false } : { connected: false, account: null, expiresAt: null, lastSync: null, sessionStored: false, windowOpen: false }),
   startup: (_a: Record<string, unknown>, p: URLSearchParams) => ({ page: p.get("page"), sheet: p.get("sheet"), theme: p.get("theme"), repo: p.get("repo"), pick: null, tool: null, run: null, report: null, anchor: null }),
   get_settings: (_a: Record<string, unknown>, p: URLSearchParams) => ({ ...settings, onboarded: !p.has("onboarding"), theme: p.get("theme") ?? settings.theme }),
   save_settings: (a: Record<string, unknown>) => a.settings ?? settings,

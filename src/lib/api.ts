@@ -1372,6 +1372,18 @@ export interface AgendaItem {
   eventId: number | null;
   /** Planning key of its project (repository path or `my:<id>`). */
   projectKey: string | null;
+  /** Whose agenda: the student account, the AER one, or the same session in both. */
+  account: "student" | "aer" | "both";
+}
+/** The AER account, connected beside the student one (Settings → Accounts). */
+export interface AerStatus {
+  connected: boolean;
+  account: string | null;
+  expiresAt: number | null;
+  lastSync: number | null;
+  /** The account was added on this computer (its browser session is kept). */
+  sessionStored: boolean;
+  windowOpen: boolean;
 }
 export interface Agenda {
   items: AgendaItem[];
@@ -2028,6 +2040,10 @@ export const api = {
 
   myImportSubjects: () => invoke<{ imported: number; problems: string[] }>("my_import_subjects"),
   myAgenda: () => invoke<Agenda>("my_agenda"),
+  myAerStatus: () => invoke<AerStatus>("my_aer_status"),
+  /** Adds or syncs the AER account (sign-in window when needed). */
+  myAerSync: () => invoke<MySyncReport>("my_aer_sync"),
+  myAerForget: () => invoke<void>("my_aer_forget"),
   myAcademic: () => invoke<Academic>("my_academic"),
   myOverview: () => invoke<MyOverview>("my_overview"),
   myApplyDeadlines: (projectIds: number[]) => invoke<number>("my_apply_deadlines", { projectIds }),

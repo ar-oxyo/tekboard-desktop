@@ -91,6 +91,8 @@ export const COMMAND_DOMAINS: Record<string, Domain[]> = {
   plan_project_set: ["plan"],
   plan_log_add: ["plan", "focus"],
   plan_apply: ["plan", "insights"],
+  my_aer_sync: ["my", "plan"],
+  my_aer_forget: ["my", "plan"],
   plan_tasks_patch: ["plan", "brain"],
   plan_tasks_restore: ["plan", "brain"],
   library_add: ["libraries"],
