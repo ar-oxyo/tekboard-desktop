@@ -599,7 +599,7 @@ function ComfortSettings() {
       <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3.5">
         <span>
           <span className="block text-sm">{t("Écran Aujourd'hui")}</span>
-          <span className="block text-xs text-faint">{t("Blocs affichés, ordre, indicateurs, guide de démarrage.")}</span>
+          <span className="block text-xs text-faint">{t("Widgets affichés, ordre, largeur, guide de démarrage.")}</span>
         </span>
         <Button
           size="sm"

@@ -6,7 +6,10 @@ import { asAppError, type Activity, type BoardItem, type Candidate, type RepoInf
 import { timeAgo, tildify } from "../../lib/format";
 import { keys, useActivity, useBoard, useCandidates, useEnv, useHome, useNow, usePref, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
 import { QuickActions, WorkloadBlock } from "./Today";
-import { GettingStarted, HeroNow, ProjectTabs, StatTiles, TimelineBlock, TodayCustomize, useTodayLayout } from "./Dashboard";
+import { GettingStarted, HeroNow, ProjectTabs, StatTiles, TimelineBlock, useTodayLayout } from "./Dashboard";
+import { WidgetGrid } from "./WidgetGrid";
+import { CreditsWidget, InboxWidget, SkillWidget } from "./NewWidgets";
+import type { WidgetId } from "./layout";
 import { Menu, MenuItem } from "../../components/Menu";
 import { attention, currentFocus, displayName, due } from "../../lib/repos";
 import { useUi } from "../../lib/store";
@@ -23,13 +26,34 @@ export function OverviewPage() {
   const now = new Date();
   const today = now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
   const greeting = now.getHours() < 18 ? t("Bonjour") : t("Bonsoir");
-  const [layout] = useTodayLayout();
+  const [layout, setLayout] = useTodayLayout();
+  // Edit mode of the widgets (the header button, or Settings → Appearance).
   const [customize, setCustomize] = useState(false);
   useEffect(() => {
     const on = () => setCustomize(true);
     window.addEventListener("tekboard:customize-today", on);
     return () => window.removeEventListener("tekboard:customize-today", on);
   }, []);
+  const widget = (id: WidgetId) => {
+    const list = repos.data ?? [];
+    switch (id) {
+      case "hero": return <HeroNow />;
+      case "tile.logtime": return <StatTiles only="logtime" />;
+      case "tile.credits": return <StatTiles only="credits" />;
+      case "tile.work": return <StatTiles only="work" />;
+      case "tile.due": return <StatTiles only="due" />;
+      case "timeline": return <TimelineBlock />;
+      case "projects": return <ProjectTabs />;
+      case "more": return <MoreSection repos={list} />;
+      case "deadlines": return <DeadlinesBlock />;
+      case "workload": return <WorkloadBlock />;
+      case "quick": return <QuickActions />;
+      case "activity": return <ActivityCard repos={list} />;
+      case "credits": return <CreditsWidget />;
+      case "skilltree": return <SkillWidget />;
+      case "inbox": return <InboxWidget />;
+    }
+  };
   const firstName = useEnv().data?.identity.name?.trim().split(/\s+/)[0] ?? "";
 
   if (settings.isLoading) return <Loading />;
@@ -40,11 +64,11 @@ export function OverviewPage() {
       <header className="mb-6 flex items-end justify-between gap-4">
         <div className="min-w-0">
           <p className="text-sm text-muted first-letter:uppercase">{today}</p>
-          <h1 className="display mt-1 truncate text-[30px] leading-[1.15] font-(--title-weight) tracking-[-0.02em]">{firstName ? `${greeting} ${firstName}` : greeting}</h1>
+          <h1 className="display mt-1 truncate text-2xl leading-tight font-(--title-weight) tracking-[-0.02em]">{firstName ? `${greeting} ${firstName}` : greeting}</h1>
         </div>
         {hasRoots && (
           <div className="flex shrink-0 items-center gap-2">
-            <IconButton label={t("Personnaliser Aujourd'hui")} onClick={() => setCustomize(true)}>
+            <IconButton label={t("Personnaliser Aujourd'hui")} active={customize} onClick={() => setCustomize(!customize)}>
               <SlidersHorizontal className="size-4" />
             </IconButton>
             <IconButton
@@ -84,30 +108,10 @@ export function OverviewPage() {
       ) : repos.error ? (
         <ErrorNote title={t("Impossible de parcourir tes projets")}>{asAppError(repos.error).message}</ErrorNote>
       ) : (
-        <>
-          <div className="stagger flex flex-col gap-7">
-            {!layout.hidden.includes("checklist") && <GettingStarted />}
-            {layout.order
-              .filter((b) => !layout.hidden.includes(b))
-              .map((b) =>
-                b === "hero" ? (
-                  <HeroNow key={b} />
-                ) : b === "tiles" ? (
-                  <StatTiles key={b} hidden={layout.hidden} />
-                ) : b === "day" ? (
-                  layout.hidden.includes("timeline") && layout.hidden.includes("projects") ? null : (
-                    <div key={b} className={cn("grid grid-cols-1 items-start gap-7", !layout.hidden.includes("timeline") && !layout.hidden.includes("projects") && "@4xl:grid-cols-[320px_minmax(0,1fr)]")}>
-                      {!layout.hidden.includes("timeline") && <TimelineBlock />}
-                      {!layout.hidden.includes("projects") && <ProjectTabs />}
-                    </div>
-                  )
-                ) : (
-                  <MoreSection key={b} repos={repos.data ?? []} />
-                ),
-              )}
-          </div>
-          <TodayCustomize open={customize} onClose={() => setCustomize(false)} />
-        </>
+        <div className="stagger flex flex-col gap-7">
+          {layout.checklist && !customize && <GettingStarted />}
+          <WidgetGrid layout={layout} onChange={setLayout} edit={customize} onDone={() => setCustomize(false)} render={widget} />
+        </div>
       )}
     </>
   );

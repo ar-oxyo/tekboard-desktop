@@ -1,10 +1,9 @@
 // The Today screen's main blocks: what is on now, four indicators, the day's timeline and the
 // projects under way. Everything shown comes from real data; nothing is estimated for the user.
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Building2, CalendarDays, ClipboardCheck, Clock3, CloudDownload, Code2, Flag, GitCommitHorizontal, GraduationCap, Lock, Play, SquareTerminal, Sun, TriangleAlert, Wand2, CircleCheck } from "lucide-react";
+import { Building2, CalendarDays, ClipboardCheck, Clock3, CloudDownload, Code2, Flag, GitCommitHorizontal, GraduationCap, Lock, Play, SquareTerminal, Sun, TriangleAlert, Wand2, CircleCheck } from "lucide-react";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Button, cn, DoneCheck, IconButton, Meter, Notice, Spinner } from "../../components/ui";
-import { Modal } from "../../components/Modal";
 import { api, type BoardItem, type RepoInfo } from "../../lib/api";
 import { useBoard, useNow, usePref, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
 import { addDays, fmtDur, hhmm, MIN, nextUp, startOfDay, toRegister, workload, type CalItem } from "../../lib/plan";
@@ -16,6 +15,9 @@ import { hours } from "../myepitech/LogtimePage";
 import { startFocus } from "../planning/Focus";
 import { useLoads, usePlanData } from "../planning/usePlan";
 import { FreeSlots } from "./Today";
+import { readLayout, type TodayLayout } from "./layout";
+
+export type TodayTile = "logtime" | "credits" | "work" | "due";
 
 /** "J-3", "J-0", "J+2": days to a hand-in, the way students count them. */
 function jLabel(day: string | null): { text: string; urgent: boolean } | null {
@@ -129,7 +131,7 @@ export function HeroNow() {
           </span>
           {side && <span className="font-mono text-xs text-faint">{side}</span>}
         </div>
-        <h2 className="display text-[30px] leading-[1.15] font-(--title-weight) tracking-[-0.02em] text-balance">{title}</h2>
+        <h2 className="display text-2xl leading-tight font-(--title-weight) tracking-[-0.02em] text-balance">{title}</h2>
         {progress}
         <div className="flex flex-wrap gap-2">
           {primary}
@@ -192,7 +194,7 @@ function Tile({ label, icon, value, unit, pct, tone = "accent", note, onClick }:
 }
 
 /** Four indicators: the week's logtime, credits, today's planned work and the next hand-in. */
-export function StatTiles({ hidden = [] }: { hidden?: string[] }) {
+export function StatTiles({ hidden = [], only }: { hidden?: string[]; only?: TodayTile }) {
   const data = usePlanData();
   const now = useNow().getTime();
   const board = useBoard();
@@ -200,6 +202,10 @@ export function StatTiles({ hidden = [] }: { hidden?: string[] }) {
   const logtime = useQuery({ queryKey: ["my-logtime"], queryFn: api.myLogtime, staleTime: 60_000 });
   const overview = useQuery({ queryKey: ["my-overview"], queryFn: api.myOverview, staleTime: 60_000 });
 
+  const tree = useQuery({ queryKey: ["my", "skill-tree"], queryFn: api.mySkillTree, staleTime: 60_000 });
+  const threshold = tree.data?.credits.threshold ?? null;
+  // One tile (a widget of its own) or the row of four (the classic layout).
+  const show = (k: TodayTile) => (only ? only === k : !hidden.includes(`tile.${k}`));
   const l = logtime.data;
   const w = l?.weeks[0];
   const goal = (l?.goalHours ?? 0) * 3600;
@@ -216,8 +222,8 @@ export function StatTiles({ hidden = [] }: { hidden?: string[] }) {
   const days = nextDue?.i.day ? daysLeft(nextDue.i.day) : null;
 
   return (
-    <div className={cn("grid grid-cols-2 gap-3", ["", "@4xl:grid-cols-1", "@4xl:grid-cols-2", "@4xl:grid-cols-3", "@4xl:grid-cols-4"][4 - hidden.filter((h) => h.startsWith("tile.")).length])}>
-      {!hidden.includes("tile.logtime") && (
+    <div className={only ? "grid h-full" : cn("grid grid-cols-2 gap-3", ["", "@4xl:grid-cols-1", "@4xl:grid-cols-2", "@4xl:grid-cols-3", "@4xl:grid-cols-4"][4 - hidden.filter((h) => h.startsWith("tile.")).length])}>
+      {show("logtime") && (
       <Tile
           label={t("Logtime de la semaine")}
           icon={<Building2 />}
@@ -228,18 +234,19 @@ export function StatTiles({ hidden = [] }: { hidden?: string[] }) {
           onClick={() => setPage("logtime")}
         />
       )}
-      {!hidden.includes("tile.credits") && (
+      {show("credits") && (
       <Tile
           label={t("Crédits")}
           icon={<GraduationCap />}
           value={o?.creditsAcquired != null ? String(o.creditsAcquired) : "—"}
-          unit={o?.creditsTotal != null ? ` / ${o.creditsTotal}` : undefined}
-          pct={o?.creditsAcquired != null && o.creditsTotal ? (o.creditsAcquired / o.creditsTotal) * 100 : 0}
-          note={o?.creditsAcquired != null ? t("D'après MY Epitech") : t("Synchronise MY Epitech pour les voir")}
-          onClick={() => setPage("myepitech")}
+          // The goal is MY Epitech's own threshold, never the total of acquired credits.
+          unit={threshold ? ` / ${threshold}` : undefined}
+          pct={o?.creditsAcquired != null && threshold ? (o.creditsAcquired / threshold) * 100 : 0}
+          note={o?.creditsAcquired != null ? (threshold ? t("Objectif donné par MY Epitech") : t("D'après MY Epitech")) : t("Synchronise MY Epitech pour les voir")}
+          onClick={() => setPage("credits")}
         />
       )}
-      {!hidden.includes("tile.work") && (
+      {show("work") && (
       <Tile
           label={t("Travail prévu aujourd'hui")}
           icon={<Clock3 />}
@@ -251,7 +258,7 @@ export function StatTiles({ hidden = [] }: { hidden?: string[] }) {
           onClick={() => useUi.getState().openPlanning(now)}
         />
       )}
-      {!hidden.includes("tile.due") && (
+      {show("due") && (
       <Tile
           label={t("Prochain rendu")}
           icon={<Flag />}
@@ -446,82 +453,11 @@ function CloneCard({ item }: { item: BoardItem }) {
   );
 }
 
-// ── Today, made to measure: which blocks show, in which order (Settings → Appearance, or the
-// "Personnaliser" button of the screen). Everything visible by default.
-
-export type TodayBlock = "hero" | "tiles" | "day" | "more";
-export type TodayTile = "logtime" | "credits" | "work" | "due";
-export interface TodayLayout {
-  order: TodayBlock[];
-  hidden: Array<TodayBlock | `tile.${TodayTile}` | "timeline" | "projects" | "checklist">;
-}
-export const TODAY_LAYOUT: TodayLayout = { order: ["hero", "tiles", "day", "more"], hidden: [] };
-export const useTodayLayout = () => usePref<TodayLayout>("today.layout", TODAY_LAYOUT);
-
-const BLOCK_LABEL: Record<TodayBlock, string> = { hero: t("Maintenant"), tiles: t("Indicateurs"), day: t("Journée et projets"), more: t("Rendus, charge et activité") };
-const TILE_LABEL: Record<TodayTile, string> = { logtime: t("Logtime de la semaine"), credits: t("Crédits"), work: t("Travail prévu aujourd'hui"), due: t("Prochain rendu") };
-
-export function TodayCustomize({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [layout, setLayout] = useTodayLayout();
-  const hidden = new Set(layout.hidden);
-  const toggle = (k: TodayLayout["hidden"][number]) => setLayout({ ...layout, hidden: hidden.has(k) ? layout.hidden.filter((x) => x !== k) : [...layout.hidden, k] });
-  const move = (b: TodayBlock, by: -1 | 1) => {
-    const order = [...layout.order];
-    const i = order.indexOf(b);
-    const j = i + by;
-    if (j < 0 || j >= order.length) return;
-    [order[i], order[j]] = [order[j], order[i]];
-    setLayout({ ...layout, order });
-  };
-  const box = (k: TodayLayout["hidden"][number], label: string, sub?: boolean) => (
-    <label className={cn("flex min-h-8 flex-1 items-center gap-2.5 text-sm", sub && "pl-7 text-muted")}>
-      <input type="checkbox" className="accent-(--color-accent)" checked={!hidden.has(k)} onChange={() => toggle(k)} />
-      {label}
-    </label>
-  );
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={t("Personnaliser Aujourd'hui")}
-      description={t("Choisis ce qui s'affiche et dans quel ordre. Rien n'est supprimé : un bloc masqué revient d'un clic.")}
-      width="w-[520px]"
-      footer={
-        <>
-          <Button variant="ghost" onClick={() => setLayout(TODAY_LAYOUT)}>
-            {t("Rétablir")}
-          </Button>
-          <Button variant="primary" onClick={onClose}>
-            {t("Terminé")}
-          </Button>
-        </>
-      }
-    >
-      <ul className="flex flex-col divide-y divide-line">
-        <li className="py-1.5">{box("checklist", t("Guide de démarrage (tant qu'il reste des étapes)"))}</li>
-        {layout.order.map((b, i) => (
-          <li key={b} className="py-1.5">
-            <div className="flex items-center gap-2">
-              {box(b, BLOCK_LABEL[b])}
-              <IconButton label={t("Monter")} disabled={i === 0} onClick={() => move(b, -1)}>
-                <ArrowUp className="size-4" />
-              </IconButton>
-              <IconButton label={t("Descendre")} disabled={i === layout.order.length - 1} onClick={() => move(b, 1)}>
-                <ArrowDown className="size-4" />
-              </IconButton>
-            </div>
-            {b === "tiles" && !hidden.has("tiles") && (["logtime", "credits", "work", "due"] as TodayTile[]).map((x) => <div key={x}>{box(`tile.${x}`, TILE_LABEL[x], true)}</div>)}
-            {b === "day" && !hidden.has("day") && (
-              <>
-                {box("timeline", t("Frise du jour"), true)}
-                {box("projects", t("Cartes projets"), true)}
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
-    </Modal>
-  );
+/** Today's widgets (see layout.ts): the stored layout, read or migrated, and its setter. */
+export function useTodayLayout(): [TodayLayout, (l: TodayLayout) => void] {
+  const [raw, set] = usePref<unknown>("today.layout", null);
+  const layout = useMemo(() => readLayout(raw), [raw]);
+  return [layout, set];
 }
 
 /** First steps, on Today, until each is done (or the student hides the list). */
@@ -533,7 +469,7 @@ export function GettingStarted() {
   const inbox = useQuery({ queryKey: ["brain-count"], queryFn: api.brainCount, staleTime: 60_000 });
   const [chosen] = usePref<boolean>("ambianceChosen", false);
   const ui = useUi.getState;
-  if (layout.hidden.includes("checklist") || !settings.data) return null;
+  if (!layout.checklist || !settings.data) return null;
   const steps: Array<{ done: boolean; label: string; action: () => void }> = [
     { done: settings.data.roots.length > 0, label: t("Indique où sont tes projets"), action: () => useUi.setState({ page: "settings", settingsTab: "general" }) },
     { done: (my.data?.lastSync ?? null) !== null, label: t("Synchronise MY Epitech"), action: () => ui().setPage("myepitech") },
@@ -549,15 +485,17 @@ export function GettingStarted() {
         <h2 className="text-sm font-semibold">
           {t("Premiers pas")} <span className="font-normal text-faint">· {plural(left, "{n} étape restante", "{n} étapes restantes")}</span>
         </h2>
-        <Button size="sm" variant="ghost" onClick={() => setLayout({ ...layout, hidden: [...layout.hidden, "checklist"] })}>
+        <Button size="sm" variant="ghost" onClick={() => setLayout({ ...layout, checklist: false })}>
           {t("Masquer")}
         </Button>
       </div>
       <ul className="grid grid-cols-1 gap-x-6 @3xl:grid-cols-2">
         {steps.map((s) => (
-          <li key={s.label}>
-            <button type="button" disabled={s.done} onClick={s.action} className={cn("flex min-h-8 w-full items-center gap-2.5 rounded-(--btn-radius) px-1 text-left text-sm", s.done ? "text-faint line-through" : "hover:bg-ink/5")}>
-              <DoneCheck checked={s.done} label={s.label} onChange={s.action} />
+          // The check and the label are two controls side by side (a button inside a button is
+          // not valid HTML and broke keyboard focus).
+          <li key={s.label} className={cn("flex min-h-8 items-center gap-2.5 rounded-(--btn-radius) px-1 text-sm", !s.done && "hover:bg-ink/5")}>
+            <DoneCheck checked={s.done} label={s.label} onChange={s.action} />
+            <button type="button" disabled={s.done} onClick={s.action} className={cn("min-h-8 flex-1 text-left", s.done && "text-faint line-through")}>
               {s.label}
             </button>
           </li>
