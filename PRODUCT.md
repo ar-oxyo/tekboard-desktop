@@ -52,8 +52,8 @@ Success means a student knows what is due, what state each project is in and wha
 
 ## Evidence on Hand
 
-- Real app screenshots: `docs/screenshots/` (today en sombre, projects, planning, inbox, artix, logtime, appearance, ambiances), taken from the dev demo UI.
-- Feature truth: `README.md`, `CHANGELOG.md` (releases up to 0.9.0), `docs/ARCHITECTURE.md`, `SECURITY.md`.
+- Real app screenshots: `docs/screenshots/` (today en sombre, projects, planning, inbox, skilltree, credits, appearance, ambiances), taken from the dev demo UI.
+- Feature truth: `README.md`, `CHANGELOG.md` (releases up to 1.1.0), `docs/ARCHITECTURE.md`, `SECURITY.md`.
 - License: GPL-3.0.
 - No testimonials, user numbers, press or endorsements exist. Future work must not invent any, nor imply any link with Epitech.
 
