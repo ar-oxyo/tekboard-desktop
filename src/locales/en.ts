@@ -2991,4 +2991,5 @@ export const en: Record<string, string> = {
   "Rythme enregistré": "Rhythm saved",
   "Enregistrer le rythme": "Save the rhythm",
   "Choisir « {t} »": "Choose “{t}”",
+  "Le schéma reçu ne respecte pas le contrat du tableau : rien n'a été ajouté.": "The diagram received does not follow the board contract: nothing was added.",
 };

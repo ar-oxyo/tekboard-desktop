@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { annotationShapes, changedSince, extractAnnotations, extractMermaid, generate, placeAt, sanitizeRemote, SHAPES, summary, type Skeleton } from "./boards";
+import { annotationShapes, changedSince, generate, placeAt, sanitizeRemote, SHAPES, summary, type Skeleton } from "./boards";
 
 const ids = (s: Skeleton[]) => new Set(s.map((x) => x.id).filter(Boolean));
 const arrows = (s: Skeleton[]) => s.filter((x) => x.type === "arrow") as Array<Skeleton & { start: { id: string }; end: { id: string } }>;
@@ -58,12 +58,8 @@ describe("Artix on boards", () => {
     expect(s).not.toContain("deleted");
   });
 
-  it("reads Mermaid and annotations out of answers", () => {
-    expect(extractMermaid("Voici :\n```mermaid\nflowchart TD\n  A --> B\n```")).toBe("flowchart TD\n  A --> B");
-    expect(extractMermaid("```\nrm -rf /\n```")).toBeNull();
-    const notes = extractAnnotations('```json\n[{"anchor": "malloc", "note": "vérifier le retour"}, {"x": 1}]\n```');
-    expect(notes).toEqual([{ anchor: "malloc", note: "vérifier le retour" }]);
-    expect(extractAnnotations("pas de json")).toEqual([]);
+  it("places annotations next to what they name", () => {
+    const notes = [{ anchor: "malloc", note: "vérifier le retour" }];
     const shapes = annotationShapes([...notes, { anchor: "inexistant", note: "x" }], els);
     expect(shapes.filter((x) => x.type === "rectangle")).toHaveLength(1);
     expect(arrows(shapes)[0].end.id).toBe("r1");

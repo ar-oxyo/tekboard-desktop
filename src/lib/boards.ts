@@ -1,6 +1,7 @@
 // Whiteboard helpers that need no Excalidraw: the programming shapes library (as Excalidraw
 // "skeletons", with arrows bound to their ends so they follow when moved), what Artix reads
-// from a board, what it answers, and checks on elements received from others.
+// from a board, where its annotations go, and checks on elements received from others. What
+// Artix draws is in boardSpec.ts.
 // Pure functions, tested in boards.test.ts.
 
 export type Skeleton = Record<string, unknown> & { type: string; x: number; y: number; id?: string };
@@ -256,30 +257,9 @@ export function summary(elements: readonly El[]): string {
   return lines.join("\n");
 }
 
-/** The ```mermaid``` block of an answer (or the answer when it starts with a diagram keyword). */
-export function extractMermaid(answer: string): string | null {
-  const m = /```(?:mermaid)?\s*\n([\s\S]*?)```/.exec(answer);
-  const body = (m ? m[1] : answer).trim();
-  return /^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram)\b/.test(body) ? body : null;
-}
-
 export interface Annotation {
   anchor: string;
   note: string;
-}
-
-export function extractAnnotations(answer: string): Annotation[] {
-  const m = /```(?:json)?\s*\n([\s\S]*?)```/.exec(answer);
-  const body = (m ? m[1] : answer).trim();
-  const s = body.indexOf("[");
-  const e = body.lastIndexOf("]");
-  if (s < 0 || e < s) return [];
-  try {
-    const v = JSON.parse(body.slice(s, e + 1));
-    return Array.isArray(v) ? v.filter((a) => typeof a?.anchor === "string" && typeof a?.note === "string").slice(0, 10).map((a) => ({ anchor: a.anchor.slice(0, 200), note: a.note.slice(0, 400) })) : [];
-  } catch {
-    return [];
-  }
 }
 
 /** Sticky notes next to the elements their anchors name (unknown anchors are dropped). */

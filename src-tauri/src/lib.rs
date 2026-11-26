@@ -3,6 +3,7 @@ pub mod arena;
 pub mod analytics;
 pub mod credits;
 pub mod bench;
+pub mod board_contract;
 pub mod boards;
 pub mod brain;
 pub mod cdiag;

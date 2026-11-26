@@ -15,7 +15,8 @@ import { useUi } from "../../lib/store";
 import { aiGate } from "../../lib/ai";
 import { useAiStatus } from "../settings/AiProvider";
 import { useJob } from "../../lib/jobs";
-import { extractAnnotations, extractMermaid, generate, placeAt, SHAPES, summary, annotationShapes, type ShapeKind, type Skeleton } from "../../lib/boards";
+import { generate, placeAt, SHAPES, summary, annotationShapes, type ShapeKind, type Skeleton } from "../../lib/boards";
+import { readSpec, specShapes } from "../../lib/boardSpec";
 import { recipients } from "../../lib/share";
 import { Modal } from "../../components/Modal";
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from "../../components/Menu";
@@ -545,24 +546,17 @@ function AiDialog({ api: ex, onClose, onPreview }: { api: Api; onClose: () => vo
   const [kind, setKind] = useState<"diagram" | "annotate">("diagram");
   const job = useJob(jobId);
   const context = summary(ex.getSceneElements() as never);
-  // The answer becomes a preview on the board (never added for good without "Garder").
-  const handle = async (answer: string) => {
-    try {
-      if (kind === "diagram") {
-        const mermaid = extractMermaid(answer);
-        if (!mermaid) throw new Error(t("Artix n'a pas répondu par un diagramme"));
-        const { parseMermaidToExcalidraw } = await import("@excalidraw/mermaid-to-excalidraw");
-        const res = await parseMermaidToExcalidraw(mermaid, { themeVariables: { fontSize: "16px" } });
-        const files = Object.values(res.files ?? {}).map((f) => ({ id: String(f.id), mimeType: f.mimeType, dataURL: f.dataURL }));
-        onPreview(res.elements as unknown as Skeleton[], files, "free");
-      } else {
-        const shapes = annotationShapes(extractAnnotations(answer), ex.getSceneElements() as never);
-        if (!shapes.length) throw new Error(t("Aucune annotation ne correspond aux éléments du tableau"));
-        onPreview(shapes, [], "keep");
-      }
-    } catch (e) {
-      toast({ kind: "error", title: "Artix", detail: asAppError(e).message });
-      setJobId(null);
+  // The checked document becomes a preview on the board (never added for good without
+  // "Garder"). The backend already enforced the contract; anything off here changes nothing.
+  const handle = (spec: unknown) => {
+    const doc = readSpec(spec);
+    if (!doc) throw new Error(t("Le schéma reçu ne respecte pas le contrat du tableau : rien n'a été ajouté."));
+    if (doc.type === "annotations") {
+      const shapes = annotationShapes(doc.notes, ex.getSceneElements() as never);
+      if (!shapes.length) throw new Error(t("Aucune annotation ne correspond aux éléments du tableau"));
+      onPreview(shapes, [], "keep");
+    } else {
+      onPreview(specShapes(doc), [], "free");
     }
   };
   useEffect(() => {
@@ -573,7 +567,12 @@ function AiDialog({ api: ex, onClose, onPreview }: { api: Api; onClose: () => vo
       setJobId(null);
       return;
     }
-    void handle(String((j.summary as { answer?: string }).answer ?? ""));
+    try {
+      handle((j.summary as { spec?: unknown }).spec);
+    } catch (e) {
+      toast({ kind: "error", title: "Artix", detail: asAppError(e).message });
+      setJobId(null);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.data?.status]);
   const explain = () => {

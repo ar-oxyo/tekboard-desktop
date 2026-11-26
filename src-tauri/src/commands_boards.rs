@@ -140,45 +140,74 @@ pub fn board_export_to_project(state: State<'_, AppState>, id: String, repo: Str
     Ok(path.to_string_lossy().into_owned())
 }
 
-pub fn ai_prompt(kind: &str, request: &str, context: &str) -> Result<String> {
-    let request: String = request.chars().take(4000).collect();
-    let context: String = context.chars().take(20_000).collect();
-    Ok(match kind {
-        "diagram" => format!(
-            "Tu dessines un schéma pour un tableau blanc d'étudiant en informatique (C, Unix). Demande :\n{request}\n\nContenu actuel du tableau (pour le contexte, peut être vide) :\n{context}\n\n\
-Réponds UNIQUEMENT avec un bloc ```mermaid``` valide : `flowchart TD` (algorithme, organigramme, architecture, structures de données reliées), `sequenceDiagram` (échanges client-serveur) ou `classDiagram` (structures, UML). \
-Libellés courts en français, au plus 25 nœuds. Pour une structure de données (liste chaînée, arbre, pile…), fais un flowchart dont chaque nœud est un maillon et chaque flèche un pointeur."
-        ),
-        "annotate" => format!(
-            "Voici le texte d'un tableau blanc d'étudiant en informatique :\n{context}\n\nAjoute au plus 6 annotations pédagogiques courtes (une ou deux phrases) qui expliquent ou corrigent ce qui est dessiné. {request}\n\
-Réponds UNIQUEMENT avec un bloc ```json``` : [{{\"anchor\": \"texte exact d'un élément du tableau\", \"note\": \"annotation\"}}]. N'invente pas d'élément : `anchor` doit reprendre un texte présent."
-        ),
-        _ => return Err(AppError::new("invalid", "Demande inconnue")),
-    })
-}
-
-/// Artix on a board: a diagram (Mermaid) or annotations (JSON). The window shows the result
-/// as a preview to accept or cancel; nothing is added by itself.
+/// Artix on a board: a diagram or annotations, as a document of the contract in
+/// `board_contract`. An answer that breaks the contract is sent back with the list of what to
+/// fix, at most `MAX_REPAIRS` times; the window only ever receives a checked document, shown
+/// as a preview to keep or cancel. When no valid answer comes, the board is left untouched and
+/// the job says why.
 #[tauri::command(async)]
 pub fn board_ai(state: State<'_, AppState>, kind: String, request: String, context: String) -> Result<u64> {
+    use crate::board_contract::Ask;
     crate::ai::provider::require(crate::ai::provider::Feature::Text)?;
-    let prompt = ai_prompt(&kind, &request, &context)?;
+    let ask = Ask::from_kind(&kind).ok_or_else(|| AppError::new("invalid", "Demande inconnue"))?;
+    if ask == Ask::Diagram && request.trim().is_empty() {
+        return Err(AppError::new("invalid", "Décris le schéma voulu."));
+    }
     let root = state.cache_dir.join(format!("board-ai-{}", chrono::Utc::now().timestamp_micros()));
-    Ok(state.jobs.start(state.db.clone(), "board_ai", None, "Tableau · Artix".into(), &[("answer", "Réponse d'Artix")], move |job| {
+    Ok(state.jobs.start(state.db.clone(), "board_ai", None, "Tableau · Artix".into(), &[("answer", "Réponse d'Artix"), ("check", "Contrôle du schéma")], move |job| {
         job.start("answer");
         let _ = std::fs::create_dir_all(&root);
-        let r = crate::claude::run_chat(job, &root, &prompt, Duration::from_secs(240));
+        let outcome = ask_until_valid(job, &root, ask, &request, &context);
         let _ = std::fs::remove_dir_all(&root);
-        let (outcome, answer) = r?;
-        if outcome.cancelled {
-            return Ok("cancelled");
+        match outcome? {
+            Asked::Cancelled => Ok("cancelled"),
+            Asked::Valid(spec) => {
+                job.set("kind", &kind);
+                job.set("spec", serde_json::to_value(&spec).unwrap_or_default());
+                job.end("check", "success", None);
+                Ok("success")
+            }
+            Asked::Invalid(errors) => {
+                let why = format!("Artix n'a pas produit de schéma valide après {} essais : le tableau n'a pas été modifié. Premier problème : {}", crate::board_contract::MAX_REPAIRS + 1, errors.first().cloned().unwrap_or_default());
+                job.set("error", &why);
+                job.end("check", "failed", why.clone());
+                Ok("failed")
+            }
         }
-        let answer = answer?;
-        job.set("kind", &kind);
-        job.set("answer", answer.text.trim());
-        job.end("answer", "success", None);
-        Ok("success")
     }))
+}
+
+enum Asked {
+    Cancelled,
+    Valid(crate::board_contract::Spec),
+    Invalid(Vec<String>),
+}
+
+/// The first answer, then repairs while it breaks the contract (bounded).
+fn ask_until_valid(job: &crate::jobs::Job, root: &std::path::Path, ask: crate::board_contract::Ask, request: &str, context: &str) -> Result<Asked> {
+    use crate::board_contract as contract;
+    let mut prompt = contract::prompt(ask, request, context);
+    let mut errors = Vec::new();
+    for attempt in 0..=contract::MAX_REPAIRS {
+        let (outcome, answer) = crate::claude::run_chat(job, root, &prompt, Duration::from_secs(240))?;
+        if outcome.cancelled {
+            return Ok(Asked::Cancelled);
+        }
+        let text = answer?.text;
+        if attempt == 0 {
+            job.end("answer", "success", None);
+            job.start("check");
+        }
+        match contract::check(&text, ask, context) {
+            Ok(spec) => return Ok(Asked::Valid(spec)),
+            Err(e) => {
+                job.log(&format!("Réponse hors contrat (essai {}) :\n- {}\n", attempt + 1, e.join("\n- ")));
+                prompt = contract::repair_prompt(ask, &text, &e);
+                errors = e;
+            }
+        }
+    }
+    Ok(Asked::Invalid(errors))
 }
 
 #[cfg(test)]
@@ -193,7 +222,5 @@ mod tests {
         for bad in ["/etc/x.png".to_string(), format!("{home}/x.sh"), "relative.png".to_string(), format!("{home}/no/such/dir/x.png")] {
             assert!(export_path(&bad).is_err(), "{bad}");
         }
-        assert!(ai_prompt("diagram", "une liste chaînée", "").unwrap().contains("```mermaid```"));
-        assert!(ai_prompt("rm", "", "").is_err());
     }
 }
