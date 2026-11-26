@@ -682,7 +682,7 @@ pub fn suggest(state: &AppState, scope: &str, only: Option<&str>) -> Result<(Str
         }
         let left = est - planned_minutes(&w, &p.key, t);
         if left > 0 {
-            needs.push(schedule::Need { key: p.key.clone(), title: project_title(&w, &p.key), minutes: left, due: due_by_key(&p.key), priority: p.priority });
+            needs.push(schedule::Need { key: p.key.clone(), title: project_title(&w, &p.key), minutes: left, due: due_by_key(&p.key), priority: p.priority, task_id: None });
         }
     }
     let title = match (scope, only) {
@@ -692,6 +692,30 @@ pub fn suggest(state: &AppState, scope: &str, only: Option<&str>) -> Result<(Str
         _ => "Plan pour deux semaines".into(),
     };
     Ok((title, schedule::suggest(&needs, &w.busy, &w.rhythm, t, days)))
+}
+
+/// Bulk planning: a place in the calendar for each chosen task, within `days`, by the same
+/// rules as the plans of the day or the week (rhythm, ceiling, breaks, school, hand-ins).
+/// A task without an estimate gets one session; what is already planned for it is counted.
+pub fn suggest_tasks(state: &AppState, ids: &[i64], days: i64) -> Result<schedule::Suggestion> {
+    if ids.is_empty() || ids.len() > 60 {
+        return Err(AppError::new("invalid_args", "Choisis entre 1 et 60 tâches."));
+    }
+    let w = world(state)?;
+    let t = now();
+    let due_by_key = |k: &str| w.board.iter().find(|b| b.repo_path.as_deref() == Some(k) || b.my_id.map(|i| format!("my:{i}")).as_deref() == Some(k)).and_then(due_of);
+    let mut needs = Vec::new();
+    for id in ids {
+        let Some(task) = w.plan.tasks.iter().find(|x| x.id == *id && x.done_at.is_none() && x.kind == "task") else { continue };
+        let planned: i64 = w.plan.events.iter().filter(|e| e.task_id == Some(task.id) && e.end > t).map(|e| (e.end - e.start) / 60).sum();
+        let minutes = task.estimate_min.unwrap_or(w.rhythm.session_minutes) - planned;
+        if minutes <= 0 {
+            continue;
+        }
+        let due = task.due_day.as_deref().and_then(|d| crate::planner::parse_local(&format!("{d}T23:59")).ok()).or_else(|| task.project.as_deref().and_then(due_by_key)).filter(|d| *d > t);
+        needs.push(schedule::Need { key: task.project.clone().unwrap_or_default(), title: task.title.clone(), minutes, due, priority: task.priority, task_id: Some(task.id) });
+    }
+    Ok(schedule::suggest(&needs, &w.busy, &w.rhythm, t, days.clamp(1, 28)))
 }
 
 /// Checks proposed actions with the planning engine.

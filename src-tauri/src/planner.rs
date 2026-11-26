@@ -417,6 +417,10 @@ pub struct Applied {
     pub deleted: usize,
     pub tasks: usize,
     pub projects: usize,
+    /// What puts the calendar back as it was (the "Annuler" of a plan applied in one go):
+    /// created entries deleted, moved ones moved back, deleted ones recreated. Tasks created
+    /// and project settings are not in it.
+    pub undo: Vec<Action>,
 }
 
 /// Applies every action or none: the first invalid one cancels the whole plan.
@@ -430,18 +434,21 @@ pub fn apply(conn: &Connection, actions: &[Action], origin: &str, now: i64) -> R
         match a {
             Action::CreateSession { project, title, start, end, task_id, kind } => {
                 let kind = kind.clone().unwrap_or_else(|| if task_id.is_some() { "task".into() } else { "session".into() });
-                save_event(&tx, &PlanEvent { kind, title: title.clone(), start: parse_local(start)?, end: parse_local(end)?, project: project.clone(), task_id: *task_id, origin: origin.to_string(), ..Default::default() }, now)?;
+                let e = save_event(&tx, &PlanEvent { kind, title: title.clone(), start: parse_local(start)?, end: parse_local(end)?, project: project.clone(), task_id: *task_id, origin: origin.to_string(), ..Default::default() }, now)?;
+                done.undo.push(Action::DeleteEvent { id: e.id });
                 done.created += 1;
             }
             Action::MoveEvent { id, start, end } => {
                 let mut e = get_event(&tx, *id)?;
+                done.undo.push(Action::MoveEvent { id: *id, start: crate::schedule::local_iso(e.start), end: crate::schedule::local_iso(e.end) });
                 e.start = parse_local(start)?;
                 e.end = parse_local(end)?;
                 save_event(&tx, &e, now)?;
                 done.moved += 1;
             }
             Action::DeleteEvent { id } => {
-                get_event(&tx, *id)?;
+                let e = get_event(&tx, *id)?;
+                done.undo.push(Action::CreateSession { project: e.project.clone(), title: e.title.clone(), start: crate::schedule::local_iso(e.start), end: crate::schedule::local_iso(e.end), task_id: e.task_id, kind: Some(e.kind.clone()) });
                 delete_event(&tx, *id)?;
                 done.deleted += 1;
             }
@@ -464,7 +471,64 @@ pub fn apply(conn: &Connection, actions: &[Action], origin: &str, now: i64) -> R
         }
     }
     tx.commit()?;
+    // Undone last change first.
+    done.undo.reverse();
     Ok(done)
+}
+
+/// A change made to several tasks at once (bulk editing in the planning).
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct TaskPatch {
+    /// `Some(None)` clears the estimate.
+    pub estimate_min: Option<Option<i64>>,
+    pub priority: Option<i64>,
+    /// `Some(None)` leaves the task without a project.
+    pub project: Option<Option<String>>,
+    pub due_day: Option<Option<String>>,
+}
+
+/// Applies `patch` to every task of `ids` or to none. Returns the tasks as they were, for
+/// "Annuler" (`restore_tasks`).
+pub fn patch_tasks(conn: &Connection, ids: &[i64], patch: &TaskPatch, now: i64) -> Result<Vec<Task>> {
+    if ids.is_empty() || ids.len() > 200 {
+        return Err(invalid("Choisis entre 1 et 200 tâches."));
+    }
+    let tx = conn.unchecked_transaction()?;
+    let mut before = Vec::new();
+    for id in ids {
+        let old = get_task(&tx, *id)?;
+        let mut t = old.clone();
+        if let Some(e) = patch.estimate_min {
+            t.estimate_min = e;
+        }
+        if let Some(p) = patch.priority {
+            t.priority = p;
+        }
+        if let Some(p) = &patch.project {
+            t.project = p.clone();
+        }
+        if let Some(d) = &patch.due_day {
+            t.due_day = d.clone();
+        }
+        save_task(&tx, &t, now)?;
+        before.push(old);
+    }
+    tx.commit()?;
+    Ok(before)
+}
+
+/// Puts tasks back as they were (the undo of `patch_tasks`), all or none.
+pub fn restore_tasks(conn: &Connection, tasks: &[Task], now: i64) -> Result<()> {
+    if tasks.len() > 200 {
+        return Err(invalid("Au plus 200 tâches."));
+    }
+    let tx = conn.unchecked_transaction()?;
+    for t in tasks.iter().filter(|t| t.id > 0) {
+        save_task(&tx, t, now)?;
+    }
+    tx.commit()?;
+    Ok(())
 }
 
 /// What Claude answered: the text for the student, the changes it proposes, and the
@@ -546,6 +610,43 @@ mod tests {
     }
 
     #[test]
+    fn a_plan_applied_in_one_go_is_undone_in_one_go() {
+        let conn = db::open_in_memory().unwrap();
+        let kept = save_event(&conn, &PlanEvent { kind: "session".into(), title: "kept".into(), start: NOW, end: NOW + 3600, ..Default::default() }, NOW).unwrap();
+        let (start, end) = (crate::schedule::local_iso(NOW + 86_400), crate::schedule::local_iso(NOW + 86_400 + 3600));
+        let applied = apply(
+            &conn,
+            &[Action::CreateSession { project: None, title: "new".into(), start: start.clone(), end: end.clone(), task_id: None, kind: None }, Action::MoveEvent { id: kept.id, start, end }],
+            "auto",
+            NOW,
+        )
+        .unwrap();
+        assert_eq!((applied.created, applied.moved, applied.undo.len()), (1, 1, 2));
+        apply(&conn, &applied.undo, "auto", NOW).unwrap();
+        let s = state(&conn, NOW).unwrap();
+        assert_eq!(s.events.len(), 1, "the created entry is gone");
+        assert_eq!((s.events[0].start, s.events[0].end), (kept.start, kept.end), "the moved one is back");
+    }
+
+    #[test]
+    fn tasks_are_edited_together_and_put_back_together() {
+        let conn = db::open_in_memory().unwrap();
+        let a = save_task(&conn, &Task { title: "a".into(), estimate_min: Some(30), ..Default::default() }, NOW).unwrap();
+        let b = save_task(&conn, &Task { title: "b".into(), priority: 1, ..Default::default() }, NOW).unwrap();
+        let before = patch_tasks(&conn, &[a.id, b.id], &TaskPatch { estimate_min: Some(Some(90)), priority: Some(3), project: Some(Some("/p/rpg".into())), ..Default::default() }, NOW).unwrap();
+        for id in [a.id, b.id] {
+            let t = get_task(&conn, id).unwrap();
+            assert_eq!((t.estimate_min, t.priority, t.project.as_deref()), (Some(90), 3, Some("/p/rpg")));
+        }
+        // One invalid value: nothing changes.
+        assert!(patch_tasks(&conn, &[a.id, b.id], &TaskPatch { priority: Some(9), ..Default::default() }, NOW).is_err());
+        assert_eq!(get_task(&conn, a.id).unwrap().priority, 3);
+        restore_tasks(&conn, &before, NOW).unwrap();
+        assert_eq!(get_task(&conn, a.id).unwrap(), a);
+        assert_eq!(get_task(&conn, b.id).unwrap(), b);
+    }
+
+    #[test]
     fn a_plan_is_applied_entirely_or_not_at_all() {
         let conn = db::open_in_memory().unwrap();
         let e = save_event(&conn, &PlanEvent { kind: "session".into(), title: "old".into(), start: NOW, end: NOW + 3600, ..Default::default() }, NOW).unwrap();
@@ -564,7 +665,7 @@ mod tests {
         assert_eq!(get_event(&conn, e.id).unwrap().start, NOW);
 
         let done = apply(&conn, &good, "claude", NOW).unwrap();
-        assert_eq!(done, Applied { created: 1, moved: 1, deleted: 0, tasks: 3, projects: 2 });
+        assert_eq!((done.created, done.moved, done.deleted, done.tasks, done.projects), (1, 1, 0, 3, 2));
         let s = state(&conn, NOW).unwrap();
         let created = s.events.iter().find(|x| x.title == "MyRPG").unwrap();
         assert_eq!((created.kind.as_str(), created.origin.as_str(), created.end - created.start), ("session", "claude", 7200));

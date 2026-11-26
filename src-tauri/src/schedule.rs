@@ -475,6 +475,7 @@ pub fn dur(min: i64) -> String {
 /// Work to place for one project.
 #[derive(Debug, Clone)]
 pub struct Need {
+    /// Project key; empty for a task without a project.
     pub key: String,
     pub title: String,
     /// Minutes still to plan.
@@ -482,6 +483,8 @@ pub struct Need {
     /// Hand-in instant.
     pub due: Option<i64>,
     pub priority: i64,
+    /// One task to place (bulk planning): its blocks hold the task and no "tests and hand-in" block is added.
+    pub task_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -557,8 +560,9 @@ impl Placer<'_> {
     }
 }
 
-fn session(key: &str, title: String, span: Span) -> crate::planner::Action {
-    crate::planner::Action::CreateSession { project: Some(key.to_string()), title, start: local_iso(span.start), end: local_iso(span.end), task_id: None, kind: None }
+fn session(n: &Need, title: String, span: Span) -> crate::planner::Action {
+    let project = Some(n.key.clone()).filter(|k| !k.is_empty());
+    crate::planner::Action::CreateSession { project, title, start: local_iso(span.start), end: local_iso(span.end), task_id: n.task_id, kind: n.task_id.map(|_| "task".to_string()) }
 }
 
 /// Spreads the work over the days before each hand-in: most urgent first, a fair share per
@@ -584,7 +588,7 @@ pub fn suggest(needs: &[Need], busy: &[Busy], r: &Rhythm, now: i64, horizon_days
     let session_len = r.session_minutes;
     // A last block to test and hand in, as late as possible before the margin.
     for (n, limit) in todo.iter_mut() {
-        if n.minutes < 90 || n.due.is_none_or(|d| d > horizon + r.buffer_days * DAY) {
+        if n.task_id.is_some() || n.minutes < 90 || n.due.is_none_or(|d| d > horizon + r.buffer_days * DAY) {
             continue;
         }
         let len = 45.min(n.minutes);
@@ -595,7 +599,7 @@ pub fn suggest(needs: &[Need], busy: &[Busy], r: &Rhythm, now: i64, horizon_days
             }
             if p.room(day) >= len {
                 if let Some(span) = p.slot(day, *limit, len, true) {
-                    out.actions.push(session(&n.key, format!("Tests et rendu — {}", n.title), span));
+                    out.actions.push(session(n, format!("Tests et rendu — {}", n.title), span));
                     p.book(span, &n.title);
                     n.minutes -= len;
                     break;
@@ -632,7 +636,7 @@ pub fn suggest(needs: &[Need], busy: &[Busy], r: &Rhythm, now: i64, horizon_days
                         break;
                     }
                     let Some(span) = p.slot(day, *limit, want, false) else { break };
-                    out.actions.push(session(&n.key, n.title.clone(), span));
+                    out.actions.push(session(n, n.title.clone(), span));
                     p.book(span, &n.title);
                     n.minutes -= want;
                     left -= want;
@@ -697,7 +701,7 @@ mod suggest_tests {
     use super::*;
 
     fn need(key: &str, minutes: i64, due: Option<i64>) -> Need {
-        Need { key: key.into(), title: key.into(), minutes, due, priority: 0 }
+        Need { key: key.into(), title: key.into(), minutes, due, priority: 0, task_id: None }
     }
 
     fn placements(s: &Suggestion) -> Vec<Placement> {

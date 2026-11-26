@@ -4,7 +4,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Modal } from "../../components/Modal";
 import { Button, IconButton, Input } from "../../components/ui";
 import { api, asAppError, type PlanCategory } from "../../lib/api";
 import { t } from "../../lib/i18n";
@@ -12,7 +11,8 @@ import { calendarHidden, PALETTE } from "../../lib/plan";
 import { useUi } from "../../lib/store";
 import { usePlanData } from "./usePlan";
 
-export function CalendarSettingsDialog({ onClose }: { onClose: () => void }) {
+/** Categories and the projects left out of the calendar, applied at once (planning settings). */
+export function CategorySettings() {
   const data = usePlanData();
   const qc = useQueryClient();
   const toast = useUi((s) => s.toast);
@@ -31,7 +31,6 @@ export function CalendarSettingsDialog({ onClose }: { onClose: () => void }) {
     save.mutate({ id: null, name: n, color: PALETTE[data.categories.length % PALETTE.length] }, { onSuccess: () => setName("") });
   };
   return (
-    <Modal open onClose={onClose} title={t("Réglages du calendrier")} width="w-[560px]" footer={<Button variant="primary" onClick={onClose}>{t("Terminé")}</Button>}>
       <div className="flex flex-col gap-5">
         <section>
           <h3 className="mb-1 text-sm font-medium">{t("Catégories")}</h3>
@@ -74,7 +73,6 @@ export function CalendarSettingsDialog({ onClose }: { onClose: () => void }) {
           )}
         </section>
       </div>
-    </Modal>
   );
 }
 

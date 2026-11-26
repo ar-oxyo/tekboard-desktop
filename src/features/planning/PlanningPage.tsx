@@ -1,7 +1,7 @@
 // Planning: the student's week on a timeline, with MY Epitech sessions and hand-ins drawn
 // read-only underneath, an inbox of tasks to drag in, and the projects' remaining work.
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarCheck, ChevronLeft, ChevronRight, Inbox, Lightbulb, ListFilter, Plus, RefreshCw, Settings2, Sparkles, Tags, Wand2 } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight, Inbox, Lightbulb, ListFilter, Plus, RefreshCw, Settings2, Sparkles, Wand2 } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import { Menu, MenuChoice, MenuItem, MenuLabel, MenuSeparator } from "../../components/Menu";
 import { Button, cn, Dot, DoneCheck, ErrorNote, IconButton, Spinner, Tag } from "../../components/ui";
@@ -13,8 +13,9 @@ import { invalidate } from "../../lib/sync";
 import { suggestPlan } from "../artix/suggest";
 import { useUi } from "../../lib/store";
 import { Countdown } from "../projects/RepoBits";
-import { PrefsDialog, ReviewDialog } from "./Dialogs";
-import { CalendarSettingsDialog } from "./CalendarSettings";
+import { ReviewDialog } from "./Dialogs";
+import { PlanSettingsDialog } from "./PlanSettings";
+import { BulkBar, BulkPlanDialog } from "./BulkPlan";
 import { MonthGrid } from "./MonthGrid";
 import { dropTarget, TimeGrid } from "./TimeGrid";
 import { useLoads, usePlanActions, usePlanData } from "./usePlan";
@@ -50,7 +51,7 @@ export function PlanningPage() {
     return () => window.removeEventListener("tekboard:day-changed", onDay);
   }, []);
   const [ghost, setGhost] = useState<{ start: number; end: number; title: string } | null>(null);
-  const [dialog, setDialog] = useState<"prefs" | "review" | "calendar" | null>(null);
+  const [dialog, setDialog] = useState<"settings" | "review" | null>(null);
   const toast = useUi((s) => s.toast);
   const f = { ...DEFAULT_FILTERS, ...filters };
 
@@ -155,6 +156,9 @@ export function PlanningPage() {
               </MenuChoice>
             ))}
           </Menu>
+          <IconButton label={t("Réglages du planning : rythme, catégories")} onClick={() => setDialog("settings")}>
+            <Settings2 className="size-4" />
+          </IconButton>
           <Menu
             label={t("Planifier")}
             trigger={
@@ -176,12 +180,6 @@ export function PlanningPage() {
             <MenuSeparator />
             <MenuItem icon={<CalendarCheck className="size-4" />} onSelect={() => setDialog("review")}>
               {t("Bilan de la semaine")}
-            </MenuItem>
-            <MenuItem icon={<Settings2 className="size-4" />} onSelect={() => setDialog("prefs")}>
-              {t("Mon rythme…")}
-            </MenuItem>
-            <MenuItem icon={<Tags className="size-4" />} onSelect={() => setDialog("calendar")}>
-              {t("Catégories et projets affichés…")}
             </MenuItem>
           </Menu>
           <Button size="sm" icon={<Sparkles className="size-3.5" />} onClick={() => useUi.getState().openAssistant()} title={t("Demande à Artix d'organiser ton planning. Rien ne change avant que tu acceptes sa proposition.")}>
@@ -228,8 +226,7 @@ export function PlanningPage() {
           </p>
         </aside>
       </div>
-      {dialog === "prefs" && <PrefsDialog onClose={() => setDialog(null)} />}
-      {dialog === "calendar" && <CalendarSettingsDialog onClose={() => setDialog(null)} />}
+      {dialog === "settings" && <PlanSettingsDialog onClose={() => setDialog(null)} />}
       {dialog === "review" && <ReviewDialog onClose={() => setDialog(null)} />}
     </div>
   );
@@ -238,12 +235,24 @@ export function PlanningPage() {
 function InboxPanel({ data, onDrag, now }: { data: ReturnType<typeof usePlanData>; onDrag: (e: RPointerEvent, t: PlanTask) => void; now: number }) {
   const act = usePlanActions();
   const tasks = unplanned(data.state.tasks, data.state.events, now).filter((t) => t.parentId === null);
+  // Several tasks at once: edited together or placed in one go (BulkPlan.tsx).
+  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const [planning, setPlanning] = useState(false);
+  const chosen = tasks.filter((x) => picked.has(x.id));
+  const toggle = (id: number) => setPicked((s) => {
+    const n = new Set(s);
+    if (n.has(id)) n.delete(id);
+    else n.add(id);
+    return n;
+  });
   const ideas = data.state.tasks.filter((t) => t.kind === "idea" && t.doneAt === null);
   const color = (key: string | null) => data.projects.find((p) => p.key === key)?.color ?? "var(--color-faint)";
   const name = (key: string | null) => data.projects.find((p) => p.key === key)?.title;
   return (
     <div className="flex flex-col gap-1 p-3">
-      <div className="flex items-center justify-between px-1 pb-1">
+      {chosen.length > 0 && <BulkBar tasks={chosen} total={tasks.length} projects={data.projects} onAll={() => setPicked(new Set(tasks.map((x) => x.id)))} onClear={() => setPicked(new Set())} onPlan={() => setPlanning(true)} />}
+      {planning && chosen.length > 0 && <BulkPlanDialog tasks={chosen} projects={data.projects} onClose={() => setPlanning(false)} onApplied={() => setPicked(new Set())} />}
+      <div className={cn("flex items-center justify-between px-1 pb-1", chosen.length > 0 && "hidden")}>
         <span className="text-xs text-faint">{tasks.length === 0 ? t("Rien en attente") : t("{n} à placer · glisse sur le calendrier", { n: tasks.length })}</span>
         <Button size="sm" variant="ghost" icon={<Plus className="size-3.5" />} onClick={() => useUi.getState().editTask({})}>
           {t("Tâche")}
@@ -256,7 +265,15 @@ function InboxPanel({ data, onDrag, now }: { data: ReturnType<typeof usePlanData
         </p>
       )}
       {tasks.map((t) => (
-        <div key={t.id} onPointerDown={(e) => onDrag(e, t)} className="group row-hover flex cursor-grab items-start gap-2 rounded-md px-2 py-1.5 active:cursor-grabbing" style={{ touchAction: "none" }}>
+        <div key={t.id} onPointerDown={(e) => onDrag(e, t)} className={cn("group row-hover flex cursor-grab items-start gap-2 rounded-md px-2 py-1.5 active:cursor-grabbing", picked.has(t.id) && "bg-accent-soft")} style={{ touchAction: "none" }}>
+          <input
+            type="checkbox"
+            className={cn("mt-1 accent-(--color-accent) transition-opacity duration-(--dur-fast)", picked.size === 0 && "opacity-0 group-hover:opacity-100 focus-visible:opacity-100")}
+            checked={picked.has(t.id)}
+            aria-label={tr("Choisir « {t} »", { t: t.title })}
+            onPointerDown={(e) => e.stopPropagation()}
+            onChange={() => toggle(t.id)}
+          />
           <DoneCheck label={tr("Fait")} className="mt-0.5" checked={false} onChange={() => act.toggleTask(t)} />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm">{t.title}</span>

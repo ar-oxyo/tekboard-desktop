@@ -1504,6 +1504,21 @@ export interface PlanApplied {
   deleted: number;
   tasks: number;
   projects: number;
+  /** Puts the calendar back as it was (created entries deleted, moved ones moved back). */
+  undo: ScheduleAction[];
+}
+/** A proposal of the planning engine: changes to review, work that did not fit, what to know. */
+export interface PlanSuggestion {
+  actions: ScheduleAction[];
+  unplaced: Array<{ key: string; title: string; minutes: number }>;
+  notes: string[];
+}
+/** A change made to several tasks at once; `null` clears the field. */
+export interface TaskPatch {
+  estimateMin?: number | null;
+  priority?: number;
+  project?: string | null;
+  dueDay?: string | null;
 }
 
 // ── Artix (assistant), memory, work sessions
@@ -1771,6 +1786,9 @@ export const api = {
   planProjectSet: (key: string, patch: { priority?: number; estimateMin?: number | null; color?: string | null }) => invoke<ProjectPlan>("plan_project_set", { key, patch }),
   planLogAdd: (project: string | null, taskId: number | null, title: string, startedAt: number, seconds: number) => invoke<WorkLog>("plan_log_add", { project, taskId, title, startedAt, seconds }),
   planApply: (actions: ScheduleAction[], origin: "auto" | "claude") => invoke<PlanApplied>("plan_apply", { actions, origin }),
+  planSuggestTasks: (ids: number[], days: number) => invoke<PlanSuggestion>("plan_suggest_tasks", { ids, days }),
+  planTasksPatch: (ids: number[], patch: TaskPatch) => invoke<PlanTask[]>("plan_tasks_patch", { ids, patch }),
+  planTasksRestore: (tasks: PlanTask[]) => invoke<void>("plan_tasks_restore", { tasks }),
   assistantStart: (question: string, context: string, subjectOf: string | null) => invoke<number>("assistant_start", { question, context, subjectOf }),
 
   getSettings: () => invoke<Settings>("get_settings"),

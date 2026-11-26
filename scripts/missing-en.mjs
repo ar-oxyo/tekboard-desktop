@@ -25,7 +25,7 @@ for (const f of new Set(files)) {
     continue;
   }
   // t("…") and plural(n, "…", "…")
-  for (const m of text.matchAll(/\bt\(\s*("(?:[^"\\]|\\.)*")/g)) {
+  for (const m of text.matchAll(/\b(?:t|tr)\(\s*("(?:[^"\\]|\\.)*")/g)) {
     const k = JSON.parse(m[1]);
     if (!keys.has(k)) missing.set(k, f);
   }

@@ -339,6 +339,23 @@ export const fixtures: Record<string, Fixture> = {
   brain_count: captures.length,
   brain_list: captures,
   plan_state: plan,
+  // Bulk planning: each chosen task gets a block on the next working days, 10:00 then 14:00.
+  plan_suggest_tasks: (a: Record<string, unknown>) => {
+    const ids = (a.ids as number[]) ?? [];
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const actions = ids.flatMap((id, i) => {
+      const task = plan.tasks.find((x) => x.id === id);
+      if (!task) return [];
+      const start = new Date();
+      start.setDate(start.getDate() + 1 + Math.floor(i / 2));
+      start.setHours(i % 2 ? 14 : 10, 0, 0, 0);
+      const end = new Date(start.getTime() + (task.estimateMin ?? 75) * 60_000);
+      return [{ type: "create_session", project: task.project, title: task.title, start: iso(start), end: iso(end), taskId: id, kind: "task" }];
+    });
+    return { actions, unplaced: [], notes: ["Une marge de 1 jour(s) est gardée avant chaque rendu, et 1 h de temps libre par jour."] };
+  },
+  plan_apply: (a: Record<string, unknown>) => ({ created: ((a.actions as unknown[]) ?? []).length, moved: 0, deleted: 0, tasks: 0, projects: 0, undo: [] }),
   recent_activity: [
     { id: 1, ts: now - 3 * H, kind: "commit", repoPath: repos[0].path, detail: "fix: handle empty PATH" },
     { id: 2, ts: now - 5 * H, kind: "test", repoPath: repos[1].path, detail: "12/20" },

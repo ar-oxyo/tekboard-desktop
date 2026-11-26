@@ -96,6 +96,24 @@ pub fn plan_apply(state: State<'_, AppState>, actions: Vec<Action>, origin: Stri
     planner::apply(&state.conn(), &actions, origin, now())
 }
 
+/// Bulk planning: a proposal placing the chosen tasks within `days`, to review before applying.
+#[tauri::command(async)]
+pub fn plan_suggest_tasks(state: State<'_, AppState>, ids: Vec<i64>, days: i64) -> Result<crate::schedule::Suggestion> {
+    crate::ai::tools::suggest_tasks(&state, &ids, days)
+}
+
+/// Bulk editing of tasks (estimate, priority, project, date). Returns the tasks as they were.
+#[tauri::command(async)]
+pub fn plan_tasks_patch(state: State<'_, AppState>, ids: Vec<i64>, patch: planner::TaskPatch) -> Result<Vec<Task>> {
+    planner::patch_tasks(&state.conn(), &ids, &patch, now())
+}
+
+/// The undo of `plan_tasks_patch`.
+#[tauri::command(async)]
+pub fn plan_tasks_restore(state: State<'_, AppState>, tasks: Vec<Task>) -> Result<()> {
+    planner::restore_tasks(&state.conn(), &tasks, now())
+}
+
 // ───────────────────────────── assistant ─────────────────────────────
 
 const MAX_CONTEXT: usize = 60_000;

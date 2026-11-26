@@ -360,8 +360,10 @@ function CaptureForm() {
 const WEEK = [1, 2, 3, 4, 5, 6, 0];
 
 /** The rhythm: how much of a day TekBoard and Artix may fill, and how. */
-export function PrefsDialog({ onClose }: { onClose: () => void }) {
+/** The rhythm (hours, days, sessions, breaks): a draft saved with its own button, in the planning settings. */
+export function RhythmSettings() {
   const [prefs, setPrefs] = usePlanPrefs();
+  const toast = useUi((s) => s.toast);
   const [p, setP] = useState<PlanPrefs>(prefs);
   const [error, setError] = useState<string | null>(null);
   const num = (label: string, value: number, key: "maxMinutesPerDay" | "sessionMinutes" | "breakMinutes" | "longBreakMinutes" | "flexMinutes", hint: string, disabled = false) => (
@@ -387,28 +389,14 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
     if (p.maxMinutesPerDay < 30 || p.maxMinutesPerDay > 720) return setError(tr("Le plafond quotidien est entre 30 min et 12 h."));
     if (p.workDays.length === 0) return setError(tr("Choisis au moins un jour."));
     setPrefs(p);
-    onClose();
+    setError(null);
+    toast({ kind: "ok", title: tr("Rythme enregistré") });
   };
+  const dirty = JSON.stringify(p) !== JSON.stringify(prefs);
   const preset = (mode: RhythmMode) => setP((x) => withMode({ ...x, mode }));
   return (
-    <Modal
-      open
-      onClose={onClose}
-      title={tr("Ton rythme")}
-      description={tr("Ce que TekBoard et Artix peuvent remplir dans une journée. Tes propres entrées vont où tu veux.")}
-      width="w-[560px]"
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            {tr("Annuler")}
-          </Button>
-          <Button variant="primary" onClick={save}>
-            {tr("Enregistrer")}
-          </Button>
-        </>
-      }
-    >
       <div className="flex flex-col gap-3.5">
+        <p className="text-xs text-faint">{tr("Ce que TekBoard et Artix peuvent remplir dans une journée. Tes propres entrées vont où tu veux.")}</p>
         <div className="grid grid-cols-4 gap-1.5">
           {(["calm", "balanced", "intense", "custom"] as RhythmMode[]).map((m) => (
             <button key={m} type="button" aria-pressed={p.mode === m} onClick={() => preset(m)} className={cn("flex flex-col items-start gap-0.5 rounded-lg border px-2.5 py-2 text-left transition-colors duration-150", p.mode === m ? "border-accent/50 bg-accent-soft" : "border-ink/8 hover:border-ink/15")}>
@@ -462,8 +450,17 @@ export function PrefsDialog({ onClose }: { onClose: () => void }) {
         </label>
         <p className="text-xs text-faint">{tr("Après {n} blocs presque d'affilée, une pause longue est imposée. Une pause est gardée avant et après chaque cours ou entrée.", { n: p.blocksBeforeLongBreak })}</p>
         {error && <p className="text-xs text-danger">{error}</p>}
+        {dirty && (
+          <div className="anim-fade flex justify-end gap-2 border-t border-line pt-3">
+            <Button variant="ghost" onClick={() => (setP(prefs), setError(null))}>
+              {tr("Annuler les changements")}
+            </Button>
+            <Button variant="primary" onClick={save}>
+              {tr("Enregistrer le rythme")}
+            </Button>
+          </div>
+        )}
       </div>
-    </Modal>
   );
 }
 
