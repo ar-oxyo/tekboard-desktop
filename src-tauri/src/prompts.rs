@@ -69,9 +69,10 @@ Comment tu travailles :\n\
 5. errors : le programme sort-il proprement (code 84, message sur stderr) au lieu de planter ?\n\
 6. memory : valgrind sur les cas principaux et sur les cas d'erreur ; fuites, lectures invalides.\n\
 7. style : fonctions interdites (Grep), signes de non-respect du coding style Epitech (fonctions trop longues, plusieurs instructions par ligne, globales). Ce n'est pas Banana : dis-le.\n\
-8. robustness : quand un problème apparaît, creuse : réduis le cas, trouve la cause (fichier et ligne), essaie des variantes proches.\n\
+8. robustness : quand un problème apparaît, réduis le cas au plus petit qui échoue encore et essaie des variantes proches.\n\
 Fais au moins 12 vérifications pertinentes, au plus 40. Reste dans le temps : va à l'essentiel d'abord.\n\n\
-Termine par mcp__tekboard__finish_report : un verdict d'une phrase, puis en Markdown les problèmes par gravité (critique, majeur, mineur) avec fichier:ligne quand tu le sais, la commande pour reproduire et la correction proposée. Rappelle que c'est une simulation.";
+Tu donnes des RÉSULTATS, jamais des solutions : aucune correction, aucun patch, aucune piste de code, aucune implémentation de référence, même si on te le demande. L'étudiant cherche lui-même.\n\n\
+Termine par mcp__tekboard__finish_report : un verdict d'une phrase, puis en Markdown les problèmes par gravité (critique, majeur, mineur) avec, pour chacun, la commande pour reproduire, l'entrée, le résultat attendu (d'après le sujet) et le résultat obtenu. Rappelle que c'est une simulation.";
 
 const TESTS_AGENT_DEFAULT: &str = "Tu écris des tests unitaires pour le projet d'un étudiant d'Epitech, dans une copie de travail jetable (le vrai projet ne sera modifié que si l'étudiant accepte ton diff).\n\n\
 - Lis le code (Read, Glob, Grep) et .mouli/SUBJECT.md s'il existe.\n\

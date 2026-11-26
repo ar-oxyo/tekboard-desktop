@@ -391,6 +391,13 @@ const MIGRATIONS: &[&str] = &[
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
      );",
+    // v1.0: the TekBoard moulinette's plan and last report, per project.
+    "CREATE TABLE mouli_suites (
+        repo TEXT PRIMARY KEY,
+        suite TEXT NOT NULL,
+        report TEXT,
+        updated_at INTEGER NOT NULL
+     );",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

@@ -10,10 +10,38 @@ use std::path::{Path, PathBuf};
 const MAX_FILES: usize = 6000;
 const MAX_BYTES: u64 = 300 * 1024 * 1024;
 
-/// Files of the working tree: tracked and untracked, minus ignored ones.
+/// Files of the working tree: tracked and untracked, minus ignored ones. A folder that is not
+/// a git repository is walked instead (hidden folders skipped, links not followed).
 fn files_of(repo: &Path) -> Result<Vec<String>> {
+    if !repo.join(".git").exists() {
+        return Ok(walk_plain(repo));
+    }
     let out = crate::git::run(Some(repo), &["ls-files", "-z", "--cached", "--others", "--exclude-standard"]).map_err(|e| AppError::new("git_failed", format!("Liste des fichiers impossible : {e}")))?;
     Ok(out.split('\0').filter(|p| !p.is_empty()).map(str::to_string).collect())
+}
+
+fn walk_plain(repo: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut stack = vec![repo.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        let Ok(rd) = std::fs::read_dir(&d) else { continue };
+        for e in rd.flatten() {
+            let p = e.path();
+            let Ok(meta) = std::fs::symlink_metadata(&p) else { continue };
+            if meta.is_dir() && !e.file_name().to_string_lossy().starts_with('.') {
+                stack.push(p);
+            } else if meta.is_file() {
+                if let Ok(rel) = p.strip_prefix(repo) {
+                    out.push(rel.to_string_lossy().into_owned());
+                }
+            }
+            if out.len() > MAX_FILES {
+                return out;
+            }
+        }
+    }
+    out.sort();
+    out
 }
 
 fn safe(rel: &str) -> bool {

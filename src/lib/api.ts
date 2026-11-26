@@ -1055,7 +1055,7 @@ export interface BoardData {
   files: Record<string, BoardFile>;
 }
 
-export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull" | "playground" | "arena" | "arena_ai" | "arena_report" | "board_ai" | "brain";
+export type RunKind = "tests" | "testrepo" | "banana" | "moulinette" | "moulinette_ai" | "gen_tests" | "readme" | "build" | "command" | "analysis" | "assistant" | "ollama_pull" | "playground" | "arena" | "arena_ai" | "arena_report" | "board_ai" | "brain" | "mouli_plan" | "mouli_run";
 /** Kind-specific facts; see the Rust module that produces each kind. */
 export type RunSummary = Record<string, unknown> & { steps?: JobStep[] };
 export interface JobView {
@@ -1136,6 +1136,63 @@ export interface TestRepoParams {
   tests: string | null;
   isolation: "none" | "docker";
   image: string | null;
+}
+/** A case of the TekBoard moulinette's plan (src-tauri/src/mouli). */
+export interface MouliCase {
+  id: string;
+  category: string;
+  kind: "io" | "unit";
+  title: string;
+  source: string;
+  args: string[];
+  stdin: string | null;
+  expectStdout: string | null;
+  expectContains: string | null;
+  expectCode: number | null;
+  timeoutMs: number | null;
+  target: string | null;
+  suite: string | null;
+  name: string | null;
+  body: string | null;
+  enabled: boolean;
+}
+export interface MouliFile {
+  name: string;
+  content: string;
+  tests: string[];
+}
+export interface MouliSuite {
+  summary: string;
+  cases: MouliCase[];
+  unspecified: string[];
+  rejected: string[];
+  files: MouliFile[];
+  withSubject: boolean;
+  createdAt: number;
+}
+export type MouliStatus = "passed" | "failed" | "timeout" | "crashed" | "memory" | "skipped" | "build_error" | "mouli_error";
+export interface MouliResult {
+  id: string;
+  title: string;
+  category: string;
+  kind: string;
+  status: MouliStatus;
+  origin: "program" | "mouli";
+  input: string;
+  expected: string | null;
+  got: string | null;
+  stdout: string;
+  stderr: string;
+  code: number | null;
+  signal: string | null;
+  ms: number;
+  detail: string | null;
+}
+export interface MouliReport {
+  results: MouliResult[];
+  score: number | null;
+  build: string | null;
+  finishedAt: number;
 }
 export interface MoulinetteParams {
   build: string;
@@ -1881,6 +1938,11 @@ export const api = {
   testrepoEnvDelete: (name: string) => invoke<void>("testrepo_env_delete", { name }),
   testrepoEnvOpen: (name: string, terminal: boolean) => invoke<void>("testrepo_env_open", { name, terminal }),
   moulinetteStart: (repo: string, params: MoulinetteParams) => invoke<number>("moulinette_start", { repo, params }),
+  mouliState: (repo: string) => invoke<{ suite: MouliSuite | null; report: MouliReport | null }>("mouli_state", { repo }),
+  mouliAnalyze: (repo: string) => invoke<number>("mouli_analyze", { repo }),
+  mouliRun: (repo: string, only: string[] | null = null) => invoke<number>("mouli_run", { repo, only }),
+  mouliToggle: (repo: string, ids: string[], enabled: boolean) => invoke<MouliSuite>("mouli_toggle", { repo, ids, enabled }),
+  mouliExport: (repo: string, names: string[]) => invoke<{ written: string[]; kept: string[] }>("mouli_export", { repo, names }),
   analysisStart: (repo: string) => invoke<number>("analysis_start", { repo }),
   promptsList: () => invoke<PromptDef[]>("prompts_list"),
   promptSave: (id: string, preset: string, body: string, activate: boolean) => invoke<string[]>("prompt_save", { id, preset, body, activate }),

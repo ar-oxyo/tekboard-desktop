@@ -14,6 +14,7 @@ import { usePref, useRepos } from "../../lib/hooks";
 import { displayName } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { ClaudeBriefDialog } from "../tools/ClaudeBrief";
+import { MouliView } from "./Mouli";
 import { QuickBar } from "./QuickBar";
 import { duration, KIND_LABEL, Report, STATUS_LABEL, STATUS_TONE, type ReportData } from "./Report";
 import { t } from "../../lib/i18n";
@@ -56,6 +57,7 @@ export function TestingPage() {
   const [toDelete, setToDelete] = useState<string | null>(null);
   const delEnv = useMutation({ mutationFn: (name: string) => api.testrepoEnvDelete(name), onSuccess: () => { setToDelete(null); void qc.invalidateQueries({ queryKey: ["testrepo-envs"] }); }, onError: fail("Non supprimé") });
   const [brief, setBrief] = useState<"tests" | "analysis" | null>(null);
+  const [view, setView] = usePref<"mouli" | "tools">("testing.view", "mouli");
 
   const raw: ReportData | null = runId !== null ? (run.data ? { ...run.data, steps: run.data.summary.steps ?? [], log: run.data.log ?? "" } : null) : (job.data ?? null);
   const busy = job.data?.status === "running" && runId === null;
@@ -92,6 +94,17 @@ export function TestingPage() {
       ) : info.error || !info.data ? (
         <ErrorNote>{asAppError(info.error).message}</ErrorNote>
       ) : (
+        <>
+        <div className="mb-5 flex rounded-(--btn-radius) border border-line p-0.5 self-start w-fit" role="tablist" aria-label={t("Vue")}>
+          {([["mouli", t("Moulinette TekBoard")], ["tools", t("Outils et historique")]] as const).map(([id, label]) => (
+            <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => setView(id)} className={cn("h-7 rounded-[4px] px-3 text-xs transition-colors", view === id ? "bg-accent-soft text-accent-strong" : "text-muted hover:text-fg")}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {view === "mouli" ? (
+          <MouliView key={repoPath} repo={repoPath} />
+        ) : (
         <>
         <div className="mb-4">
           <QuickBar
@@ -167,7 +180,7 @@ export function TestingPage() {
 
           <Card className="min-w-0">
             <CardTitle right={runId !== null && jobId !== null ? <Button size="sm" variant="ghost" onClick={() => useUi.setState({ runId: null })}>{t("Revenir à la tâche en cours")}</Button> : undefined}>
-              {runId !== null ? t("Rapport de l'historique") : busy ? "Running" : "Report"}
+              {runId !== null ? t("Rapport de l'historique") : busy ? t("En cours") : t("Rapport")}
             </CardTitle>
             {data ? (
               <Report data={data} onCancel={busy && jobId !== null ? () => cancel.mutate(jobId) : undefined} envActions={(n, t) => void openEnv(n, t)} onClear={clearLog} />
@@ -176,17 +189,19 @@ export function TestingPage() {
             ) : job.error && jobId !== null ? (
               <div className="p-4"><ErrorNote>{asAppError(job.error).message}</ErrorNote></div>
             ) : (
-              <EmptyState icon={<ShieldCheck className="size-5" />} title={t("Rien en cours")}>Start a check on the left, or open a past report from the history. {repo ? `Project: ${displayName(repo)}.` : ""}</EmptyState>
+              <EmptyState icon={<ShieldCheck className="size-5" />} title={t("Rien en cours")}>{t("Lance un test à gauche, ou ouvre un rapport passé depuis l'historique.")} {repo ? t("Projet : {p}.", { p: displayName(repo) }) : ""}</EmptyState>
             )}
           </Card>
         </div>
+        </>
+        )}
         </>
       )}
       {brief && repoPath && (
         <ClaudeBriefDialog
           repo={repoPath}
           task={brief}
-          confirmLabel="Start Claude Code"
+          confirmLabel={t("Lancer Claude Code")}
           onClose={() => setBrief(null)}
           onConfirm={() => {
             const task = brief;

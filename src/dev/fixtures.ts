@@ -2,6 +2,7 @@
 // values for a second-year student mid-semester; nothing here ever reaches a real build.
 import type { BoardItem, EnvStatus, PlanState, RepoInfo, Settings } from "../lib/api";
 import { skillTree } from "./skilltreeFixture";
+import { mouliReport, mouliSuite } from "./mouliFixture";
 
 type Fixture = unknown | ((args: Record<string, unknown>, params: URLSearchParams) => unknown);
 
@@ -252,6 +253,9 @@ export const fixtures: Record<string, Fixture> = {
   my_overview: { syncedAt: now - 40 * 60, account: "camille.martin@epitech.eu", projects: [], creditsAcquired: 12, creditsTotal: 60, blocks: [], exams: [] },
   my_logtime: logtime,
   my_skill_tree: skillTree,
+  // ?mouli=1: a plan and a report of the TekBoard moulinette.
+  mouli_state: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("mouli") ? { suite: mouliSuite, report: mouliReport } : { suite: null, report: null }),
+  testing_info: { detection: { suites: [], frameworks: ["Criterion"], testFiles: 2, notes: [] }, config: { testCmd: null, runCmd: null, image: null }, defaultBuild: "make", claude: { path: null, target: null, version: null, state: "not_found", source: null, detail: null }, banana: { repoChecker: null, version: null, epiclang: null, plugin: false }, docker: false, valgrind: true, terminal: true, defaultImage: "epitechcontent/epitest-docker", subject: "secured.pdf", hasRemote: true },
   credit_scenario_save: (a: Record<string, unknown>) => ({ id: typeof a.id === "number" ? a.id : 1, name: a.name, data: a.data, updatedAt: now }),
   // ?proposal=1 shows a week plan waiting in Artix's panel (with ?open=artix).
   ai_proposals: (_a: Record<string, unknown>, p: URLSearchParams) => (p.has("proposal") ? [weekProposal] : []),

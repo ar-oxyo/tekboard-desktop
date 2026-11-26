@@ -18,7 +18,7 @@ fn now() -> i64 {
 }
 
 /// Text of the project's subject: its digest when analysed, else the PDF text.
-fn subject_text(state: &AppState, repo: &Path) -> Option<String> {
+pub(crate) fn subject_text(state: &AppState, repo: &Path) -> Option<String> {
     let key = repo.to_string_lossy().into_owned();
     let conn = state.conn();
     if let Ok(b) = conn.query_row("SELECT brief FROM project_briefs WHERE project = ?1 AND stale = 0", [&key], |r| r.get::<_, String>(0)) {

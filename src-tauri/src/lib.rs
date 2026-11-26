@@ -36,6 +36,7 @@ pub mod launcher;
 pub mod logtime;
 pub mod library;
 pub mod moulinette;
+pub mod mouli;
 pub mod mydata;
 pub mod myepitech;
 pub mod myres;
@@ -441,6 +442,11 @@ pub fn run() {
             commands_dev::testrepo_env_delete,
             commands_dev::testrepo_env_open,
             commands_dev::moulinette_start,
+            commands_dev::mouli_state,
+            commands_dev::mouli_analyze,
+            commands_dev::mouli_run,
+            commands_dev::mouli_toggle,
+            commands_dev::mouli_export,
             commands_dev::claude_brief,
             commands_dev::gen_tests_start,
             commands_dev::gen_tests_apply,
