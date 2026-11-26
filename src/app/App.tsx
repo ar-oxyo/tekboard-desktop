@@ -12,7 +12,7 @@ import { ProjectsPage } from "../features/projects/ProjectsPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
 import { SubjectsPage } from "../features/subjects/SubjectsPage";
 import { TemplatesPage } from "../features/templates/TemplatesPage";
-import { useAutoAmbiance, useColorMode, useMotionPref, useSettings } from "../lib/hooks";
+import { useAccent, useAutoAmbiance, useColorMode, useMotionPref, useSettings } from "../lib/hooks";
 import { THEME_KEY } from "../lib/appearance";
 import { api, asAppError } from "../lib/api";
 
@@ -137,6 +137,7 @@ export function App() {
   }, [theme, themeOverride]);
   useColorMode(theme, themeOverride ? undefined : auto?.mode);
   useMotionPref();
+  useAccent();
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-transparency: reduce)").matches;

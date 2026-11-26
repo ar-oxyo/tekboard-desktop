@@ -1,13 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Check, ChevronRight, FolderPlus, X } from "lucide-react";
+import { Check, ChevronRight, FolderPlus, RotateCcw, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Select } from "../../components/Select";
 import { Button, Card, CardTitle, cn, Code, ErrorNote, Field, IconButton, Input, PageHeader, Spinner } from "../../components/ui";
 import { COLOR_MODES, crossFade, designHasLight, type ColorMode } from "../../lib/appearance";
 import { api, asAppError, type Settings } from "../../lib/api";
 import { tildify } from "../../lib/format";
-import { AUTO_AMBIANCE, keys, useColorMode, useEnv, useMotionPref, type AutoAmbiance, useHome, usePref, useRepos, useSettings, useTemplates } from "../../lib/hooks";
+import { ACCENT_PRESETS, parseHex, toHex } from "../../lib/color";
+import { AUTO_AMBIANCE, keys, useAccent, useColorMode, useEnv, useMotionPref, type AutoAmbiance, useHome, usePref, useRepos, useSettings, useTemplates } from "../../lib/hooks";
 import { cloneTargets } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { AiSettingsCard } from "./AiSettings";
@@ -322,6 +323,7 @@ export function SettingsPage() {
                 setDraft((d) => (d ? { ...d, theme } : d));
               }}
             />
+            <AccentPicker />
           </Card>
           <Card>
             <CardTitle>{t("Effets et confort")}</CardTitle>
@@ -354,6 +356,38 @@ const THEMES: Array<{ id: string; name: string; tagline: string; bg: string; car
 ];
 
 const MODE_LABEL: Record<ColorMode, string> = { system: t("Système"), light: t("Clair"), dark: t("Sombre") };
+
+/** Personal accent: a few inks, or any colour; adjusted for contrast in each mode. */
+function AccentPicker() {
+  const [accent, setAccent] = useAccent();
+  const [hex, setHex] = useState(accent ?? "");
+  useEffect(() => setHex(accent ?? ""), [accent]);
+  const pick = (v: string | null) => {
+    crossFade();
+    setAccent(v);
+  };
+  return (
+    <div className="space-y-2.5 border-t border-line px-4 py-4">
+      <div className="flex items-baseline gap-2">
+        <p className="text-sm">{t("Couleur d'accent")}</p>
+        <p className="text-xs text-faint">{t("Actions, sélection et liens. L'urgence garde la couleur de l'ambiance.")}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => pick(null)} aria-pressed={!accent} title={t("Couleur de l'ambiance")} className={cn("flex h-8 items-center gap-1.5 rounded-(--btn-radius) border px-2.5 text-xs", !accent ? "border-accent text-fg" : "border-line text-muted hover:text-fg")}>
+          <RotateCcw className="size-3.5" /> {t("Ambiance")}
+        </button>
+        {ACCENT_PRESETS.map((p) => (
+          <button key={p.id} type="button" onClick={() => pick(p.hex)} aria-pressed={accent === p.hex} aria-label={t(p.name)} title={t(p.name)} className={cn("size-8 rounded-full border-2 transition-transform hover:scale-105", accent === p.hex ? "border-fg" : "border-transparent")} style={{ background: p.hex }} />
+        ))}
+        <label className="flex items-center gap-1.5" title={t("Une autre couleur")}>
+          <input type="color" className="size-8 cursor-pointer rounded-(--btn-radius) border border-line bg-transparent" value={parseHex(hex) ? toHex(parseHex(hex)!) : "#006bab"} onChange={(e) => pick(e.target.value)} aria-label={t("Choisir une couleur")} />
+          <Input className="h-8 w-24 font-mono text-xs" value={hex} placeholder="#006bab" onChange={(e) => setHex(e.target.value)} onBlur={() => { const p = parseHex(hex); if (p) pick(toHex(p)); else setHex(accent ?? ""); }} aria-label={t("Code hexadécimal")} />
+        </label>
+      </div>
+      {accent && <p className="text-xs text-faint">{t("Ajustée si besoin pour rester lisible sur le fond clair comme sur le fond sombre.")}</p>}
+    </div>
+  );
+}
 
 export function ThemePicker({ current, onPick: pick }: { current: string; onPick: (id: string) => void }) {
   const [mode, setModeRaw] = useColorMode(current);

@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./styles/index.css";
 import { applyMode, storedMode, THEME_KEY } from "./lib/appearance";
+import { ACCENT_KEY, applyAccent } from "./lib/color";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: true, staleTime: 15_000 } },
@@ -22,6 +23,8 @@ if (import.meta.env.DEV && !("__TAURI_INTERNALS__" in window)) {
 const bootTheme = localStorage.getItem(THEME_KEY) ?? "aurora";
 document.documentElement.dataset.theme = bootTheme;
 applyMode(storedMode(), bootTheme);
+// The personal accent too, so the first frame already has it.
+applyAccent(localStorage.getItem(ACCENT_KEY));
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
