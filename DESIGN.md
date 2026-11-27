@@ -196,12 +196,18 @@ Sheet background, 6px radius, hairline that turns blue on focus plus a 3px `acce
 A flat list, no group headings: the everyday places (Today, Projects, Planning, Inbox with count), a small gap, one entry per other section (School, Stats, Lab, Connect), then pinned projects (favourites, dot size = hand-in urgency), and Artix, Templates, Settings and a single health line at the foot. A section with several screens shows them as tabs in the page bar. Active place: blue film + blue icon. Shortcuts: Ctrl+1…9 sections, Ctrl+K palette, Ctrl+B rail, Alt+←/→ history, Ctrl+/ shortcut sheet.
 
 ### Motion
-120ms (`--dur-fast`) for hovers, 180ms (`--dur-base`) for entrances, `--ease` = `cubic-bezier(0.22, 1, 0.36, 1)`. Pages rise 4px; the blocks of Today arrive 40ms apart (`.stagger`); meters fill on appear (`.meter-fill`); cards you open rise 1px (`.lift`); menus scale from their trigger; mode and design changes cross-fade colours for 200ms; ticking a task draws the logo's ring then a check (`DoneCheck`, 300ms before the task is marked). Nothing loops except a spinner or a live state. Everything stops under `prefers-reduced-motion` **and** when the user turns animations off (pref `motion`, `html[data-motion="off"]`).
+120ms (`--dur-fast`) for hovers, 180ms (`--dur-base`) for entrances, `--ease` = `cubic-bezier(0.22, 1, 0.36, 1)`. Pages rise 4px; the blocks of Today arrive 40ms apart (`.stagger`); meters fill on appear (`.meter-fill`); cards you open rise 1px (`.lift`); menus scale from their trigger; mode and design changes cross-fade colours for 200ms; a tab's content fades in (`.anim-fade`); new cards rise (`.anim-rise`); a copy turns its icon into a check for 1.6 s (`CopyButton`); a counted tap gives a little (`.tap-pop`); ticking a task draws the logo's ring then a check (`DoneCheck`, 300ms before the task is marked). Nothing loops except a spinner or a live state. Everything stops under `prefers-reduced-motion` **and** when the user turns animations off (pref `motion`, `html[data-motion="off"]`).
 
 ### Comfort, all switchable (Settings → Appearance → Effets et confort)
 - **Animations** on/off (`useMotionPref`).
 - **Ambiance by the hour** (`useAutoAmbiance`, pref `autoAmbiance`, off by default): a day and an evening ambiance + mode; it overrides the display only, never the saved choice.
 - **Today layout** (`useTodayLayout`, pref `today.layout`): blocks shown and their order, each indicator, the "Premiers pas" checklist; reset in one click.
+- **Interface size** (`useUiScale`, pref `uiScale`, 80–150 %): the webview's own zoom, applied before the window shows.
+- **Light mode** (`useLitePref`, pref `lite`): the same screens with only what is useful now. Rules for every screen:
+  - Explanations under a control become its tooltip (`Field` does it; elsewhere `Hint`). Lines of context in the page bar disappear.
+  - One action in sight per block; the others go to a menu ("Autres actions") or under "Plus" (`MenuMore` in menus, `More` for groups of controls, `Detail` for secondary content).
+  - Technical figures (branch, last activity, module codes on cards, empty meters) step back; what needs the student (hand-in, uncommitted work, status) stays.
+  - Never remove a function, never change the sidebar, never add a click to an everyday action.
 
 ### Feedback
 Reversible actions confirm with a toast that has **Annuler** (project status, classification, hide/archive, planning deletions, ticking a task). The sidebar health area shows when MY Epitech last synced; a click syncs. The palette lists recent projects first and, when you type a project's name, its actions.

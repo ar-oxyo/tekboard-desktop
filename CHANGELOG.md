@@ -2,6 +2,27 @@
 
 Chaque version publiée a sa section ici ; la release GitHub reprend ce texte.
 
+## Prochaine version
+
+**Concentration**
+- **Mode allégé** (Réglages → Apparence) : seul l'essentiel reste à l'écran. Explications en infobulle, actions secondaires sous « Plus », menus réorganisés (dépôt, Inbox, Playground), écrans Aujourd'hui, Projets, Planning, fiche projet et MY Epitech épurés. Rien n'est supprimé, la barre latérale ne change pas.
+- **Taille de l'interface** de 80 à 150 %, appliquée par la fenêtre elle-même, avant son affichage.
+- **Démarrage aux couleurs de ton ambiance** : logo, fond et icône, sans flash.
+
+**Projets et planning**
+- **Projet HUB** : un espace pour les projets HUB, de l'idée à la présentation (jalons, tâches du planning, temps travaillé, dépôt et activité, liens et fichiers, journal et décisions, pitch, checklist, synthèse exportable, équipe par Connect, objectif et estimations de crédits jamais présentées comme officielles).
+- Un rendu d'école dépassé **clôt** le projet au lieu d'afficher des dizaines de jours de retard ; liste groupée (à rendre bientôt, en cours, à venir, clos récemment, anciens projets).
+- **Planification groupée** : plusieurs tâches choisies, modifiées ensemble et placées en une fois, aperçu modifiable, annulation en un geste. Réglages du planning derrière une roue dentée.
+- **Compte AER** à côté du compte Student ; agendas Student, AER ou les deux, sans doublon.
+
+**Artix et TekSpace**
+- Tableaux blancs : Artix suit un contrat strict (graphe, séquence, annotations), contrôlé et réparé automatiquement ; plus de Mermaid ni de fonctions inventées.
+- TekSpace : Jam Spotify lancée d'un collage et rejointe en un clic, statut « En pause », invitations en cartes.
+
+**Réglages**
+- Onglets réorganisés (Général, Apparence, Comptes, Artix, Outils, Données, À propos).
+- **Mode développeur** (sept appuis sur la version) : diagnostic local, journaux, rapport anonymisé ; Cozy Fox et les détails techniques de MY Epitech y sont rangés.
+
 ## 1.1.0
 
 **École**
