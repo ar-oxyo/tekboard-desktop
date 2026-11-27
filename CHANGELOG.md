@@ -2,7 +2,7 @@
 
 Chaque version publiée a sa section ici ; la release GitHub reprend ce texte.
 
-## Prochaine version
+## 1.2.0
 
 **Concentration**
 - **Mode allégé** (Réglages → Apparence) : seul l'essentiel reste à l'écran. Explications en infobulle, actions secondaires sous « Plus », menus réorganisés (dépôt, Inbox, Playground), écrans Aujourd'hui, Projets, Planning, fiche projet et MY Epitech épurés. Rien n'est supprimé, la barre latérale ne change pas.
