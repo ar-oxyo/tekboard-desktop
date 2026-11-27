@@ -1,4 +1,5 @@
 // MY Epitech: one "Sync" button signs in on the real site when needed, syncs, and closes what it opened.
+import { useLite } from "../../components/lite";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, GraduationCap, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -37,6 +38,8 @@ export function MyEpitechPage() {
   const [details, setDetails] = useState(false);
   // Raw answers and sync history are diagnostics: shown in developer mode only (Settings → Developer).
   const technical = useMyDetails();
+  // Light mode: once the agreement is given, the explanations step back (the agreement stays).
+  const lite = useLite();
   const forget = useMutation({
     mutationFn: (eraseCache: boolean) => api.myForget(eraseCache),
     onSuccess: () => {
@@ -99,7 +102,7 @@ export function MyEpitechPage() {
                 </Notice>
               )}
               {s?.connected && <p className="selectable text-xs text-muted">{s.account ? t("Connecté en tant que {who}.", { who: s.account }) + " " : ""}{technical && s.expiresAt ? t("Session valable jusqu'à {h}.", { h: new Date(s.expiresAt * 1000).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }) }) : ""}</p>}
-              {s && (
+              {s && !lite && (
                 <p className="text-xs text-muted">
                   {s.syncMinutes > 0 ? t("Synchronisation automatique toutes les {d} tant que la session est valide", { d: s.syncMinutes >= 60 ? `${s.syncMinutes / 60} h` : `${s.syncMinutes} min` }) : t("Synchronisation automatique désactivée")}.{" "}
                   <button type="button" className="text-accent-strong hover:underline" onClick={() => useUi.setState({ page: "settings", settingsTab: "accounts" })}>
@@ -112,10 +115,10 @@ export function MyEpitechPage() {
                   <input type="checkbox" className="accent-(--color-accent)" checked={consent} onChange={(e) => accept(e.target.checked)} />
                   {t("J'accepte de garder une session MY Epitech dans TekBoard sur cet ordinateur")}
                 </label>
-                <button type="button" aria-expanded={showHow} onClick={() => setHow(!showHow)} className="mt-2 flex items-center gap-1 text-left text-xs text-muted hover:text-fg">
+                {(!lite || !consent) && <button type="button" aria-expanded={showHow} onClick={() => setHow(!showHow)} className="mt-2 flex items-center gap-1 text-left text-xs text-muted hover:text-fg">
                   {showHow ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />} {t("Comment marche la connexion, et ce qui est gardé")}
-                </button>
-                {showHow && (
+                </button>}
+                {showHow && (!lite || !consent) && (
                   <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-4 text-xs leading-relaxed text-muted">
                     <li>{t("« Sync » utilise ta session si elle est encore valide. Sinon une fenêtre my.epitech.eu s'ouvre : la connexion Microsoft et la double authentification se font là, comme dans un navigateur.")}</li>
                     <li>{t("Dès que tu es connecté, la synchronisation démarre seule et la fenêtre ouverte pour l'occasion se referme. Une fenêtre MY Epitech que tu as ouverte toi-même n'est jamais fermée.")}</li>

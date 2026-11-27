@@ -1,6 +1,7 @@
 // Settings → Mises à jour. Checks the latest official release on GitHub and installs it the way
 // this copy was installed (AppImage replaced in place; .deb through the system password
 // prompt). A copy built by hand only checks and links to the releases page.
+import { Hint } from "../../components/lite";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { CircleCheck, Download, ExternalLink, RefreshCw, RotateCw } from "lucide-react";
@@ -137,7 +138,7 @@ export function UpdatesCard({ settings }: { settings: Settings }) {
             <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={settings.updateCheck} disabled={autoCheck.isPending} onChange={(e) => autoCheck.mutate(e.target.checked)} />
             <span>
               <span className="block text-sm">{t("Vérifier automatiquement")}</span>
-              <span className="block text-xs text-faint">{t("Une fois par jour au plus, sans rien installer : une notification discrète si une version sort.")}</span>
+              <Hint as="span">{t("Une fois par jour au plus, sans rien installer : une notification discrète si une version sort.")}</Hint>
             </span>
           </label>
         </div>

@@ -3,6 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Building2, CalendarDays, ClipboardCheck, Clock3, CloudDownload, Code2, Flag, GitCommitHorizontal, GraduationCap, Lock, Play, SquareTerminal, Sun, TriangleAlert, Wand2, CircleCheck } from "lucide-react";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useLite } from "../../components/lite";
+import { Menu, MenuItem } from "../../components/Menu";
 import { Button, cn, DoneCheck, IconButton, Meter, Notice, Spinner } from "../../components/ui";
 import { api, type BoardItem, type RepoInfo } from "../../lib/api";
 import { useBoard, useNow, usePref, useProjectActions, useRepos, useSettings } from "../../lib/hooks";
@@ -36,6 +38,7 @@ const sameDay = (i: CalItem, day: number) => i.start < addDays(day, 1) && i.end 
 
 /** What is on now, or what needs time: the screen's one primary action lives here. */
 export function HeroNow() {
+  const lite = useLite();
   const data = usePlanData();
   const nowDate = useNow(30_000);
   const now = nowDate.getTime();
@@ -129,23 +132,36 @@ export function HeroNow() {
             {status}
             {data.loading && <Spinner />}
           </span>
-          {side && <span className="font-mono text-xs text-faint">{side}</span>}
+          {side && !lite && <span className="font-mono text-xs text-faint">{side}</span>}
         </div>
         <h2 className="display text-2xl leading-tight font-(--title-weight) tracking-[-0.02em] text-balance">{title}</h2>
         {progress}
         <div className="flex flex-wrap gap-2">
           {primary}
-          {repo && (
+          {lite ? (
+            // Light mode: one action in sight, the others one click away.
+            (repo || extra) && (
+              <Menu label={t("Autres actions")}>
+                {repo && <MenuItem icon={<Code2 className="size-4" />} onSelect={() => act.ide.mutate(repo!)}>{t("Ouvrir l'IDE")}</MenuItem>}
+                {repo && <MenuItem icon={<SquareTerminal className="size-4" />} onSelect={() => act.terminal.mutate(repo!)}>{t("Terminal")}</MenuItem>}
+                {extra && <MenuItem icon={<Wand2 className="size-4" />} onSelect={() => ui().openAssistant({ text: "#week" })}>{t("Planifier ma semaine")}</MenuItem>}
+              </Menu>
+            )
+          ) : (
             <>
-              <Button className="h-9" icon={<Code2 className="size-4" />} onClick={() => act.ide.mutate(repo!)}>
-                {t("Ouvrir l'IDE")}
-              </Button>
-              <Button className="h-9" icon={<SquareTerminal className="size-4" />} onClick={() => act.terminal.mutate(repo!)}>
-                {t("Terminal")}
-              </Button>
+              {repo && (
+                <>
+                  <Button className="h-9" icon={<Code2 className="size-4" />} onClick={() => act.ide.mutate(repo!)}>
+                    {t("Ouvrir l'IDE")}
+                  </Button>
+                  <Button className="h-9" icon={<SquareTerminal className="size-4" />} onClick={() => act.terminal.mutate(repo!)}>
+                    {t("Terminal")}
+                  </Button>
+                </>
+              )}
+              {extra}
             </>
           )}
-          {extra}
         </div>
       </section>
       {register.length > 0 && (
@@ -177,18 +193,20 @@ export function HeroNow() {
 }
 
 function Tile({ label, icon, value, unit, pct, tone = "accent", note, onClick }: { label: string; icon: ReactNode; value: string; unit?: string; pct: number; tone?: "accent" | "warn"; note: ReactNode; onClick?: () => void }) {
+  // Light mode: the figure and its bar; the note goes into the tooltip.
+  const lite = useLite();
   return (
-    <button type="button" onClick={onClick} className="lift flex min-w-0 flex-col gap-2 rounded-xl border border-line bg-surface px-4 py-3.5 text-left hover:border-line-strong">
+    <button type="button" onClick={onClick} title={lite && typeof note === "string" ? note : undefined} className="lift flex min-w-0 flex-col gap-2 rounded-xl border border-line bg-surface px-4 py-3.5 text-left hover:border-line-strong">
       <span className="flex items-center justify-between text-xs text-muted">
         <span>{label}</span>
-        <span className="text-faint [&>svg]:size-4">{icon}</span>
+        {!lite && <span className="text-faint [&>svg]:size-4">{icon}</span>}
       </span>
       <span className="font-mono text-xl font-medium tracking-[-0.02em]">
         {value}
         {unit && <span className="text-xs text-faint">{unit}</span>}
       </span>
       <Meter value={pct} max={100} tone={tone} className="h-[3px]" />
-      <span className="truncate text-2xs text-faint">{note}</span>
+      {!lite && <span className="truncate text-2xs text-faint">{note}</span>}
     </button>
   );
 }
@@ -400,6 +418,7 @@ function ProjectCard({ repo, load }: { repo: RepoInfo; load?: { remaining: numbe
   const openSheet = useUi((s) => s.openSheet);
   const issue = repo.error ? { level: "danger" as const, label: t("Illisible") } : attention(repo)[0];
   const code = repo.my?.unitCode ?? repo.epitech?.module ?? repo.group;
+  const lite = useLite();
   return (
     <div className="lift group flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 hover:border-line-strong">
       <button type="button" onClick={() => openSheet(repo.path)} className="flex items-start justify-between gap-2 text-left">
@@ -409,13 +428,14 @@ function ProjectCard({ repo, load }: { repo: RepoInfo; load?: { remaining: numbe
         </span>
         <JChip day={repo.progress === "done" ? null : repo.meta.deadline} />
       </button>
-      <div>
+      {/* Light mode: the planned-time bar only when there is an estimate to measure it against. */}
+      {(!lite || load?.remaining != null) && <div>
         <div className="mb-1.5 flex justify-between text-2xs text-muted">
           <span>{t("Temps planifié")}</span>
           <span className="font-mono">{load?.remaining != null ? `${fmtDur(load.planned)} / ${fmtDur(load.remaining)}` : t("pas d'estimation")}</span>
         </div>
         <Meter value={load?.planned ?? 0} max={load?.remaining ?? 1} tone={load?.remaining != null && load.planned >= load.remaining * 0.9 ? "ok" : "accent"} className="h-1" />
-      </div>
+      </div>}
       <div className="flex items-center justify-between text-xs">
         <span className={cn("flex min-w-0 items-center gap-1.5", !issue ? "text-ok" : issue.level === "danger" ? "text-danger" : issue.level === "warn" ? "text-warn" : "text-accent-strong")}>
           {issue ? <GitCommitHorizontal className="size-3.5 shrink-0" /> : <CircleCheck className="size-3.5 shrink-0" />}

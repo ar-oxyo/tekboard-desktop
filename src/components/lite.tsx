@@ -9,14 +9,22 @@
 // New screens use these instead of scattering `lite ? … : …` conditions.
 import { ChevronRight } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { usePref } from "../lib/hooks";
+import { create } from "zustand";
 import { t } from "../lib/i18n";
-import { cn } from "./ui";
 
-/** Whether light mode is on (the attribute on <html> follows it, see `useLitePref`). */
+// Not `cn` from ui.tsx: ui.tsx itself reads `useLite`.
+const cn = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(" ");
+
+/**
+ * The current mode, kept by `useLitePref` (lib/hooks.ts, mounted by App) from the saved
+ * preference; before it is read, what `public/boot.js` put on <html>. A store without
+ * dependencies, so the shared primitives (ui.tsx, Menu.tsx) can read it.
+ */
+export const useLiteStore = create<{ on: boolean }>(() => ({ on: typeof document !== "undefined" && document.documentElement.dataset.lite === "on" }));
+
+/** Whether light mode is on. */
 export function useLite(): boolean {
-  const [on] = usePref<boolean>("lite", false);
-  return on;
+  return useLiteStore((s) => s.on);
 }
 
 /** Secondary content, shown in full mode only. */
@@ -25,9 +33,9 @@ export function Detail({ children }: { children: ReactNode }) {
 }
 
 /** A short explanation under a control, in full mode only. */
-export function Hint({ children, className }: { children: ReactNode; className?: string }) {
+export function Hint({ children, className, as: Tag = "p" }: { children: ReactNode; className?: string; as?: "p" | "span" }) {
   if (useLite()) return null;
-  return <p className={cn("text-xs text-faint", className)}>{children}</p>;
+  return <Tag className={cn("text-xs text-faint", Tag === "span" && "block", className)}>{children}</Tag>;
 }
 
 /**

@@ -7,6 +7,7 @@ import { useUi } from "./store";
 import { t } from "./i18n";
 import { applyMode, crossFade, MODE_KEY, storedMode, type ColorMode } from "./appearance";
 import { ACCENT_KEY, applyAccent } from "./color";
+import { useLiteStore } from "../components/lite";
 
 export const keys = {
   settings: ["settings"] as const,
@@ -274,6 +275,7 @@ export function useUiScale(): [number, (scale: number) => void] {
 export function useLitePref(): [boolean, (on: boolean) => void] {
   const [on, set] = usePref<boolean>("lite", false);
   useEffect(() => {
+    useLiteStore.setState({ on });
     if (on) document.documentElement.dataset.lite = "on";
     else delete document.documentElement.dataset.lite;
     mirror("tekboard.lite", on ? "on" : "off");

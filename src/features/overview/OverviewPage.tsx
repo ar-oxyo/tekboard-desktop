@@ -1,3 +1,4 @@
+import { useLite } from "../../components/lite";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, CalendarClock, CalendarDays, ChevronDown, ChevronRight, CloudDownload, FolderGit2, FolderPlus, GitCommitHorizontal, PenLine, Play, Plus, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -22,6 +23,7 @@ export function OverviewPage() {
   const hasRoots = (settings.data?.roots.length ?? 0) > 0;
   const repos = useRepos(hasRoots);
   const qc = useQueryClient();
+  const lite = useLite();
 
   const now = new Date();
   const today = now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
@@ -109,7 +111,8 @@ export function OverviewPage() {
         <ErrorNote title={t("Impossible de parcourir tes projets")}>{asAppError(repos.error).message}</ErrorNote>
       ) : (
         <div className="stagger flex flex-col gap-7">
-          {layout.checklist && !customize && <GettingStarted />}
+          {/* The "first steps" checklist is a full-mode guide; light mode starts on the work. */}
+          {layout.checklist && !customize && !lite && <GettingStarted />}
           <WidgetGrid layout={layout} onChange={setLayout} edit={customize} onDone={() => setCustomize(false)} render={widget} />
         </div>
       )}

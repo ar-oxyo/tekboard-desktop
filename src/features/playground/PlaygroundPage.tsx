@@ -10,7 +10,7 @@ import { usePref } from "../../lib/hooks";
 import { useUi } from "../../lib/store";
 import { aiGate } from "../../lib/ai";
 import { useAiStatus } from "../settings/AiProvider";
-import { Menu, MenuItem, MenuLabel, MenuSeparator } from "../../components/Menu";
+import { Menu, MenuItem, MenuLabel, MenuMore, MenuSeparator } from "../../components/Menu";
 import { Select } from "../../components/Select";
 import { Badge, Button, cn, EmptyState, ErrorNote, IconButton, Input, Kbd, Spinner } from "../../components/ui";
 import { artixRequest, DEFAULT_SETTINGS, diagnosticsFor, fileNameError, identifiersOf, nextFileName, resultOf, sortFiles, starterFor, type ArtixAsk } from "../../lib/playground";
@@ -267,12 +267,14 @@ function DraftView({ draft, tools, onDefaults, onDuplicate }: { draft: Draft; to
               <MenuItem onSelect={() => ask("memory")} disabled={!result.run?.memory.length}>
                 {t("Expliquer les problèmes mémoire")}
               </MenuItem>
-              <MenuItem onSelect={() => ask("edge")}>{t("Proposer des cas limites")}</MenuItem>
-              <MenuItem onSelect={() => ask("tests")}>{t("Générer un petit environnement de test")}</MenuItem>
               <MenuItem onSelect={() => ask("fix")} disabled={!result.compile}>
                 {t("Suggérer une correction (sans l'appliquer)")}
               </MenuItem>
-              <MenuItem onSelect={askConcept}>{t("Comprendre une notion…")}</MenuItem>
+              <MenuMore>
+                <MenuItem onSelect={() => ask("edge")}>{t("Proposer des cas limites")}</MenuItem>
+                <MenuItem onSelect={() => ask("tests")}>{t("Générer un petit environnement de test")}</MenuItem>
+                <MenuItem onSelect={askConcept}>{t("Comprendre une notion…")}</MenuItem>
+              </MenuMore>
             </Menu>
             <Menu>
               <MenuItem icon={<LibraryBig className="size-3.5" />} onSelect={() => setDialog("library")}>
@@ -281,12 +283,13 @@ function DraftView({ draft, tools, onDefaults, onDuplicate }: { draft: Draft; to
               <MenuItem icon={<FolderPlus className="size-3.5" />} onSelect={() => setDialog("export")}>
                 {t("Exporter en projet…")}
               </MenuItem>
-              <MenuItem icon={<GitCompare className="size-3.5" />} onSelect={() => setDialog("compare")}>
-                {t("Comparer à une autre version…")}
-              </MenuItem>
-              <MenuSeparator />
               <MenuItem icon={<Copy className="size-3.5" />} onSelect={onDuplicate}>
                 {t("Dupliquer le brouillon")}
+              </MenuItem>
+              <MenuSeparator />
+              <MenuMore>
+              <MenuItem icon={<GitCompare className="size-3.5" />} onSelect={() => setDialog("compare")}>
+                {t("Comparer à une autre version…")}
               </MenuItem>
               <MenuItem icon={<Share2 className="size-3.5" />} onSelect={() => void flush(draft.id).then(() => useUi.getState().openShare({ kind: "draft", id: draft.id }))}>
                 {t("Partager le brouillon (TekShare)…")}
@@ -296,6 +299,7 @@ function DraftView({ draft, tools, onDefaults, onDuplicate }: { draft: Draft; to
                   {t("Partager l'erreur de compilation…")}
                 </MenuItem>
               )}
+              </MenuMore>
             </Menu>
             {running ? (
               <Button size="sm" variant="danger" icon={<Square className="size-3.5" />} onClick={() => jobId !== null && void api.jobCancel(jobId)}>

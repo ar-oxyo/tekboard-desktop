@@ -3254,4 +3254,5 @@ export const en: Record<string, string> = {
   "Lien de la Jam Spotify": "Spotify Jam link",
   "Ce n'est pas un lien de Jam Spotify (open.spotify.com/socialsession/… ou spotify.link/…).": "This is not a Spotify Jam link (open.spotify.com/socialsession/… or spotify.link/…).",
   "Dans Spotify : Démarrer une Jam → Inviter → Copier le lien.": "In Spotify: Start a Jam → Invite → Copy link.",
+  "Transformer en…": "Turn into…",
 };

@@ -1,7 +1,7 @@
 // Pieces used wherever a repository is shown: status chips, the progress picker and the action menu.
 import { Archive, ArchiveRestore, CircleCheck, CircleDashed, EyeOff, CircleDot, Code2, Copy, FlaskConical, FolderOpen, GitBranch, Globe, GraduationCap, LayoutTemplate, NotebookPen, MonitorPlay, Rocket, Share2, Star, SquareTerminal, User, Wand2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { Menu, MenuChoice, MenuItem, MenuLabel, MenuSeparator, SubMenu } from "../../components/Menu";
+import { Menu, MenuChoice, MenuItem, MenuLabel, MenuMore, MenuSeparator, SubMenu } from "../../components/Menu";
 import { cn, Dot, IconButton } from "../../components/ui";
 import type { Progress, RepoInfo } from "../../lib/api";
 import { useProjectActions } from "../../lib/hooks";
@@ -122,6 +122,8 @@ export function RepoMenu({ repo, sheet = true }: { repo: RepoInfo; sheet?: boole
   const openLauncher = useUi((s) => s.openLauncher);
   const hasRemote = repo.remoteUrl !== null;
   return (
+    // Ordered by use: open it, work on it, then organise it. What is occasional (online
+    // copy, sharing, templates, classification, hiding) is grouped under "Plus" in light mode.
     <Menu label={t("Autres actions pour {n}", { n: repo.name })}>
       {sheet && (
         <MenuItem icon={<NotebookPen className="size-4" />} onSelect={() => openSheet(repo.path)}>
@@ -137,32 +139,16 @@ export function RepoMenu({ repo, sheet = true }: { repo: RepoInfo; sheet?: boole
       <MenuItem icon={<FolderOpen className="size-4" />} onSelect={() => act.files.mutate(repo)}>
         {t("Afficher dans Fichiers")}
       </MenuItem>
-      <MenuItem icon={<Rocket className="size-4" />} onSelect={() => act.launch.mutate(repo)} title={t("Lance le programme que ce projet compile, dans un terminal")}>
-        {t("Lancer le binaire")}
-      </MenuItem>
       <MenuSeparator />
-      <MenuItem icon={<Globe className="size-4" />} disabled={!hasRemote} onSelect={() => act.remote.mutate(repo)} hint={hasRemote ? "Firefox" : t("pas de dépôt distant")} title={hasRemote ? (repo.remoteUrl ?? undefined) : t("Ce dépôt n'a pas de dépôt distant")}>
-        {t("Ouvrir sur GitHub")}
-      </MenuItem>
-      <MenuItem icon={<Copy className="size-4" />} disabled={!hasRemote} onSelect={() => act.copyUrl(repo)}>
-        {t("Copier l'URL distante")}
-      </MenuItem>
       <MenuItem icon={<GitBranch className="size-4" />} onSelect={() => openGit(repo.path)}>
         Git
       </MenuItem>
       <MenuItem icon={<FlaskConical className="size-4" />} onSelect={() => openTesting(repo.path)}>
         Tests
       </MenuItem>
-      <MenuItem icon={<LayoutTemplate className="size-4" />} onSelect={() => openLauncher({ mode: "existing", path: repo.path })}>
-        {t("Appliquer un modèle…")}
+      <MenuItem icon={<Rocket className="size-4" />} onSelect={() => act.launch.mutate(repo)} title={t("Lance le programme que ce projet compile, dans un terminal")}>
+        {t("Lancer le binaire")}
       </MenuItem>
-      <MenuItem icon={<MonitorPlay className="size-4" />} onSelect={() => useUi.getState().openLive(repo.path)} title={t("Coder à plusieurs dans VS Code avec P2P Live Share")}>
-        {t("Collaborer (TekLive)…")}
-      </MenuItem>
-      <SubMenu icon={<Share2 className="size-4" />} label={t("Partager (TekShare)")}>
-        <MenuItem onSelect={() => openShare({ kind: "patch", repo: repo.path })}>{t("Mes modifications non commitées (patch)…")}</MenuItem>
-        <MenuItem onSelect={() => openShare({ kind: "tests", repo: repo.path })}>{t("Le dossier tests/…")}</MenuItem>
-      </SubMenu>
       <MenuSeparator />
       <SubMenu icon={<CircleDot className="size-4" />} label={t("Statut")}>
         {PROGRESS.map((p) => (
@@ -171,19 +157,6 @@ export function RepoMenu({ repo, sheet = true }: { repo: RepoInfo; sheet?: boole
           </MenuChoice>
         ))}
       </SubMenu>
-      <SubMenu icon={repo.kind === "epitech" ? <GraduationCap className="size-4" /> : <User className="size-4" />} label={t("Classement")}>
-        <MenuLabel>{repo.kind === "epitech" ? "Epitech" : t("Personnel")} — {repo.kindReason}</MenuLabel>
-        <MenuChoice checked={repo.meta.kindOverride === "epitech"} icon={<GraduationCap className="size-4" />} onSelect={() => act.kind.mutate({ repo, kind: "epitech" })}>
-          Epitech
-        </MenuChoice>
-        <MenuChoice checked={repo.meta.kindOverride === "personal"} icon={<User className="size-4" />} onSelect={() => act.kind.mutate({ repo, kind: "personal" })}>
-          {t("Personnel")}
-        </MenuChoice>
-        <MenuChoice checked={repo.meta.kindOverride === null} icon={<Wand2 className="size-4" />} onSelect={() => act.kind.mutate({ repo, kind: null })}>
-          {t("Automatique")}
-        </MenuChoice>
-      </SubMenu>
-      <MenuSeparator />
       {repo.meta.visibility === "archived" ? (
         <MenuItem icon={<ArchiveRestore className="size-4" />} onSelect={() => act.visibility.mutate({ repo, visibility: null })}>
           {t("Désarchiver")}
@@ -193,9 +166,40 @@ export function RepoMenu({ repo, sheet = true }: { repo: RepoInfo; sheet?: boole
           {t("Archiver")}
         </MenuItem>
       )}
-      <MenuItem icon={<EyeOff className="size-4" />} onSelect={() => act.visibility.mutate({ repo, visibility: "hidden" })} hint={repo.duplicateOf ? t("copie") : undefined} title={t("Pour une copie ou un dossier fantôme : TekBoard l'ignore partout (listes, planning, MY Epitech). Le dossier n'est jamais supprimé.")}>
-        {t("Masquer")}
-      </MenuItem>
+      <MenuSeparator />
+      <MenuMore>
+        <MenuItem icon={<Globe className="size-4" />} disabled={!hasRemote} onSelect={() => act.remote.mutate(repo)} hint={hasRemote ? "Firefox" : t("pas de dépôt distant")} title={hasRemote ? (repo.remoteUrl ?? undefined) : t("Ce dépôt n'a pas de dépôt distant")}>
+          {t("Ouvrir sur GitHub")}
+        </MenuItem>
+        <MenuItem icon={<Copy className="size-4" />} disabled={!hasRemote} onSelect={() => act.copyUrl(repo)}>
+          {t("Copier l'URL distante")}
+        </MenuItem>
+        <MenuItem icon={<MonitorPlay className="size-4" />} onSelect={() => useUi.getState().openLive(repo.path)} title={t("Coder à plusieurs dans VS Code avec P2P Live Share")}>
+          {t("Collaborer (TekLive)…")}
+        </MenuItem>
+        <SubMenu icon={<Share2 className="size-4" />} label={t("Partager (TekShare)")}>
+          <MenuItem onSelect={() => openShare({ kind: "patch", repo: repo.path })}>{t("Mes modifications non commitées (patch)…")}</MenuItem>
+          <MenuItem onSelect={() => openShare({ kind: "tests", repo: repo.path })}>{t("Le dossier tests/…")}</MenuItem>
+        </SubMenu>
+        <MenuItem icon={<LayoutTemplate className="size-4" />} onSelect={() => openLauncher({ mode: "existing", path: repo.path })}>
+          {t("Appliquer un modèle…")}
+        </MenuItem>
+        <SubMenu icon={repo.kind === "epitech" ? <GraduationCap className="size-4" /> : <User className="size-4" />} label={t("Classement")}>
+          <MenuLabel>{repo.kind === "epitech" ? "Epitech" : t("Personnel")} — {repo.kindReason}</MenuLabel>
+          <MenuChoice checked={repo.meta.kindOverride === "epitech"} icon={<GraduationCap className="size-4" />} onSelect={() => act.kind.mutate({ repo, kind: "epitech" })}>
+            Epitech
+          </MenuChoice>
+          <MenuChoice checked={repo.meta.kindOverride === "personal"} icon={<User className="size-4" />} onSelect={() => act.kind.mutate({ repo, kind: "personal" })}>
+            {t("Personnel")}
+          </MenuChoice>
+          <MenuChoice checked={repo.meta.kindOverride === null} icon={<Wand2 className="size-4" />} onSelect={() => act.kind.mutate({ repo, kind: null })}>
+            {t("Automatique")}
+          </MenuChoice>
+        </SubMenu>
+        <MenuItem icon={<EyeOff className="size-4" />} onSelect={() => act.visibility.mutate({ repo, visibility: "hidden" })} hint={repo.duplicateOf ? t("copie") : undefined} title={t("Pour une copie ou un dossier fantôme : TekBoard l'ignore partout (listes, planning, MY Epitech). Le dossier n'est jamais supprimé.")}>
+          {t("Masquer")}
+        </MenuItem>
+      </MenuMore>
     </Menu>
   );
 }

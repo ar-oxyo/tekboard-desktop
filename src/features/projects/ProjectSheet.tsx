@@ -1,4 +1,6 @@
 // Project sheet: what you add to a repository — status, deadline, notes, build and run commands, subjects.
+import { Menu, MenuItem } from "../../components/Menu";
+import { useLite } from "../../components/lite";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, CircleCheck, CircleX, Code2, Hammer, Rocket } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -21,6 +23,8 @@ const ProjectBoards = lazy(() => import("../whiteboard/BoardsPage").then((m) => 
 
 // Libraries are managed from Projects → Libraries, where the whole catalogue is.
 type Tab = "overview" | "details" | "git" | "testing" | "docs" | "boards" | "advanced";
+/** Tabs used now and then: under "Plus" in light mode. */
+const RARE: Tab[] = ["docs", "boards", "advanced"];
 const TABS: Array<[Tab, string]> = [["overview", t("Vue d'ensemble")], ["details", t("Rendu et notes")], ["git", "Git"], ["testing", "Tests"], ["docs", t("Documentation")], ["boards", t("Tableaux")], ["advanced", t("Avancé")]];
 
 export function ProjectSheetDialog({ path }: { path: string }) {
@@ -65,6 +69,7 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
   const [draft, setDraft] = useState<SheetInput>(() => toInput(initial));
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
   const [tab, setTab] = useState<Tab>("overview");
+  const lite = useLite();
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: keys.repos });
     void qc.invalidateQueries({ queryKey: ["run-info", repo.path] });
@@ -193,12 +198,22 @@ function SheetBody({ repo, initial }: { repo: RepoInfo; initial: Sheet }) {
           )}
         </div>
       )}
-      <div className="flex gap-5 border-b border-ink/6">
-        {TABS.map(([id, label]) => (
+      <div className="flex items-center gap-5 border-b border-ink/6">
+        {TABS.filter(([id]) => !lite || !RARE.includes(id) || tab === id).map(([id, label]) => (
           <button key={id} type="button" onClick={() => setTab(id)} className={cn("-mb-px h-9 border-b-2 px-1 text-sm whitespace-nowrap transition-colors duration-150", tab === id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}>
             {label}
           </button>
         ))}
+        {/* Light mode: the occasional tabs wait under "Plus". */}
+        {lite && TABS.some(([id]) => RARE.includes(id) && id !== tab) && (
+          <Menu label={t("Plus")} trigger={<button type="button" className="-mb-px h-9 px-1 text-sm text-muted hover:text-fg">{t("Plus")}</button>}>
+            {TABS.filter(([id]) => RARE.includes(id) && id !== tab).map(([id, label]) => (
+              <MenuItem key={id} onSelect={() => setTab(id)}>
+                {label}
+              </MenuItem>
+            ))}
+          </Menu>
+        )}
       </div>
       {tab === "overview" && <PlanOverview repo={repo} />}
       {tab === "git" && <GitTab repo={repo} />}

@@ -12,7 +12,7 @@ import { displayName } from "../../lib/repos";
 import { useUi } from "../../lib/store";
 import { locale, t } from "../../lib/i18n";
 import { Modal } from "../../components/Modal";
-import { Menu, MenuItem, MenuSeparator } from "../../components/Menu";
+import { Menu, MenuItem, MenuMore, MenuSeparator, SubMenu } from "../../components/Menu";
 import { ProjectPicker } from "../../components/ProjectPicker";
 import { Badge, Button, cn, EmptyState, IconButton, Input, Spinner } from "../../components/ui";
 import { usePlayground } from "../playground/store";
@@ -220,38 +220,42 @@ function Detail({ c, onGone }: { c: Capture; onGone: () => void }) {
           <MenuItem icon={<FolderGit2 className="size-3.5" />} onSelect={() => setLinking(true)}>
             {c.project ? t("Changer de projet") : t("Associer à un projet")}
           </MenuItem>
-          {c.kind !== "task" && (
-            <MenuItem icon={<ListTodo className="size-3.5" />} onSelect={() => void convert("task")}>
-              {t("Transformer en tâche")}
-            </MenuItem>
-          )}
-          {c.kind !== "note" && c.kind !== "task" && (
-            <MenuItem icon={<StickyNote className="size-3.5" />} onSelect={() => void convert("note")}>
-              {t("Garder comme note")}
-            </MenuItem>
-          )}
-          {c.kind !== "snippet" && c.kind !== "task" && (
-            <MenuItem icon={<Code2 className="size-3.5" />} onSelect={() => void convert("snippet")}>
-              {t("Garder comme snippet")}
-            </MenuItem>
-          )}
-          {(c.kind === "note" || c.kind === "snippet") && (
-            <MenuItem icon={<InboxIcon className="size-3.5" />} onSelect={() => void convert("idea")}>
-              {t("Remettre dans l'Inbox")}
-            </MenuItem>
-          )}
+          {/* What it becomes: one entry instead of four. */}
+          <SubMenu icon={<ListTodo className="size-3.5" />} label={t("Transformer en…")}>
+            {c.kind !== "task" && (
+              <MenuItem icon={<ListTodo className="size-3.5" />} onSelect={() => void convert("task")}>
+                {t("Tâche")}
+              </MenuItem>
+            )}
+            {c.kind !== "note" && c.kind !== "task" && (
+              <MenuItem icon={<StickyNote className="size-3.5" />} onSelect={() => void convert("note")}>
+                {t("Note")}
+              </MenuItem>
+            )}
+            {c.kind !== "snippet" && c.kind !== "task" && (
+              <MenuItem icon={<Code2 className="size-3.5" />} onSelect={() => void convert("snippet")}>
+                {t("Snippet")}
+              </MenuItem>
+            )}
+            {(c.kind === "note" || c.kind === "snippet") && (
+              <MenuItem icon={<InboxIcon className="size-3.5" />} onSelect={() => void convert("idea")}>
+                {t("Remettre dans l'Inbox")}
+              </MenuItem>
+            )}
+          </SubMenu>
           <MenuItem icon={<Bookmark className="size-3.5" />} onSelect={() => setTagInput(c.tags.join(" "))}>
             {t("Tags…")}
           </MenuItem>
-          <MenuSeparator />
-          <MenuItem icon={<Send className="size-3.5" />} onSelect={() => useUi.getState().openShare(shareOf(c))}>
-            {t("Partager avec TekShare…")}
-          </MenuItem>
-          {code && isC(code.lang) && (
-            <MenuItem icon={<SquareTerminal className="size-3.5" />} onSelect={() => void toPlayground()}>
-              {t("Ouvrir dans Code Playground")}
+          <MenuMore>
+            <MenuItem icon={<Send className="size-3.5" />} onSelect={() => useUi.getState().openShare(shareOf(c))}>
+              {t("Partager avec TekShare…")}
             </MenuItem>
-          )}
+            {code && isC(code.lang) && (
+              <MenuItem icon={<SquareTerminal className="size-3.5" />} onSelect={() => void toPlayground()}>
+                {t("Ouvrir dans Code Playground")}
+              </MenuItem>
+            )}
+          </MenuMore>
           <MenuSeparator />
           <MenuItem icon={c.archivedAt ? <ArchiveRestore className="size-3.5" /> : <Archive className="size-3.5" />} onSelect={() => void run(api.brainArchive(c.id, !c.archivedAt), c.archivedAt ? t("Désarchivée") : t("Archivée"))}>
             {c.archivedAt ? t("Désarchiver") : t("Archiver")}

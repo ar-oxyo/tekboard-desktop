@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarCheck, ChevronLeft, ChevronRight, Inbox, Lightbulb, ListFilter, Plus, RefreshCw, Settings2, Sparkles, Wand2 } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
+import { useLite } from "../../components/lite";
 import { Menu, MenuChoice, MenuItem, MenuLabel, MenuSeparator } from "../../components/Menu";
 import { Button, cn, Dot, DoneCheck, ErrorNote, IconButton, Spinner, Tag } from "../../components/ui";
 import type { PlanTask } from "../../lib/api";
@@ -52,6 +53,8 @@ export function PlanningPage() {
     return () => window.removeEventListener("tekboard:day-changed", onDay);
   }, []);
   const [ghost, setGhost] = useState<{ start: number; end: number; title: string } | null>(null);
+  // Light mode: the week and what to place; Artix and the sync line stay one click away.
+  const lite = useLite();
   const [dialog, setDialog] = useState<"settings" | "review" | null>(null);
   const toast = useUi((s) => s.toast);
   const f = { ...DEFAULT_FILTERS, ...filters };
@@ -204,9 +207,15 @@ export function PlanningPage() {
               {t("Bilan de la semaine")}
             </MenuItem>
           </Menu>
-          <Button size="sm" icon={<Sparkles className="size-3.5" />} onClick={() => useUi.getState().openAssistant()} title={t("Demande à Artix d'organiser ton planning. Rien ne change avant que tu acceptes sa proposition.")}>
-            {t("Demander à Artix")}
-          </Button>
+          {lite ? (
+            <IconButton label={t("Demander à Artix")} onClick={() => useUi.getState().openAssistant()}>
+              <Sparkles className="size-4" />
+            </IconButton>
+          ) : (
+            <Button size="sm" icon={<Sparkles className="size-3.5" />} onClick={() => useUi.getState().openAssistant()} title={t("Demande à Artix d'organiser ton planning. Rien ne change avant que tu acceptes sa proposition.")}>
+              {t("Demander à Artix")}
+            </Button>
+          )}
           <Button size="sm" variant="primary" icon={<Plus className="size-3.5" />} onClick={() => create(Math.ceil(now / (15 * MIN)) * 15 * MIN, Math.ceil(now / (15 * MIN)) * 15 * MIN + 60 * MIN)}>
             {t("Nouveau")}
           </Button>
@@ -240,7 +249,7 @@ export function PlanningPage() {
           <div className="min-h-0 flex-1 overflow-y-auto">
             {side === "inbox" ? <InboxPanel data={data} onDrag={dragTask} now={now} /> : <ProjectsPanel projects={data.projects} loads={loads} now={nowDate} />}
           </div>
-          <p className="shrink-0 border-t border-ink/6 px-4 py-2 text-2xs text-faint">
+          <p className={cn("shrink-0 border-t border-ink/6 px-4 py-2 text-2xs text-faint", lite && "hidden")}>
             {data.agenda?.syncedAt ? t("MY Epitech synchronisé {when} · ses entrées sont en lecture seule", { when: timeAgo(data.agenda.syncedAt) }) : t("MY Epitech pas synchronisé : seules tes propres entrées sont affichées.")}{" "}
             <button type="button" className="hover:text-fg" onClick={() => invalidate(qc, ["plan", "repos", "my"])}>
               Actualiser

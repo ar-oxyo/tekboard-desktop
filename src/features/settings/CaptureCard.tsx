@@ -1,5 +1,6 @@
 // Settings → General: how the capture window opens outside TekBoard. A global shortcut works
 // under X11 only; under Wayland the system's own shortcut runs `tekboard capture`.
+import { Hint } from "../../components/lite";
 import { useQuery } from "@tanstack/react-query";
 import { Copy } from "lucide-react";
 import { api, type Settings } from "../../lib/api";
@@ -37,7 +38,7 @@ export function CaptureCard({ draft, set }: { draft: Settings; set: (p: Partial<
           <input type="checkbox" className="mt-0.5 accent-(--color-accent)" disabled={s ? !s.trayAvailable : false} checked={draft.trayIcon} onChange={(e) => set({ trayIcon: e.target.checked })} />
           <span>
             {t("Icône dans la zone de notification")}
-            <span className="block text-xs text-faint">{s && !s.trayAvailable ? t("Indisponible : la bibliothèque AppIndicator n'est pas installée (sudo apt install libayatana-appindicator3-1).") : t("Capture, Inbox et point de sauvegarde en un clic. Sous GNOME, l'extension AppIndicator est nécessaire.")}</span>
+            <Hint as="span">{s && !s.trayAvailable ? t("Indisponible : la bibliothèque AppIndicator n'est pas installée (sudo apt install libayatana-appindicator3-1).") : t("Capture, Inbox et point de sauvegarde en un clic. Sous GNOME, l'extension AppIndicator est nécessaire.")}</Hint>
           </span>
         </label>
         <p className="text-xs text-faint">{t("Dans TekBoard : Ctrl+I, la palette (Ctrl+K) ou l'Inbox de la barre latérale.")}</p>

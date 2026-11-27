@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDownUp, ChevronRight, Eye, EyeOff, FolderGit2, GraduationCap, Play, Plus, RefreshCw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useLite } from "../../components/lite";
 import { Menu, MenuChoice, MenuLabel } from "../../components/Menu";
 import { Select } from "../../components/Select";
 import { Button, cn, EmptyState, ErrorNote, IconButton, Input, PageHeader, Spinner, Tag } from "../../components/ui";
@@ -46,6 +47,9 @@ export function ProjectsPage() {
   const hidden = useQuery({ queryKey: ["hidden-repos"], queryFn: api.hiddenRepos, enabled: hasRoots });
   const [showHidden, setShowHidden] = useState(false);
   const [module, setModule] = usePref<string>("projects.module", "");
+  // Light mode: the smart order already groups "in progress" and "to do"; those two filters
+  // step back (still there when chosen), the module picker only shows once one is used.
+  const lite = useLite();
 
   const all = repos.data ?? [];
   const modules = useMemo(() => modulesOf(all), [all]);
@@ -96,7 +100,7 @@ export function ProjectsPage() {
               <Input autoFocus className="pl-8" aria-label={t("Chercher par nom, module ou branche")} placeholder={t("Rechercher")} value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
             <div className="flex items-center gap-0.5" role="tablist" aria-label={t("Filtre de statut")}>
-              {FILTERS.map((f) => (
+              {FILTERS.filter((f) => !lite || filter === f.id || (f.id !== "in_progress" && f.id !== "todo")).map((f) => (
                 <button
                   key={f.id}
                   type="button"
@@ -123,7 +127,7 @@ export function ProjectsPage() {
                 <GraduationCap className="size-3.5" />
                 Epitech Projects Only
               </button>
-              {modules.length > 1 && (
+              {modules.length > 1 && (!lite || activeModule) && (
                 <Select
                   size="sm"
                   mono
@@ -162,9 +166,9 @@ export function ProjectsPage() {
                   <span className="w-7 shrink-0" />
                   <span className="flex-[2]">{t("Projet")}</span>
                   <span className="w-32 shrink-0">{t("Rendu")}</span>
-                  <span className="flex-[1.6]">Git</span>
+                  <span className="flex-[1.6]">{lite ? "" : "Git"}</span>
                   <span className={cn("shrink-0", filter !== "todo" && filter !== "in_progress" && filter !== "done" ? "w-28" : "w-6")}>{filter !== "todo" && filter !== "in_progress" && filter !== "done" ? t("Statut") : ""}</span>
-                  <span className="hidden w-24 shrink-0 text-right @3xl:block">{t("Activité")}</span>
+                  {!lite && <span className="hidden w-24 shrink-0 text-right @3xl:block">{t("Activité")}</span>}
                   <span className="w-14 shrink-0" />
                 </li>
                 {grouped ? (
@@ -236,6 +240,8 @@ function HiddenRow({ repo }: { repo: RepoInfo }) {
 /** One line per repository. Only what differs from row to row is written out: the default branch, a clean tree and the status the list is already filtered on stay silent. */
 function RepoRow({ repo, now, showStatus }: { repo: RepoInfo; now: Date; showStatus: boolean }) {
   const act = useProjectActions();
+  // Light mode: what needs you (hand-in, uncommitted work, status), not the branch nor the last activity.
+  const lite = useLite();
   const openSheet = useUi((s) => s.openSheet);
   const mod = moduleOf(repo);
   const active = lastActivity(repo);
@@ -256,15 +262,17 @@ function RepoRow({ repo, now, showStatus }: { repo: RepoInfo; now: Date; showSta
         <DueBadge repo={repo} now={now} />
       </span>
       <span className="flex min-w-0 flex-[1.6] items-center gap-3">
-        <BranchLabel repo={repo} quiet />
-        {!clean && <StatusChips repo={repo} max={2} />}
+        {!lite && <BranchLabel repo={repo} quiet />}
+        {!clean && <StatusChips repo={repo} max={lite ? 1 : 2} />}
       </span>
       <span className={cn("flex shrink-0", showStatus ? "w-28" : "w-6")}>
         <ProgressPicker repo={repo} compact={!showStatus} />
       </span>
-      <span className="hidden w-24 shrink-0 text-right text-xs text-faint @3xl:block" title={repo.lastCommit?.subject}>
-        {active > 0 ? timeAgo(Math.floor(active / 1000)) : t("aucun commit")}
-      </span>
+      {!lite && (
+        <span className="hidden w-24 shrink-0 text-right text-xs text-faint @3xl:block" title={repo.lastCommit?.subject}>
+          {active > 0 ? timeAgo(Math.floor(active / 1000)) : t("aucun commit")}
+        </span>
+      )}
       <span className="flex shrink-0 items-center opacity-0 transition-opacity duration-(--dur-fast) group-focus-within:opacity-100 group-hover:opacity-100">
         <IconButton label={t("Ouvrir l'espace de travail (IDE + terminal)")} className="hover:text-accent-strong" onClick={() => act.workspace.mutate(repo)}>
           <Play className="size-4" />

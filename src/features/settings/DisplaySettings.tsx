@@ -1,4 +1,5 @@
 // Settings → Appearance → Reading: the size of the whole interface and the light mode.
+import { Hint } from "../../components/lite";
 import { RotateCcw } from "lucide-react";
 import { Button, cn } from "../../components/ui";
 import { suggestedScale, UI_SCALES, useLitePref, useUiScale } from "../../lib/hooks";
@@ -51,7 +52,7 @@ export function DisplaySettings() {
         <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={lite} onChange={(e) => setLite(e.target.checked)} />
         <span>
           <span className="block text-sm">{t("Mode allégé")}</span>
-          <span className="block text-xs text-faint">{t("Seul l'essentiel reste à l'écran : moins de textes d'aide, de badges et de boutons secondaires. Tout reste accessible depuis « Plus ».")}</span>
+          <Hint as="span">{t("Seul l'essentiel reste à l'écran : moins de textes d'aide, de badges et de boutons secondaires. Tout reste accessible depuis « Plus ».")}</Hint>
         </span>
       </label>
     </>

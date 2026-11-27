@@ -1,3 +1,4 @@
+import { Hint } from "../../components/lite";
 import { SpotifyCard } from "../space/spotify";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -170,7 +171,7 @@ export function SettingsPage() {
                 <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={draft.epitechOnly} onChange={(e) => set({ epitechOnly: e.target.checked })} />
                 <span>
                   <span className="block text-sm">Epitech Projects Only</span>
-                  <span className="block text-xs text-faint">{t("Seuls les projets Epitech apparaissent dans les listes, le planning et pour Artix. Décoche pour voir aussi tes projets personnels.")}</span>
+                  <Hint as="span">{t("Seuls les projets Epitech apparaissent dans les listes, le planning et pour Artix. Décoche pour voir aussi tes projets personnels.")}</Hint>
                 </span>
               </label>
             </div>
@@ -308,7 +309,7 @@ export function SettingsPage() {
                 <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={draft.myAutoReconnect} onChange={(e) => set({ myAutoReconnect: e.target.checked })} />
                 <span>
                   <span className="block text-sm">{t("Se reconnecter au démarrage de TekBoard")}</span>
-                  <span className="block text-xs text-faint">{t("Rouvre dans une fenêtre cachée la session MY Epitech gardée sur cet ordinateur. Si le site redemande une connexion, rien n'est forcé : l'état l'indique et tu ouvres la fenêtre toi-même.")}</span>
+                  <Hint as="span">{t("Rouvre dans une fenêtre cachée la session MY Epitech gardée sur cet ordinateur. Si le site redemande une connexion, rien n'est forcé : l'état l'indique et tu ouvres la fenêtre toi-même.")}</Hint>
                 </span>
               </label>
             </div>
@@ -348,7 +349,7 @@ export function SettingsPage() {
               <input type="checkbox" className="accent-(--color-accent)" checked={draft.glassEffects} onChange={(e) => set({ glassEffects: e.target.checked })} />
               <span>
                 <span className="block text-sm">{t("Effet verre sur les dialogues")}</span>
-                <span className="block text-xs text-faint">{t("Flou derrière la palette et les dialogues. Désactive-le si le défilement ou la saisie paraissent lents.")}</span>
+                <Hint as="span">{t("Flou derrière la palette et les dialogues. Désactive-le si le défilement ou la saisie paraissent lents.")}</Hint>
               </span>
             </label>
             <ComfortSettings />
@@ -458,7 +459,7 @@ export function ThemePicker({ current, onPick: pick }: { current: string; onPick
               {t.name}
               {active && <Check className="size-3.5 text-accent" />}
             </span>
-            <span className="block text-xs text-faint">{t.tagline}</span>
+            <Hint as="span">{t.tagline}</Hint>
           </button>
         );
       })}
@@ -603,7 +604,7 @@ function ComfortSettings() {
       <input type="checkbox" className="mt-0.5 accent-(--color-accent)" checked={on} onChange={(e) => onChange(e.target.checked)} />
       <span>
         <span className="block text-sm">{title}</span>
-        <span className="block text-xs text-faint">{hint}</span>
+        <Hint as="span">{hint}</Hint>
       </span>
     </label>
   );
@@ -627,7 +628,7 @@ function ComfortSettings() {
       <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3.5">
         <span>
           <span className="block text-sm">{t("Écran Aujourd'hui")}</span>
-          <span className="block text-xs text-faint">{t("Widgets affichés, ordre, largeur, guide de démarrage.")}</span>
+          <Hint as="span">{t("Widgets affichés, ordre, largeur, guide de démarrage.")}</Hint>
         </span>
         <Button
           size="sm"

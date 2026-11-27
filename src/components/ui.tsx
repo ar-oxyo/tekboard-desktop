@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { LoaderCircle } from "lucide-react";
+import { useLite } from "./lite";
 
 export function cn(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(" ");
@@ -154,12 +155,16 @@ export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputEleme
   );
 }
 
+/** A labelled control. In light mode its hint moves into the label's tooltip. */
 export function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
+  const lite = useLite();
   return (
     <label className="block">
-      <span className="mb-1.5 block text-xs text-muted">{label}</span>
+      <span className="mb-1.5 block text-xs text-muted" title={lite && typeof hint === "string" ? hint : undefined}>
+        {label}
+      </span>
       {children}
-      {hint && <span className="mt-1 block text-xs text-faint">{hint}</span>}
+      {hint && !lite && <span className="mt-1 block text-xs text-faint">{hint}</span>}
     </label>
   );
 }
@@ -247,8 +252,10 @@ export const PageBarSlot = createContext<HTMLElement | "pending" | null>(null);
  * (Projects, Settings) the bar already shows the section and its tabs: the context and the
  * actions join it there instead of adding a second band.
  */
-export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({ title, subtitle: context, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
   const slot = useContext(PageBarSlot);
+  // Light mode: the page's line of context (counts, explanations) gives way to its actions.
+  const subtitle = useLite() ? null : context;
   if (slot === "pending") return null;
   if (slot)
     return createPortal(
